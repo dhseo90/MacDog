@@ -1,3 +1,501 @@
+# AGENTS.md
+
+이 문서는 MyCodex / Codex Usage Monitor 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙이다.
+대상 프로젝트는 Codex 사용량을 일반 터미널에서 확인하는 CLI, macOS menu bar runner 앱, WidgetKit 위젯, shared cache, 설치/배포 스크립트를 포함한다.
+
+---
+
+## 1. 최우선 원칙
+
+1. 사용자가 지정한 작업 범위를 넘지 않는다.
+2. 사용자가 로드맵/목차/단계 중 특정 카테고리 개발을 지시하면 그 카테고리 범위 안에서만 작업한다.
+3. 다음 로드맵 카테고리는 사용자가 명시적으로 지시하기 전까지 자동 착수하지 않는다.
+4. Codex 사용량 조회 계약, JSON 출력 schema, cache schema, app-server JSON-RPC 요청/응답 해석, macOS 앱/위젯 데이터 경계는 요청 없이 변경하지 않는다.
+5. `~/.codex/auth.json`의 token, access token, refresh token, cookie, session material은 읽거나 출력하거나 cache에 저장하지 않는다.
+6. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, codesign/notarization, 푸시는 명시 요청 없이 실행하지 않는다.
+7. 실패와 미실행 항목을 숨기지 않는다.
+8. 확인된 사실과 추정은 분리해서 보고한다.
+9. 실패한 단계 이후의 단계는 모두 중단하고 `건너뜀`으로 보고한다. 단, 사용자가 `/goal`로 end-to-end 목표 달성을 지시한 경우는 3.1의 예외를 따른다.
+
+---
+
+## 2. 거짓 보고 금지
+
+다음 행위는 절대 금지한다.
+
+- 실행하지 않은 명령을 실행했다고 보고
+- 실패한 테스트를 통과로 보고
+- 일부만 통과했는데 전체 통과로 보고
+- sandbox, macOS 권한, Xcode signing, network, Codex auth 문제를 제품 회귀처럼 단정
+- 제품 회귀를 환경 문제라고 임의 축소
+- 생성하지 않은 파일, summary, report 경로를 임의 작성
+- 커밋하지 않았는데 커밋 해시나 커밋 메시지를 보고
+- 푸시하지 않았는데 푸시 완료라고 보고
+- macOS 앱 또는 위젯을 실행/확인하지 않았는데 UI 검수 완료라고 보고
+- raw JSON만 확인하고 menu bar popover 또는 Widget UI를 확인했다고 보고
+- 문서만 수정하고 CLI/macOS 앱 구현까지 했다고 보고
+- 코드만 수정하고 README/ROADMAP/AGENTS 반영까지 했다고 보고
+
+보고 시에는 아래처럼 구분한다.
+
+```text
+확인됨:
+- 실제 실행한 명령
+- 실제 통과/실패 결과
+- 실제 생성된 파일
+- 실제 수정한 파일
+- 실제 커밋 여부
+- 실제 푸시 여부
+
+미확인:
+- 실행하지 않은 테스트
+- 열어보지 않은 앱/위젯 화면
+- 추정 원인
+- 후속 확인 필요 항목
+```
+
+---
+
+## 3. 다중 단계 작업 규칙
+
+사용자는 한 번에 여러 단계를 요청할 수 있다. 이 경우 반드시 아래 규칙을 따른다.
+
+1. 단계는 요청된 순서대로만 진행한다.
+2. 각 단계는 개발 → 관련 테스트 → 결과 보고 → 필요 시 커밋 순서로 닫는다.
+3. 한 단계가 실패하면 그 즉시 중단한다.
+4. 실패한 단계 이후의 모든 단계는 실행하지 않는다.
+5. 실행하지 않은 단계는 `건너뜀`으로 표시한다.
+6. 실패 단계의 원인, 실패 명령, 영향 범위, 변경 파일, 후속 조치를 보고한다.
+7. 실패한 단계는 커밋하지 않는다.
+8. 실패 전 이미 통과 후 커밋된 단계는 그대로 유지한다.
+9. 전체 단계가 모두 끝나면 현재 요청 범위 안의 후속 이슈만 추천한다.
+10. 마지막에 푸시 가능 여부를 반드시 보고한다.
+
+### 3.1 `/goal` 명령의 실패 처리 예외
+
+사용자가 `/goal` 또는 goal option으로 end-to-end 목표 달성을 지시한 경우에는 실패를 최종 중단으로 바로 확정하지 않는다.
+
+1. 실패 지점에서 원인, 실패 명령, 영향 범위, 변경 파일을 먼저 기록한다.
+2. 같은 목표와 같은 로드맵 범위 안에서 수정 가능한 실패라면 수정 후 해당 단계의 테스트부터 다시 시작한다.
+3. 실패 단계가 통과하기 전에는 뒤 단계를 진행하지 않는다.
+4. 같은 실패가 해결 불가능하거나 사용자 결정이 필요한 경우에만 중단으로 보고하고, 그 뒤 단계는 `건너뜀`으로 표시한다.
+5. 실패 후 재시작한 경우 최종 보고에는 최초 실패, 수정 내용, 재검증 결과를 함께 적는다.
+
+### 3.2 특정 로드맵 카테고리 이탈 금지
+
+사용자가 `ROADMAP.md`의 특정 milestone, 번호, 카테고리를 지정해 개발을 지시하면 그 요청은 지정된 범위 안에서만 적용한다.
+지정 카테고리 내부의 하위 작업, 코드 수정, 문서 수정, 테스트, 안정화, 커밋은 허용된다.
+금지 대상은 커밋 자체가 아니라 다른 로드맵 카테고리로 넘어가는 것이다.
+
+다음 행위는 절대 금지한다.
+
+- 지정 milestone이 끝났다는 이유로 다음 milestone을 자동 착수
+- 지정 milestone의 완료 여부를 확인하지 않고 다음 milestone 개발로 이동
+- "다음 본작업은 N번"이라고 단정한 뒤 사용자 승인 없이 N번 구현 시작
+- 다른 milestone의 코드 수정, 문서 수정, 테스트 실행, 커밋 생성
+- 다른 milestone을 함께 완료했다고 보고
+
+다른 로드맵 카테고리는 사용자가 다음처럼 명시적으로 말한 경우에만 진행한다.
+
+```text
+다음 스텝 진행
+Milestone 2 진행
+1번 완료 후 2번까지 진행
+0~3번 순서대로 진행
+```
+
+---
+
+## 4. 단계별 완료 조건
+
+각 단계는 아래 조건을 모두 만족해야 완료로 본다.
+
+1. 요청한 구현 범위 완료
+2. 관련 테스트 실행
+3. 테스트 통과
+4. 문서/코드 변경에 대한 `git diff --check` 통과
+5. 변경 파일 목록 확인
+6. 영향 범위 보고
+7. 회귀 가능성 보고
+8. 사용자가 커밋을 요청했거나 단계 단위 커밋을 지시한 경우 해당 단계 단위 커밋 완료
+
+문서만 수정한 단계도 최소한 `git diff --check`를 실행한다.
+
+---
+
+## 5. 커밋 규칙
+
+1. 커밋은 사용자가 요청했거나 단계 규칙에서 명시한 경우에만 수행한다.
+2. 각 단계가 통과한 뒤 해당 단계만 커밋한다.
+3. 여러 단계의 변경을 하나의 커밋에 섞지 않는다.
+4. 실패한 단계는 커밋하지 않는다.
+5. 커밋 메시지는 변경 성격을 명확히 쓴다.
+6. 푸시 여부와 푸시 가능 여부 보고는 6장 규칙을 따른다.
+
+권장 커밋 메시지 형식:
+
+```text
+feat: 기능 추가
+fix: 버그 수정
+refactor: 구조 정리
+docs: 문서 갱신
+test: 테스트 추가
+chore: 개발 환경 정리
+```
+
+보고 형식:
+
+```text
+커밋:
+- 단계: 1/3
+- 메시지: docs: AGENTS 작업 규칙 추가
+- 해시: <커밋 해시>
+- 푸시: 수행하지 않음
+```
+
+커밋하지 않았다면:
+
+```text
+커밋:
+- 수행하지 않음
+- 이유: 사용자 요청 없음 / 테스트 실패 / 변경 없음
+```
+
+---
+
+## 6. 푸시 규칙
+
+1. 푸시는 사용자가 명시적으로 요청하기 전까지 금지한다.
+2. "푸시 가능"과 "푸시 완료"를 혼동하지 않는다.
+3. 모든 단계가 통과하고 커밋이 완료되어도 푸시는 하지 않는다.
+4. 마지막 보고에 아래 중 하나를 반드시 쓴다.
+
+```text
+푸시 가능: 예
+이유: 모든 단계 통과, 모든 변경 커밋 완료, 미커밋 변경 없음
+푸시 수행 여부: 수행하지 않음
+```
+
+또는
+
+```text
+푸시 가능: 아니오
+이유: 실패 단계 있음 / 미커밋 변경 있음 / 테스트 미실행 항목 있음
+푸시 수행 여부: 수행하지 않음
+```
+
+---
+
+## 7. 테스트 정책
+
+작업 종류별 최소 테스트는 아래를 따른다.
+사용자가 별도 테스트를 지정하면 사용자의 지시를 우선한다.
+
+### 7.1 문서 전용 변경
+
+```bash
+git diff --check
+```
+
+가능하면 추가:
+
+```bash
+markdownlint README.md ROADMAP.md AGENTS.md
+```
+
+명령이 없으면 `명령 없음`으로 보고하고 임의로 통과 처리하지 않는다.
+
+### 7.2 CLI / parser / JSON schema 변경
+
+우선 fixture 기반 테스트를 사용한다.
+
+```bash
+git diff --check
+swift test
+```
+
+프로젝트가 Swift Package가 아닌 다른 런타임을 채택한 경우 해당 런타임의 공식 테스트 명령을 사용한다.
+
+```bash
+npm test
+cargo test
+pytest
+```
+
+실제 Codex 사용량 live 조회는 사용자의 현재 계정/네트워크 상태에 의존한다.
+live smoke가 필요한 경우 `codex-usage status --json`을 실행하되, 실패 시 auth/network/app-server 원인을 분리해서 보고한다.
+
+### 7.3 Shared cache / polling 변경
+
+```bash
+git diff --check
+swift test
+```
+
+추가 확인:
+
+- cache JSON schema가 README/AGENTS와 일치하는지
+- atomic write가 partial file을 남기지 않는지
+- stale/error 상태가 구분되는지
+- cache에 token/session material이 없는지
+
+### 7.4 macOS menu bar app 변경
+
+```bash
+git diff --check
+swift test
+xcodebuild build
+```
+
+GUI 실행, screenshot, menu bar popover 확인은 사용자 명시 요청 또는 가능한 도구가 있을 때만 수행한다.
+실행하지 않았다면 `UI 확인: 실행하지 않음`으로 보고한다.
+
+### 7.5 WidgetKit 변경
+
+```bash
+git diff --check
+swift test
+xcodebuild build
+```
+
+추가 확인:
+
+- widget이 shared cache만 읽는지
+- widget에서 app-server를 직접 호출하지 않는지
+- stale/error/empty 상태가 표시되는지
+- deep link가 menu bar app 또는 상세 화면으로 이어지는지
+
+### 7.6 설치/배포 변경
+
+```bash
+git diff --check
+```
+
+설치 스크립트, LaunchAgent 등록, 로그인 항목 등록, codesign, notarization, `spctl` 검증은 사용자 명시 요청 없이 실행하지 않는다.
+Apple Developer Program이 필요한 단계와 로컬 개인 사용만으로 가능한 단계를 구분해 보고한다.
+
+### 7.7 장시간 테스트
+
+아래 테스트는 명시 요청이 있을 때만 실행한다.
+
+```bash
+codex-usage status --watch 60
+```
+
+장시간 테스트를 실행하지 않았다면 반드시 보고한다.
+
+```text
+장시간 테스트: 실행하지 않음
+이유: 사용자 명시 요청 없음
+```
+
+---
+
+## 8. 중단 조건
+
+아래 상황이 발생하면 즉시 중단하고 보고한다.
+단, `/goal` 명령의 실패 처리 예외는 3.1을 따른다.
+
+1. build 실패
+2. 핵심 fixture test 실패
+3. `git diff --check` 실패
+4. CLI JSON schema 변경이 README/AGENTS/ROADMAP과 불일치
+5. cache schema 변경이 앱/위젯 문서와 불일치
+6. Codex auth token 또는 session material 노출 징후
+7. `~/.codex/auth.json` 직접 읽기 또는 출력 징후
+8. app-server response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
+9. WidgetKit extension이 shared cache 대신 app-server를 직접 호출
+10. menu bar runner가 과도한 CPU/RAM을 사용한다는 측정 또는 명백한 정황
+11. 설치/삭제 스크립트가 사용자 홈 또는 시스템 파일을 과도하게 수정할 위험
+12. codesign/notarization/LaunchAgent 단계에 사용자 승인이 필요한 경우
+
+중단 보고 형식:
+
+```text
+중단 위치:
+- 단계: 2/5
+- 구간: 테스트
+- 실패 명령: swift test
+
+결과:
+- 상태: 실패
+- 뒤 단계: 3~5 건너뜀
+
+원인:
+- 확인된 원인:
+- 추정 원인:
+
+변경 파일:
+- ...
+
+커밋:
+- 수행하지 않음
+
+후속:
+- ...
+```
+
+---
+
+## 9. Codex 사용량 데이터 규칙
+
+1. 1순위 데이터 소스는 Codex app-server `account/rateLimits/read`이다.
+2. `primary.windowDurationMins = 300`은 5시간 창으로 해석한다.
+3. `secondary.windowDurationMins = 10080`은 주간 창으로 해석한다.
+4. 잔여량은 `100 - usedPercent`로 계산한다.
+5. `resetsAt`은 Unix epoch seconds이며 표시 시 로컬 시간대로 변환한다.
+6. 기본 limit bucket은 `rateLimitsByLimitId.codex`이다.
+7. `codex_bengalfox` 같은 추가 bucket은 advanced/debug 출력으로 분리한다.
+8. CLI `--json` 출력 schema는 앱/위젯/cache가 의존하는 계약이므로 요청 없이 breaking change를 만들지 않는다.
+9. 사용량 조회 실패 시 마지막 성공 cache가 있더라도 stale/error 상태를 함께 표시한다.
+10. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않는다.
+
+---
+
+## 10. macOS UI / RunCat 참고 규칙
+
+1. RunCat의 핵심 경험은 "작은 menu bar runner가 상태에 따라 속도를 바꾸는 것"으로만 참고한다.
+2. RunCat의 고양이 캐릭터, asset, 브랜드 표현을 복제하지 않는다.
+3. runner 속도는 기본적으로 `max(5시간 사용률, 주간 사용률)`을 기준으로 한다.
+4. WidgetKit은 실시간 애니메이션 채널이 아니라 glance용 상태 표시로 다룬다.
+5. menu bar app이 지속 애니메이션을 담당한다.
+6. popover는 장난스럽기보다 명확한 개발 도구처럼 보여야 한다.
+7. `Reduce Motion` 또는 저전력 환경을 고려해 애니메이션 완화 옵션을 둔다.
+8. high usage 경고는 눈에 띄되 과하게 산만하지 않아야 한다.
+9. UI 확인을 하지 않았다면 `UI 확인 미수행`으로 보고한다.
+
+---
+
+## 11. 보안 / 개인정보 규칙
+
+1. `~/.codex/auth.json`을 직접 읽거나 출력하지 않는다.
+2. access token, refresh token, cookie, session id, auth header를 파일, 로그, UI, cache에 남기지 않는다.
+3. 사용량 snapshot에는 plan, percent, reset time, credits balance, stale/error 상태만 저장한다.
+4. 오류 로그에는 request/response 전체 원문 대신 redacted summary를 남긴다.
+5. 네트워크 dashboard scraping은 마지막 수단으로만 고려하고, 먼저 사용자에게 이유를 설명한다.
+6. GitHub, Apple Developer, notarization credential은 코드나 문서에 넣지 않는다.
+
+---
+
+## 12. 문서 관리 규칙
+
+문서 변경 시 다음을 확인한다.
+
+1. README, ROADMAP, AGENTS의 용어가 일치하는지
+2. CLI 명령 이름이 일치하는지
+3. 사용량 창 해석이 일치하는지
+4. RunCat 참고 범위가 과장되거나 asset 복제로 오해되지 않는지
+5. Apple Developer 필요 여부를 개인 사용/외부 배포/App Store 배포로 구분했는지
+6. 구현 완료, MVP 예정, 후속 예정, 검증 미수행을 구분했는지
+7. 실행하지 않은 검증을 문서에 완료처럼 쓰지 않았는지
+
+문서에서 기능 상태를 표현할 때:
+
+```text
+구현 완료
+MVP 완료
+1차 구현
+후속 예정
+실험 기능
+검증 미수행
+```
+
+을 구분한다.
+
+---
+
+## 13. 보고 형식
+
+각 단계 완료 후 아래 형식으로 보고한다.
+
+```text
+2/5단계 완료
+
+작업:
+- ...
+
+변경 파일:
+- ...
+
+검증:
+- swift test: 통과
+- git diff --check: 통과
+
+미실행:
+- GUI 실행: 실행하지 않음
+- 장시간 테스트: 실행하지 않음
+
+커밋:
+- 메시지: ...
+- 해시: ...
+- 푸시: 수행하지 않음
+
+다음 단계:
+- 3/5 진행 가능
+
+푸시 가능: 예/아니오
+푸시 수행 여부: 수행하지 않음
+```
+
+실패 시:
+
+```text
+3/5단계 실패
+
+실패 지점:
+- 명령: ...
+- 결과: 실패
+
+원인:
+- 확인된 원인:
+- 추정 원인:
+
+변경 파일:
+- ...
+
+커밋:
+- 수행하지 않음
+
+중단:
+- 4/5~5/5 건너뜀
+
+후속 조치:
+- ...
+
+푸시 가능: 아니오
+```
+
+---
+
+## 14. 후속 이슈 추천 규칙
+
+전체 단계가 끝나면 후속 이슈를 추천한다.
+단, 후속 이슈는 현재 요청 범위 안에서 실제로 처리 가능한 항목만 언급한다.
+
+다음 항목은 후속 이슈로 추천하거나 기록하지 않는다.
+
+- 이번 요청 범위를 벗어난 기능
+- 현재 milestone을 벗어난 별도 Phase 후보
+- 사용자 승인이 필요한 새 제품 범위
+- 이번 단계 완료 판정과 무관한 research/backlog 아이디어
+
+현재 범위 안에 남은 후속 이슈가 없으면 `후속 이슈: 없음`으로 보고한다.
+
+---
+
+## 15. 절대 금지 요약
+
+상세 규칙은 앞 장을 우선한다. 아래 항목은 어떤 작업에서도 예외 없이 금지한다.
+
+- 실패, 미실행 테스트, 미확인 화면, 미커밋/미푸시 상태를 완료처럼 보고
+- Codex usage JSON schema, cache schema, app-server 해석 계약을 요청 없이 breaking change
+- 장시간 테스트, GUI 앱 실행, 설치/LaunchAgent/codesign/notarization, 푸시를 명시 요청 없이 실행
+- Codex token/session/auth material 노출
+- RunCat asset/캐릭터/브랜드 복제
+- 제품 기능을 문서에서 과장하거나 구현 예정 기능을 구현 완료처럼 표현
+
+---
+
 # Codex Usage Monitor Development Plan
 
 ## 목적
@@ -253,4 +751,3 @@ Swift Package와 Xcode project 중 하나를 선택한다. macOS menu bar app과
 - cache가 오래되면 stale로 표시된다.
 - 위젯은 stale/empty/error 상태를 각각 표시한다.
 - 민감 정보가 파일, 로그, UI에 남지 않는다.
-
