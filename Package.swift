@@ -19,6 +19,10 @@ let package = Package(
         .executable(
             name: "codex-usage",
             targets: ["CodexUsageCLI"]
+        ),
+        .executable(
+            name: "CodexUsageMonitor",
+            targets: ["CodexUsageMonitor"]
         )
     ],
     targets: [
@@ -31,6 +35,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "CodexUsageCLI",
+            dependencies: ["CodexUsageCore"]
+        ),
+        .executableTarget(
+            name: "CodexUsageMonitor",
             dependencies: ["CodexUsageCore"]
         ),
         .testTarget(
