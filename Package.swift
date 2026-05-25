@@ -12,6 +12,10 @@ let package = Package(
             name: "CodexUsageCore",
             targets: ["CodexUsageCore"]
         ),
+        .library(
+            name: "CodexUsageWidget",
+            targets: ["CodexUsageWidget"]
+        ),
         .executable(
             name: "codex-usage-probe",
             targets: ["CodexUsageProbe"]
@@ -28,6 +32,10 @@ let package = Package(
     targets: [
         .target(
             name: "CodexUsageCore"
+        ),
+        .target(
+            name: "CodexUsageWidget",
+            dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(
             name: "CodexUsageProbe",
