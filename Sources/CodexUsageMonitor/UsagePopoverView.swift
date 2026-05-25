@@ -93,7 +93,7 @@ private struct PreferencesStrip: View {
     let onChange: () -> Void
 
     @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = UsageDisplayBasis.max.rawValue
-    @AppStorage(RunnerPreferences.themeKey) private var theme = RunnerTheme.runner.rawValue
+    @AppStorage(RunnerPreferences.themeKey) private var theme = RunnerTheme.pup.rawValue
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
 
     var body: some View {

@@ -7,7 +7,7 @@ struct RunnerIconRenderer {
     func image(
         frame: Int,
         phase: UsagePressurePhase,
-        theme: RunnerTheme = .runner,
+        theme: RunnerTheme = .pup,
         reducedMotion: Bool = false
     ) -> NSImage {
         let size = NSSize(width: 22, height: 18)
@@ -23,35 +23,7 @@ struct RunnerIconRenderer {
 
         let renderedFrame = reducedMotion ? 0 : frame
         let stride = CGFloat(renderedFrame % Self.frameCount) / CGFloat(Self.frameCount)
-        let lean = sin(stride * .pi * 2) * 2.4
-        let foot = cos(stride * .pi * 2) * 3.4
-
-        let body = NSBezierPath()
-        body.lineWidth = 1.8
-        body.lineCapStyle = .round
-        body.move(to: NSPoint(x: 11 + lean, y: 12.5))
-        body.line(to: NSPoint(x: 10 - lean * 0.4, y: 8.0))
-        body.stroke()
-
-        NSBezierPath(ovalIn: NSRect(x: 8.5 + lean, y: 13.2, width: 4.0, height: 4.0)).fill()
-
-        let arms = NSBezierPath()
-        arms.lineWidth = 1.5
-        arms.lineCapStyle = .round
-        arms.move(to: NSPoint(x: 10.5, y: 10.8))
-        arms.line(to: NSPoint(x: 6.7 - foot * 0.25, y: 9.3))
-        arms.move(to: NSPoint(x: 10.5, y: 10.8))
-        arms.line(to: NSPoint(x: 14.8 + foot * 0.25, y: 11.3))
-        arms.stroke()
-
-        let legs = NSBezierPath()
-        legs.lineWidth = 1.7
-        legs.lineCapStyle = .round
-        legs.move(to: NSPoint(x: 10, y: 8.0))
-        legs.line(to: NSPoint(x: 6.4 + foot, y: 3.0))
-        legs.move(to: NSPoint(x: 10, y: 8.0))
-        legs.line(to: NSPoint(x: 14.7 - foot, y: 3.2))
-        legs.stroke()
+        drawPup(frameStride: stride, phase: phase, color: color)
 
         if theme == .spark {
             drawSpark(frame: renderedFrame, phase: phase)
@@ -88,6 +60,54 @@ struct RunnerIconRenderer {
         case .limit:
             .systemRed
         }
+    }
+
+    private func drawPup(frameStride: CGFloat, phase: UsagePressurePhase, color: NSColor) {
+        let run = sin(frameStride * .pi * 2)
+        let paw = cos(frameStride * .pi * 2)
+        let bounce = phase == .calm ? run * 0.25 : abs(run) * 0.8
+        let tailLift = run * 1.2
+
+        let tail = NSBezierPath()
+        tail.lineWidth = 1.6
+        tail.lineCapStyle = .round
+        tail.move(to: NSPoint(x: 6.8, y: 10.8 + bounce))
+        tail.curve(
+            to: NSPoint(x: 2.2, y: 13.2 + tailLift),
+            controlPoint1: NSPoint(x: 5.1, y: 12.2 + tailLift),
+            controlPoint2: NSPoint(x: 3.7, y: 13.6 + tailLift)
+        )
+        tail.stroke()
+
+        NSBezierPath(roundedRect: NSRect(x: 6.0, y: 6.4 + bounce, width: 9.8, height: 6.5), xRadius: 3.2, yRadius: 3.0).fill()
+        NSBezierPath(ovalIn: NSRect(x: 13.8, y: 9.2 + bounce, width: 5.5, height: 5.0)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 17.7, y: 9.6 + bounce, width: 3.0, height: 2.2)).fill()
+
+        let ear = NSBezierPath()
+        ear.move(to: NSPoint(x: 14.9, y: 13.2 + bounce))
+        ear.line(to: NSPoint(x: 15.9 + paw * 0.25, y: 16.1 + bounce))
+        ear.line(to: NSPoint(x: 17.4, y: 12.8 + bounce))
+        ear.close()
+        ear.fill()
+
+        NSColor.controlBackgroundColor.withAlphaComponent(0.85).setFill()
+        NSBezierPath(ovalIn: NSRect(x: 17.2, y: 12.1 + bounce, width: 0.9, height: 0.9)).fill()
+        color.setStroke()
+        color.setFill()
+
+        let legs = NSBezierPath()
+        legs.lineWidth = 1.4
+        legs.lineCapStyle = .round
+        drawLeg(path: legs, hipX: 8.0, hipY: 6.9 + bounce, footX: 6.4 + paw * 1.0, footY: 2.7)
+        drawLeg(path: legs, hipX: 10.3, hipY: 6.8 + bounce, footX: 10.8 - paw * 1.1, footY: 2.8)
+        drawLeg(path: legs, hipX: 13.4, hipY: 7.0 + bounce, footX: 12.4 - paw * 1.0, footY: 2.9)
+        drawLeg(path: legs, hipX: 15.0, hipY: 7.2 + bounce, footX: 16.3 + paw * 1.1, footY: 3.0)
+        legs.stroke()
+    }
+
+    private func drawLeg(path: NSBezierPath, hipX: CGFloat, hipY: CGFloat, footX: CGFloat, footY: CGFloat) {
+        path.move(to: NSPoint(x: hipX, y: hipY))
+        path.line(to: NSPoint(x: footX, y: footY))
     }
 
     private func drawSpark(frame: Int, phase: UsagePressurePhase) {

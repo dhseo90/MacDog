@@ -65,7 +65,7 @@ struct CLI {
 
         repeat {
             let exitCode = printStatus(json: json, writeCache: writeCache, cachePath: cachePath)
-            if exitCode != .success || watchInterval == nil {
+            if watchInterval == nil {
                 return exitCode
             }
             sleep(watchInterval!)

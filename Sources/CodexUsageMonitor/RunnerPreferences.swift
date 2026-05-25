@@ -10,14 +10,15 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
 
     init(defaults: UserDefaults = .standard) {
-        self.theme = RunnerTheme(rawValue: defaults.string(forKey: Self.themeKey) ?? "") ?? .runner
+        let storedTheme = defaults.string(forKey: Self.themeKey) ?? ""
+        self.theme = RunnerTheme(rawValue: storedTheme) ?? .pup
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? .max
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
     }
 }
 
 enum RunnerTheme: String, CaseIterable, Identifiable {
-    case runner
+    case pup
     case spark
     case pulse
 
@@ -25,12 +26,12 @@ enum RunnerTheme: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .runner:
-            "Runner"
+        case .pup:
+            "Pup"
         case .spark:
-            "Spark"
+            "Spark Pup"
         case .pulse:
-            "Pulse"
+            "Pulse Pup"
         }
     }
 }
@@ -53,4 +54,3 @@ enum UsageDisplayBasis: String, CaseIterable, Identifiable {
         }
     }
 }
-

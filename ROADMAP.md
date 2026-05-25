@@ -2,7 +2,7 @@
 
 ## 제품 방향
 
-Codex Usage Monitor는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하게 해주는 macOS 유틸리티다. RunCat처럼 작은 러너가 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직인다. 클릭하면 현재 사용률, 남은 비율, reset 시각, credit 상태를 보여준다.
+Codex Usage Monitor는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하게 해주는 macOS 유틸리티다. RunCat처럼 작은 러너가 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직인다. 기본 캐릭터는 강아지 러너 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, credit 상태를 보여준다.
 
 핵심 경험은 다음과 같다.
 
@@ -23,6 +23,7 @@ RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이
 - 러너는 16-22pt 높이에서 선명해야 한다.
 - 프레임 애니메이션은 8-16프레임 MVP로 시작하고, 나중에 사용자 커스텀 러너를 지원한다.
 - 메뉴바 공간을 많이 쓰지 않는다.
+- 기본 캐릭터는 고양이가 아니라 Codex Pup 강아지 실루엣으로 간다.
 
 적용하지 않을 것:
 
@@ -45,6 +46,16 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 | Fast | 80-94% | 빠르게 뛰기 | 주황 계열 경고 |
 | Sprint | 95-99% | 매우 빠르게 뛰기 | 빨강 계열 경고 |
 | Limit | 100%+ | 숨가쁜 루프/정지 경고 | 한도 도달 표시 |
+
+## 캐릭터 로드맵: Codex Pup
+
+목표: 16-22pt 메뉴바 크기에서도 강아지로 읽히는 단순하고 선명한 실루엣을 만든다.
+
+1. 기본 벡터 실루엣: 몸통, 머리, 귀, 꼬리, 네 다리
+2. 8프레임 달리기 루프: 다리 stride, 꼬리 흔들림, 작은 bounce
+3. 사용량 단계별 accent: calm template, active accent, fast orange, sprint/limit red
+4. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
+5. 사용자 커스텀 runner import는 MVP 이후 확장 기능으로 유지
 
 ## Milestone 0: 기술 검증
 
@@ -105,7 +116,8 @@ codex-usage doctor
 - cache 저장 위치 생성
 - atomic write 구현
 - stale 판단 기준 추가
-- poll interval 기본값 60초
+- menu bar 앱 cache read 주기 기본값 60초
+- 설치형 cache agent 갱신 주기 기본값 300초
 - 마지막 성공 snapshot과 현재 오류 상태를 함께 저장
 
 저장 위치:
@@ -257,4 +269,3 @@ Updated 22:44
 4. fixture test를 추가한다.
 5. text formatter를 추가한다.
 6. `doctor`를 추가한다.
-

@@ -17,7 +17,7 @@ final class MenuBarController {
     func start() {
         configureStatusItem()
         configurePopover()
-        refreshUsage()
+        refreshUsage(allowLiveRefresh: false)
         startRefreshTimer()
         restartAnimationTimer()
     }
@@ -40,7 +40,7 @@ final class MenuBarController {
         refreshTimer?.invalidate()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.refreshUsage()
+                self?.refreshUsage(allowLiveRefresh: false)
             }
         }
     }
@@ -64,11 +64,11 @@ final class MenuBarController {
         )
     }
 
-    private func refreshUsage() {
+    private func refreshUsage(allowLiveRefresh: Bool) {
         let previousPhase = state.phase
         let previousPreferences = preferences
         preferences = RunnerPreferences()
-        state = loadState()
+        state = loadState(allowLiveRefresh: allowLiveRefresh)
         popover.contentViewController = makePopoverController()
         statusItem.button?.toolTip = state.toolTip
         advanceFrame()
@@ -78,7 +78,39 @@ final class MenuBarController {
         }
     }
 
-    private func loadState() -> UsageMonitorState {
+    private func loadState(allowLiveRefresh: Bool) -> UsageMonitorState {
+        if allowLiveRefresh {
+            do {
+                let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
+                try? cacheStore.writeSuccess(report: report)
+                return UsageMonitorState(
+                    report: report,
+                    cacheSnapshot: nil,
+                    errorMessage: nil,
+                    displayBasis: preferences.displayBasis,
+                    reducedMotion: preferences.reducedMotion
+                )
+            } catch {
+                if let snapshot = try? cacheStore.read(), let report = snapshot.report {
+                    return UsageMonitorState(
+                        report: report,
+                        cacheSnapshot: snapshot,
+                        errorMessage: error.localizedDescription,
+                        displayBasis: preferences.displayBasis,
+                        reducedMotion: preferences.reducedMotion
+                    )
+                }
+
+                return UsageMonitorState(
+                    report: nil,
+                    cacheSnapshot: nil,
+                    errorMessage: error.localizedDescription,
+                    displayBasis: preferences.displayBasis,
+                    reducedMotion: preferences.reducedMotion
+                )
+            }
+        }
+
         if let snapshot = try? cacheStore.read(), let report = snapshot.report {
             return UsageMonitorState(
                 report: report,
@@ -89,30 +121,19 @@ final class MenuBarController {
             )
         }
 
-        do {
-            let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
-            return UsageMonitorState(
-                report: report,
-                cacheSnapshot: nil,
-                errorMessage: nil,
-                displayBasis: preferences.displayBasis,
-                reducedMotion: preferences.reducedMotion
-            )
-        } catch {
-            return UsageMonitorState(
-                report: nil,
-                cacheSnapshot: nil,
-                errorMessage: error.localizedDescription,
-                displayBasis: preferences.displayBasis,
-                reducedMotion: preferences.reducedMotion
-            )
-        }
+        return UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            errorMessage: "Usage cache is not available yet.",
+            displayBasis: preferences.displayBasis,
+            reducedMotion: preferences.reducedMotion
+        )
     }
 
     private func makePopoverController() -> NSViewController {
         NSHostingController(rootView: UsagePopoverView(state: state) {
             Task { @MainActor in
-                self.refreshUsage()
+                self.refreshUsage(allowLiveRefresh: true)
             }
         })
     }
@@ -120,7 +141,7 @@ final class MenuBarController {
     @objc
     private func togglePopover() {
         guard let button = statusItem.button else { return }
-        refreshUsage()
+        refreshUsage(allowLiveRefresh: true)
 
         if popover.isShown {
             popover.performClose(nil)
