@@ -6,6 +6,7 @@ import SwiftUI
 final class MenuBarController {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 30)
     private let popover = NSPopover()
+    private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
     private var overlayWindow: NSPanel?
     private var overlayButton: NSButton?
@@ -29,9 +30,8 @@ final class MenuBarController {
         statusItem.isVisible = true
 
         guard let button = statusItem.button else { return }
-        button.image = nil
-        button.imagePosition = .noImage
-        button.title = "🐕"
+        button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
         button.target = self
         button.action = #selector(togglePopover)
         button.toolTip = "Codex Usage"
@@ -71,29 +71,14 @@ final class MenuBarController {
 
     private func advanceFrame() {
         frameIndex = (frameIndex + 1) % RunnerIconRenderer.frameCount
-        let title = runnerTitle(frame: frameIndex)
-        statusItem.button?.attributedTitle = title
-        overlayButton?.attributedTitle = title
-    }
-
-    private func runnerTitle(frame: Int) -> NSAttributedString {
-        let symbol: String
-        if state.phase == .limit {
-            symbol = "⚠︎"
-        } else if state.reducedMotion {
-            symbol = "🐕"
-        } else {
-            symbol = frame % 2 == 0 ? "🐕" : "🐶"
-        }
-
-        return NSAttributedString(
-            string: symbol,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 16),
-                .foregroundColor: NSColor.white,
-                .baselineOffset: -1
-            ]
+        let image = runnerRenderer.image(
+            frame: frameIndex,
+            phase: state.phase,
+            theme: preferences.theme,
+            reducedMotion: state.reducedMotion
         )
+        statusItem.button?.image = image
+        overlayButton?.image = image
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {
@@ -222,17 +207,24 @@ final class MenuBarController {
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = false
-        window.level = .statusBar
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        window.level = .normal
+        window.collectionBehavior = [.stationary, .ignoresCycle]
 
         let button = NSButton(frame: NSRect(origin: .zero, size: frame.size))
         button.isBordered = false
         button.bezelStyle = .regularSquare
-        button.imagePosition = .noImage
+        button.imagePosition = .imageOnly
+        button.imageScaling = .scaleProportionallyDown
+        button.contentTintColor = .white
         button.target = self
         button.action = #selector(toggleOverlayPopover)
         button.toolTip = "Codex Usage"
-        button.attributedTitle = runnerTitle(frame: frameIndex)
+        button.image = runnerRenderer.image(
+            frame: frameIndex,
+            phase: state.phase,
+            theme: preferences.theme,
+            reducedMotion: state.reducedMotion
+        )
 
         window.contentView = button
         window.orderFrontRegardless()
