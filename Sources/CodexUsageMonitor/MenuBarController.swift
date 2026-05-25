@@ -6,7 +6,6 @@ import SwiftUI
 final class MenuBarController {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
-    private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
@@ -56,12 +55,53 @@ final class MenuBarController {
 
     private func advanceFrame() {
         frameIndex = (frameIndex + 1) % RunnerIconRenderer.frameCount
-        statusItem.button?.image = runnerRenderer.image(
-            frame: frameIndex,
-            phase: state.phase,
-            theme: preferences.theme,
-            reducedMotion: state.reducedMotion
-        )
+        statusItem.button?.image = runnerImage(frame: frameIndex)
+    }
+
+    private func runnerImage(frame: Int) -> NSImage? {
+        let symbolName: String
+        if state.phase == .limit {
+            symbolName = "exclamationmark.triangle.fill"
+        } else if state.reducedMotion {
+            symbolName = filledSymbolName
+        } else {
+            symbolName = frame % 2 == 0 ? filledSymbolName : outlineSymbolName
+        }
+
+        let configuration = NSImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Codex Usage")?
+            .withSymbolConfiguration(configuration) else {
+            return RunnerIconRenderer().image(
+                frame: frame,
+                phase: state.phase,
+                theme: preferences.theme,
+                reducedMotion: state.reducedMotion
+            )
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    private var outlineSymbolName: String {
+        switch preferences.theme {
+        case .pup:
+            "dog"
+        case .spark:
+            "pawprint"
+        case .pulse:
+            "dog.circle"
+        }
+    }
+
+    private var filledSymbolName: String {
+        switch preferences.theme {
+        case .pup:
+            "dog.fill"
+        case .spark:
+            "pawprint.fill"
+        case .pulse:
+            "dog.circle.fill"
+        }
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {

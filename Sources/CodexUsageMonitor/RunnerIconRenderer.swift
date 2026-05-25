@@ -10,7 +10,7 @@ struct RunnerIconRenderer {
         theme: RunnerTheme = .pup,
         reducedMotion: Bool = false
     ) -> NSImage {
-        let size = NSSize(width: 22, height: 18)
+        let size = NSSize(width: 32, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
 
@@ -43,7 +43,7 @@ struct RunnerIconRenderer {
         }
 
         image.unlockFocus()
-        image.isTemplate = phase == .calm || phase == .active
+        image.isTemplate = false
         return image
     }
 
@@ -66,42 +66,48 @@ struct RunnerIconRenderer {
         let run = sin(frameStride * .pi * 2)
         let paw = cos(frameStride * .pi * 2)
         let bounce = phase == .calm ? run * 0.25 : abs(run) * 0.8
-        let tailLift = run * 1.2
+        let tailLift = run * 1.4
 
         let tail = NSBezierPath()
-        tail.lineWidth = 1.6
+        tail.lineWidth = 1.8
         tail.lineCapStyle = .round
-        tail.move(to: NSPoint(x: 6.8, y: 10.8 + bounce))
+        tail.move(to: NSPoint(x: 7.0, y: 10.6 + bounce))
         tail.curve(
-            to: NSPoint(x: 2.2, y: 13.2 + tailLift),
-            controlPoint1: NSPoint(x: 5.1, y: 12.2 + tailLift),
-            controlPoint2: NSPoint(x: 3.7, y: 13.6 + tailLift)
+            to: NSPoint(x: 2.1, y: 13.8 + tailLift),
+            controlPoint1: NSPoint(x: 5.2, y: 12.2 + tailLift),
+            controlPoint2: NSPoint(x: 3.5, y: 14.0 + tailLift)
         )
         tail.stroke()
 
-        NSBezierPath(roundedRect: NSRect(x: 6.0, y: 6.4 + bounce, width: 9.8, height: 6.5), xRadius: 3.2, yRadius: 3.0).fill()
-        NSBezierPath(ovalIn: NSRect(x: 13.8, y: 9.2 + bounce, width: 5.5, height: 5.0)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 17.7, y: 9.6 + bounce, width: 3.0, height: 2.2)).fill()
+        NSBezierPath(roundedRect: NSRect(x: 5.8, y: 7.0 + bounce, width: 15.2, height: 5.4), xRadius: 2.8, yRadius: 2.6).fill()
+        NSBezierPath(ovalIn: NSRect(x: 19.7, y: 9.0 + bounce, width: 5.9, height: 5.1)).fill()
+        NSBezierPath(roundedRect: NSRect(x: 24.1, y: 9.5 + bounce, width: 4.3, height: 2.4), xRadius: 1.2, yRadius: 1.1).fill()
 
         let ear = NSBezierPath()
-        ear.move(to: NSPoint(x: 14.9, y: 13.2 + bounce))
-        ear.line(to: NSPoint(x: 15.9 + paw * 0.25, y: 16.1 + bounce))
-        ear.line(to: NSPoint(x: 17.4, y: 12.8 + bounce))
+        ear.move(to: NSPoint(x: 20.3, y: 13.0 + bounce))
+        ear.line(to: NSPoint(x: 21.3 + paw * 0.25, y: 16.1 + bounce))
+        ear.line(to: NSPoint(x: 22.7, y: 13.0 + bounce))
         ear.close()
         ear.fill()
 
-        NSColor.controlBackgroundColor.withAlphaComponent(0.85).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 17.2, y: 12.1 + bounce, width: 0.9, height: 0.9)).fill()
+        NSColor.systemBlue.setStroke()
+        let collar = NSBezierPath()
+        collar.lineWidth = 1.2
+        collar.lineCapStyle = .round
+        collar.move(to: NSPoint(x: 19.7, y: 8.8 + bounce))
+        collar.line(to: NSPoint(x: 20.2, y: 12.9 + bounce))
+        collar.stroke()
+
         color.setStroke()
         color.setFill()
 
         let legs = NSBezierPath()
-        legs.lineWidth = 1.4
+        legs.lineWidth = 1.7
         legs.lineCapStyle = .round
-        drawLeg(path: legs, hipX: 8.0, hipY: 6.9 + bounce, footX: 6.4 + paw * 1.0, footY: 2.7)
-        drawLeg(path: legs, hipX: 10.3, hipY: 6.8 + bounce, footX: 10.8 - paw * 1.1, footY: 2.8)
-        drawLeg(path: legs, hipX: 13.4, hipY: 7.0 + bounce, footX: 12.4 - paw * 1.0, footY: 2.9)
-        drawLeg(path: legs, hipX: 15.0, hipY: 7.2 + bounce, footX: 16.3 + paw * 1.1, footY: 3.0)
+        drawLeg(path: legs, hipX: 8.1, hipY: 7.0 + bounce, footX: 5.4 + paw * 1.7, footY: 2.9)
+        drawLeg(path: legs, hipX: 11.6, hipY: 6.9 + bounce, footX: 13.2 - paw * 1.8, footY: 2.8)
+        drawLeg(path: legs, hipX: 17.1, hipY: 7.1 + bounce, footX: 15.2 - paw * 1.6, footY: 2.9)
+        drawLeg(path: legs, hipX: 19.2, hipY: 7.2 + bounce, footX: 21.8 + paw * 1.5, footY: 3.2)
         legs.stroke()
     }
 
