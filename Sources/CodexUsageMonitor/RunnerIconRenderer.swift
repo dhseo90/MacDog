@@ -4,7 +4,12 @@ import SwiftUI
 struct RunnerIconRenderer {
     static let frameCount = 8
 
-    func image(frame: Int, phase: UsagePressurePhase) -> NSImage {
+    func image(
+        frame: Int,
+        phase: UsagePressurePhase,
+        theme: RunnerTheme = .runner,
+        reducedMotion: Bool = false
+    ) -> NSImage {
         let size = NSSize(width: 22, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -12,11 +17,12 @@ struct RunnerIconRenderer {
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: size).fill()
 
-        let color = color(for: phase)
+        let color = color(for: phase, theme: theme)
         color.setStroke()
         color.setFill()
 
-        let stride = CGFloat(frame % Self.frameCount) / CGFloat(Self.frameCount)
+        let renderedFrame = reducedMotion ? 0 : frame
+        let stride = CGFloat(renderedFrame % Self.frameCount) / CGFloat(Self.frameCount)
         let lean = sin(stride * .pi * 2) * 2.4
         let foot = cos(stride * .pi * 2) * 3.4
 
@@ -47,6 +53,12 @@ struct RunnerIconRenderer {
         legs.line(to: NSPoint(x: 14.7 - foot, y: 3.2))
         legs.stroke()
 
+        if theme == .spark {
+            drawSpark(frame: renderedFrame, phase: phase)
+        } else if theme == .pulse {
+            drawPulse(frame: renderedFrame, phase: phase, color: color)
+        }
+
         if phase == .limit {
             NSColor.systemRed.setStroke()
             let warning = NSBezierPath()
@@ -63,10 +75,10 @@ struct RunnerIconRenderer {
         return image
     }
 
-    private func color(for phase: UsagePressurePhase) -> NSColor {
+    private func color(for phase: UsagePressurePhase, theme: RunnerTheme) -> NSColor {
         switch phase {
         case .calm:
-            .labelColor
+            theme == .pulse ? .systemTeal : .labelColor
         case .active:
             .controlAccentColor
         case .fast:
@@ -77,5 +89,21 @@ struct RunnerIconRenderer {
             .systemRed
         }
     }
-}
 
+    private func drawSpark(frame: Int, phase: UsagePressurePhase) {
+        guard phase != .calm else { return }
+        let offset = CGFloat(frame % 3)
+        NSColor.systemYellow.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 2 + offset, y: 13, width: 2, height: 2)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 4, y: 4 + offset, width: 1.8, height: 1.8)).fill()
+    }
+
+    private func drawPulse(frame: Int, phase: UsagePressurePhase, color: NSColor) {
+        guard phase != .calm else { return }
+        color.withAlphaComponent(0.28).setStroke()
+        let inset = CGFloat(frame % 4) * 0.8
+        let ring = NSBezierPath(ovalIn: NSRect(x: 2 + inset, y: 1 + inset, width: 18 - inset * 2, height: 16 - inset * 2))
+        ring.lineWidth = 1
+        ring.stroke()
+    }
+}

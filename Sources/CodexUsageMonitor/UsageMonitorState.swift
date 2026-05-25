@@ -7,6 +7,22 @@ struct UsageMonitorState: Equatable {
     let report: CodexUsageReport?
     let cacheSnapshot: CodexUsageCacheSnapshot?
     let errorMessage: String?
+    let displayBasis: UsageDisplayBasis
+    let reducedMotion: Bool
+
+    init(
+        report: CodexUsageReport?,
+        cacheSnapshot: CodexUsageCacheSnapshot?,
+        errorMessage: String?,
+        displayBasis: UsageDisplayBasis = .max,
+        reducedMotion: Bool = false
+    ) {
+        self.report = report
+        self.cacheSnapshot = cacheSnapshot
+        self.errorMessage = errorMessage
+        self.displayBasis = displayBasis
+        self.reducedMotion = reducedMotion
+    }
 
     var codexLimit: UsageLimitReport? {
         report?.codexLimit
@@ -16,7 +32,20 @@ struct UsageMonitorState: Equatable {
         if codexLimit?.rateLimitReachedType != nil {
             return .limit
         }
-        return UsagePressurePhase(usedPercent: codexLimit?.maxUsedPercent ?? 0)
+        return UsagePressurePhase(usedPercent: selectedUsedPercent)
+    }
+
+    var selectedUsedPercent: Double {
+        guard let limit = codexLimit else { return 0 }
+
+        switch displayBasis {
+        case .max:
+            return limit.maxUsedPercent
+        case .fiveHour:
+            return limit.fiveHour?.usedPercent ?? 0
+        case .weekly:
+            return limit.weekly?.usedPercent ?? 0
+        }
     }
 
     var isStale: Bool {
@@ -39,7 +68,7 @@ struct UsageMonitorState: Equatable {
         }
         let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5h" } ?? "5h unavailable"
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% weekly" } ?? "weekly unavailable"
-        return "Codex Usage: \(fiveHour), \(weekly)"
+        return "Codex Usage: \(fiveHour), \(weekly), basis \(displayBasis.label)"
     }
 
     static func percent(_ value: Double) -> String {
@@ -87,6 +116,10 @@ enum UsagePressurePhase: String, Equatable {
         }
     }
 
+    func frameInterval(reducedMotion: Bool) -> TimeInterval {
+        reducedMotion ? 1.5 : frameInterval
+    }
+
     var label: String {
         switch self {
         case .calm:
@@ -102,4 +135,3 @@ enum UsagePressurePhase: String, Equatable {
         }
     }
 }
-

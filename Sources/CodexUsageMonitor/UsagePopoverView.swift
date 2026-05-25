@@ -3,6 +3,12 @@ import SwiftUI
 
 struct UsagePopoverView: View {
     let state: UsageMonitorState
+    let onPreferencesChanged: () -> Void
+
+    init(state: UsageMonitorState, onPreferencesChanged: @escaping () -> Void = {}) {
+        self.state = state
+        self.onPreferencesChanged = onPreferencesChanged
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -34,6 +40,8 @@ struct UsagePopoverView: View {
                     .foregroundStyle(.red)
                     .lineLimit(2)
             }
+
+            PreferencesStrip(onChange: onPreferencesChanged)
         }
         .padding(16)
         .frame(width: 280, alignment: .leading)
@@ -78,6 +86,43 @@ struct UsagePopoverView: View {
                 .lineLimit(1)
         }
         .font(.caption)
+    }
+}
+
+private struct PreferencesStrip: View {
+    let onChange: () -> Void
+
+    @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = UsageDisplayBasis.max.rawValue
+    @AppStorage(RunnerPreferences.themeKey) private var theme = RunnerTheme.runner.rawValue
+    @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+
+            Picker("Basis", selection: $displayBasis) {
+                ForEach(UsageDisplayBasis.allCases) { basis in
+                    Text(basis.label).tag(basis.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack(spacing: 8) {
+                Picker("Theme", selection: $theme) {
+                    ForEach(RunnerTheme.allCases) { theme in
+                        Text(theme.label).tag(theme.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 130)
+
+                Toggle("Reduce motion", isOn: $reducedMotion)
+                    .font(.caption)
+            }
+        }
+        .onChange(of: displayBasis) { _, _ in onChange() }
+        .onChange(of: theme) { _, _ in onChange() }
+        .onChange(of: reducedMotion) { _, _ in onChange() }
     }
 }
 
@@ -133,4 +178,3 @@ private struct UsageRow: View {
         }
     }
 }
-
