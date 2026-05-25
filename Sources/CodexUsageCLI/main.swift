@@ -32,12 +32,23 @@ struct CLI {
     private func runStatus(_ args: [String]) -> ExitCode {
         var json = false
         var watchInterval: UInt32?
+        var writeCache = false
+        var cachePath: String?
         var index = 0
 
         while index < args.count {
             switch args[index] {
             case "--json":
                 json = true
+            case "--write-cache":
+                writeCache = true
+            case "--cache-path":
+                guard index + 1 < args.count else {
+                    errorOutput("--cache-path requires a file path.")
+                    return .usage
+                }
+                cachePath = args[index + 1]
+                index += 1
             case "--watch":
                 guard index + 1 < args.count, let interval = UInt32(args[index + 1]), interval > 0 else {
                     errorOutput("--watch requires a positive interval in seconds.")
@@ -53,7 +64,7 @@ struct CLI {
         }
 
         repeat {
-            let exitCode = printStatus(json: json)
+            let exitCode = printStatus(json: json, writeCache: writeCache, cachePath: cachePath)
             if exitCode != .success || watchInterval == nil {
                 return exitCode
             }
@@ -61,10 +72,16 @@ struct CLI {
         } while true
     }
 
-    private func printStatus(json: Bool) -> ExitCode {
+    private func printStatus(json: Bool, writeCache: Bool, cachePath: String?) -> ExitCode {
+        let cacheStore = makeCacheStore(path: cachePath)
+
         do {
             let formatter = CodexUsageFormatter()
             let report = try makeService().readReport()
+
+            if writeCache {
+                try cacheStore.writeSuccess(report: report)
+            }
 
             if json {
                 let data = try formatter.json(from: report)
@@ -74,6 +91,9 @@ struct CLI {
             }
             return .success
         } catch {
+            if writeCache {
+                try? cacheStore.writeFailure(message: error.localizedDescription)
+            }
             errorOutput("codex-usage status failed: \(error.localizedDescription)")
             return .failure
         }
@@ -106,9 +126,16 @@ struct CLI {
         return CodexUsageService(client: client)
     }
 
+    private func makeCacheStore(path: String?) -> CodexUsageCacheStore {
+        if let path {
+            return CodexUsageCacheStore(fileURL: URL(fileURLWithPath: path))
+        }
+        return CodexUsageCacheStore()
+    }
+
     static let help = """
     Usage:
-      codex-usage status [--json] [--watch SECONDS]
+      codex-usage status [--json] [--write-cache] [--cache-path PATH] [--watch SECONDS]
       codex-usage doctor
 
     Commands:
@@ -124,4 +151,3 @@ let cli = CLI(
 )
 
 exit(cli.run().rawValue)
-
