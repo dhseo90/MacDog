@@ -125,10 +125,20 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             let previousPreferences = self.preferences
             self.preferences = RunnerPreferences()
             self.applyState(self.state(from: result))
+            self.liveRefreshTask = nil
 
             if previousPhase != self.state.phase || previousPreferences != self.preferences {
                 self.restartAnimationTimer()
             }
+        }
+    }
+
+    private func cancelLiveRefresh() {
+        liveRefreshTask?.cancel()
+        liveRefreshTask = nil
+
+        if state.isRefreshing {
+            applyState(loadCachedState())
         }
     }
 
@@ -209,6 +219,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     nonisolated func popoverDidClose(_ notification: Notification) {
         Task { @MainActor in
+            self.cancelLiveRefresh()
             self.removeOutsideClickMonitors()
         }
     }
