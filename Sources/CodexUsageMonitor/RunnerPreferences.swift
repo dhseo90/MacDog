@@ -10,8 +10,7 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
 
     init(defaults: UserDefaults = .standard) {
-        let storedTheme = defaults.string(forKey: Self.themeKey) ?? ""
-        self.theme = RunnerTheme(rawValue: storedTheme) ?? .pup
+        self.theme = .pup
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? .max
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
     }
@@ -46,7 +45,7 @@ enum UsageDisplayBasis: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .max:
-            "Max"
+            "Highest"
         case .fiveHour:
             "5h"
         case .weekly:

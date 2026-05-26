@@ -41,7 +41,7 @@ struct UsagePopoverView: View {
                     .lineLimit(2)
             }
 
-            PreferencesStrip(onChange: onPreferencesChanged)
+            RunnerControls(onChange: onPreferencesChanged)
         }
         .padding(16)
         .frame(width: 280, alignment: .leading)
@@ -89,40 +89,41 @@ struct UsagePopoverView: View {
     }
 }
 
-private struct PreferencesStrip: View {
+private struct RunnerControls: View {
     let onChange: () -> Void
 
     @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = UsageDisplayBasis.max.rawValue
-    @AppStorage(RunnerPreferences.themeKey) private var theme = RunnerTheme.pup.rawValue
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
 
-            Picker("Basis", selection: $displayBasis) {
+            runnerSpeedLabel
+
+            Picker("Runner speed", selection: $displayBasis) {
                 ForEach(UsageDisplayBasis.allCases) { basis in
                     Text(basis.label).tag(basis.rawValue)
                 }
             }
+            .labelsHidden()
             .pickerStyle(.segmented)
+            .help("Choose which usage window controls the runner speed.")
 
-            HStack(spacing: 8) {
-                Picker("Theme", selection: $theme) {
-                    ForEach(RunnerTheme.allCases) { theme in
-                        Text(theme.label).tag(theme.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 130)
-
-                Toggle("Reduce motion", isOn: $reducedMotion)
-                    .font(.caption)
-            }
+            Toggle("Reduce motion", isOn: $reducedMotion)
+                .font(.caption)
         }
         .onChange(of: displayBasis) { _, _ in onChange() }
-        .onChange(of: theme) { _, _ in onChange() }
         .onChange(of: reducedMotion) { _, _ in onChange() }
+    }
+
+    private var runnerSpeedLabel: some View {
+        HStack {
+            Text("Runner speed")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
     }
 }
 

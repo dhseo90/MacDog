@@ -3,7 +3,7 @@ import CodexUsageCore
 import SwiftUI
 
 @MainActor
-final class MenuBarController {
+final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
@@ -11,6 +11,8 @@ final class MenuBarController {
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
+    private var localEventMonitor: Any?
+    private var globalEventMonitor: Any?
     private var frameIndex = 0
     private var state = UsageMonitorState.empty
 
@@ -36,7 +38,8 @@ final class MenuBarController {
 
     private func configurePopover() {
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 280, height: 190)
+        popover.delegate = self
+        popover.contentSize = NSSize(width: 280, height: 310)
         popover.contentViewController = makePopoverController()
     }
 
@@ -150,12 +153,102 @@ final class MenuBarController {
     }
 
     private func toggleUsagePopover(relativeTo button: NSView) {
-        refreshUsage(allowLiveRefresh: true)
-
         if popover.isShown {
             popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            return
         }
+
+        refreshUsage(allowLiveRefresh: true)
+        installOutsideClickMonitors()
+        popover.show(relativeTo: popoverAnchorRect(in: button), of: button, preferredEdge: .maxY)
+        positionPopoverWindow(under: button)
+    }
+
+    nonisolated func popoverDidClose(_ notification: Notification) {
+        Task { @MainActor in
+            self.removeOutsideClickMonitors()
+        }
+    }
+
+    private func popoverAnchorRect(in button: NSView) -> NSRect {
+        let width = min(button.bounds.width, 24)
+        return NSRect(
+            x: (button.bounds.width - width) / 2,
+            y: button.bounds.minY,
+            width: width,
+            height: button.bounds.height
+        )
+    }
+
+    private func installOutsideClickMonitors() {
+        removeOutsideClickMonitors()
+
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+            Task { @MainActor in
+                self?.closePopoverIfNeeded(for: event)
+            }
+            return event
+        }
+
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+            Task { @MainActor in
+                self?.closePopoverIfNeeded(for: event)
+            }
+        }
+    }
+
+    private func removeOutsideClickMonitors() {
+        if let localEventMonitor {
+            NSEvent.removeMonitor(localEventMonitor)
+            self.localEventMonitor = nil
+        }
+
+        if let globalEventMonitor {
+            NSEvent.removeMonitor(globalEventMonitor)
+            self.globalEventMonitor = nil
+        }
+    }
+
+    private func closePopoverIfNeeded(for event: NSEvent) {
+        guard popover.isShown else { return }
+
+        let point = screenPoint(for: event)
+        guard !isPointInPopover(point), !isPointInStatusItem(point) else { return }
+        popover.performClose(nil)
+    }
+
+    private func screenPoint(for event: NSEvent) -> NSPoint {
+        guard let window = event.window else {
+            return NSEvent.mouseLocation
+        }
+
+        return window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).origin
+    }
+
+    private func isPointInPopover(_ point: NSPoint) -> Bool {
+        guard let window = popover.contentViewController?.view.window else { return false }
+        return window.frame.insetBy(dx: -4, dy: -4).contains(point)
+    }
+
+    private func isPointInStatusItem(_ point: NSPoint) -> Bool {
+        guard let button = statusItem.button, let window = button.window else { return false }
+        let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
+        return frame.insetBy(dx: -4, dy: -4).contains(point)
+    }
+
+    private func positionPopoverWindow(under button: NSView) {
+        guard
+            let popoverWindow = popover.contentViewController?.view.window,
+            let buttonWindow = button.window,
+            let screen = buttonWindow.screen ?? NSScreen.main
+        else { return }
+
+        let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let screenFrame = screen.visibleFrame
+        var frame = popoverWindow.frame
+        frame.origin.x = buttonFrame.midX - frame.width / 2
+        frame.origin.x = min(max(frame.origin.x, screenFrame.minX + 8), screenFrame.maxX - frame.width - 8)
+        frame.origin.y = max(screenFrame.minY + 8, buttonFrame.minY - frame.height - 4)
+        popoverWindow.setFrame(frame, display: true)
     }
 }
