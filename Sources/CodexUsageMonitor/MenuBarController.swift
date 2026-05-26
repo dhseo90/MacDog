@@ -14,6 +14,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var liveRefreshTask: Task<Void, Never>?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
+    private var floatingPetController: FloatingPetController?
     private var frameIndex = 0
     private var state = UsageMonitorState.empty
 
@@ -23,6 +24,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         refreshUsage(allowLiveRefresh: false)
         startRefreshTimer()
         restartAnimationTimer()
+        syncDesktopPetVisibility()
     }
 
     private func configureStatusItem() {
@@ -94,6 +96,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             restartAnimationTimer()
         }
 
+        syncDesktopPetVisibility()
+
         if allowLiveRefresh {
             requestLiveRefresh()
         }
@@ -143,6 +147,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             if previousPhase != self.state.phase || previousPreferences != self.preferences {
                 self.restartAnimationTimer()
             }
+
+            self.syncDesktopPetVisibility()
         }
     }
 
@@ -309,10 +315,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return menuItem("메뉴바로 돌아가기", action: #selector(menuReturnToMenuBar))
         }
 
-        let item = menuItem("데스크톱 펫 보기 (다음 단계)", action: #selector(menuShowDesktopPet))
-        item.isEnabled = false
-        item.toolTip = "데스크톱 플로팅 펫은 다음 마일스톤에서 구현합니다."
-        return item
+        return menuItem("데스크톱 펫 보기", action: #selector(menuShowDesktopPet))
     }
 
     private func menuItem(
@@ -371,6 +374,37 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     @objc
     private func menuQuit() {
         perform(.quit)
+    }
+
+    private func syncDesktopPetVisibility() {
+        if preferences.desktopPetEnabled {
+            let controller = desktopPetController()
+            controller.update(state: state)
+            controller.show()
+        } else {
+            floatingPetController?.hide()
+        }
+    }
+
+    private func desktopPetController() -> FloatingPetController {
+        if let floatingPetController {
+            return floatingPetController
+        }
+
+        let controller = FloatingPetController(
+            actionHandler: { [weak self] action in
+                Task { @MainActor in
+                    self?.perform(action)
+                }
+            },
+            menuProvider: { [weak self] surface in
+                guard let self else { return NSMenu(title: "코덱스 펫") }
+                self.preferences = RunnerPreferences()
+                return self.makePetMenu(surface: surface)
+            }
+        )
+        floatingPetController = controller
+        return controller
     }
 
     func showUsagePopover() {

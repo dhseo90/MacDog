@@ -72,8 +72,8 @@ build_bundle() {
   mkdir -p "$APP_MACOS" "$APP_RESOURCES"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   chmod +x "$APP_BINARY"
-  if [[ -d "$ROOT_DIR/Sources/CodexUsageMonitor/Resources/Runner" ]]; then
-    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/CodexUsageMonitor/Resources/Runner" "$APP_RESOURCES/Runner"
+  if [[ -d "$ROOT_DIR/Sources/CodexUsageMonitor/Resources" ]]; then
+    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/CodexUsageMonitor/Resources" "$APP_RESOURCES"
   fi
 
   cat >"$INFO_PLIST" <<PLIST
