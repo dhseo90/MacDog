@@ -60,8 +60,9 @@ Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가
 1. 기본 벡터 실루엣: 몸통, 머리, 귀, 꼬리, 네 다리
 2. 8프레임 달리기 루프: 다리 stride, 꼬리 흔들림, 작은 bounce
 3. 사용량 단계별 accent: calm template, active accent, fast orange, sprint/limit red
-4. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
-5. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
+4. `Docs/RunnerBaseline.md`와 `script/verify_runner_baseline.sh`로 frame count, frame size, 상태 단계를 기준선으로 고정
+5. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
+6. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
 
 ### 2차 후보: Codex Bot
 
