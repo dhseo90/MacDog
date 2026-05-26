@@ -22,4 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.start()
         self.controller = controller
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard urls.contains(where: { $0.scheme == "codexusage" }) else { return }
+        controller?.showUsagePopover()
+    }
 }

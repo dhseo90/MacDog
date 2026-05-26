@@ -204,12 +204,28 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         toggleUsagePopover(relativeTo: button)
     }
 
+    func showUsagePopover() {
+        guard let button = statusItem.button else { return }
+        NSApp.activate(ignoringOtherApps: true)
+
+        if popover.isShown {
+            requestLiveRefresh()
+            return
+        }
+
+        showUsagePopover(relativeTo: button)
+    }
+
     private func toggleUsagePopover(relativeTo button: NSView) {
         if popover.isShown {
             popover.performClose(nil)
             return
         }
 
+        showUsagePopover(relativeTo: button)
+    }
+
+    private func showUsagePopover(relativeTo button: NSView) {
         refreshUsage(allowLiveRefresh: false)
         installOutsideClickMonitors()
         popover.show(relativeTo: popoverAnchorRect(in: button), of: button, preferredEdge: .maxY)

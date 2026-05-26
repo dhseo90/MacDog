@@ -191,6 +191,7 @@ Updated 22:44
 현재 상태:
 
 - SwiftPM `CodexUsageWidget` library에 timeline provider와 small/medium view 지원 코드가 있다.
+- 메뉴바 앱 번들은 `codexusage://open` URL scheme을 받아 popover를 열 수 있다.
 - 실제 macOS `.appex` 위젯 번들, Xcode extension 타깃, 위젯 설치/표시 검증은 아직 포함하지 않는다.
 - 설치 스크립트는 menu bar app과 CLI만 설치하며 WidgetKit extension을 배포하지 않는다.
 
