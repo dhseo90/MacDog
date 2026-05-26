@@ -27,6 +27,14 @@ struct UsagePopoverView: View {
                     metadataRow("Credits", limit.credits?.balance ?? "unknown")
                     metadataRow("Source", state.sourceLabel)
                 }
+            } else if state.isRefreshing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Refreshing usage...")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 Text(state.errorMessage ?? "Usage unavailable")
                     .font(.callout)
@@ -34,7 +42,7 @@ struct UsagePopoverView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let error = state.errorMessage {
+            if let error = state.errorMessage, !state.isRefreshing {
                 Text(error)
                     .font(.caption)
                     .foregroundStyle(.red)

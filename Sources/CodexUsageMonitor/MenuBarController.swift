@@ -117,6 +117,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func requestLiveRefresh() {
         liveRefreshTask?.cancel()
+        applyState(state.withRefreshing(true))
         liveRefreshTask = Task { [weak self] in
             let result = await Self.fetchLiveUsage()
             guard !Task.isCancelled, let self else { return }

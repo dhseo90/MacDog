@@ -9,19 +9,33 @@ struct UsageMonitorState: Equatable {
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
+    let isRefreshing: Bool
 
     init(
         report: CodexUsageReport?,
         cacheSnapshot: CodexUsageCacheSnapshot?,
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
-        reducedMotion: Bool = false
+        reducedMotion: Bool = false,
+        isRefreshing: Bool = false
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
+        self.isRefreshing = isRefreshing
+    }
+
+    func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
+        UsageMonitorState(
+            report: report,
+            cacheSnapshot: cacheSnapshot,
+            errorMessage: errorMessage,
+            displayBasis: displayBasis,
+            reducedMotion: reducedMotion,
+            isRefreshing: isRefreshing
+        )
     }
 
     var codexLimit: UsageLimitReport? {
@@ -53,6 +67,9 @@ struct UsageMonitorState: Equatable {
     }
 
     var sourceLabel: String {
+        if isRefreshing {
+            return "refreshing"
+        }
         if cacheSnapshot != nil {
             return isStale ? "cache stale" : "cache"
         }
@@ -63,6 +80,9 @@ struct UsageMonitorState: Equatable {
     }
 
     var toolTip: String {
+        if isRefreshing, codexLimit == nil {
+            return "Codex Usage refreshing"
+        }
         guard let limit = codexLimit else {
             return "Codex Usage unavailable"
         }
