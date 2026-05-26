@@ -62,6 +62,44 @@ struct UsageMonitorState: Equatable {
         }
     }
 
+    var selectedWindowStatus: UsageWindowStatus? {
+        guard let limit = codexLimit else { return nil }
+
+        switch displayBasis {
+        case .max:
+            return [
+                UsageWindowStatus(label: "5h", window: limit.fiveHour),
+                UsageWindowStatus(label: "Weekly", window: limit.weekly)
+            ]
+            .compactMap(\.self)
+            .max { $0.window.usedPercent < $1.window.usedPercent }
+        case .fiveHour:
+            return UsageWindowStatus(label: "5h", window: limit.fiveHour)
+        case .weekly:
+            return UsageWindowStatus(label: "Weekly", window: limit.weekly)
+        }
+    }
+
+    var highUsageMessage: String? {
+        if phase == .limit {
+            if let status = selectedWindowStatus {
+                return "Limit reached · \(status.summary)"
+            }
+            return "Limit reached"
+        }
+
+        guard let status = selectedWindowStatus else { return nil }
+
+        switch phase {
+        case .fast:
+            return "High usage · \(status.summary)"
+        case .sprint:
+            return "Near limit · \(status.remainingSummary)"
+        case .calm, .active, .limit:
+            return nil
+        }
+    }
+
     var isStale: Bool {
         cacheSnapshot?.isStale() ?? false
     }
@@ -96,6 +134,25 @@ struct UsageMonitorState: Equatable {
             return String(Int(value))
         }
         return String(format: "%.1f", value)
+    }
+}
+
+struct UsageWindowStatus: Equatable {
+    let label: String
+    let window: UsageWindowReport
+
+    init?(label: String, window: UsageWindowReport?) {
+        guard let window else { return nil }
+        self.label = label
+        self.window = window
+    }
+
+    var summary: String {
+        "\(label) \(UsageMonitorState.percent(window.usedPercent))% used / \(UsageMonitorState.percent(window.remainingPercent))% left"
+    }
+
+    var remainingSummary: String {
+        "\(UsageMonitorState.percent(window.remainingPercent))% left on \(label)"
     }
 }
 
@@ -152,6 +209,21 @@ enum UsagePressurePhase: String, Equatable {
             "Sprint"
         case .limit:
             "Limit"
+        }
+    }
+
+    var statusLabel: String {
+        switch self {
+        case .calm:
+            "Calm"
+        case .active:
+            "Active"
+        case .fast:
+            "High usage"
+        case .sprint:
+            "Near limit"
+        case .limit:
+            "Limit reached"
         }
     }
 }

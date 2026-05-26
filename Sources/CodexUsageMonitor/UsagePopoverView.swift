@@ -15,6 +15,10 @@ struct UsagePopoverView: View {
             header
 
             if let limit = state.codexLimit {
+                if let message = state.highUsageMessage {
+                    PressureBanner(message: message, phase: state.phase)
+                }
+
                 VStack(alignment: .leading, spacing: 10) {
                     UsageRow(title: "5h", window: limit.fiveHour)
                     UsageRow(title: "Weekly", window: limit.weekly)
@@ -64,13 +68,21 @@ struct UsagePopoverView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Codex Usage")
                     .font(.headline)
-                Text(state.phase.label)
+                Text(statusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer()
         }
+    }
+
+    private var statusText: String {
+        guard let status = state.selectedWindowStatus else {
+            return state.phase.statusLabel
+        }
+        return "\(state.phase.statusLabel) · \(status.summary)"
     }
 
     private var phaseColor: Color {
@@ -94,6 +106,47 @@ struct UsagePopoverView: View {
                 .lineLimit(1)
         }
         .font(.caption)
+    }
+}
+
+private struct PressureBanner: View {
+    let message: String
+    let phase: UsagePressurePhase
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: phase == .limit ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
+                .font(.caption)
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(tint.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(tint.opacity(0.24), lineWidth: 1)
+        )
+    }
+
+    private var tint: Color {
+        switch phase {
+        case .calm:
+            .secondary
+        case .active:
+            .accentColor
+        case .fast:
+            .orange
+        case .sprint, .limit:
+            .red
+        }
     }
 }
 
