@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 
 struct RunnerIconRenderer {
     static let frameCount = 8
@@ -11,11 +10,15 @@ struct RunnerIconRenderer {
         reducedMotion: Bool = false
     ) -> NSImage {
         let renderedFrame = reducedMotion ? 0 : frame
-        if character == .pup, let sprite = spriteImage(frame: renderedFrame, phase: phase) {
+        if let sprite = spriteImage(frame: renderedFrame, phase: phase, character: character) {
             return sprite
         }
 
-        let size = character == .bot ? NSSize(width: 80, height: 48) : NSSize(width: 30, height: 18)
+        guard character == .pup else {
+            return missingSpriteImage(character: character)
+        }
+
+        let size = NSSize(width: 30, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
 
@@ -27,40 +30,45 @@ struct RunnerIconRenderer {
         color.setFill()
 
         let stride = CGFloat(renderedFrame % Self.frameCount) / CGFloat(Self.frameCount)
-        switch character {
-        case .pup:
-            drawPup(frameStride: stride, phase: phase, color: color)
-        case .bot:
-            drawBot(frameStride: stride, phase: phase, color: color)
-        }
+        drawPup(frameStride: stride, phase: phase, color: color)
 
         if phase == .limit {
-            drawLimitWarning(size: size, lineWidth: character == .bot ? 4 : 1.5)
+            drawLimitWarning(size: size, lineWidth: 1.5)
         }
 
         image.unlockFocus()
-        image.isTemplate = character == .pup && (phase == .calm || phase == .active)
+        image.isTemplate = phase == .calm || phase == .active
         return image
     }
 
-    private func spriteImage(frame: Int, phase: UsagePressurePhase) -> NSImage? {
-        let resourceName = "pup-runner-\(frame % Self.frameCount)"
-        if let mainResourceURL = Bundle.main.resourceURL?
-            .appendingPathComponent("Runner", isDirectory: true)
-            .appendingPathComponent("\(resourceName).png"),
-            let image = spriteImage(from: mainResourceURL, phase: phase) {
-            return image
+    func hasCompleteSpriteSet(for character: RunnerCharacter) -> Bool {
+        (0..<Self.frameCount).allSatisfy { spriteURL(frame: $0, character: character) != nil }
+    }
+
+    private func spriteImage(frame: Int, phase: UsagePressurePhase, character: RunnerCharacter) -> NSImage? {
+        guard let url = spriteURL(frame: frame, character: character) else { return nil }
+        return spriteImage(from: url, phase: phase)
+    }
+
+    private func spriteURL(frame: Int, character: RunnerCharacter) -> URL? {
+        let resourceName = "\(character.filePrefix)-\(frame % Self.frameCount)"
+        let relativePath = "\(character.resourceSubdirectory)/\(resourceName).png"
+        if let mainResourceURL = Bundle.main.resourceURL?.appendingPathComponent(relativePath),
+           FileManager.default.fileExists(atPath: mainResourceURL.path) {
+            return mainResourceURL
         }
 
         guard
             let url = Bundle.module.url(
                 forResource: resourceName,
                 withExtension: "png",
-                subdirectory: "Runner"
+                subdirectory: character.resourceSubdirectory
         )
-        else { return nil }
+        else {
+            return nil
+        }
 
-        return spriteImage(from: url, phase: phase)
+        return url
     }
 
     private func spriteImage(from url: URL, phase: UsagePressurePhase) -> NSImage? {
@@ -72,6 +80,34 @@ struct RunnerIconRenderer {
         if phase == .limit {
             drawLimitWarning(size: base.size, lineWidth: 4)
         }
+
+        image.unlockFocus()
+        image.isTemplate = false
+        return image
+    }
+
+    private func missingSpriteImage(character: RunnerCharacter) -> NSImage {
+        let image = NSImage(size: NSSize(width: 80, height: 48))
+        image.lockFocus()
+        NSColor.clear.setFill()
+        NSRect(origin: .zero, size: image.size).fill()
+
+        NSColor.systemGray.withAlphaComponent(0.55).setStroke()
+        let outline = NSBezierPath(roundedRect: NSRect(x: 10, y: 10, width: 60, height: 28), xRadius: 6, yRadius: 6)
+        outline.lineWidth = 3
+        outline.stroke()
+
+        NSColor.systemGray.withAlphaComponent(0.8).setFill()
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        (character.shortLabel as NSString).draw(
+            in: NSRect(x: 10, y: 16, width: 60, height: 16),
+            withAttributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .semibold),
+                .foregroundColor: NSColor.systemGray,
+                .paragraphStyle: paragraph
+            ]
+        )
 
         image.unlockFocus()
         image.isTemplate = false
@@ -238,126 +274,6 @@ struct RunnerIconRenderer {
         )
     }
 
-    private func drawBot(frameStride: CGFloat, phase: UsagePressurePhase, color: NSColor) {
-        let run = sin(frameStride * .pi * 2)
-        let paw = cos(frameStride * .pi * 2)
-        let bounce = phase == .calm ? abs(run) * 0.28 : abs(run) * 1.1
-
-        drawBotSpeedMarks(frameStride: frameStride, color: color)
-
-        let bodyY = 16.2 + bounce
-        let headY = 25.7 + bounce
-
-        color.setStroke()
-        color.setFill()
-
-        let rearModule = NSBezierPath(roundedRect: NSRect(x: 25.8, y: bodyY + 4.8, width: 6.2, height: 8.4), xRadius: 2.1, yRadius: 2.1)
-        rearModule.fill()
-
-        let tail = NSBezierPath()
-        tail.lineWidth = 3.1
-        tail.lineCapStyle = .round
-        tail.move(to: NSPoint(x: 27.0, y: bodyY + 10.8))
-        tail.curve(
-            to: NSPoint(x: 20.2, y: bodyY + 14.0 + run * 0.7),
-            controlPoint1: NSPoint(x: 24.6, y: bodyY + 12.8),
-            controlPoint2: NSPoint(x: 22.3, y: bodyY + 13.8 + run * 0.4)
-        )
-        tail.stroke()
-
-        let body = NSBezierPath(roundedRect: NSRect(x: 30.0, y: bodyY, width: 29.2, height: 15.2), xRadius: 5.1, yRadius: 5.1)
-        body.fill()
-
-        let chest = NSBezierPath(roundedRect: NSRect(x: 53.2, y: bodyY + 2.1, width: 8.0, height: 11.2), xRadius: 3.2, yRadius: 3.2)
-        chest.fill()
-
-        let neck = NSBezierPath(roundedRect: NSRect(x: 55.0, y: bodyY + 10.8, width: 5.8, height: 6.6), xRadius: 1.8, yRadius: 1.8)
-        neck.fill()
-
-        let head = NSBezierPath(roundedRect: NSRect(x: 58.6, y: headY, width: 14.8, height: 11.6), xRadius: 3.2, yRadius: 3.2)
-        head.fill()
-
-        let snout = NSBezierPath(roundedRect: NSRect(x: 70.4, y: headY + 3.2, width: 5.8, height: 5.0), xRadius: 1.7, yRadius: 1.7)
-        snout.fill()
-
-        let antenna = NSBezierPath()
-        antenna.lineWidth = 2.7
-        antenna.lineCapStyle = .round
-        antenna.move(to: NSPoint(x: 64.2, y: headY + 10.4))
-        antenna.line(to: NSPoint(x: 65.6 + run * 0.9, y: headY + 15.0))
-        antenna.stroke()
-
-        NSBezierPath(ovalIn: NSRect(x: 63.7 + run * 0.9, y: headY + 13.8, width: 4.2, height: 4.2)).fill()
-
-        let legs = NSBezierPath()
-        legs.lineWidth = 3.2
-        legs.lineCapStyle = .round
-        drawBotLeg(
-            path: legs,
-            hip: NSPoint(x: 34.4, y: bodyY + 1.9),
-            knee: NSPoint(x: 30.5 - paw * 3.1, y: 11.3),
-            foot: NSPoint(x: 25.7 - paw * 4.2, y: 7.0)
-        )
-        drawBotLeg(
-            path: legs,
-            hip: NSPoint(x: 40.2, y: bodyY + 1.5),
-            knee: NSPoint(x: 42.3 + paw * 2.6, y: 11.2),
-            foot: NSPoint(x: 47.8 + paw * 3.7, y: 7.0)
-        )
-        drawBotLeg(
-            path: legs,
-            hip: NSPoint(x: 52.0, y: bodyY + 1.9),
-            knee: NSPoint(x: 50.4 + paw * 2.9, y: 11.2),
-            foot: NSPoint(x: 46.2 + paw * 4.0, y: 7.0)
-        )
-        drawBotLeg(
-            path: legs,
-            hip: NSPoint(x: 57.0, y: bodyY + 2.0),
-            knee: NSPoint(x: 61.4 - paw * 2.8, y: 11.2),
-            foot: NSPoint(x: 67.5 - paw * 3.8, y: 7.0)
-        )
-        legs.stroke()
-
-        NSBezierPath(roundedRect: NSRect(x: 22.6 - paw * 4.2, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
-        NSBezierPath(roundedRect: NSRect(x: 44.3 + paw * 3.7, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
-        NSBezierPath(roundedRect: NSRect(x: 42.8 + paw * 4.0, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
-        NSBezierPath(roundedRect: NSRect(x: 64.0 - paw * 3.8, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
-
-        NSColor.black.withAlphaComponent(0.72).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 64.4, y: headY + 6.8, width: 3.1, height: 3.1)).fill()
-
-        NSColor.black.withAlphaComponent(0.45).setFill()
-        NSBezierPath(roundedRect: NSRect(x: 37.4, y: bodyY + 7.2, width: 11.8, height: 2.8), xRadius: 1.2, yRadius: 1.2).fill()
-        NSBezierPath(roundedRect: NSRect(x: 66.4, y: headY + 3.7, width: 5.9, height: 1.9), xRadius: 0.9, yRadius: 0.9).fill()
-    }
-
-    private func drawBotLeg(path: NSBezierPath, hip: NSPoint, knee: NSPoint, foot: NSPoint) {
-        path.move(to: hip)
-        path.curve(
-            to: foot,
-            controlPoint1: NSPoint(x: knee.x, y: knee.y + 1.0),
-            controlPoint2: knee
-        )
-    }
-
-    private func drawBotSpeedMarks(frameStride: CGFloat, color: NSColor) {
-        let shift = CGFloat(Int(frameStride * 4)) * 0.8
-        color.withAlphaComponent(0.75).setStroke()
-
-        let marks = NSBezierPath()
-        marks.lineWidth = 2.5
-        marks.lineCapStyle = .round
-        marks.move(to: NSPoint(x: 5.6 + shift, y: 31.6))
-        marks.line(to: NSPoint(x: 20.5 + shift, y: 31.6))
-        marks.move(to: NSPoint(x: 2.8 + shift, y: 24.0))
-        marks.line(to: NSPoint(x: 21.8 + shift, y: 24.0))
-        marks.move(to: NSPoint(x: 5.7 + shift, y: 16.5))
-        marks.line(to: NSPoint(x: 20.0 + shift, y: 16.5))
-        marks.stroke()
-
-        color.setStroke()
-    }
-
     private func drawLimitWarning(size: NSSize, lineWidth: CGFloat) {
         NSColor.systemRed.setStroke()
         let warning = NSBezierPath()
@@ -384,6 +300,33 @@ enum RunnerCharacter: String, CaseIterable, Identifiable {
             "Codex Pup"
         case .bot:
             "Codex Bot"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .pup:
+            "PUP"
+        case .bot:
+            "BOT"
+        }
+    }
+
+    var filePrefix: String {
+        switch self {
+        case .pup:
+            "pup-runner"
+        case .bot:
+            "bot-runner"
+        }
+    }
+
+    var resourceSubdirectory: String {
+        switch self {
+        case .pup:
+            "Runner"
+        case .bot:
+            "Runner/Bot"
         }
     }
 }

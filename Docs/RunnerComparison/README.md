@@ -1,13 +1,19 @@
 # Runner Comparison
 
-Generate the current runner comparison sheet with:
+This directory is for generated Pup/Bot comparison images after final Codex Bot assets are installed.
+
+The previous code-drawn Bot comparison image was removed because it was not product-quality. Do not keep placeholder Bot art here.
+
+To compare a replacement Bot runner:
+
+1. Add `bot-runner-0.png` through `bot-runner-7.png` under `Sources/CodexUsageMonitor/Resources/Runner/Bot`.
+2. Run `./script/verify_runner_baseline.sh`.
+3. Run:
 
 ```sh
 ./script/render_runner_comparison.sh
 ```
 
-The generated `pup-vs-bot.png` compares Codex Pup and the internal Codex Bot prototype at 16 pt, 18 pt, and 22 pt across the usage pressure phases.
+4. Review the generated `pup-vs-bot.png` at 16 pt, 18 pt, and 22 pt.
 
-Codex Bot should only become a user-facing `Runner character` option if it is clearly distinct from Codex Pup at menu bar size.
-
-Current comparison result: Codex Bot has a visibly different square head, antenna, and two-leg silhouette from Codex Pup even at 16 pt, but Codex Pup is visually stronger and should remain the primary runner. Keep Bot as an internal prototype for now; do not add a user-facing `Runner character` selector until Bot feels as polished as Pup.
+Codex Bot should only become a user-facing `Runner character` option if it is clearly distinct and product-quality at menu bar size.

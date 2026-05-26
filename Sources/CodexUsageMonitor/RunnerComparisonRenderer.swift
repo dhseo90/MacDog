@@ -32,6 +32,10 @@ struct RunnerComparisonRenderer {
     private let characters: [RunnerCharacter] = [.pup, .bot]
 
     func render(to outputURL: URL) throws {
+        guard renderer.hasCompleteSpriteSet(for: .bot) else {
+            throw RunnerComparisonError.missingBotAssets
+        }
+
         let image = makeImage()
         guard let data = image.pngData() else {
             throw RunnerComparisonError.pngEncodingFailed
@@ -147,10 +151,13 @@ struct RunnerComparisonRenderer {
 }
 
 private enum RunnerComparisonError: LocalizedError {
+    case missingBotAssets
     case pngEncodingFailed
 
     var errorDescription: String? {
         switch self {
+        case .missingBotAssets:
+            "Codex Bot assets are missing. Add bot-runner-0.png through bot-runner-7.png under Sources/CodexUsageMonitor/Resources/Runner/Bot first."
         case .pngEncodingFailed:
             "Unable to encode runner comparison as PNG."
         }

@@ -66,19 +66,21 @@ Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가
 
 ### 2차 후보: Codex Bot
 
-목표: Codex Pup과 명확히 다른 "작은 로봇 러너" 실루엣을 검증한다.
-초안에서 말한 ClaudeBot 방향은 제품명으로 쓰지 않고, 앱 맥락에 맞춰 Codex Bot 또는 Bot으로 정리한다.
+목표: Codex Pup과 명확히 다른 "작은 로봇 러너" PNG asset을 나중에 교체 삽입할 수 있게 한다.
 
-1. 기본 실루엣: 네모난 머리, 작은 안테나, 짧은 몸통, 두 다리
-2. 8프레임 루프: 다리 stride, 안테나 bounce, 눈 깜빡임
-3. 사용량 단계별 상태:
-   - Calm: 단색 template 또는 낮은 대비
-   - Active: 눈/안테나 accent
-   - Fast: 주황 eye 또는 antenna blink
-   - Sprint/Limit: 빨간 eye와 짧은 warning blink
-4. 메뉴바 16pt/18pt/22pt 크기에서 Pup과 구분되는지 스크린샷으로 비교
-5. 구분이 충분할 때만 popover에 `Runner character` 선택을 추가
-6. 구분이 약하면 Bot은 내부 실험 asset으로 보류하고 기본 Pup만 유지
+현재 상태:
+
+- 코드로 그린 Bot 프로토타입은 제품 품질 미달로 제거했다.
+- `Sources/CodexUsageMonitor/Resources/Runner/Bot`에 8프레임 PNG asset slot만 유지한다.
+- Bot은 사용자 노출 옵션이 아니며, 이미지 재제작 후 다시 검수한다.
+
+교체 규칙:
+
+1. `bot-runner-0.png` through `bot-runner-7.png`를 추가한다.
+2. 각 프레임은 80x48 px, transparent background를 유지한다.
+3. `./script/verify_runner_baseline.sh`로 frame count와 크기를 검증한다.
+4. `./script/render_runner_comparison.sh`로 Pup/Bot 비교 이미지를 생성한다.
+5. 메뉴바 16pt/18pt/22pt 크기에서 제품 품질이면 그때만 `Runner character` 선택 UI를 추가한다.
 
 ### 후속 후보
 
