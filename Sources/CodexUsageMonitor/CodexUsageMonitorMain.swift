@@ -3,6 +3,8 @@ import AppKit
 @main
 enum CodexUsageMonitorMain {
     static func main() {
+        RunnerPreferences.registerDefaults()
+
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -21,4 +23,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.controller = controller
     }
 }
-

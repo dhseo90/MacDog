@@ -92,7 +92,7 @@ struct UsagePopoverView: View {
 private struct RunnerControls: View {
     let onChange: () -> Void
 
-    @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = UsageDisplayBasis.weekly.rawValue
+    @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = RunnerPreferences.defaultDisplayBasis.rawValue
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
 
     var body: some View {
