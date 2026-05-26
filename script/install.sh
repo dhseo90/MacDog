@@ -3,15 +3,15 @@ set -euo pipefail
 
 MODE="${1:-install}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="CodexUsageMonitor"
+APP_NAME="MacDog"
 APP_SOURCE="$ROOT_DIR/dist/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 BIN_DIR="$HOME/bin"
 CLI_DEST="$BIN_DIR/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
-LOG_DIR="$HOME/Library/Logs/CodexUsageMonitor"
-CACHE_LABEL="com.dhseo.mycodex.usage-cache"
-MONITOR_LABEL="com.dhseo.mycodex.monitor"
+LOG_DIR="$HOME/Library/Logs/MacDog"
+CACHE_LABEL="com.dhseo.macdog.usage-cache"
+MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 UID_VALUE="$(id -u)"
@@ -22,7 +22,7 @@ XCRUN="/usr/bin/xcrun"
 case "$MODE" in
   install) ;;
   --dry-run|dry-run)
-    echo "Codex Usage Monitor install dry run"
+    echo "MacDog install dry run"
     echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
     echo "App source: $APP_SOURCE"
     echo "App destination: $APP_DEST"
@@ -120,7 +120,7 @@ fi
 sleep 2
 pgrep -x "$APP_NAME" >/dev/null
 
-echo "Installed Codex Usage Monitor"
+echo "Installed MacDog"
 echo "App: $APP_DEST"
 echo "CLI: $CLI_DEST"
 echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"

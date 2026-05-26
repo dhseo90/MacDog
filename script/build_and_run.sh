@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="CodexUsageMonitor"
-BUNDLE_ID="com.dhseo.mycodex.CodexUsageMonitor"
+APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,13 +22,13 @@ usage() {
   cat <<USAGE
 usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--logs|--telemetry|--debug|--help]
 
-Build and run the Codex Usage Monitor SwiftPM macOS app.
+Build and run the MacDog SwiftPM macOS app.
 
 Commands:
   run                         Build release app bundle and launch it.
   --no-run                    Build release app bundle and print its path.
   --verify                    Build, launch, and verify the app process exists.
-  --verify-deeplink           Verify app launch and codexusage://open handling.
+  --verify-deeplink           Verify app launch and macdog://open handling.
   --verify-runtime [SECONDS]  Verify launch and sample runtime CPU. Default: 10.
   --logs                      Build, launch, and stream app logs.
   --telemetry                 Build, launch, and stream subsystem logs.
@@ -72,8 +72,8 @@ build_bundle() {
   mkdir -p "$APP_MACOS" "$APP_RESOURCES"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   chmod +x "$APP_BINARY"
-  if [[ -d "$ROOT_DIR/Sources/CodexUsageMonitor/Resources" ]]; then
-    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/CodexUsageMonitor/Resources" "$APP_RESOURCES"
+  if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
+    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
   fi
 
   cat >"$INFO_PLIST" <<PLIST
@@ -86,9 +86,9 @@ build_bundle() {
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
   <key>CFBundleName</key>
-  <string>Codex Usage</string>
+  <string>MacDog</string>
   <key>CFBundleDisplayName</key>
-  <string>Codex Usage</string>
+  <string>MacDog</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>
@@ -96,6 +96,7 @@ build_bundle() {
       <string>$BUNDLE_ID</string>
       <key>CFBundleURLSchemes</key>
       <array>
+        <string>macdog</string>
         <string>codexusage</string>
       </array>
     </dict>
@@ -136,8 +137,8 @@ verify_app() {
 verify_deeplink() {
   local scheme
   scheme="$(/usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST")"
-  [[ "$scheme" == "codexusage" ]]
-  /usr/bin/open "codexusage://open"
+  [[ "$scheme" == "macdog" ]]
+  /usr/bin/open "macdog://open"
   sleep 1
   pgrep -x "$APP_NAME" >/dev/null
 }

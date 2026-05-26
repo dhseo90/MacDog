@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MyCodex",
+    name: "MacDog",
     platforms: [
         .macOS(.v14)
     ],
@@ -13,8 +13,8 @@ let package = Package(
             targets: ["CodexUsageCore"]
         ),
         .library(
-            name: "CodexUsageWidget",
-            targets: ["CodexUsageWidget"]
+            name: "MacDogWidget",
+            targets: ["MacDogWidget"]
         ),
         .executable(
             name: "codex-usage-probe",
@@ -25,8 +25,8 @@ let package = Package(
             targets: ["CodexUsageCLI"]
         ),
         .executable(
-            name: "CodexUsageMonitor",
-            targets: ["CodexUsageMonitor"]
+            name: "MacDog",
+            targets: ["MacDog"]
         )
     ],
     targets: [
@@ -34,7 +34,7 @@ let package = Package(
             name: "CodexUsageCore"
         ),
         .target(
-            name: "CodexUsageWidget",
+            name: "MacDogWidget",
             dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(
@@ -46,7 +46,7 @@ let package = Package(
             dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(
-            name: "CodexUsageMonitor",
+            name: "MacDog",
             dependencies: ["CodexUsageCore"],
             resources: [
                 .process("Resources")

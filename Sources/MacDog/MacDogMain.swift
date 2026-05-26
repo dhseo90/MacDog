@@ -1,7 +1,7 @@
 import AppKit
 
 @main
-enum CodexUsageMonitorMain {
+enum MacDogMain {
     static func main() {
         RunnerPreferences.registerDefaults()
 
@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        guard urls.contains(where: { $0.scheme == "codexusage" }) else { return }
+        guard urls.contains(where: { ["macdog", "codexusage"].contains($0.scheme) }) else { return }
         controller?.showUsagePopover()
     }
 }

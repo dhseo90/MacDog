@@ -1,6 +1,6 @@
 # AGENTS.md
 
-이 문서는 MyCodex / Codex Usage Monitor 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙이다.
+이 문서는 MacDog 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙이다.
 대상 프로젝트는 Codex 사용량을 일반 터미널에서 확인하는 CLI, macOS menu bar runner 앱, WidgetKit 위젯, shared cache, 설치/배포 스크립트를 포함한다.
 
 ---
@@ -496,7 +496,7 @@ MVP 완료
 
 ---
 
-# Codex Usage Monitor Development Plan
+# MacDog Development Plan
 
 ## 목적
 
@@ -630,7 +630,7 @@ maxUsed = max(primary.usedPercent, secondary.usedPercent)
 - LaunchAgent 또는 앱 내 timer가 다음 파일에 최신 snapshot을 쓴다.
 
 ```text
-~/Library/Application Support/CodexUsageMonitor/usage.json
+~/Library/Application Support/MacDog/usage.json
 ```
 
 WidgetKit extension은 이 cache를 읽어 표시한다.
@@ -645,8 +645,8 @@ Sources/
   CodexUsageCore/
   CodexUsageCLI/
 Apps/
-  CodexUsageMonitor/
-  CodexUsageWidgetExtension/
+  MacDog/
+  MacDogWidgetExtension/
 Tests/
   CodexUsageCoreTests/
 Fixtures/

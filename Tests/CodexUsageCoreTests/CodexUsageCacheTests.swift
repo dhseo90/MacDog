@@ -12,7 +12,7 @@ final class CodexUsageCacheTests: XCTestCase {
     func testDefaultAppGroupIdentifierIsStable() {
         XCTAssertEqual(
             CodexUsageCacheStore.defaultAppGroupIdentifier,
-            "group.com.dhseo.mycodex.CodexUsageMonitor"
+            "group.com.dhseo.macdog.MacDog"
         )
     }
 

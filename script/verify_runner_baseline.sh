@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RUNNER_DIR="$ROOT_DIR/Sources/CodexUsageMonitor/Resources/Runner"
+RUNNER_DIR="$ROOT_DIR/Sources/MacDog/Resources/Runner"
 EXPECTED_COUNT=8
 EXPECTED_WIDTH=80
 EXPECTED_HEIGHT=48

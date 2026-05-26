@@ -41,7 +41,7 @@ public struct CodexUsageCacheError: Codable, Equatable, Sendable {
 }
 
 public struct CodexUsageCacheStore {
-    public static let defaultAppGroupIdentifier = "group.com.dhseo.mycodex.CodexUsageMonitor"
+    public static let defaultAppGroupIdentifier = "group.com.dhseo.macdog.MacDog"
     public static let cacheAgentRefreshIntervalSeconds = 300
     public static let defaultStaleAfterSeconds = cacheAgentRefreshIntervalSeconds + 60
 
@@ -83,7 +83,7 @@ public struct CodexUsageCacheStore {
         let directory = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
-        )[0].appendingPathComponent("CodexUsageMonitor", isDirectory: true)
+        )[0].appendingPathComponent("MacDog", isDirectory: true)
         return directory.appendingPathComponent("usage.json")
     }
 

@@ -28,7 +28,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func configureStatusItem() {
-        statusItem.autosaveName = "com.dhseo.mycodex.status-item"
+        statusItem.autosaveName = "com.dhseo.macdog.status-item"
         statusItem.isVisible = true
 
         guard let button = statusItem.button else { return }
@@ -37,7 +37,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         button.target = self
         button.action = #selector(statusItemActivated)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        button.toolTip = "코덱스 사용량"
+        button.toolTip = "MacDog"
     }
 
     private func configurePopover() {

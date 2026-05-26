@@ -2,7 +2,7 @@ import CodexUsageCore
 import SwiftUI
 import WidgetKit
 
-public struct CodexUsageWidgetBundle: WidgetBundle {
+public struct MacDogWidgetBundle: WidgetBundle {
     private let appGroupIdentifier: String?
 
     public init() {
@@ -14,12 +14,12 @@ public struct CodexUsageWidgetBundle: WidgetBundle {
     }
 
     public var body: some Widget {
-        CodexUsageStatusWidget(appGroupIdentifier: appGroupIdentifier)
+        MacDogStatusWidget(appGroupIdentifier: appGroupIdentifier)
     }
 }
 
-public struct CodexUsageStatusWidget: Widget {
-    public let kind = "CodexUsageStatusWidget"
+public struct MacDogStatusWidget: Widget {
+    public let kind = "MacDogStatusWidget"
     private let provider: CodexUsageTimelineProvider
 
     public init() {
@@ -32,10 +32,10 @@ public struct CodexUsageStatusWidget: Widget {
 
     public var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: provider) { entry in
-            CodexUsageWidgetView(entry: entry)
-                .widgetURL(URL(string: "codexusage://open"))
+            MacDogUsageWidgetView(entry: entry)
+                .widgetURL(URL(string: "macdog://open"))
         }
-        .configurationDisplayName("Codex Usage")
+        .configurationDisplayName("MacDog")
         .description("Shows Codex 5-hour and weekly usage from the shared cache.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
@@ -137,7 +137,7 @@ public struct CodexUsageTimelineProvider: TimelineProvider {
     }
 }
 
-public struct CodexUsageWidgetView: View {
+public struct MacDogUsageWidgetView: View {
     @Environment(\.widgetFamily) private var family
 
     public let entry: CodexUsageEntry
@@ -175,7 +175,7 @@ public struct CodexUsageWidgetView: View {
     private var mediumBody: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Codex Usage")
+                Text("MacDog")
                     .font(.headline)
                 Spacer()
                 Text(statusText)

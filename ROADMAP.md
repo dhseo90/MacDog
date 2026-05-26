@@ -1,10 +1,10 @@
-# Codex Usage Monitor / MacDog Roadmap
+# MacDog Roadmap
 
 ## 제품 방향
 
-Codex Usage Monitor는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하게 해주는 macOS 유틸리티다. RunCat처럼 작은 러너가 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직인다. 기본 캐릭터는 강아지 러너 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, credit 상태를 보여준다.
+MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하게 해주는 macOS 유틸리티다. RunCat처럼 작은 러너가 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직인다. 기본 캐릭터는 강아지 러너 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, credit 상태를 보여준다.
 
-장기적으로는 이 프로젝트를 `MacDog`로 리브랜딩한다. Codex 사용량 모니터는 첫 번째 기능 모듈로 유지하고, 이후 Mac 상태와 생활 편의 기능을 강아지 펫 경험 안에 통합한다.
+현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지한다. 이후에는 Mac 상태와 생활 편의 기능을 강아지 펫 경험 안에 통합한다.
 
 핵심 경험은 다음과 같다.
 
@@ -141,7 +141,7 @@ codex-usage doctor
 저장 위치:
 
 ```text
-~/Library/Application Support/CodexUsageMonitor/usage.json
+~/Library/Application Support/MacDog/usage.json
 ```
 
 완료 기준:
@@ -301,8 +301,8 @@ Popover 정보 구조:
 
 현재 상태:
 
-- SwiftPM `CodexUsageWidget` library에 timeline provider와 small/medium view 지원 코드가 있다.
-- 메뉴바 앱 번들은 `codexusage://open` URL scheme을 받아 popover를 열 수 있다.
+- SwiftPM `MacDogWidget` library에 timeline provider와 small/medium view 지원 코드가 있다.
+- 메뉴바 앱 번들은 `macdog://open` URL scheme을 받아 popover를 열 수 있다.
 - 실제 `.appex` 배포 경계는 `Docs/WidgetPackaging.md`에 정리했다.
 - App Group cache URL helper는 구현했지만, 실제 entitlement와 Xcode target 연결은 아직 하지 않았다.
 - 실제 macOS `.appex` 위젯 번들, Xcode extension 타깃, 위젯 설치/표시 검증은 아직 포함하지 않는다.
@@ -350,13 +350,13 @@ Popover 정보 구조:
 - 앱을 로그인 항목으로 등록할 수 있다.
 - 삭제 시 cache/LaunchAgent/symlink 정리가 가능하다.
 
-## Milestone 9: MacDog 리브랜딩
+## Milestone 9: MacDog 리브랜딩 후속 정리
 
-목표: Codex 전용 사용량 모니터에서 범용 Mac 강아지 유틸리티 앱으로 제품 이름과 구조를 확장한다.
+목표: `MacDog` 이름을 기준으로 repo, package, app identity, 설치 경로를 정리하고 기존 Codex 사용량 기능의 migration 경계를 확정한다.
 
 방향:
 
-- 레포와 프로젝트 이름을 `MacDog`로 바꾼다.
+- 레포와 프로젝트 이름은 `MacDog`를 기준으로 둔다.
 - 기존 Codex 사용량 기능은 `Codex` 또는 `Codex Usage` 모듈로 유지한다.
 - 앱 이름, bundle display name, README, ROADMAP, 설치 스크립트, 빌드 산출물 이름을 새 이름에 맞춘다.
 - 기존 CLI 명령 `codex-usage`는 호환성을 유지하거나 명확한 migration 경로를 제공한다.
@@ -365,7 +365,7 @@ Popover 정보 구조:
 작업:
 
 - repo/project/display name 변경 범위 결정
-- `CodexUsageMonitor` 앱 이름과 bundle id migration 전략 정리
+- `MacDog` 앱 이름과 bundle id migration 전략 정리
 - `Codex Pup` 명칭을 MacDog의 기본 강아지 캐릭터로 유지할지, 기능별 별칭으로 둘지 결정
 - README/ROADMAP/스크립트/설치 경로 이름 정리
 - 기존 사용자 설정과 cache 경로 migration 또는 backward compatibility 처리

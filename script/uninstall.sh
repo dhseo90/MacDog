@@ -2,12 +2,12 @@
 set -euo pipefail
 
 MODE="${1:-uninstall}"
-APP_NAME="CodexUsageMonitor"
+APP_NAME="MacDog"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 CLI_DEST="$HOME/bin/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
-CACHE_LABEL="com.dhseo.mycodex.usage-cache"
-MONITOR_LABEL="com.dhseo.mycodex.monitor"
+CACHE_LABEL="com.dhseo.macdog.usage-cache"
+MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 UID_VALUE="$(id -u)"
@@ -15,7 +15,7 @@ UID_VALUE="$(id -u)"
 case "$MODE" in
   uninstall) ;;
   --dry-run|dry-run)
-    echo "Codex Usage Monitor uninstall dry run"
+    echo "MacDog uninstall dry run"
     echo "Would bootout: gui/$UID_VALUE $CACHE_PLIST"
     echo "Would bootout: gui/$UID_VALUE $MONITOR_PLIST"
     echo "Would stop process: $APP_NAME"
@@ -43,4 +43,4 @@ pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
 rm -rf "$APP_DEST"
 
-echo "Uninstalled Codex Usage Monitor"
+echo "Uninstalled MacDog"
