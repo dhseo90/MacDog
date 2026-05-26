@@ -98,6 +98,36 @@ verify_deeplink() {
   pgrep -x "$APP_NAME" >/dev/null
 }
 
+verify_runtime() {
+  local duration="${1:-10}"
+  [[ "$duration" =~ ^[0-9]+$ ]] && (( duration > 0 ))
+
+  local pid
+  pid="$(pgrep -x "$APP_NAME" | head -n 1)"
+  [[ -n "$pid" ]]
+
+  local samples=()
+  local cpu
+  for ((i = 0; i < duration; i++)); do
+    cpu="$(ps -o %cpu= -p "$pid" | awk '{$1=$1; print}')"
+    [[ -n "$cpu" ]]
+    samples+=("$cpu")
+    sleep 1
+  done
+
+  printf "%s\n" "${samples[@]}" | awk '
+    NR == 1 || $1 > max { max = $1 }
+    { sum += $1 }
+    END {
+      avg = sum / NR
+      printf("Runtime CPU samples: count=%d avg=%.2f%% max=%.2f%%\n", NR, avg, max)
+      if (max > 50) {
+        exit 1
+      }
+    }
+  '
+}
+
 case "$MODE" in
   run)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
@@ -119,6 +149,12 @@ case "$MODE" in
     verify_app
     verify_deeplink
     ;;
+  --verify-runtime|verify-runtime)
+    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+    build_bundle
+    verify_app
+    verify_runtime "${2:-10}"
+    ;;
   --logs|logs)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
@@ -136,7 +172,7 @@ case "$MODE" in
     /usr/bin/lldb -- "$APP_BINARY"
     ;;
   *)
-    echo "usage: $0 [run|--no-run|--verify|--verify-deeplink|--logs|--telemetry|--debug]" >&2
+    echo "usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--logs|--telemetry|--debug]" >&2
     exit 2
     ;;
 esac
