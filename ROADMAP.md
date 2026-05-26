@@ -188,6 +188,12 @@ Updated 22:44
 
 목표: 데스크톱/알림 센터에서 사용량을 빠르게 확인한다.
 
+현재 상태:
+
+- SwiftPM `CodexUsageWidget` library에 timeline provider와 small/medium view 지원 코드가 있다.
+- 실제 macOS `.appex` 위젯 번들, Xcode extension 타깃, 위젯 설치/표시 검증은 아직 포함하지 않는다.
+- 설치 스크립트는 menu bar app과 CLI만 설치하며 WidgetKit extension을 배포하지 않는다.
+
 작업:
 
 - small 위젯 구현
