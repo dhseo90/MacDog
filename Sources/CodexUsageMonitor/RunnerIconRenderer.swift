@@ -6,16 +6,11 @@ struct RunnerIconRenderer {
     func image(
         frame: Int,
         phase: UsagePressurePhase,
-        character: RunnerCharacter = .pup,
         reducedMotion: Bool = false
     ) -> NSImage {
         let renderedFrame = reducedMotion ? 0 : frame
-        if let sprite = spriteImage(frame: renderedFrame, phase: phase, character: character) {
+        if let sprite = spriteImage(frame: renderedFrame, phase: phase) {
             return sprite
-        }
-
-        guard character == .pup else {
-            return missingSpriteImage(character: character)
         }
 
         let size = NSSize(width: 30, height: 18)
@@ -41,34 +36,33 @@ struct RunnerIconRenderer {
         return image
     }
 
-    func hasCompleteSpriteSet(for character: RunnerCharacter) -> Bool {
-        (0..<Self.frameCount).allSatisfy { spriteURL(frame: $0, character: character) != nil }
-    }
-
-    private func spriteImage(frame: Int, phase: UsagePressurePhase, character: RunnerCharacter) -> NSImage? {
-        guard let url = spriteURL(frame: frame, character: character) else { return nil }
-        return spriteImage(from: url, phase: phase)
-    }
-
-    private func spriteURL(frame: Int, character: RunnerCharacter) -> URL? {
-        let resourceName = "\(character.filePrefix)-\(frame % Self.frameCount)"
-        let relativePath = "\(character.resourceSubdirectory)/\(resourceName).png"
-        if let mainResourceURL = Bundle.main.resourceURL?.appendingPathComponent(relativePath),
-           FileManager.default.fileExists(atPath: mainResourceURL.path) {
-            return mainResourceURL
+    private func spriteImage(frame: Int, phase: UsagePressurePhase) -> NSImage? {
+        let resourceName = "pup-runner-\(frame % Self.frameCount)"
+        if let mainResourceURL = Bundle.main.resourceURL?
+            .appendingPathComponent("Runner", isDirectory: true)
+            .appendingPathComponent("\(resourceName).png"),
+            let image = spriteImage(from: mainResourceURL, phase: phase) {
+            return image
         }
 
-        guard
-            let url = Bundle.module.url(
-                forResource: resourceName,
-                withExtension: "png",
-                subdirectory: character.resourceSubdirectory
-        )
-        else {
+        if let mainResourceURL = Bundle.main.resourceURL?.appendingPathComponent("\(resourceName).png"),
+           let image = spriteImage(from: mainResourceURL, phase: phase) {
+            return image
+        }
+
+        if let url = Bundle.module.url(
+            forResource: resourceName,
+            withExtension: "png",
+            subdirectory: "Runner"
+        ) {
+            return spriteImage(from: url, phase: phase)
+        }
+
+        guard let url = Bundle.module.url(forResource: resourceName, withExtension: "png") else {
             return nil
         }
 
-        return url
+        return spriteImage(from: url, phase: phase)
     }
 
     private func spriteImage(from url: URL, phase: UsagePressurePhase) -> NSImage? {
@@ -80,34 +74,6 @@ struct RunnerIconRenderer {
         if phase == .limit {
             drawLimitWarning(size: base.size, lineWidth: 4)
         }
-
-        image.unlockFocus()
-        image.isTemplate = false
-        return image
-    }
-
-    private func missingSpriteImage(character: RunnerCharacter) -> NSImage {
-        let image = NSImage(size: NSSize(width: 80, height: 48))
-        image.lockFocus()
-        NSColor.clear.setFill()
-        NSRect(origin: .zero, size: image.size).fill()
-
-        NSColor.systemGray.withAlphaComponent(0.55).setStroke()
-        let outline = NSBezierPath(roundedRect: NSRect(x: 10, y: 10, width: 60, height: 28), xRadius: 6, yRadius: 6)
-        outline.lineWidth = 3
-        outline.stroke()
-
-        NSColor.systemGray.withAlphaComponent(0.8).setFill()
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        (character.shortLabel as NSString).draw(
-            in: NSRect(x: 10, y: 16, width: 60, height: 16),
-            withAttributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .semibold),
-                .foregroundColor: NSColor.systemGray,
-                .paragraphStyle: paragraph
-            ]
-        )
 
         image.unlockFocus()
         image.isTemplate = false
@@ -285,48 +251,5 @@ struct RunnerIconRenderer {
         warning.move(to: NSPoint(x: x, y: size.height - 31))
         warning.line(to: NSPoint(x: x, y: size.height - 31.2))
         warning.stroke()
-    }
-}
-
-enum RunnerCharacter: String, CaseIterable, Identifiable {
-    case pup
-    case bot
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .pup:
-            "Codex Pup"
-        case .bot:
-            "Codex Bot"
-        }
-    }
-
-    var shortLabel: String {
-        switch self {
-        case .pup:
-            "PUP"
-        case .bot:
-            "BOT"
-        }
-    }
-
-    var filePrefix: String {
-        switch self {
-        case .pup:
-            "pup-runner"
-        case .bot:
-            "bot-runner"
-        }
-    }
-
-    var resourceSubdirectory: String {
-        switch self {
-        case .pup:
-            "Runner"
-        case .bot:
-            "Runner/Bot"
-        }
     }
 }

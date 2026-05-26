@@ -117,7 +117,6 @@ macOS menu bar 앱 MVP는 SwiftPM `CodexUsageMonitor` executable로 빌드된다
 메뉴바 앱은 Codex Pup 러너, max/5h/weekly 기준 선택, reduced motion 옵션을 포함한다.
 Runner speed의 기본 기준은 주간 사용량이며, 사용자가 직접 바꾼 선택값은 이후 실행에서도 유지된다.
 popover는 80% 이상 사용량과 95% 이상 near-limit 상태를 별도 경고 줄로 표시한다.
-Codex Bot은 코드 드로잉 구현을 제거했고, `Sources/CodexUsageMonitor/Resources/Runner/Bot`에 PNG 8프레임을 넣어 교체할 수 있는 asset slot만 유지한다.
 WidgetKit 지원 코드는 SwiftPM `CodexUsageWidget` library로 빌드된다. 현재 설치 스크립트는 `.appex` 위젯 번들을 만들거나 설치하지 않는다. 실제 위젯 배포는 [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md)에 정리한 Xcode Widget Extension target과 App Group cache 경계를 따른다. 메뉴바 앱 번들은 `codexusage://open` URL scheme을 받아 popover를 열 수 있다. 실제 데스크톱/알림 센터 위젯 추가와 실행 검수는 Xcode extension 타깃을 붙인 뒤 별도 수동 확인 단계에서 진행한다.
 
 ## 라이선스

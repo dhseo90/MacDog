@@ -49,9 +49,9 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 
 ## 캐릭터 로드맵
 
-캐릭터 선택은 "메뉴바 16-22pt 크기에서도 한눈에 다른 실루엣으로 읽히는가"를 기준으로 한다.
+러너 변경은 "메뉴바 16-22pt 크기에서도 한눈에 읽히는가"를 기준으로 한다.
 Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가 약하므로 기본 UI 옵션으로 노출하지 않는다.
-캐릭터 옵션은 MVP 이후에도 2개 이하로 유지해 설정이 장난감처럼 느껴지지 않게 한다.
+현재 앱은 Codex Pup 하나만 유지해 설정이 장난감처럼 느껴지지 않게 한다.
 
 ### 1차 캐릭터: Codex Pup
 
@@ -63,24 +63,6 @@ Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가
 4. `Docs/RunnerBaseline.md`와 `script/verify_runner_baseline.sh`로 frame count, frame size, 상태 단계를 기준선으로 고정
 5. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
 6. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
-
-### 2차 후보: Codex Bot
-
-목표: Codex Pup과 명확히 다른 "작은 로봇 러너" PNG asset을 나중에 교체 삽입할 수 있게 한다.
-
-현재 상태:
-
-- 코드로 그린 Bot 프로토타입은 제품 품질 미달로 제거했다.
-- `Sources/CodexUsageMonitor/Resources/Runner/Bot`에 8프레임 PNG asset slot만 유지한다.
-- Bot은 사용자 노출 옵션이 아니며, 이미지 재제작 후 다시 검수한다.
-
-교체 규칙:
-
-1. `bot-runner-0.png` through `bot-runner-7.png`를 추가한다.
-2. 각 프레임은 80x48 px, transparent background를 유지한다.
-3. `./script/verify_runner_baseline.sh`로 frame count와 크기를 검증한다.
-4. `./script/render_runner_comparison.sh`로 Pup/Bot 비교 이미지를 생성한다.
-5. 메뉴바 16pt/18pt/22pt 크기에서 제품 품질이면 그때만 `Runner character` 선택 UI를 추가한다.
 
 ### 후속 후보
 
