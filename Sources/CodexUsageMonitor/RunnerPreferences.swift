@@ -11,7 +11,7 @@ struct RunnerPreferences: Equatable {
 
     init(defaults: UserDefaults = .standard) {
         self.theme = .pup
-        self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? .max
+        self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? .weekly
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
     }
 }

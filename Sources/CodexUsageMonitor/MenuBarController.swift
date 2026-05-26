@@ -11,6 +11,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
+    private var liveRefreshTask: Task<Void, Never>?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
     private var frameIndex = 0
@@ -76,54 +77,30 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPhase = state.phase
         let previousPreferences = preferences
         preferences = RunnerPreferences()
-        state = loadState(allowLiveRefresh: allowLiveRefresh)
-        popover.contentViewController = makePopoverController()
-        statusItem.button?.toolTip = state.toolTip
-        advanceFrame()
+        applyState(loadCachedState())
 
         if previousPhase != state.phase || previousPreferences != preferences {
             restartAnimationTimer()
         }
+
+        if allowLiveRefresh {
+            requestLiveRefresh()
+        }
     }
 
-    private func loadState(allowLiveRefresh: Bool) -> UsageMonitorState {
-        if allowLiveRefresh {
-            do {
-                let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
-                try? cacheStore.writeSuccess(report: report)
-                return UsageMonitorState(
-                    report: report,
-                    cacheSnapshot: nil,
-                    errorMessage: nil,
-                    displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion
-                )
-            } catch {
-                if let snapshot = try? cacheStore.read(), let report = snapshot.report {
-                    return UsageMonitorState(
-                        report: report,
-                        cacheSnapshot: snapshot,
-                        errorMessage: error.localizedDescription,
-                        displayBasis: preferences.displayBasis,
-                        reducedMotion: preferences.reducedMotion
-                    )
-                }
+    private func applyState(_ newState: UsageMonitorState) {
+        state = newState
+        popover.contentViewController = makePopoverController()
+        statusItem.button?.toolTip = state.toolTip
+        advanceFrame()
+    }
 
-                return UsageMonitorState(
-                    report: nil,
-                    cacheSnapshot: nil,
-                    errorMessage: error.localizedDescription,
-                    displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion
-                )
-            }
-        }
-
+    private func loadCachedState(errorMessage: String? = nil) -> UsageMonitorState {
         if let snapshot = try? cacheStore.read(), let report = snapshot.report {
             return UsageMonitorState(
                 report: report,
                 cacheSnapshot: snapshot,
-                errorMessage: snapshot.error?.message,
+                errorMessage: errorMessage ?? snapshot.error?.message,
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion
             )
@@ -138,10 +115,74 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         )
     }
 
+    private func requestLiveRefresh() {
+        liveRefreshTask?.cancel()
+        liveRefreshTask = Task { [weak self] in
+            let result = await Self.fetchLiveUsage()
+            guard !Task.isCancelled, let self else { return }
+            let previousPhase = self.state.phase
+            let previousPreferences = self.preferences
+            self.preferences = RunnerPreferences()
+            self.applyState(self.state(from: result))
+
+            if previousPhase != self.state.phase || previousPreferences != self.preferences {
+                self.restartAnimationTimer()
+            }
+        }
+    }
+
+    nonisolated private static func fetchLiveUsage() async -> LiveUsageRefreshResult {
+        await Task.detached(priority: .userInitiated) {
+            let cacheStore = CodexUsageCacheStore()
+
+            do {
+                let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
+                try? cacheStore.writeSuccess(report: report)
+                return .success(report)
+            } catch {
+                return .failure(
+                    message: error.localizedDescription,
+                    cachedSnapshot: try? cacheStore.read()
+                )
+            }
+        }.value
+    }
+
+    private func state(from result: LiveUsageRefreshResult) -> UsageMonitorState {
+        switch result {
+        case .success(let report):
+            UsageMonitorState(
+                report: report,
+                cacheSnapshot: nil,
+                errorMessage: nil,
+                displayBasis: preferences.displayBasis,
+                reducedMotion: preferences.reducedMotion
+            )
+        case .failure(let message, let snapshot):
+            if let snapshot, let report = snapshot.report {
+                UsageMonitorState(
+                    report: report,
+                    cacheSnapshot: snapshot,
+                    errorMessage: message,
+                    displayBasis: preferences.displayBasis,
+                    reducedMotion: preferences.reducedMotion
+                )
+            } else {
+                UsageMonitorState(
+                    report: nil,
+                    cacheSnapshot: nil,
+                    errorMessage: message,
+                    displayBasis: preferences.displayBasis,
+                    reducedMotion: preferences.reducedMotion
+                )
+            }
+        }
+    }
+
     private func makePopoverController() -> NSViewController {
         NSHostingController(rootView: UsagePopoverView(state: state) {
             Task { @MainActor in
-                self.refreshUsage(allowLiveRefresh: true)
+                self.refreshUsage(allowLiveRefresh: false)
             }
         })
     }
@@ -158,10 +199,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        refreshUsage(allowLiveRefresh: true)
+        refreshUsage(allowLiveRefresh: false)
         installOutsideClickMonitors()
         popover.show(relativeTo: popoverAnchorRect(in: button), of: button, preferredEdge: .maxY)
         positionPopoverWindow(under: button)
+        requestLiveRefresh()
     }
 
     nonisolated func popoverDidClose(_ notification: Notification) {
@@ -251,4 +293,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         frame.origin.y = max(screenFrame.minY + 8, buttonFrame.minY - frame.height - 4)
         popoverWindow.setFrame(frame, display: true)
     }
+}
+
+private enum LiveUsageRefreshResult: Sendable {
+    case success(CodexUsageReport)
+    case failure(message: String, cachedSnapshot: CodexUsageCacheSnapshot?)
 }
