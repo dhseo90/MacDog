@@ -18,7 +18,51 @@ INFO_PLIST="$APP_CONTENTS/Info.plist"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
 
+usage() {
+  cat <<USAGE
+usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--logs|--telemetry|--debug|--help]
+
+Build and run the Codex Usage Monitor SwiftPM macOS app.
+
+Commands:
+  run                         Build release app bundle and launch it.
+  --no-run                    Build release app bundle and print its path.
+  --verify                    Build, launch, and verify the app process exists.
+  --verify-deeplink           Verify app launch and codexusage://open handling.
+  --verify-runtime [SECONDS]  Verify launch and sample runtime CPU. Default: 10.
+  --logs                      Build, launch, and stream app logs.
+  --telemetry                 Build, launch, and stream subsystem logs.
+  --debug                     Build and launch the executable under lldb.
+  --help                      Show this help.
+
+Environment:
+  DEVELOPER_DIR defaults to /Applications/Xcode.app/Contents/Developer.
+
+Output:
+  App bundle: $APP_BUNDLE
+USAGE
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_tool() {
+  command -v "$1" >/dev/null 2>&1 || die "required tool not found: $1"
+}
+
+check_prerequisites() {
+  [[ -x "$XCRUN" ]] || die "xcrun not found at $XCRUN"
+  require_tool pgrep
+  require_tool pkill
+  require_tool awk
+  require_tool ps
+  "$XCRUN" --find swift >/dev/null || die "Swift toolchain unavailable through xcrun"
+}
+
 build_bundle() {
+  check_prerequisites
   "$XCRUN" swift build -c release --product "$APP_NAME"
   "$XCRUN" swift build -c release --product codex-usage
   local build_bin
@@ -129,6 +173,9 @@ verify_runtime() {
 }
 
 case "$MODE" in
+  -h|--help|help)
+    usage
+    ;;
   run)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
@@ -172,7 +219,7 @@ case "$MODE" in
     /usr/bin/lldb -- "$APP_BINARY"
     ;;
   *)
-    echo "usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--logs|--telemetry|--debug]" >&2
+    usage >&2
     exit 2
     ;;
 esac
