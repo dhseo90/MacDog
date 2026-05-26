@@ -3,20 +3,35 @@ import SwiftUI
 import WidgetKit
 
 public struct CodexUsageWidgetBundle: WidgetBundle {
-    public init() {}
+    private let appGroupIdentifier: String?
+
+    public init() {
+        self.appGroupIdentifier = nil
+    }
+
+    public init(appGroupIdentifier: String?) {
+        self.appGroupIdentifier = appGroupIdentifier
+    }
 
     public var body: some Widget {
-        CodexUsageStatusWidget()
+        CodexUsageStatusWidget(appGroupIdentifier: appGroupIdentifier)
     }
 }
 
 public struct CodexUsageStatusWidget: Widget {
     public let kind = "CodexUsageStatusWidget"
+    private let provider: CodexUsageTimelineProvider
 
-    public init() {}
+    public init() {
+        self.provider = CodexUsageTimelineProvider()
+    }
+
+    public init(appGroupIdentifier: String?) {
+        self.provider = CodexUsageTimelineProvider(appGroupIdentifier: appGroupIdentifier)
+    }
 
     public var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: CodexUsageTimelineProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: provider) { entry in
             CodexUsageWidgetView(entry: entry)
                 .widgetURL(URL(string: "codexusage://open"))
         }
@@ -51,6 +66,10 @@ public struct CodexUsageTimelineProvider: TimelineProvider {
 
     public init(cacheURL: URL = CodexUsageCacheStore.defaultFileURL()) {
         self.cacheURL = cacheURL
+    }
+
+    public init(appGroupIdentifier: String?) {
+        self.cacheURL = CodexUsageCacheStore.defaultFileURL(appGroupIdentifier: appGroupIdentifier)
     }
 
     public func placeholder(in context: Context) -> CodexUsageEntry {

@@ -46,13 +46,13 @@ For the current CLI and menu bar app, the cache path remains:
 
 For an embedded Widget Extension, the intended production path is an App Group container so the app, cache writer, and extension can share the same `usage.json` across sandbox boundaries.
 
-Required follow-up code change before enabling the real extension:
+Shared cache URL hook:
 
 ```text
 CodexUsageCacheStore.defaultFileURL(appGroupIdentifier:)
 ```
 
-The default non-App-Group path remains for CLI and menu bar personal usage.
+Implemented status: the helper exists and falls back to the default Application Support path when the App Group container is unavailable. The default non-App-Group path remains for CLI and menu bar personal usage.
 
 ## Build Flow
 

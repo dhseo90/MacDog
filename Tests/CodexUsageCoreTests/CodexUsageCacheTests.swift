@@ -9,6 +9,25 @@ final class CodexUsageCacheTests: XCTestCase {
         )
     }
 
+    func testDefaultAppGroupIdentifierIsStable() {
+        XCTAssertEqual(
+            CodexUsageCacheStore.defaultAppGroupIdentifier,
+            "group.com.dhseo.mycodex.CodexUsageMonitor"
+        )
+    }
+
+    func testDefaultFileURLUsesAppGroupContainerWhenAvailable() {
+        let appGroupIdentifier = "group.invalid.\(UUID().uuidString)"
+        let url = CodexUsageCacheStore.defaultFileURL(appGroupIdentifier: appGroupIdentifier)
+
+        XCTAssertEqual(url.lastPathComponent, "usage.json")
+        if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) {
+            XCTAssertEqual(url, containerURL.appendingPathComponent("usage.json"))
+        } else {
+            XCTAssertEqual(url, CodexUsageCacheStore.defaultFileURL())
+        }
+    }
+
     func testWritesAndReadsSuccessSnapshot() throws {
         let fileURL = temporaryFileURL()
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
