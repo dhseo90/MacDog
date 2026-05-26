@@ -41,7 +41,8 @@ public struct CodexUsageCacheError: Codable, Equatable, Sendable {
 }
 
 public struct CodexUsageCacheStore {
-    public static let defaultStaleAfterSeconds = 120
+    public static let cacheAgentRefreshIntervalSeconds = 300
+    public static let defaultStaleAfterSeconds = cacheAgentRefreshIntervalSeconds + 60
 
     private let fileURL: URL
     private let fileManager: FileManager
@@ -111,4 +112,3 @@ public struct CodexUsageCacheStore {
         try data.write(to: fileURL, options: [.atomic])
     }
 }
-

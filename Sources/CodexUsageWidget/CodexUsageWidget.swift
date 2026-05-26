@@ -111,7 +111,7 @@ public struct CodexUsageTimelineProvider: TimelineProvider {
         )
         return CodexUsageCacheSnapshot(
             cachedAt: report.generatedAt,
-            staleAfterSeconds: 120,
+            staleAfterSeconds: CodexUsageCacheStore.defaultStaleAfterSeconds,
             report: report,
             error: nil
         )
@@ -259,4 +259,3 @@ private struct WidgetUsageRow: View {
         return String(format: "%.1f", value)
     }
 }
-

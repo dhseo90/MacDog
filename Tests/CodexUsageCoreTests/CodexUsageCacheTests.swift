@@ -2,6 +2,13 @@ import XCTest
 @testable import CodexUsageCore
 
 final class CodexUsageCacheTests: XCTestCase {
+    func testDefaultStaleWindowCoversInstalledCacheAgentCadence() {
+        XCTAssertGreaterThan(
+            CodexUsageCacheStore.defaultStaleAfterSeconds,
+            CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds
+        )
+    }
+
     func testWritesAndReadsSuccessSnapshot() throws {
         let fileURL = temporaryFileURL()
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
@@ -57,4 +64,3 @@ final class CodexUsageCacheTests: XCTestCase {
             .appendingPathComponent("usage.json")
     }
 }
-
