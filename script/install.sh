@@ -31,6 +31,7 @@ case "$MODE" in
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
     echo "Cache agent interval: 300 seconds"
+    echo "Widget extension: not installed by this script; see Docs/WidgetPackaging.md"
     exit 0
     ;;
   -h|--help|help)
