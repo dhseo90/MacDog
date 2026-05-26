@@ -4,10 +4,12 @@ struct RunnerPreferences: Equatable {
     static let themeKey = "runnerTheme"
     static let displayBasisKey = "displayBasis"
     static let reducedMotionKey = "reducedMotion"
+    static let defaultTheme = RunnerTheme.pup
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
+            themeKey: defaultTheme.rawValue,
             displayBasisKey: defaultDisplayBasis.rawValue,
             reducedMotionKey: false
         ])
@@ -18,7 +20,7 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
 
     init(defaults: UserDefaults = .standard) {
-        self.theme = .pup
+        self.theme = RunnerTheme(rawValue: defaults.string(forKey: Self.themeKey) ?? "") ?? Self.defaultTheme
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
     }

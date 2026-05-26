@@ -100,6 +100,7 @@ struct UsagePopoverView: View {
 private struct RunnerControls: View {
     let onChange: () -> Void
 
+    @AppStorage(RunnerPreferences.themeKey) private var theme = RunnerPreferences.defaultTheme.rawValue
     @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = RunnerPreferences.defaultDisplayBasis.rawValue
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
 
@@ -107,7 +108,18 @@ private struct RunnerControls: View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
 
-            runnerSpeedLabel
+            controlLabel("Runner theme")
+
+            Picker("Theme", selection: $theme) {
+                ForEach(RunnerTheme.allCases) { theme in
+                    Text(theme.label).tag(theme.rawValue)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .help("Choose the menu bar runner style.")
+
+            controlLabel("Runner speed")
 
             Picker("Runner speed", selection: $displayBasis) {
                 ForEach(UsageDisplayBasis.allCases) { basis in
@@ -121,13 +133,14 @@ private struct RunnerControls: View {
             Toggle("Reduce motion", isOn: $reducedMotion)
                 .font(.caption)
         }
+        .onChange(of: theme) { _, _ in onChange() }
         .onChange(of: displayBasis) { _, _ in onChange() }
         .onChange(of: reducedMotion) { _, _ in onChange() }
     }
 
-    private var runnerSpeedLabel: some View {
+    private func controlLabel(_ title: String) -> some View {
         HStack {
-            Text("Runner speed")
+            Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             Spacer()
