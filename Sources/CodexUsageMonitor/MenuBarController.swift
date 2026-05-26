@@ -4,12 +4,10 @@ import SwiftUI
 
 @MainActor
 final class MenuBarController {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: 30)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
-    private var overlayWindow: NSPanel?
-    private var overlayButton: NSButton?
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
@@ -18,7 +16,6 @@ final class MenuBarController {
 
     func start() {
         configureStatusItem()
-        configureOverlayIfNeeded()
         configurePopover()
         refreshUsage(allowLiveRefresh: false)
         startRefreshTimer()
@@ -35,14 +32,6 @@ final class MenuBarController {
         button.target = self
         button.action = #selector(togglePopover)
         button.toolTip = "Codex Usage"
-    }
-
-    private func configureOverlayIfNeeded() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.shouldUseMenuBarOverlay() else { return }
-            self.showMenuBarOverlay()
-            self.advanceFrame()
-        }
     }
 
     private func configurePopover() {
@@ -78,7 +67,6 @@ final class MenuBarController {
             reducedMotion: state.reducedMotion
         )
         statusItem.button?.image = image
-        overlayButton?.image = image
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {
@@ -161,12 +149,6 @@ final class MenuBarController {
         toggleUsagePopover(relativeTo: button)
     }
 
-    @objc
-    private func toggleOverlayPopover() {
-        guard let button = overlayButton else { return }
-        toggleUsagePopover(relativeTo: button)
-    }
-
     private func toggleUsagePopover(relativeTo button: NSView) {
         refreshUsage(allowLiveRefresh: true)
 
@@ -175,76 +157,5 @@ final class MenuBarController {
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
-    }
-
-    private func shouldUseMenuBarOverlay() -> Bool {
-        guard
-            let screen = NSScreen.main,
-            let auxiliaryTopRightArea = screen.auxiliaryTopRightArea,
-            let itemFrame = statusItemScreenFrame()
-        else {
-            return false
-        }
-
-        return itemFrame.maxX < auxiliaryTopRightArea.minX + 48
-    }
-
-    private func statusItemScreenFrame() -> NSRect? {
-        guard let button = statusItem.button, let window = button.window else { return nil }
-        return window.convertToScreen(button.convert(button.bounds, to: nil))
-    }
-
-    private func showMenuBarOverlay() {
-        guard overlayWindow == nil, let screen = NSScreen.main else { return }
-
-        let frame = overlayFrame(on: screen)
-        let window = NSPanel(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = false
-        window.level = .normal
-        window.collectionBehavior = [.stationary, .ignoresCycle]
-
-        let button = NSButton(frame: NSRect(origin: .zero, size: frame.size))
-        button.isBordered = false
-        button.bezelStyle = .regularSquare
-        button.imagePosition = .imageOnly
-        button.imageScaling = .scaleProportionallyDown
-        button.contentTintColor = .white
-        button.target = self
-        button.action = #selector(toggleOverlayPopover)
-        button.toolTip = "Codex Usage"
-        button.image = runnerRenderer.image(
-            frame: frameIndex,
-            phase: state.phase,
-            theme: preferences.theme,
-            reducedMotion: state.reducedMotion
-        )
-
-        window.contentView = button
-        window.orderFrontRegardless()
-        overlayWindow = window
-        overlayButton = button
-    }
-
-    private func overlayFrame(on screen: NSScreen) -> NSRect {
-        let topRightArea = screen.auxiliaryTopRightArea ?? NSRect(
-            x: screen.frame.midX,
-            y: screen.frame.maxY - 32,
-            width: screen.frame.width / 2,
-            height: 32
-        )
-        let size = NSSize(width: 30, height: 24)
-        return NSRect(
-            x: topRightArea.minX + 12,
-            y: screen.frame.maxY - 28,
-            width: size.width,
-            height: size.height
-        )
     }
 }

@@ -11,6 +11,7 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
@@ -24,9 +25,12 @@ build_bundle() {
   build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 
   rm -rf "$APP_BUNDLE"
-  mkdir -p "$APP_MACOS"
+  mkdir -p "$APP_MACOS" "$APP_RESOURCES"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   chmod +x "$APP_BINARY"
+  if [[ -d "$ROOT_DIR/Sources/CodexUsageMonitor/Resources/Runner" ]]; then
+    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/CodexUsageMonitor/Resources/Runner" "$APP_RESOURCES/Runner"
+  fi
 
   cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

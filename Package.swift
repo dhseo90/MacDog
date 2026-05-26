@@ -47,7 +47,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "CodexUsageMonitor",
-            dependencies: ["CodexUsageCore"]
+            dependencies: ["CodexUsageCore"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "CodexUsageCoreTests",
