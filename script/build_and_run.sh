@@ -89,6 +89,15 @@ verify_app() {
   pgrep -x "$APP_NAME" >/dev/null
 }
 
+verify_deeplink() {
+  local scheme
+  scheme="$(/usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes:0:CFBundleURLSchemes:0" "$INFO_PLIST")"
+  [[ "$scheme" == "codexusage" ]]
+  /usr/bin/open "codexusage://open"
+  sleep 1
+  pgrep -x "$APP_NAME" >/dev/null
+}
+
 case "$MODE" in
   run)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
@@ -103,6 +112,12 @@ case "$MODE" in
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_app
+    ;;
+  --verify-deeplink|verify-deeplink)
+    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+    build_bundle
+    verify_app
+    verify_deeplink
     ;;
   --logs|logs)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
@@ -121,7 +136,7 @@ case "$MODE" in
     /usr/bin/lldb -- "$APP_BINARY"
     ;;
   *)
-    echo "usage: $0 [run|--no-run|--verify|--logs|--telemetry|--debug]" >&2
+    echo "usage: $0 [run|--no-run|--verify|--verify-deeplink|--logs|--telemetry|--debug]" >&2
     exit 2
     ;;
 esac
