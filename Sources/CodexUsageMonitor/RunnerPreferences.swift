@@ -3,21 +3,45 @@ import Foundation
 struct RunnerPreferences: Equatable {
     static let displayBasisKey = "displayBasis"
     static let reducedMotionKey = "reducedMotion"
+    static let animationPausedKey = "animationPaused"
+    static let desktopPetEnabledKey = "desktopPetEnabled"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
             displayBasisKey: defaultDisplayBasis.rawValue,
-            reducedMotionKey: false
+            reducedMotionKey: false,
+            animationPausedKey: false,
+            desktopPetEnabledKey: false
         ])
     }
 
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
+    let animationPaused: Bool
+    let desktopPetEnabled: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
+        self.animationPaused = defaults.bool(forKey: Self.animationPausedKey)
+        self.desktopPetEnabled = defaults.bool(forKey: Self.desktopPetEnabledKey)
+    }
+
+    static func setDisplayBasis(_ basis: UsageDisplayBasis, defaults: UserDefaults = .standard) {
+        defaults.set(basis.rawValue, forKey: displayBasisKey)
+    }
+
+    static func setReducedMotion(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: reducedMotionKey)
+    }
+
+    static func setAnimationPaused(_ isPaused: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isPaused, forKey: animationPausedKey)
+    }
+
+    static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: desktopPetEnabledKey)
     }
 }
 
@@ -31,11 +55,11 @@ enum UsageDisplayBasis: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .max:
-            "Highest"
+            "최대"
         case .fiveHour:
-            "5h"
+            "5시간"
         case .weekly:
-            "Weekly"
+            "주간"
         }
     }
 }

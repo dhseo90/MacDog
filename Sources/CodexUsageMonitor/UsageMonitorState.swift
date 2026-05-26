@@ -9,6 +9,7 @@ struct UsageMonitorState: Equatable {
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
+    let animationPaused: Bool
     let isRefreshing: Bool
 
     init(
@@ -17,6 +18,7 @@ struct UsageMonitorState: Equatable {
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
         reducedMotion: Bool = false,
+        animationPaused: Bool = false,
         isRefreshing: Bool = false
     ) {
         self.report = report
@@ -24,6 +26,7 @@ struct UsageMonitorState: Equatable {
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
+        self.animationPaused = animationPaused
         self.isRefreshing = isRefreshing
     }
 
@@ -34,6 +37,7 @@ struct UsageMonitorState: Equatable {
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
+            animationPaused: animationPaused,
             isRefreshing: isRefreshing
         )
     }
@@ -68,33 +72,33 @@ struct UsageMonitorState: Equatable {
         switch displayBasis {
         case .max:
             return [
-                UsageWindowStatus(label: "5h", window: limit.fiveHour),
-                UsageWindowStatus(label: "Weekly", window: limit.weekly)
+                UsageWindowStatus(label: "5시간", window: limit.fiveHour),
+                UsageWindowStatus(label: "주간", window: limit.weekly)
             ]
             .compactMap(\.self)
             .max { $0.window.usedPercent < $1.window.usedPercent }
         case .fiveHour:
-            return UsageWindowStatus(label: "5h", window: limit.fiveHour)
+            return UsageWindowStatus(label: "5시간", window: limit.fiveHour)
         case .weekly:
-            return UsageWindowStatus(label: "Weekly", window: limit.weekly)
+            return UsageWindowStatus(label: "주간", window: limit.weekly)
         }
     }
 
     var highUsageMessage: String? {
         if phase == .limit {
             if let status = selectedWindowStatus {
-                return "Limit reached · \(status.summary)"
+                return "한도 도달 · \(status.summary)"
             }
-            return "Limit reached"
+            return "한도 도달"
         }
 
         guard let status = selectedWindowStatus else { return nil }
 
         switch phase {
         case .fast:
-            return "High usage · \(status.summary)"
+            return "사용량 높음 · \(status.summary)"
         case .sprint:
-            return "Near limit · \(status.remainingSummary)"
+            return "한도 임박 · \(status.remainingSummary)"
         case .calm, .active, .limit:
             return nil
         }
@@ -106,27 +110,28 @@ struct UsageMonitorState: Equatable {
 
     var sourceLabel: String {
         if isRefreshing {
-            return "refreshing"
+            return "새로고침 중"
         }
         if cacheSnapshot != nil {
-            return isStale ? "cache stale" : "cache"
+            return isStale ? "오래된 캐시" : "캐시"
         }
         if report != nil {
-            return "live"
+            return "실시간"
         }
-        return "unavailable"
+        return "확인 불가"
     }
 
     var toolTip: String {
         if isRefreshing, codexLimit == nil {
-            return "Codex Usage refreshing"
+            return "코덱스 사용량 새로고침 중"
         }
         guard let limit = codexLimit else {
-            return "Codex Usage unavailable"
+            return "코덱스 사용량 확인 불가"
         }
-        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5h" } ?? "5h unavailable"
-        let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% weekly" } ?? "weekly unavailable"
-        return "Codex Usage: \(fiveHour), \(weekly), basis \(displayBasis.label)"
+        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5시간" } ?? "5시간 확인 불가"
+        let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
+        let motion = animationPaused ? ", 일시 정지" : ""
+        return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"
     }
 
     static func percent(_ value: Double) -> String {
@@ -148,11 +153,11 @@ struct UsageWindowStatus: Equatable {
     }
 
     var summary: String {
-        "\(label) \(UsageMonitorState.percent(window.usedPercent))% used / \(UsageMonitorState.percent(window.remainingPercent))% left"
+        "\(label) \(UsageMonitorState.percent(window.usedPercent))% 사용 / \(UsageMonitorState.percent(window.remainingPercent))% 남음"
     }
 
     var remainingSummary: String {
-        "\(UsageMonitorState.percent(window.remainingPercent))% left on \(label)"
+        "\(label) \(UsageMonitorState.percent(window.remainingPercent))% 남음"
     }
 }
 
@@ -200,30 +205,30 @@ enum UsagePressurePhase: String, Equatable {
     var label: String {
         switch self {
         case .calm:
-            "Calm"
+            "여유"
         case .active:
-            "Active"
+            "활발"
         case .fast:
-            "Fast"
+            "빠름"
         case .sprint:
-            "Sprint"
+            "질주"
         case .limit:
-            "Limit"
+            "한도"
         }
     }
 
     var statusLabel: String {
         switch self {
         case .calm:
-            "Calm"
+            "여유"
         case .active:
-            "Active"
+            "활발"
         case .fast:
-            "High usage"
+            "사용량 높음"
         case .sprint:
-            "Near limit"
+            "한도 임박"
         case .limit:
-            "Limit reached"
+            "한도 도달"
         }
     }
 }

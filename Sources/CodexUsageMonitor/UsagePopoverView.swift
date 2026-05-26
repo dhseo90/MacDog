@@ -20,27 +20,27 @@ struct UsagePopoverView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    UsageRow(title: "5h", window: limit.fiveHour)
-                    UsageRow(title: "Weekly", window: limit.weekly)
+                    UsageRow(title: "5시간", window: limit.fiveHour)
+                    UsageRow(title: "주간", window: limit.weekly)
                 }
 
                 Divider()
 
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                    metadataRow("Plan", limit.planType ?? "unknown")
-                    metadataRow("Credits", limit.credits?.balance ?? "unknown")
-                    metadataRow("Source", state.sourceLabel)
+                    metadataRow("플랜", limit.planType ?? "알 수 없음")
+                    metadataRow("크레딧", limit.credits?.balance ?? "알 수 없음")
+                    metadataRow("소스", state.sourceLabel)
                 }
             } else if state.isRefreshing {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Refreshing usage...")
+                    Text("사용량 새로고침 중...")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text(state.errorMessage ?? "Usage unavailable")
+                Text(state.errorMessage ?? "사용량을 확인할 수 없음")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -66,7 +66,7 @@ struct UsagePopoverView: View {
                 .frame(width: 10, height: 10)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Codex Usage")
+                Text("코덱스 사용량")
                     .font(.headline)
                 Text(statusText)
                     .font(.caption)
@@ -155,26 +155,31 @@ private struct RunnerControls: View {
 
     @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = RunnerPreferences.defaultDisplayBasis.rawValue
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
+    @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
 
-            controlLabel("Runner speed")
-            Picker("Runner speed", selection: $displayBasis) {
+            controlLabel("러너 속도")
+            Picker("러너 속도", selection: $displayBasis) {
                 ForEach(UsageDisplayBasis.allCases) { basis in
                     Text(basis.label).tag(basis.rawValue)
                 }
             }
             .labelsHidden()
             .pickerStyle(.segmented)
-            .help("Choose which usage window controls the runner speed.")
+            .help("러너 속도를 조절할 사용량 기준을 선택합니다.")
 
-            Toggle("Reduce motion", isOn: $reducedMotion)
+            Toggle("움직임 줄이기", isOn: $reducedMotion)
+                .font(.caption)
+
+            Toggle("애니메이션 일시 정지", isOn: $animationPaused)
                 .font(.caption)
         }
         .onChange(of: displayBasis) { _, _ in onChange() }
         .onChange(of: reducedMotion) { _, _ in onChange() }
+        .onChange(of: animationPaused) { _, _ in onChange() }
     }
 
     private func controlLabel(_ title: String) -> some View {
@@ -212,8 +217,8 @@ private struct UsageRow: View {
     }
 
     private var summary: String {
-        guard let window else { return "unavailable" }
-        return "\(UsageMonitorState.percent(window.usedPercent))% used / \(UsageMonitorState.percent(window.remainingPercent))% left"
+        guard let window else { return "확인 불가" }
+        return "\(UsageMonitorState.percent(window.usedPercent))% 사용 / \(UsageMonitorState.percent(window.remainingPercent))% 남음"
     }
 
     private var progressValue: Double {
@@ -221,9 +226,9 @@ private struct UsageRow: View {
     }
 
     private var resetText: String {
-        guard let resetsAt = window?.resetsAt else { return "reset unknown" }
+        guard let resetsAt = window?.resetsAt else { return "초기화 시각 알 수 없음" }
         let date = Date(timeIntervalSince1970: TimeInterval(resetsAt))
-        return "resets \(date.formatted(date: .abbreviated, time: .shortened))"
+        return "초기화 \(date.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private var tint: Color {

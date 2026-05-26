@@ -33,14 +33,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
         button.target = self
-        button.action = #selector(togglePopover)
-        button.toolTip = "Codex Usage"
+        button.action = #selector(statusItemActivated)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        button.toolTip = "코덱스 사용량"
     }
 
     private func configurePopover() {
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 280, height: 310)
+        popover.contentSize = NSSize(width: 280, height: 334)
         popover.contentViewController = makePopoverController()
     }
 
@@ -55,6 +56,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func restartAnimationTimer() {
         animationTimer?.invalidate()
+        animationTimer = nil
+
+        guard !state.animationPaused else {
+            renderCurrentFrame()
+            return
+        }
+
         animationTimer = Timer.scheduledTimer(withTimeInterval: state.phase.frameInterval(reducedMotion: state.reducedMotion), repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.advanceFrame()
@@ -64,6 +72,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func advanceFrame() {
         frameIndex = (frameIndex + 1) % RunnerIconRenderer.frameCount
+        renderCurrentFrame()
+    }
+
+    private func renderCurrentFrame() {
         let image = runnerRenderer.image(
             frame: frameIndex,
             phase: state.phase,
@@ -91,7 +103,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         state = newState
         popover.contentViewController = makePopoverController()
         statusItem.button?.toolTip = state.toolTip
-        advanceFrame()
+        renderCurrentFrame()
     }
 
     private func loadCachedState(errorMessage: String? = nil) -> UsageMonitorState {
@@ -101,16 +113,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 cacheSnapshot: snapshot,
                 errorMessage: errorMessage ?? snapshot.error?.message,
                 displayBasis: preferences.displayBasis,
-                reducedMotion: preferences.reducedMotion
+                reducedMotion: preferences.reducedMotion,
+                animationPaused: preferences.animationPaused
             )
         }
 
         return UsageMonitorState(
             report: nil,
             cacheSnapshot: nil,
-            errorMessage: "Usage cache is not available yet.",
+            errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
-            reducedMotion: preferences.reducedMotion
+            reducedMotion: preferences.reducedMotion,
+            animationPaused: preferences.animationPaused
         )
     }
 
@@ -166,7 +180,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 cacheSnapshot: nil,
                 errorMessage: nil,
                 displayBasis: preferences.displayBasis,
-                reducedMotion: preferences.reducedMotion
+                reducedMotion: preferences.reducedMotion,
+                animationPaused: preferences.animationPaused
             )
         case .failure(let message, let snapshot):
             if let snapshot, let report = snapshot.report {
@@ -175,7 +190,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     cacheSnapshot: snapshot,
                     errorMessage: message,
                     displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion
+                    reducedMotion: preferences.reducedMotion,
+                    animationPaused: preferences.animationPaused
                 )
             } else {
                 UsageMonitorState(
@@ -183,7 +199,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     cacheSnapshot: nil,
                     errorMessage: message,
                     displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion
+                    reducedMotion: preferences.reducedMotion,
+                    animationPaused: preferences.animationPaused
                 )
             }
         }
@@ -197,10 +214,163 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         })
     }
 
+    private func perform(_ action: PetAction) {
+        switch action {
+        case .showUsageDetails:
+            showUsagePopover()
+        case .refreshNow:
+            refreshUsage(allowLiveRefresh: true)
+        case .setDisplayBasis(let basis):
+            RunnerPreferences.setDisplayBasis(basis)
+            refreshUsage(allowLiveRefresh: false)
+        case .setReducedMotion(let isEnabled):
+            RunnerPreferences.setReducedMotion(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setAnimationPaused(let isPaused):
+            RunnerPreferences.setAnimationPaused(isPaused)
+            refreshUsage(allowLiveRefresh: false)
+        case .showDesktopPet:
+            RunnerPreferences.setDesktopPetEnabled(true)
+            refreshUsage(allowLiveRefresh: false)
+        case .returnToMenuBar:
+            RunnerPreferences.setDesktopPetEnabled(false)
+            refreshUsage(allowLiveRefresh: false)
+        case .quit:
+            NSApp.terminate(nil)
+        }
+    }
+
     @objc
-    private func togglePopover() {
+    private func statusItemActivated() {
         guard let button = statusItem.button else { return }
-        toggleUsagePopover(relativeTo: button)
+
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showPetMenu(relativeTo: button, surface: .menuBar)
+            return
+        }
+
+        if popover.isShown {
+            popover.performClose(nil)
+            return
+        }
+
+        perform(.showUsageDetails)
+    }
+
+    private func showPetMenu(relativeTo button: NSView, surface: PetSurface) {
+        preferences = RunnerPreferences()
+        let menu = makePetMenu(surface: surface)
+        menu.popUp(positioning: nil, at: NSPoint(x: button.bounds.midX, y: button.bounds.minY), in: button)
+    }
+
+    private func makePetMenu(surface: PetSurface) -> NSMenu {
+        let menu = NSMenu(title: "코덱스 펫")
+        menu.addItem(menuItem("사용량 상세 보기", action: #selector(menuShowUsageDetails)))
+        menu.addItem(menuItem("지금 새로고침", action: #selector(menuRefreshNow)))
+        menu.addItem(.separator())
+        menu.addItem(speedSubmenuItem())
+        menu.addItem(menuItem(
+            "움직임 줄이기",
+            action: #selector(menuToggleReduceMotion),
+            state: preferences.reducedMotion ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "애니메이션 일시 정지",
+            action: #selector(menuToggleAnimationPaused),
+            state: preferences.animationPaused ? .on : .off
+        ))
+        menu.addItem(.separator())
+        menu.addItem(desktopSurfaceMenuItem(surface: surface))
+        menu.addItem(.separator())
+        menu.addItem(menuItem("코덱스 사용량 종료", action: #selector(menuQuit)))
+        return menu
+    }
+
+    private func speedSubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "러너 속도", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "러너 속도")
+
+        for basis in UsageDisplayBasis.allCases {
+            let item = menuItem(
+                basis.label,
+                action: #selector(menuSetDisplayBasis),
+                state: preferences.displayBasis == basis ? .on : .off,
+                representedObject: basis.rawValue
+            )
+            submenu.addItem(item)
+        }
+
+        parent.submenu = submenu
+        return parent
+    }
+
+    private func desktopSurfaceMenuItem(surface: PetSurface) -> NSMenuItem {
+        if preferences.desktopPetEnabled || surface == .desktop {
+            return menuItem("메뉴바로 돌아가기", action: #selector(menuReturnToMenuBar))
+        }
+
+        let item = menuItem("데스크톱 펫 보기 (다음 단계)", action: #selector(menuShowDesktopPet))
+        item.isEnabled = false
+        item.toolTip = "데스크톱 플로팅 펫은 다음 마일스톤에서 구현합니다."
+        return item
+    }
+
+    private func menuItem(
+        _ title: String,
+        action: Selector,
+        state: NSControl.StateValue = .off,
+        representedObject: Any? = nil
+    ) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.state = state
+        item.representedObject = representedObject
+        return item
+    }
+
+    @objc
+    private func menuShowUsageDetails() {
+        perform(.showUsageDetails)
+    }
+
+    @objc
+    private func menuRefreshNow() {
+        perform(.refreshNow)
+    }
+
+    @objc
+    private func menuSetDisplayBasis(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let basis = UsageDisplayBasis(rawValue: rawValue)
+        else { return }
+
+        perform(.setDisplayBasis(basis))
+    }
+
+    @objc
+    private func menuToggleReduceMotion() {
+        perform(.setReducedMotion(!preferences.reducedMotion))
+    }
+
+    @objc
+    private func menuToggleAnimationPaused() {
+        perform(.setAnimationPaused(!preferences.animationPaused))
+    }
+
+    @objc
+    private func menuShowDesktopPet() {
+        perform(.showDesktopPet)
+    }
+
+    @objc
+    private func menuReturnToMenuBar() {
+        perform(.returnToMenuBar)
+    }
+
+    @objc
+    private func menuQuit() {
+        perform(.quit)
     }
 
     func showUsagePopover() {
@@ -209,15 +379,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         if popover.isShown {
             requestLiveRefresh()
-            return
-        }
-
-        showUsagePopover(relativeTo: button)
-    }
-
-    private func toggleUsagePopover(relativeTo button: NSView) {
-        if popover.isShown {
-            popover.performClose(nil)
             return
         }
 
