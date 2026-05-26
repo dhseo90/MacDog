@@ -15,7 +15,7 @@ struct RunnerIconRenderer {
             return sprite
         }
 
-        let size = NSSize(width: 30, height: 18)
+        let size = character == .bot ? NSSize(width: 80, height: 48) : NSSize(width: 30, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
 
@@ -35,14 +35,7 @@ struct RunnerIconRenderer {
         }
 
         if phase == .limit {
-            NSColor.systemRed.setStroke()
-            let warning = NSBezierPath()
-            warning.lineWidth = 1.5
-            warning.move(to: NSPoint(x: 27, y: 14))
-            warning.line(to: NSPoint(x: 27, y: 7))
-            warning.move(to: NSPoint(x: 27, y: 4))
-            warning.line(to: NSPoint(x: 27, y: 3.8))
-            warning.stroke()
+            drawLimitWarning(size: size, lineWidth: character == .bot ? 4 : 1.5)
         }
 
         image.unlockFocus()
@@ -77,15 +70,7 @@ struct RunnerIconRenderer {
         base.draw(in: NSRect(origin: .zero, size: base.size))
 
         if phase == .limit {
-            NSColor.systemRed.setStroke()
-            let warning = NSBezierPath()
-            warning.lineWidth = 4
-            warning.lineCapStyle = .round
-            warning.move(to: NSPoint(x: base.size.width - 7, y: base.size.height - 8))
-            warning.line(to: NSPoint(x: base.size.width - 7, y: base.size.height - 22))
-            warning.move(to: NSPoint(x: base.size.width - 7, y: base.size.height - 31))
-            warning.line(to: NSPoint(x: base.size.width - 7, y: base.size.height - 31.2))
-            warning.stroke()
+            drawLimitWarning(size: base.size, lineWidth: 4)
         }
 
         image.unlockFocus()
@@ -256,68 +241,134 @@ struct RunnerIconRenderer {
     private func drawBot(frameStride: CGFloat, phase: UsagePressurePhase, color: NSColor) {
         let run = sin(frameStride * .pi * 2)
         let paw = cos(frameStride * .pi * 2)
-        let bounce = phase == .calm ? abs(run) * 0.12 : abs(run) * 0.5
+        let bounce = phase == .calm ? abs(run) * 0.28 : abs(run) * 1.1
 
-        drawSpeedMarks(frameStride: frameStride, color: color)
+        drawBotSpeedMarks(frameStride: frameStride, color: color)
 
-        let bodyY = 5.2 + bounce
-        let headY = 9.0 + bounce
+        let bodyY = 16.2 + bounce
+        let headY = 25.7 + bounce
 
         color.setStroke()
         color.setFill()
 
-        let antenna = NSBezierPath()
-        antenna.lineWidth = 1.25
-        antenna.lineCapStyle = .round
-        antenna.move(to: NSPoint(x: 18.4, y: headY + 6.3))
-        antenna.line(to: NSPoint(x: 19.3 + run * 0.35, y: headY + 8.1))
-        antenna.stroke()
+        let rearModule = NSBezierPath(roundedRect: NSRect(x: 25.8, y: bodyY + 4.8, width: 6.2, height: 8.4), xRadius: 2.1, yRadius: 2.1)
+        rearModule.fill()
 
-        NSBezierPath(ovalIn: NSRect(x: 18.6 + run * 0.35, y: headY + 7.7, width: 1.5, height: 1.5)).fill()
+        let tail = NSBezierPath()
+        tail.lineWidth = 3.1
+        tail.lineCapStyle = .round
+        tail.move(to: NSPoint(x: 27.0, y: bodyY + 10.8))
+        tail.curve(
+            to: NSPoint(x: 20.2, y: bodyY + 14.0 + run * 0.7),
+            controlPoint1: NSPoint(x: 24.6, y: bodyY + 12.8),
+            controlPoint2: NSPoint(x: 22.3, y: bodyY + 13.8 + run * 0.4)
+        )
+        tail.stroke()
 
-        let head = NSBezierPath(roundedRect: NSRect(x: 13.2, y: headY, width: 11.1, height: 6.4), xRadius: 1.6, yRadius: 1.6)
-        head.fill()
-
-        let body = NSBezierPath(roundedRect: NSRect(x: 11.6, y: bodyY, width: 13.0, height: 5.6), xRadius: 1.6, yRadius: 1.6)
+        let body = NSBezierPath(roundedRect: NSRect(x: 30.0, y: bodyY, width: 29.2, height: 15.2), xRadius: 5.1, yRadius: 5.1)
         body.fill()
 
-        let armPath = NSBezierPath()
-        armPath.lineWidth = 1.35
-        armPath.lineCapStyle = .round
-        armPath.move(to: NSPoint(x: 12.0, y: bodyY + 3.6))
-        armPath.line(to: NSPoint(x: 8.8 - paw * 0.6, y: bodyY + 2.4))
-        armPath.move(to: NSPoint(x: 24.0, y: bodyY + 3.6))
-        armPath.line(to: NSPoint(x: 26.8 + paw * 0.6, y: bodyY + 2.4))
-        armPath.stroke()
+        let chest = NSBezierPath(roundedRect: NSRect(x: 53.2, y: bodyY + 2.1, width: 8.0, height: 11.2), xRadius: 3.2, yRadius: 3.2)
+        chest.fill()
+
+        let neck = NSBezierPath(roundedRect: NSRect(x: 55.0, y: bodyY + 10.8, width: 5.8, height: 6.6), xRadius: 1.8, yRadius: 1.8)
+        neck.fill()
+
+        let head = NSBezierPath(roundedRect: NSRect(x: 58.6, y: headY, width: 14.8, height: 11.6), xRadius: 3.2, yRadius: 3.2)
+        head.fill()
+
+        let snout = NSBezierPath(roundedRect: NSRect(x: 70.4, y: headY + 3.2, width: 5.8, height: 5.0), xRadius: 1.7, yRadius: 1.7)
+        snout.fill()
+
+        let antenna = NSBezierPath()
+        antenna.lineWidth = 2.7
+        antenna.lineCapStyle = .round
+        antenna.move(to: NSPoint(x: 64.2, y: headY + 10.4))
+        antenna.line(to: NSPoint(x: 65.6 + run * 0.9, y: headY + 15.0))
+        antenna.stroke()
+
+        NSBezierPath(ovalIn: NSRect(x: 63.7 + run * 0.9, y: headY + 13.8, width: 4.2, height: 4.2)).fill()
 
         let legs = NSBezierPath()
-        legs.lineWidth = 1.45
+        legs.lineWidth = 3.2
         legs.lineCapStyle = .round
-        legs.move(to: NSPoint(x: 15.2, y: bodyY + 0.4))
-        legs.line(to: NSPoint(x: 13.2 - paw * 1.1, y: 2.7))
-        legs.move(to: NSPoint(x: 21.0, y: bodyY + 0.4))
-        legs.line(to: NSPoint(x: 23.0 + paw * 1.1, y: 2.7))
+        drawBotLeg(
+            path: legs,
+            hip: NSPoint(x: 34.4, y: bodyY + 1.9),
+            knee: NSPoint(x: 30.5 - paw * 3.1, y: 11.3),
+            foot: NSPoint(x: 25.7 - paw * 4.2, y: 7.0)
+        )
+        drawBotLeg(
+            path: legs,
+            hip: NSPoint(x: 40.2, y: bodyY + 1.5),
+            knee: NSPoint(x: 42.3 + paw * 2.6, y: 11.2),
+            foot: NSPoint(x: 47.8 + paw * 3.7, y: 7.0)
+        )
+        drawBotLeg(
+            path: legs,
+            hip: NSPoint(x: 52.0, y: bodyY + 1.9),
+            knee: NSPoint(x: 50.4 + paw * 2.9, y: 11.2),
+            foot: NSPoint(x: 46.2 + paw * 4.0, y: 7.0)
+        )
+        drawBotLeg(
+            path: legs,
+            hip: NSPoint(x: 57.0, y: bodyY + 2.0),
+            knee: NSPoint(x: 61.4 - paw * 2.8, y: 11.2),
+            foot: NSPoint(x: 67.5 - paw * 3.8, y: 7.0)
+        )
         legs.stroke()
 
-        botAccentColor(for: phase).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 16.0, y: headY + 3.4, width: 1.7, height: 1.7)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 20.1, y: headY + 3.4, width: 1.7, height: 1.7)).fill()
+        NSBezierPath(roundedRect: NSRect(x: 22.6 - paw * 4.2, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
+        NSBezierPath(roundedRect: NSRect(x: 44.3 + paw * 3.7, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
+        NSBezierPath(roundedRect: NSRect(x: 42.8 + paw * 4.0, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
+        NSBezierPath(roundedRect: NSRect(x: 64.0 - paw * 3.8, y: 5.1, width: 7.2, height: 3.1), xRadius: 1.4, yRadius: 1.4).fill()
+
+        NSColor.black.withAlphaComponent(0.72).setFill()
+        NSBezierPath(ovalIn: NSRect(x: 64.4, y: headY + 6.8, width: 3.1, height: 3.1)).fill()
 
         NSColor.black.withAlphaComponent(0.45).setFill()
-        NSBezierPath(roundedRect: NSRect(x: 15.4, y: bodyY + 2.2, width: 5.7, height: 1.1), xRadius: 0.5, yRadius: 0.5).fill()
+        NSBezierPath(roundedRect: NSRect(x: 37.4, y: bodyY + 7.2, width: 11.8, height: 2.8), xRadius: 1.2, yRadius: 1.2).fill()
+        NSBezierPath(roundedRect: NSRect(x: 66.4, y: headY + 3.7, width: 5.9, height: 1.9), xRadius: 0.9, yRadius: 0.9).fill()
     }
 
-    private func botAccentColor(for phase: UsagePressurePhase) -> NSColor {
-        switch phase {
-        case .calm:
-            .black.withAlphaComponent(0.65)
-        case .active:
-            .controlAccentColor
-        case .fast:
-            .systemOrange
-        case .sprint, .limit:
-            .systemRed
-        }
+    private func drawBotLeg(path: NSBezierPath, hip: NSPoint, knee: NSPoint, foot: NSPoint) {
+        path.move(to: hip)
+        path.curve(
+            to: foot,
+            controlPoint1: NSPoint(x: knee.x, y: knee.y + 1.0),
+            controlPoint2: knee
+        )
+    }
+
+    private func drawBotSpeedMarks(frameStride: CGFloat, color: NSColor) {
+        let shift = CGFloat(Int(frameStride * 4)) * 0.8
+        color.withAlphaComponent(0.75).setStroke()
+
+        let marks = NSBezierPath()
+        marks.lineWidth = 2.5
+        marks.lineCapStyle = .round
+        marks.move(to: NSPoint(x: 5.6 + shift, y: 31.6))
+        marks.line(to: NSPoint(x: 20.5 + shift, y: 31.6))
+        marks.move(to: NSPoint(x: 2.8 + shift, y: 24.0))
+        marks.line(to: NSPoint(x: 21.8 + shift, y: 24.0))
+        marks.move(to: NSPoint(x: 5.7 + shift, y: 16.5))
+        marks.line(to: NSPoint(x: 20.0 + shift, y: 16.5))
+        marks.stroke()
+
+        color.setStroke()
+    }
+
+    private func drawLimitWarning(size: NSSize, lineWidth: CGFloat) {
+        NSColor.systemRed.setStroke()
+        let warning = NSBezierPath()
+        warning.lineWidth = lineWidth
+        warning.lineCapStyle = .round
+        let x = size.width - lineWidth - 3
+        warning.move(to: NSPoint(x: x, y: size.height - 8))
+        warning.line(to: NSPoint(x: x, y: size.height - 22))
+        warning.move(to: NSPoint(x: x, y: size.height - 31))
+        warning.line(to: NSPoint(x: x, y: size.height - 31.2))
+        warning.stroke()
     }
 }
 

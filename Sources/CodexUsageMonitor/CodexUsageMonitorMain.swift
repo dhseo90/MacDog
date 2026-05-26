@@ -3,6 +3,10 @@ import AppKit
 @main
 enum CodexUsageMonitorMain {
     static func main() {
+        if RunnerComparisonCommand.runIfRequested(arguments: CommandLine.arguments) {
+            return
+        }
+
         RunnerPreferences.registerDefaults()
 
         let app = NSApplication.shared

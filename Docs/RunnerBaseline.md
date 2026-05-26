@@ -28,6 +28,7 @@ Run:
 
 ```sh
 ./script/verify_runner_baseline.sh
+./script/render_runner_comparison.sh
 ./script/build_and_run.sh --verify
 ```
 
