@@ -47,7 +47,13 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 | Sprint | 95-99% | 매우 빠르게 뛰기 | 빨강 계열 경고 |
 | Limit | 100%+ | 숨가쁜 루프/정지 경고 | 한도 도달 표시 |
 
-## 캐릭터 로드맵: Codex Pup
+## 캐릭터 로드맵
+
+캐릭터 선택은 "메뉴바 16-22pt 크기에서도 한눈에 다른 실루엣으로 읽히는가"를 기준으로 한다.
+Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가 약하므로 기본 UI 옵션으로 노출하지 않는다.
+캐릭터 옵션은 MVP 이후에도 2개 이하로 유지해 설정이 장난감처럼 느껴지지 않게 한다.
+
+### 1차 캐릭터: Codex Pup
 
 목표: 16-22pt 메뉴바 크기에서도 강아지로 읽히는 단순하고 선명한 실루엣을 만든다.
 
@@ -55,7 +61,28 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 2. 8프레임 달리기 루프: 다리 stride, 꼬리 흔들림, 작은 bounce
 3. 사용량 단계별 accent: calm template, active accent, fast orange, sprint/limit red
 4. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
-5. 사용자 커스텀 runner import는 MVP 이후 확장 기능으로 유지
+5. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
+
+### 2차 후보: Codex Bot
+
+목표: Codex Pup과 명확히 다른 "작은 로봇 러너" 실루엣을 검증한다.
+초안에서 말한 ClaudeBot 방향은 제품명으로 쓰지 않고, 앱 맥락에 맞춰 Codex Bot 또는 Bot으로 정리한다.
+
+1. 기본 실루엣: 네모난 머리, 작은 안테나, 짧은 몸통, 두 다리
+2. 8프레임 루프: 다리 stride, 안테나 bounce, 눈 깜빡임
+3. 사용량 단계별 상태:
+   - Calm: 단색 template 또는 낮은 대비
+   - Active: 눈/안테나 accent
+   - Fast: 주황 eye 또는 antenna blink
+   - Sprint/Limit: 빨간 eye와 짧은 warning blink
+4. 메뉴바 16pt/18pt/22pt 크기에서 Pup과 구분되는지 스크린샷으로 비교
+5. 구분이 충분할 때만 popover에 `Runner character` 선택을 추가
+6. 구분이 약하면 Bot은 내부 실험 asset으로 보류하고 기본 Pup만 유지
+
+### 후속 후보
+
+- Terminal Runner: `>_` 터미널 형태를 작게 의인화한 개발자 도구형 러너
+- 사용자 커스텀 runner PNG import: MVP 이후 확장 기능으로 유지
 
 ## Milestone 0: 기술 검증
 
@@ -170,7 +197,7 @@ Updated 22:44
 
 작업:
 
-- 러너 theme 2-3개 제공
+- 메뉴바 크기에서도 확실히 구분되는 러너 variant 검토
 - 단계별 색상 accent 추가
 - "5h 기준", "weekly 기준", "max 기준" 표시 모드 추가
 - high usage에서 부드러운 alert affordance 추가

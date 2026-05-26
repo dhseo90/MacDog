@@ -40,7 +40,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 280, height: 350)
+        popover.contentSize = NSSize(width: 280, height: 310)
         popover.contentViewController = makePopoverController()
     }
 
@@ -67,7 +67,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let image = runnerRenderer.image(
             frame: frameIndex,
             phase: state.phase,
-            theme: preferences.theme,
             reducedMotion: state.reducedMotion
         )
         statusItem.button?.image = image
