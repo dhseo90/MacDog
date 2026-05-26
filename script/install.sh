@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+MODE="${1:-install}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="CodexUsageMonitor"
 APP_SOURCE="$ROOT_DIR/dist/$APP_NAME.app"
@@ -17,6 +18,30 @@ UID_VALUE="$(id -u)"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
+
+case "$MODE" in
+  install) ;;
+  --dry-run|dry-run)
+    echo "Codex Usage Monitor install dry run"
+    echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+    echo "App source: $APP_SOURCE"
+    echo "App destination: $APP_DEST"
+    echo "CLI destination: $CLI_DEST"
+    echo "Log directory: $LOG_DIR"
+    echo "LaunchAgent cache plist: $CACHE_PLIST"
+    echo "LaunchAgent monitor plist: $MONITOR_PLIST"
+    echo "Cache agent interval: 300 seconds"
+    exit 0
+    ;;
+  -h|--help|help)
+    echo "usage: $0 [--dry-run]"
+    exit 0
+    ;;
+  *)
+    echo "usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
 
 "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
 build_bin="$("$XCRUN" swift build -c release --show-bin-path)"

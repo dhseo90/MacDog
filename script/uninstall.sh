@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+MODE="${1:-uninstall}"
 APP_NAME="CodexUsageMonitor"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 CLI_DEST="$HOME/bin/codex-usage"
@@ -10,6 +11,29 @@ MONITOR_LABEL="com.dhseo.mycodex.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 UID_VALUE="$(id -u)"
+
+case "$MODE" in
+  uninstall) ;;
+  --dry-run|dry-run)
+    echo "Codex Usage Monitor uninstall dry run"
+    echo "Would bootout: gui/$UID_VALUE $CACHE_PLIST"
+    echo "Would bootout: gui/$UID_VALUE $MONITOR_PLIST"
+    echo "Would stop process: $APP_NAME"
+    echo "Would remove: $CACHE_PLIST"
+    echo "Would remove: $MONITOR_PLIST"
+    echo "Would remove: $CLI_DEST"
+    echo "Would remove: $APP_DEST"
+    exit 0
+    ;;
+  -h|--help|help)
+    echo "usage: $0 [--dry-run]"
+    exit 0
+    ;;
+  *)
+    echo "usage: $0 [--dry-run]" >&2
+    exit 2
+    ;;
+esac
 
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
