@@ -7,11 +7,11 @@ struct RunnerIconRenderer {
     func image(
         frame: Int,
         phase: UsagePressurePhase,
-        theme: RunnerTheme = .pup,
+        character: RunnerCharacter = .pup,
         reducedMotion: Bool = false
     ) -> NSImage {
         let renderedFrame = reducedMotion ? 0 : frame
-        if let sprite = spriteImage(frame: renderedFrame, phase: phase, theme: theme) {
+        if character == .pup, let sprite = spriteImage(frame: renderedFrame, phase: phase) {
             return sprite
         }
 
@@ -22,17 +22,16 @@ struct RunnerIconRenderer {
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: size).fill()
 
-        let color = color(for: phase, theme: theme)
+        let color = color(for: phase)
         color.setStroke()
         color.setFill()
 
         let stride = CGFloat(renderedFrame % Self.frameCount) / CGFloat(Self.frameCount)
-        drawPup(frameStride: stride, phase: phase, color: color)
-
-        if theme == .spark {
-            drawSpark(frame: renderedFrame, phase: phase)
-        } else if theme == .pulse {
-            drawPulse(frame: renderedFrame, phase: phase, color: color)
+        switch character {
+        case .pup:
+            drawPup(frameStride: stride, phase: phase, color: color)
+        case .bot:
+            drawBot(frameStride: stride, phase: phase, color: color)
         }
 
         if phase == .limit {
@@ -47,16 +46,16 @@ struct RunnerIconRenderer {
         }
 
         image.unlockFocus()
-        image.isTemplate = phase == .calm || phase == .active
+        image.isTemplate = character == .pup && (phase == .calm || phase == .active)
         return image
     }
 
-    private func spriteImage(frame: Int, phase: UsagePressurePhase, theme: RunnerTheme) -> NSImage? {
+    private func spriteImage(frame: Int, phase: UsagePressurePhase) -> NSImage? {
         let resourceName = "pup-runner-\(frame % Self.frameCount)"
         if let mainResourceURL = Bundle.main.resourceURL?
             .appendingPathComponent("Runner", isDirectory: true)
             .appendingPathComponent("\(resourceName).png"),
-            let image = spriteImage(from: mainResourceURL, frame: frame, phase: phase, theme: theme) {
+            let image = spriteImage(from: mainResourceURL, phase: phase) {
             return image
         }
 
@@ -65,23 +64,17 @@ struct RunnerIconRenderer {
                 forResource: resourceName,
                 withExtension: "png",
                 subdirectory: "Runner"
-            )
+        )
         else { return nil }
 
-        return spriteImage(from: url, frame: frame, phase: phase, theme: theme)
+        return spriteImage(from: url, phase: phase)
     }
 
-    private func spriteImage(from url: URL, frame: Int, phase: UsagePressurePhase, theme: RunnerTheme) -> NSImage? {
+    private func spriteImage(from url: URL, phase: UsagePressurePhase) -> NSImage? {
         guard let base = NSImage(contentsOf: url) else { return nil }
         let image = NSImage(size: base.size)
         image.lockFocus()
         base.draw(in: NSRect(origin: .zero, size: base.size))
-
-        if theme == .spark {
-            drawSpriteSpark(frame: frame, size: base.size)
-        } else if theme == .pulse {
-            drawSpritePulse(frame: frame, size: base.size)
-        }
 
         if phase == .limit {
             NSColor.systemRed.setStroke()
@@ -100,25 +93,10 @@ struct RunnerIconRenderer {
         return image
     }
 
-    private func drawSpriteSpark(frame: Int, size: NSSize) {
-        let offset = CGFloat(frame % 3) * 1.5
-        NSColor.systemYellow.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 8 + offset, y: size.height - 11, width: 4, height: 4)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 13, y: 8 + offset, width: 3.2, height: 3.2)).fill()
-    }
-
-    private func drawSpritePulse(frame: Int, size: NSSize) {
-        NSColor.systemTeal.withAlphaComponent(0.35).setStroke()
-        let inset = CGFloat(frame % 4) * 1.3 + 2
-        let ring = NSBezierPath(ovalIn: NSRect(x: inset, y: inset, width: size.width - inset * 2, height: size.height - inset * 2))
-        ring.lineWidth = 2
-        ring.stroke()
-    }
-
-    private func color(for phase: UsagePressurePhase, theme: RunnerTheme) -> NSColor {
+    private func color(for phase: UsagePressurePhase) -> NSColor {
         switch phase {
         case .calm:
-            theme == .pulse ? .systemTeal : .labelColor
+            .labelColor
         case .active:
             .controlAccentColor
         case .fast:
@@ -275,20 +253,86 @@ struct RunnerIconRenderer {
         )
     }
 
-    private func drawSpark(frame: Int, phase: UsagePressurePhase) {
-        guard phase != .calm else { return }
-        let offset = CGFloat(frame % 3)
-        NSColor.systemYellow.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 2 + offset, y: 13, width: 2, height: 2)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 4, y: 4 + offset, width: 1.8, height: 1.8)).fill()
+    private func drawBot(frameStride: CGFloat, phase: UsagePressurePhase, color: NSColor) {
+        let run = sin(frameStride * .pi * 2)
+        let paw = cos(frameStride * .pi * 2)
+        let bounce = phase == .calm ? abs(run) * 0.12 : abs(run) * 0.5
+
+        drawSpeedMarks(frameStride: frameStride, color: color)
+
+        let bodyY = 5.2 + bounce
+        let headY = 9.0 + bounce
+
+        color.setStroke()
+        color.setFill()
+
+        let antenna = NSBezierPath()
+        antenna.lineWidth = 1.25
+        antenna.lineCapStyle = .round
+        antenna.move(to: NSPoint(x: 18.4, y: headY + 6.3))
+        antenna.line(to: NSPoint(x: 19.3 + run * 0.35, y: headY + 8.1))
+        antenna.stroke()
+
+        NSBezierPath(ovalIn: NSRect(x: 18.6 + run * 0.35, y: headY + 7.7, width: 1.5, height: 1.5)).fill()
+
+        let head = NSBezierPath(roundedRect: NSRect(x: 13.2, y: headY, width: 11.1, height: 6.4), xRadius: 1.6, yRadius: 1.6)
+        head.fill()
+
+        let body = NSBezierPath(roundedRect: NSRect(x: 11.6, y: bodyY, width: 13.0, height: 5.6), xRadius: 1.6, yRadius: 1.6)
+        body.fill()
+
+        let armPath = NSBezierPath()
+        armPath.lineWidth = 1.35
+        armPath.lineCapStyle = .round
+        armPath.move(to: NSPoint(x: 12.0, y: bodyY + 3.6))
+        armPath.line(to: NSPoint(x: 8.8 - paw * 0.6, y: bodyY + 2.4))
+        armPath.move(to: NSPoint(x: 24.0, y: bodyY + 3.6))
+        armPath.line(to: NSPoint(x: 26.8 + paw * 0.6, y: bodyY + 2.4))
+        armPath.stroke()
+
+        let legs = NSBezierPath()
+        legs.lineWidth = 1.45
+        legs.lineCapStyle = .round
+        legs.move(to: NSPoint(x: 15.2, y: bodyY + 0.4))
+        legs.line(to: NSPoint(x: 13.2 - paw * 1.1, y: 2.7))
+        legs.move(to: NSPoint(x: 21.0, y: bodyY + 0.4))
+        legs.line(to: NSPoint(x: 23.0 + paw * 1.1, y: 2.7))
+        legs.stroke()
+
+        botAccentColor(for: phase).setFill()
+        NSBezierPath(ovalIn: NSRect(x: 16.0, y: headY + 3.4, width: 1.7, height: 1.7)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 20.1, y: headY + 3.4, width: 1.7, height: 1.7)).fill()
+
+        NSColor.black.withAlphaComponent(0.45).setFill()
+        NSBezierPath(roundedRect: NSRect(x: 15.4, y: bodyY + 2.2, width: 5.7, height: 1.1), xRadius: 0.5, yRadius: 0.5).fill()
     }
 
-    private func drawPulse(frame: Int, phase: UsagePressurePhase, color: NSColor) {
-        guard phase != .calm else { return }
-        color.withAlphaComponent(0.28).setStroke()
-        let inset = CGFloat(frame % 4) * 0.8
-        let ring = NSBezierPath(ovalIn: NSRect(x: 2 + inset, y: 1 + inset, width: 18 - inset * 2, height: 16 - inset * 2))
-        ring.lineWidth = 1
-        ring.stroke()
+    private func botAccentColor(for phase: UsagePressurePhase) -> NSColor {
+        switch phase {
+        case .calm:
+            .black.withAlphaComponent(0.65)
+        case .active:
+            .controlAccentColor
+        case .fast:
+            .systemOrange
+        case .sprint, .limit:
+            .systemRed
+        }
+    }
+}
+
+enum RunnerCharacter: String, CaseIterable, Identifiable {
+    case pup
+    case bot
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .pup:
+            "Codex Pup"
+        case .bot:
+            "Codex Bot"
+        }
     }
 }

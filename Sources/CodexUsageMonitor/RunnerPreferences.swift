@@ -21,25 +21,6 @@ struct RunnerPreferences: Equatable {
     }
 }
 
-enum RunnerTheme: String, CaseIterable, Identifiable {
-    case pup
-    case spark
-    case pulse
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .pup:
-            "Pup"
-        case .spark:
-            "Spark Pup"
-        case .pulse:
-            "Pulse Pup"
-        }
-    }
-}
-
 enum UsageDisplayBasis: String, CaseIterable, Identifiable {
     case max
     case fiveHour
