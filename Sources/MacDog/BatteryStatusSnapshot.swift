@@ -9,7 +9,9 @@ struct BatteryStatusSnapshot: Equatable {
         isCharged: nil,
         isConnectedToPower: nil,
         timeToFullChargeMinutes: nil,
-        timeToEmptyMinutes: nil
+        timeToEmptyMinutes: nil,
+        cycleCount: nil,
+        temperatureCelsius: nil
     )
 
     let isPresent: Bool
@@ -19,6 +21,8 @@ struct BatteryStatusSnapshot: Equatable {
     let isConnectedToPower: Bool?
     let timeToFullChargeMinutes: Int?
     let timeToEmptyMinutes: Int?
+    let cycleCount: Int?
+    let temperatureCelsius: Double?
 
     static func capture() -> BatteryStatusSnapshot {
         guard
@@ -69,6 +73,18 @@ struct BatteryStatusSnapshot: Equatable {
         return "배터리 사용"
     }
 
+    var detailSummary: String {
+        guard isPresent else { return "확인 불가" }
+        var details: [String] = []
+        if let cycleCount {
+            details.append("사이클 \(cycleCount)")
+        }
+        if let temperatureCelsius {
+            details.append("온도 \(String(format: "%.1f", temperatureCelsius))°C")
+        }
+        return details.isEmpty ? "세부 정보 없음" : details.joined(separator: " · ")
+    }
+
     private init(description: [String: Any]) {
         let current = Self.intValue(description[kIOPSCurrentCapacityKey])
         let max = Self.intValue(description[kIOPSMaxCapacityKey])
@@ -82,6 +98,8 @@ struct BatteryStatusSnapshot: Equatable {
         self.isConnectedToPower = powerSourceState == kIOPSACPowerValue
         self.timeToFullChargeMinutes = Self.positiveMinutes(description[kIOPSTimeToFullChargeKey])
         self.timeToEmptyMinutes = Self.positiveMinutes(description[kIOPSTimeToEmptyKey])
+        self.cycleCount = Self.intValue(description["CycleCount"])
+        self.temperatureCelsius = Self.temperatureCelsius(description["Temperature"])
     }
 
     private init(
@@ -91,7 +109,9 @@ struct BatteryStatusSnapshot: Equatable {
         isCharged: Bool?,
         isConnectedToPower: Bool?,
         timeToFullChargeMinutes: Int?,
-        timeToEmptyMinutes: Int?
+        timeToEmptyMinutes: Int?,
+        cycleCount: Int?,
+        temperatureCelsius: Double?
     ) {
         self.isPresent = isPresent
         self.percent = percent
@@ -100,6 +120,8 @@ struct BatteryStatusSnapshot: Equatable {
         self.isConnectedToPower = isConnectedToPower
         self.timeToFullChargeMinutes = timeToFullChargeMinutes
         self.timeToEmptyMinutes = timeToEmptyMinutes
+        self.cycleCount = cycleCount
+        self.temperatureCelsius = temperatureCelsius
     }
 
     private var stateLabel: String {
@@ -153,6 +175,29 @@ struct BatteryStatusSnapshot: Equatable {
         default:
             return nil
         }
+    }
+
+    private static func doubleValue(_ value: Any?) -> Double? {
+        switch value {
+        case let number as NSNumber:
+            return number.doubleValue
+        case let double as Double:
+            return double
+        case let int as Int:
+            return Double(int)
+        default:
+            return nil
+        }
+    }
+
+    private static func temperatureCelsius(_ value: Any?) -> Double? {
+        guard let rawValue = doubleValue(value), rawValue > 0 else { return nil }
+        let candidates = [
+            rawValue / 100,
+            rawValue / 10 - 273.15,
+            rawValue - 273.15
+        ]
+        return candidates.first { (-20...120).contains($0) }
     }
 
     private static func minutes(_ value: Int) -> String {

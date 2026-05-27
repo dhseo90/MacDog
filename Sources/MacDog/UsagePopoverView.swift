@@ -194,10 +194,15 @@ private struct SystemMetricsPanel: View {
 
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
                 metricRow("CPU", snapshot.cpuSummary)
+                metricRow("CPU 상세", snapshot.cpuDetailSummary)
                 metricRow("메모리", snapshot.memorySummary)
+                metricRow("메모리 상세", snapshot.memoryDetailSummary)
                 metricRow("디스크", snapshot.diskSummary)
                 metricRow("네트워크", snapshot.networkSummary)
+                metricRow("네트워크 속도", snapshot.networkRateSummary)
+                metricRow("로컬 IP", snapshot.localNetworkSummary)
                 metricRow("배터리", snapshot.battery.summary)
+                metricRow("배터리 상세", snapshot.battery.detailSummary)
                 metricRow("전원", snapshot.battery.powerSummary)
                 metricRow("충전 한도", snapshot.chargeLimitSupport.summary)
                 metricRow("잠자기 방지", sleepPreventionStatus.summary)

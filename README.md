@@ -12,7 +12,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - WidgetKit host/extension Xcode target과 embedded `.appex` 패키징 검증
 - macOS 메뉴바 러너: 사용량 단계에 따라 애니메이션 속도 변경
 - 메뉴바 popover: Codex 사용량과 Mac 상태 모듈 전환, 5시간/주간 사용량, plan, credits 표시
-- Mac 상태 1차 모듈: CPU load, 메모리, 디스크, 네트워크 누적 I/O, 배터리/전원 상태 표시
+- Mac 상태 모듈: CPU load/breakdown, 메모리 상세, 디스크, 네트워크 누적/속도, 로컬 IP, 배터리/전원 세부 상태 표시
 - Apple native Charge Limit 지원 감지: macOS 26.4+ / Apple silicon 기준 표시
 - 충전 한도 설정 연결: 공개 제어 API 대신 macOS 배터리 설정 화면으로 이동
 - 일반 잠자기 방지 모듈: IOKit power assertion으로 항상 금지, 충전 중 금지, 시간 기준 금지, Codex 앱 실행 중 금지 지원
