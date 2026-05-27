@@ -45,7 +45,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 300, height: 430)
+        popover.contentSize = NSSize(width: 300, height: 460)
         popover.contentViewController = makePopoverController()
     }
 
@@ -227,11 +227,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func makePopoverController() -> NSViewController {
-        NSHostingController(rootView: UsagePopoverView(state: state) {
-            Task { @MainActor in
-                self.refreshUsage(allowLiveRefresh: false)
+        NSHostingController(rootView: UsagePopoverView(
+            state: state,
+            onPreferencesChanged: {
+                Task { @MainActor in
+                    self.refreshUsage(allowLiveRefresh: false)
+                }
+            },
+            onAction: { action in
+                Task { @MainActor in
+                    self.perform(action)
+                }
             }
-        })
+        ))
     }
 
     private func perform(_ action: PetAction) {
@@ -261,6 +269,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setSleepPreventionCodexAppTrigger(let isEnabled):
             RunnerPreferences.setSleepPreventionCodexAppTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)
+        case .openBatterySettings:
+            _ = SystemSettingsDestination.openBatterySettings()
         case .showDesktopPet:
             RunnerPreferences.setDesktopPetEnabled(true)
             refreshUsage(allowLiveRefresh: false)
@@ -318,6 +328,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         ))
         menu.addItem(sleepSessionSubmenuItem())
         menu.addItem(sleepTriggerSubmenuItem())
+        menu.addItem(menuItem("배터리 설정 열기", action: #selector(menuOpenBatterySettings)))
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
         menu.addItem(.separator())
@@ -451,6 +462,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     @objc
     private func menuToggleCodexAppTrigger() {
         perform(.setSleepPreventionCodexAppTrigger(!preferences.sleepPreventionCodexAppTriggerEnabled))
+    }
+
+    @objc
+    private func menuOpenBatterySettings() {
+        perform(.openBatterySettings)
     }
 
     @objc

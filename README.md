@@ -14,6 +14,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - 메뉴바 popover: Codex 사용량과 Mac 상태 모듈 전환, 5시간/주간 사용량, plan, credits 표시
 - Mac 상태 1차 모듈: CPU load, 메모리, 디스크, 네트워크 누적 I/O, 배터리/전원 상태 표시
 - Apple native Charge Limit 지원 감지: macOS 26.4+ / Apple silicon 기준 표시
+- 충전 한도 설정 연결: 공개 제어 API 대신 macOS 배터리 설정 화면으로 이동
 - 일반 잠자기 방지 모듈: IOKit power assertion으로 시스템 idle sleep 방지, 계속/30분/1시간/2시간 세션 preset
 - 조건부 잠자기 방지 MVP: 전원 연결 중, Codex 앱 실행 중 자동 방지 trigger
 - 메뉴바 우클릭 메뉴: 새로고침, 러너 속도 기준, 움직임 줄이기, 애니메이션 일시 정지, 데스크톱 펫 보기, 종료
@@ -137,7 +138,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 
 ## 현재 상태
 
-- CLI MVP, shared cache, macOS 메뉴바 앱, Codex Pup 러너, 데스크톱 플로팅 펫 MVP, Mac 상태/배터리 읽기 전용 1차 모듈, 잠자기 방지 세션/trigger MVP, Apple native Charge Limit 지원 감지 구현 완료
+- CLI MVP, shared cache, macOS 메뉴바 앱, Codex Pup 러너, 데스크톱 플로팅 펫 MVP, Mac 상태/배터리 읽기 전용 1차 모듈, 잠자기 방지 세션/trigger MVP, Apple native Charge Limit 지원 감지와 배터리 설정 연결 구현 완료
 - `MacDog` 메뉴바 앱은 SwiftPM executable로 빌드한다.
 - WidgetKit은 `MacDog.xcodeproj`의 `MacDogWidgetHost`/`MacDogWidgetExtension` target으로 embedded `.appex` 빌드까지 검증한다.
 - 설치 스크립트는 `MacDog.app` 안에 WidgetKit `.appex` 번들을 포함해 배포한다.

@@ -8,6 +8,7 @@ enum PetAction: Equatable {
     case setSleepPreventionSessionPreset(SleepPreventionSessionPreset)
     case setSleepPreventionPowerAdapterTrigger(Bool)
     case setSleepPreventionCodexAppTrigger(Bool)
+    case openBatterySettings
     case showDesktopPet
     case returnToMenuBar
     case quit

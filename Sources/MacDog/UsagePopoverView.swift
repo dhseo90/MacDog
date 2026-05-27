@@ -4,12 +4,18 @@ import SwiftUI
 struct UsagePopoverView: View {
     let state: UsageMonitorState
     let onPreferencesChanged: () -> Void
+    let onAction: (PetAction) -> Void
 
     @AppStorage("macDogPopoverModule") private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
 
-    init(state: UsageMonitorState, onPreferencesChanged: @escaping () -> Void = {}) {
+    init(
+        state: UsageMonitorState,
+        onPreferencesChanged: @escaping () -> Void = {},
+        onAction: @escaping (PetAction) -> Void = { _ in }
+    ) {
         self.state = state
         self.onPreferencesChanged = onPreferencesChanged
+        self.onAction = onAction
     }
 
     var body: some View {
@@ -29,7 +35,8 @@ struct UsagePopoverView: View {
                     snapshot: state.systemMetrics,
                     sleepPreventionStatus: state.sleepPreventionStatus,
                     sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
-                    onPreferencesChanged: onPreferencesChanged
+                    onPreferencesChanged: onPreferencesChanged,
+                    onAction: onAction
                 )
             }
 
@@ -167,6 +174,7 @@ private struct SystemMetricsPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let onPreferencesChanged: () -> Void
+    let onAction: (PetAction) -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionEnabledKey) private var sleepPreventionEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionSessionPresetKey) private var sleepPreventionSessionPreset = RunnerPreferences.defaultSleepPreventionSessionPreset.rawValue
@@ -213,6 +221,14 @@ private struct SystemMetricsPanel: View {
 
             Toggle("Codex 앱 실행 중 자동 방지", isOn: $codexAppTriggerEnabled)
                 .font(.caption)
+
+            Button {
+                onAction(.openBatterySettings)
+            } label: {
+                Label(batterySettingsLabel, systemImage: "battery.100percent")
+            }
+            .font(.caption)
+            .buttonStyle(.borderless)
         }
         .onChange(of: sleepPreventionEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionEnabled(enabled)
@@ -241,6 +257,10 @@ private struct SystemMetricsPanel: View {
                 .lineLimit(1)
         }
         .font(.caption)
+    }
+
+    private var batterySettingsLabel: String {
+        snapshot.chargeLimitSupport.isNativeChargeLimitAvailable ? "충전 한도 설정 열기" : "배터리 설정 열기"
     }
 }
 

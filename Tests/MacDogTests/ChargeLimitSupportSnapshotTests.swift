@@ -31,4 +31,11 @@ final class ChargeLimitSupportSnapshotTests: XCTestCase {
         XCTAssertFalse(snapshot.isNativeChargeLimitAvailable)
         XCTAssertEqual(snapshot.summary, "미지원 · macOS 26.4+ 필요")
     }
+
+    func testBatterySettingsDestinationStartsWithSystemSettingsURL() throws {
+        let firstURL = try XCTUnwrap(SystemSettingsDestination.batterySettingsURLCandidates.first)
+
+        XCTAssertEqual(firstURL.scheme, "x-apple.systempreferences")
+        XCTAssertEqual(firstURL.absoluteString, "x-apple.systempreferences:com.apple.Battery-Settings.extension")
+    }
 }
