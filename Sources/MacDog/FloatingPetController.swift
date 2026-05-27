@@ -339,7 +339,35 @@ final class FloatingPetController: NSObject {
 
     private func showMenu(at point: NSPoint) {
         let menu = menuProvider(.desktop)
-        menu.popUp(positioning: nil, at: point, in: petView)
+        guard let panel else {
+            menu.popUp(positioning: nil, at: point, in: petView)
+            return
+        }
+
+        let clickPoint = panel.convertToScreen(NSRect(origin: point, size: .zero)).origin
+        let placement = FloatingPetMenuPlacement.resolve(
+            petFrame: panel.frame,
+            visibleFrame: screenVisibleFrame(for: panel.frame),
+            clickPoint: clickPoint,
+            menuSize: estimatedMenuSize(for: menu)
+        )
+        menu.popUp(positioning: nil, at: placement.origin, in: nil)
+    }
+
+    private func estimatedMenuSize(for menu: NSMenu) -> NSSize {
+        let font = NSFont.menuFont(ofSize: 0)
+        let widestTitle = menu.items
+            .filter { !$0.isSeparatorItem }
+            .map { ($0.title as NSString).size(withAttributes: [.font: font]).width }
+            .max() ?? 0
+        let itemHeights = menu.items.reduce(CGFloat.zero) { total, item in
+            total + (item.isSeparatorItem ? 8 : 22)
+        }
+
+        return NSSize(
+            width: max(180, ceil(widestTitle) + 64),
+            height: max(44, itemHeights)
+        )
     }
 
     private func currentDirection() -> DesktopPetMotionDirection {
@@ -370,6 +398,39 @@ final class FloatingPetController: NSObject {
 
     private static func randomRetargetInterval() -> TimeInterval {
         TimeInterval.random(in: retargetRange)
+    }
+}
+
+struct FloatingPetMenuPlacement: Equatable {
+    enum Side: Equatable {
+        case left
+        case right
+    }
+
+    let origin: NSPoint
+    let side: Side
+
+    static func resolve(
+        petFrame: NSRect,
+        visibleFrame: NSRect,
+        clickPoint: NSPoint,
+        menuSize: NSSize,
+        padding: CGFloat = 8
+    ) -> FloatingPetMenuPlacement {
+        let safeFrame = visibleFrame.insetBy(dx: padding, dy: padding)
+        let side: Side = petFrame.midX <= safeFrame.midX ? .right : .left
+        let rawX: CGFloat = side == .right
+            ? petFrame.maxX + padding
+            : petFrame.minX - menuSize.width - padding
+        let maxX = max(safeFrame.minX, safeFrame.maxX - menuSize.width)
+        let x = min(max(rawX, safeFrame.minX), maxX)
+
+        let menuHeight = max(menuSize.height, 1)
+        let rawY = clickPoint.y + min(menuHeight * 0.5, petFrame.height * 0.5)
+        let minY = min(safeFrame.maxY, safeFrame.minY + menuHeight)
+        let y = min(max(rawY, minY), safeFrame.maxY)
+
+        return FloatingPetMenuPlacement(origin: NSPoint(x: x, y: y), side: side)
     }
 }
 
