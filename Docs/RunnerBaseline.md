@@ -9,7 +9,7 @@ This document fixes the current Codex Pup runner as the app runner baseline.
 - Frame count: 8
 - Frame size: 80x48 px
 - Menu bar status item length: 38 pt
-- Popover size: 280x310 pt
+- Popover size: 320x540 pt
 - Default runner speed basis: weekly usage
 
 ## Usage Phases

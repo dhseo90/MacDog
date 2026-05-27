@@ -32,7 +32,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 ![Codex Pup menu bar runner preview](Assets/Generated/Docs/pup-runner-preview.png)
 
 - 원본 sheet: `Assets/Generated/pup-runner-sheet-source.png` (`2172x724`)
-- 문서용 preview: `Assets/Generated/Docs/pup-runner-preview.png`
+- 문서용 preview: `Assets/Generated/Docs/pup-runner-preview.png` (`728x88`, 중립 배경)
 - 런타임 frame: `Sources/MacDog/Resources/Runner/pup-runner-*.png`
 - 구성: `80x48` PNG frame 8장
 
@@ -42,7 +42,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 
 - 원본 sheet: `Assets/Generated/pup-desktop-sheet-source-v1.png` (`1536x1024`)
 - 정리된 sheet: `Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png` (`1536x1020`)
-- 문서용 preview: `Assets/Generated/Docs/pup-desktop-preview.png`
+- 문서용 preview: `Assets/Generated/Docs/pup-desktop-preview.png` (`448x320`, 중립 배경)
 - 런타임 frame: `Sources/MacDog/Resources/DesktopPet/pup-*.png`
 - 구성: `192x204` PNG frame 40장
 - pose: `run-right`, `run-up`, `run-down`, `idle-front`, `idle-side`, `alert`, `rest`
@@ -181,6 +181,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 ## 문서
 
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 MacDog 확장 계획
+- [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
 - [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 설계와 검증 경계
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘/closed-display mode 조사 결과
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 직접 제어 가능성 조사 결과
