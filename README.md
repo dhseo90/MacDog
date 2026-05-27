@@ -178,6 +178,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - WidgetKit은 `MacDog.xcodeproj`의 `MacDogWidgetHost`/`MacDogWidgetExtension` target으로 embedded `.appex` 빌드까지 검증한다.
 - 설치 스크립트는 `MacDog.app` 안에 WidgetKit `.appex` 번들을 포함해 배포한다.
 - 설치된 앱은 monitor LaunchAgent의 `RunAtLoad`로 로그인/재시작 후 자동 실행되며 기존 설정값을 보존한다.
+- 앱 시작 시 같은 bundle id의 기존 MacDog 프로세스가 있으면 새 인스턴스를 종료해 중복 러너를 방지한다.
 - 메뉴바 popover, Mac/Codex 탭, 우클릭 메뉴, 배터리 설정 열기, 데스크톱 플로팅 펫, 위젯 갤러리와 클릭 동작은 사용자 수동 검수 완료.
 - 다음 제품 확장은 잠자기 방지 고급 trigger 설정과 충전 제어 연구 스파이크를 우선한다.
 

@@ -99,7 +99,6 @@ cat >"$MONITOR_PLIST" <<PLIST
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/open</string>
-    <string>-n</string>
     <string>$APP_DEST</string>
   </array>
   <key>RunAtLoad</key>

@@ -4,6 +4,9 @@ import AppKit
 enum MacDogMain {
     static func main() {
         RunnerPreferences.registerDefaults()
+        if SingleInstanceGuard.shouldTerminateCurrentInstance() {
+            return
+        }
 
         let app = NSApplication.shared
         let delegate = AppDelegate()
