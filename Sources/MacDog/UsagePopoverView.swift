@@ -27,20 +27,25 @@ struct UsagePopoverView: View {
 
             Divider()
 
-            switch selectedModule {
-            case .codex:
-                codexUsageContent
-            case .mac:
-                SystemMetricsPanel(
-                    snapshot: state.systemMetrics,
-                    sleepPreventionStatus: state.sleepPreventionStatus,
-                    sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
-                    onPreferencesChanged: onPreferencesChanged,
-                    onAction: onAction
-                )
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    switch selectedModule {
+                    case .codex:
+                        codexUsageContent
+                        RunnerControls(onChange: onPreferencesChanged)
+                    case .mac:
+                        SystemMetricsPanel(
+                            snapshot: state.systemMetrics,
+                            sleepPreventionStatus: state.sleepPreventionStatus,
+                            sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
+                            onPreferencesChanged: onPreferencesChanged,
+                            onAction: onAction
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            RunnerControls(onChange: onPreferencesChanged)
+            .frame(maxHeight: 452)
         }
         .padding(16)
         .frame(width: 280, alignment: .leading)
@@ -78,6 +83,9 @@ struct UsagePopoverView: View {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                 metadataRow("플랜", limit.planType ?? "알 수 없음")
                 metadataRow("크레딧", limit.credits?.balance ?? "알 수 없음")
+                metadataRow("속도 기준", state.displayBasis.label)
+                metadataRow("상태 기준", UsagePressurePhase.thresholdSummary)
+                metadataRow("갱신", state.lastUpdatedSummary)
                 metadataRow("소스", state.sourceLabel)
             }
         } else if state.isRefreshing {
@@ -123,10 +131,7 @@ struct UsagePopoverView: View {
     }
 
     private var statusText: String {
-        guard let status = state.selectedWindowStatus else {
-            return state.phase.statusLabel
-        }
-        return "\(state.phase.statusLabel) · \(status.summary)"
+        state.phase.statusLabel
     }
 
     private var phaseColor: Color {
@@ -147,7 +152,8 @@ struct UsagePopoverView: View {
             Text(key)
                 .foregroundStyle(.secondary)
             Text(value)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)
     }
@@ -186,76 +192,12 @@ private struct SystemMetricsPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionExternalVolumeTriggerKey) private var externalVolumeTriggerEnabled = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Mac 상태", systemImage: "desktopcomputer")
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                Text("인터페이스 \(snapshot.activeInterfaceCount)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
-                metricRow("CPU", snapshot.cpuSummary)
-                metricRow("CPU 상세", snapshot.cpuDetailSummary)
-                metricRow("메모리", snapshot.memorySummary)
-                metricRow("메모리 상세", snapshot.memoryDetailSummary)
-                metricRow("디스크", snapshot.diskSummary)
-                metricRow("네트워크", snapshot.networkSummary)
-                metricRow("네트워크 속도", snapshot.networkRateSummary)
-                metricRow("로컬 IP", snapshot.localNetworkSummary)
-                metricRow("배터리", snapshot.battery.summary)
-                metricRow("배터리 상세", snapshot.battery.detailSummary)
-                metricRow("전원", snapshot.battery.powerSummary)
-                metricRow("충전 한도", snapshot.chargeLimitSupport.summary)
-                metricRow("잠자기 방지", sleepPreventionStatus.summary)
-                metricRow("방지 모드", currentSleepPreventionMode.label)
-                metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
-            }
-
-            controlLabel("잠자기 방지")
-            Picker("잠자기 방지", selection: sleepPreventionModeBinding) {
-                ForEach(SleepPreventionMode.allCases) { mode in
-                    Text(mode.label).tag(mode.rawValue)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-
-            if currentSleepPreventionMode == .timed {
-                Picker("시간 기준 길이", selection: $sleepPreventionSessionPreset) {
-                    ForEach(SleepPreventionSessionPreset.timedCases) { preset in
-                        Text(preset.label).tag(preset.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-            }
-
-            controlLabel("자동 조건")
-            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                GridRow {
-                    triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
-                    triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
-                }
-                GridRow {
-                    triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
-                    triggerToggle("CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
-                }
-                GridRow {
-                    triggerToggle("네트워크 100KB/s 이상", isOn: $networkActivityTriggerEnabled)
-                    triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
-                }
-            }
-
-            Button {
-                onAction(.openBatterySettings)
-            } label: {
-                Label(batterySettingsLabel, systemImage: "battery.100percent")
-            }
-            .font(.caption)
-            .buttonStyle(.borderless)
+        VStack(alignment: .leading, spacing: 12) {
+            macStatusSection
+            Divider()
+            sleepPreventionSection
+            Divider()
+            chargeLimitSection
         }
         .onChange(of: sleepPreventionEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionEnabled(enabled)
@@ -292,12 +234,106 @@ private struct SystemMetricsPanel: View {
         }
     }
 
+    private var macStatusSection: some View {
+        panelSection(title: "Mac 상태", systemImage: "desktopcomputer") {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
+                metricRow("CPU", snapshot.cpuSummary)
+                metricRow("CPU 상세", snapshot.cpuDetailSummary)
+                metricRow("메모리", snapshot.memorySummary)
+                metricRow("메모리 상세", snapshot.memoryDetailSummary)
+                metricRow("디스크", snapshot.diskSummary)
+                metricRow("네트워크", snapshot.networkSummary)
+                metricRow("네트워크 속도", snapshot.networkRateSummary)
+                metricRow("로컬 IP", snapshot.localNetworkSummary)
+                metricRow("인터페이스", "\(snapshot.activeInterfaceCount)")
+            }
+        }
+    }
+
+    private var sleepPreventionSection: some View {
+        panelSection(title: "시스템 잠들기", systemImage: "moon.zzz") {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
+                metricRow("상태", sleepPreventionStatus.summary)
+                metricRow("모드", currentSleepPreventionMode.label)
+                metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
+            }
+
+            controlLabel("방지 모드")
+            Picker("방지 모드", selection: sleepPreventionModeBinding) {
+                ForEach(SleepPreventionMode.allCases) { mode in
+                    Text(mode.label).tag(mode.rawValue)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+
+            if currentSleepPreventionMode == .timed {
+                controlLabel("지속 시간")
+                Picker("지속 시간", selection: $sleepPreventionSessionPreset) {
+                    ForEach(SleepPreventionSessionPreset.timedCases) { preset in
+                        Text(preset.label).tag(preset.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
+
+            controlLabel("자동 조건")
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                GridRow {
+                    triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
+                    triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
+                }
+                GridRow {
+                    triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
+                    triggerToggle("CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
+                }
+                GridRow {
+                    triggerToggle("네트워크 100KB/s", isOn: $networkActivityTriggerEnabled)
+                    triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
+                }
+            }
+        }
+    }
+
+    private var chargeLimitSection: some View {
+        panelSection(title: "충전 한도", systemImage: "battery.100percent") {
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
+                metricRow("배터리", snapshot.battery.summary)
+                metricRow("배터리 상세", snapshot.battery.detailSummary)
+                metricRow("전원", snapshot.battery.powerSummary)
+                metricRow("지원", snapshot.chargeLimitSupport.summary)
+            }
+
+            Button {
+                onAction(.openBatterySettings)
+            } label: {
+                Label(batterySettingsLabel, systemImage: "battery.100percent")
+            }
+            .font(.caption)
+            .buttonStyle(.borderless)
+        }
+    }
+
+    private func panelSection<Content: View>(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+            content()
+        }
+    }
+
     private func metricRow(_ key: String, _ value: String) -> some View {
         GridRow {
             Text(key)
                 .foregroundStyle(.secondary)
             Text(value)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)
     }

@@ -422,7 +422,7 @@ Popover 정보 구조:
 - Popover 오른쪽 모듈 전환에서 `Codex`와 `Mac`을 선택해 탐색한다.
 - Mac 상태 모듈에 CPU load와 system/user/idle breakdown, 메모리 세부값, 디스크 사용률, 네트워크 누적 I/O와 현재 속도, 로컬 IP를 표시한다.
 - 배터리 읽기 전용 상태로 배터리 비율, 충전 여부, 전원 연결 여부, 완충/방전 예상 시간, cycle count, 온도를 표시한다.
-- 일반 잠자기 방지는 IOKit power assertion으로 시스템 idle sleep 방지 토글을 제공한다.
+- 일반 잠자기 방지는 IOKit power assertion으로 시스템/디스플레이 idle sleep 방지 토글을 제공한다.
 - 잠자기 방지 4대 세션 UI는 항상 금지, 충전 중 금지, 시간 기준 금지, Codex 앱 실행 중 금지를 제공한다.
 - 시간 기준 세션은 30분, 1시간, 2시간 preset을 제공하고 만료 시 자동으로 꺼진다.
 - 자동 trigger 1차 확장은 전원 연결, Codex 앱 실행, 충전 80% 미만, CPU 80% 이상, 네트워크 100KB/s 이상, 외장/네트워크 볼륨 연결 조건을 제공한다.

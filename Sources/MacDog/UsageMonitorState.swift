@@ -133,6 +133,13 @@ struct UsageMonitorState: Equatable {
         return "확인 불가"
     }
 
+    var lastUpdatedSummary: String {
+        let timestamp = cacheSnapshot?.cachedAt ?? report?.generatedAt
+        guard let timestamp else { return "알 수 없음" }
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
     var toolTip: String {
         if isRefreshing, codexLimit == nil {
             return "코덱스 사용량 새로고침 중"
@@ -179,6 +186,8 @@ enum UsagePressurePhase: String, Equatable {
     case fast
     case sprint
     case limit
+
+    static let thresholdSummary = "50% 활발 · 80% 빠름 · 95% 질주"
 
     init(usedPercent: Double) {
         switch usedPercent {
