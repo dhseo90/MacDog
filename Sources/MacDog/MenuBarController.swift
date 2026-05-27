@@ -607,6 +607,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 guard let self else { return NSMenu(title: "코덱스 펫") }
                 self.preferences = RunnerPreferences()
                 return self.makePetMenu(surface: surface)
+            },
+            usagePresenter: { [weak self] sourceView in
+                Task { @MainActor in
+                    self?.showUsagePopover(relativeTo: sourceView, placement: .desktopPet)
+                }
             }
         )
         floatingPetController = controller
@@ -622,14 +627,21 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        showUsagePopover(relativeTo: button)
+        showUsagePopover(relativeTo: button, placement: .menuBar)
     }
 
-    private func showUsagePopover(relativeTo button: NSView) {
+    private func showUsagePopover(relativeTo sourceView: NSView, placement: UsagePopoverPlacement) {
+        NSApp.activate(ignoringOtherApps: true)
         refreshUsage(allowLiveRefresh: false)
-        installOutsideClickMonitors()
-        popover.show(relativeTo: popoverAnchorRect(in: button), of: button, preferredEdge: .maxY)
-        positionPopoverWindow(under: button)
+        if !popover.isShown {
+            installOutsideClickMonitors()
+            popover.show(
+                relativeTo: popoverAnchorRect(in: sourceView, placement: placement),
+                of: sourceView,
+                preferredEdge: placement.preferredEdge
+            )
+        }
+        positionPopoverWindow(relativeTo: sourceView, placement: placement)
         requestLiveRefresh()
     }
 
@@ -640,13 +652,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func popoverAnchorRect(in button: NSView) -> NSRect {
-        let width = min(button.bounds.width, 24)
+    private func popoverAnchorRect(in sourceView: NSView, placement: UsagePopoverPlacement) -> NSRect {
+        guard placement == .menuBar else {
+            return sourceView.bounds
+        }
+
+        let width = min(sourceView.bounds.width, 24)
         return NSRect(
-            x: (button.bounds.width - width) / 2,
-            y: button.bounds.minY,
+            x: (sourceView.bounds.width - width) / 2,
+            y: sourceView.bounds.minY,
             width: width,
-            height: button.bounds.height
+            height: sourceView.bounds.height
         )
     }
 
@@ -706,20 +722,45 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return frame.insetBy(dx: -4, dy: -4).contains(point)
     }
 
-    private func positionPopoverWindow(under button: NSView) {
+    private func positionPopoverWindow(relativeTo sourceView: NSView, placement: UsagePopoverPlacement) {
         guard
             let popoverWindow = popover.contentViewController?.view.window,
-            let buttonWindow = button.window,
-            let screen = buttonWindow.screen ?? NSScreen.main
+            let sourceWindow = sourceView.window,
+            let screen = sourceWindow.screen ?? NSScreen.main
         else { return }
 
-        let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let sourceFrame = sourceWindow.convertToScreen(sourceView.convert(sourceView.bounds, to: nil))
         let screenFrame = screen.visibleFrame
         var frame = popoverWindow.frame
-        frame.origin.x = buttonFrame.midX - frame.width / 2
+        switch placement {
+        case .menuBar:
+            frame.origin.x = sourceFrame.midX - frame.width / 2
+            frame.origin.y = max(screenFrame.minY + 8, sourceFrame.minY - frame.height - 4)
+        case .desktopPet:
+            let padding: CGFloat = 8
+            let showOnRight = sourceFrame.midX <= screenFrame.midX
+            frame.origin.x = showOnRight
+                ? sourceFrame.maxX + padding
+                : sourceFrame.minX - frame.width - padding
+            frame.origin.y = sourceFrame.midY - frame.height / 2
+        }
         frame.origin.x = min(max(frame.origin.x, screenFrame.minX + 8), screenFrame.maxX - frame.width - 8)
-        frame.origin.y = max(screenFrame.minY + 8, buttonFrame.minY - frame.height - 4)
+        frame.origin.y = min(max(frame.origin.y, screenFrame.minY + 8), screenFrame.maxY - frame.height - 8)
         popoverWindow.setFrame(frame, display: true)
+    }
+}
+
+private enum UsagePopoverPlacement {
+    case menuBar
+    case desktopPet
+
+    var preferredEdge: NSRectEdge {
+        switch self {
+        case .menuBar:
+            return .maxY
+        case .desktopPet:
+            return .maxX
+        }
     }
 }
 

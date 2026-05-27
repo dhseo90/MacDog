@@ -6,6 +6,7 @@ final class FloatingPetController: NSObject {
     private let petView: FloatingPetView
     private let actionHandler: (PetAction) -> Void
     private let menuProvider: (PetSurface) -> NSMenu
+    private let usagePresenter: (NSView) -> Void
     private var panel: NSPanel?
     private var updateTimer: Timer?
     private var frameIndex = 0
@@ -29,13 +30,18 @@ final class FloatingPetController: NSObject {
 
     init(
         actionHandler: @escaping (PetAction) -> Void,
-        menuProvider: @escaping (PetSurface) -> NSMenu
+        menuProvider: @escaping (PetSurface) -> NSMenu,
+        usagePresenter: @escaping (NSView) -> Void
     ) {
         self.actionHandler = actionHandler
         self.menuProvider = menuProvider
+        self.usagePresenter = usagePresenter
         self.petView = FloatingPetView(frame: NSRect(origin: .zero, size: FloatingPetController.petSize))
         super.init()
-        petView.onClick = { [weak self] in self?.actionHandler(.showUsageDetails) }
+        petView.onClick = { [weak self] in
+            guard let self else { return }
+            self.usagePresenter(self.petView)
+        }
         petView.onRightClick = { [weak self] point in self?.showMenu(at: point) }
         petView.onDragStarted = { [weak self] in self?.isDragging = true }
         petView.onDragMoved = { [weak self] delta, startFrame in self?.moveDrag(delta: delta, from: startFrame) }
