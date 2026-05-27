@@ -191,6 +191,7 @@ private struct SystemMetricsPanel: View {
                 metricRow("네트워크", snapshot.networkSummary)
                 metricRow("배터리", snapshot.battery.summary)
                 metricRow("전원", snapshot.battery.powerSummary)
+                metricRow("충전 한도", snapshot.chargeLimitSupport.summary)
                 metricRow("잠자기 방지", sleepPreventionStatus.summary)
                 metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
             }

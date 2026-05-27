@@ -10,7 +10,8 @@ struct SystemMetricsSnapshot: Equatable {
         networkReceivedBytes: nil,
         networkSentBytes: nil,
         activeInterfaceCount: 0,
-        battery: .unavailable
+        battery: .unavailable,
+        chargeLimitSupport: .unavailable
     )
 
     let capturedAt: Date
@@ -21,6 +22,7 @@ struct SystemMetricsSnapshot: Equatable {
     let networkSentBytes: UInt64?
     let activeInterfaceCount: Int
     let battery: BatteryStatusSnapshot
+    let chargeLimitSupport: ChargeLimitSupportSnapshot
 
     static func capture() -> SystemMetricsSnapshot {
         let network = networkUsage()
@@ -32,7 +34,8 @@ struct SystemMetricsSnapshot: Equatable {
             networkReceivedBytes: network?.receivedBytes,
             networkSentBytes: network?.sentBytes,
             activeInterfaceCount: network?.activeInterfaceCount ?? 0,
-            battery: BatteryStatusSnapshot.capture()
+            battery: BatteryStatusSnapshot.capture(),
+            chargeLimitSupport: ChargeLimitSupportSnapshot.capture()
         )
     }
 

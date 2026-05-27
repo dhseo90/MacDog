@@ -58,6 +58,10 @@ let package = Package(
             resources: [
                 .process("Fixtures")
             ]
+        ),
+        .testTarget(
+            name: "MacDogTests",
+            dependencies: ["MacDog"]
         )
     ]
 )
