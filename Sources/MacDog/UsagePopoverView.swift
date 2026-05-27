@@ -180,6 +180,10 @@ private struct SystemMetricsPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionSessionPresetKey) private var sleepPreventionSessionPreset = RunnerPreferences.defaultSleepPreventionSessionPreset.rawValue
     @AppStorage(RunnerPreferences.sleepPreventionPowerAdapterTriggerKey) private var powerAdapterTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionCodexAppTriggerKey) private var codexAppTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionChargingBelowThresholdTriggerKey) private var chargingBelowThresholdTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdTriggerKey) private var cpuThresholdTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionNetworkActivityTriggerKey) private var networkActivityTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionExternalVolumeTriggerKey) private var externalVolumeTriggerEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -229,6 +233,22 @@ private struct SystemMetricsPanel: View {
                 .pickerStyle(.segmented)
             }
 
+            controlLabel("자동 조건")
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                GridRow {
+                    triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
+                    triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
+                }
+                GridRow {
+                    triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
+                    triggerToggle("CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
+                }
+                GridRow {
+                    triggerToggle("네트워크 100KB/s 이상", isOn: $networkActivityTriggerEnabled)
+                    triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
+                }
+            }
+
             Button {
                 onAction(.openBatterySettings)
             } label: {
@@ -252,6 +272,22 @@ private struct SystemMetricsPanel: View {
         }
         .onChange(of: codexAppTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionCodexAppTrigger(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: chargingBelowThresholdTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: cpuThresholdTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionCPUThresholdTrigger(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: networkActivityTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionNetworkActivityTrigger(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: externalVolumeTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionExternalVolumeTrigger(enabled)
             onPreferencesChanged()
         }
     }
@@ -292,6 +328,13 @@ private struct SystemMetricsPanel: View {
                 .foregroundStyle(.secondary)
             Spacer()
         }
+    }
+
+    private func triggerToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.checkbox)
+            .font(.caption)
+            .lineLimit(1)
     }
 }
 

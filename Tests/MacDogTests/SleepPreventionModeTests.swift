@@ -30,6 +30,10 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertNil(preferences.sleepPreventionEndsAt)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
 
     func testChargingModeUsesPowerAdapterTriggerOnly() {
@@ -40,6 +44,10 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionEnabled)
         XCTAssertTrue(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
 
     func testTimedModeDefaultsToOneHourWhenNoTimedPresetExists() {
@@ -52,6 +60,10 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertNotNil(preferences.sleepPreventionEndsAt)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
 
     func testApplicationModeUsesCodexAppTriggerOnly() {
@@ -62,12 +74,20 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionEnabled)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertTrue(preferences.sleepPreventionCodexAppTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
 
     func testOffModeClearsManualAndTriggerModes() {
         RunnerPreferences.setSleepPreventionMode(.always, defaults: defaults)
         RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionExternalVolumeTrigger(true, defaults: defaults)
 
         RunnerPreferences.setSleepPreventionMode(.off, defaults: defaults)
 
@@ -77,5 +97,9 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertNil(preferences.sleepPreventionEndsAt)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
 }

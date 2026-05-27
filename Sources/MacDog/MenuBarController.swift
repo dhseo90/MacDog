@@ -45,7 +45,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 300, height: 460)
+        popover.contentSize = NSSize(width: 320, height: 540)
         popover.contentViewController = makePopoverController()
     }
 
@@ -93,8 +93,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
-        syncSleepPrevention()
-        applyState(loadCachedState())
+        let systemMetrics = SystemMetricsSnapshot.capture()
+        syncSleepPrevention(systemMetrics: systemMetrics)
+        applyState(loadCachedState(systemMetrics: systemMetrics))
 
         if previousPhase != state.phase || previousPreferences != preferences {
             restartAnimationTimer()
@@ -114,7 +115,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         renderCurrentFrame()
     }
 
-    private func loadCachedState(errorMessage: String? = nil) -> UsageMonitorState {
+    private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
         if let snapshot = try? cacheStore.read(), let report = snapshot.report {
             return UsageMonitorState(
                 report: report,
@@ -123,6 +124,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
+                systemMetrics: systemMetrics,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
             )
@@ -135,6 +137,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
             animationPaused: preferences.animationPaused,
+            systemMetrics: systemMetrics,
             sleepPreventionStatus: sleepPreventionController.status,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
         )
@@ -149,7 +152,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             let previousPhase = self.state.phase
             let previousPreferences = self.preferences
             self.preferences = RunnerPreferences()
-            self.applyState(self.state(from: result))
+            let systemMetrics = SystemMetricsSnapshot.capture()
+            self.syncSleepPrevention(systemMetrics: systemMetrics)
+            self.applyState(self.state(from: result, systemMetrics: systemMetrics))
             self.liveRefreshTask = nil
 
             if previousPhase != self.state.phase || previousPreferences != self.preferences {
@@ -186,7 +191,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }.value
     }
 
-    private func state(from result: LiveUsageRefreshResult) -> UsageMonitorState {
+    private func state(from result: LiveUsageRefreshResult, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
         switch result {
         case .success(let report):
             UsageMonitorState(
@@ -196,6 +201,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
+                systemMetrics: systemMetrics,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
             )
@@ -208,6 +214,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
+                    systemMetrics: systemMetrics,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
                 )
@@ -219,6 +226,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
+                    systemMetrics: systemMetrics,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
                 )
@@ -271,6 +279,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             refreshUsage(allowLiveRefresh: false)
         case .setSleepPreventionCodexAppTrigger(let isEnabled):
             RunnerPreferences.setSleepPreventionCodexAppTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionChargingBelowThresholdTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionCPUThresholdTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionCPUThresholdTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionNetworkActivityTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionNetworkActivityTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionExternalVolumeTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionExternalVolumeTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)
         case .openBatterySettings:
             _ = SystemSettingsDestination.openBatterySettings()
@@ -326,6 +346,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         ))
         menu.addItem(sleepModeSubmenuItem())
         menu.addItem(sleepDurationSubmenuItem())
+        menu.addItem(sleepTriggerSubmenuItem())
         menu.addItem(menuItem("배터리 설정 열기", action: #selector(menuOpenBatterySettings)))
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
@@ -409,6 +430,26 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             action: #selector(menuToggleCodexAppTrigger),
             state: preferences.sleepPreventionCodexAppTriggerEnabled ? .on : .off
         ))
+        submenu.addItem(menuItem(
+            "충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만",
+            action: #selector(menuToggleChargingBelowThresholdTrigger),
+            state: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상",
+            action: #selector(menuToggleCPUThresholdTrigger),
+            state: preferences.sleepPreventionCPUThresholdTriggerEnabled ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "네트워크 100KB/s 이상",
+            action: #selector(menuToggleNetworkActivityTrigger),
+            state: preferences.sleepPreventionNetworkActivityTriggerEnabled ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "외장/네트워크 볼륨 연결",
+            action: #selector(menuToggleExternalVolumeTrigger),
+            state: preferences.sleepPreventionExternalVolumeTriggerEnabled ? .on : .off
+        ))
         parent.submenu = submenu
         return parent
     }
@@ -490,6 +531,26 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
+    private func menuToggleChargingBelowThresholdTrigger() {
+        perform(.setSleepPreventionChargingBelowThresholdTrigger(!preferences.sleepPreventionChargingBelowThresholdTriggerEnabled))
+    }
+
+    @objc
+    private func menuToggleCPUThresholdTrigger() {
+        perform(.setSleepPreventionCPUThresholdTrigger(!preferences.sleepPreventionCPUThresholdTriggerEnabled))
+    }
+
+    @objc
+    private func menuToggleNetworkActivityTrigger() {
+        perform(.setSleepPreventionNetworkActivityTrigger(!preferences.sleepPreventionNetworkActivityTriggerEnabled))
+    }
+
+    @objc
+    private func menuToggleExternalVolumeTrigger() {
+        perform(.setSleepPreventionExternalVolumeTrigger(!preferences.sleepPreventionExternalVolumeTriggerEnabled))
+    }
+
+    @objc
     private func menuOpenBatterySettings() {
         perform(.openBatterySettings)
     }
@@ -519,8 +580,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func syncSleepPrevention() {
-        sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.capture(preferences: preferences)
+    private func syncSleepPrevention(systemMetrics: SystemMetricsSnapshot) {
+        sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.capture(
+            preferences: preferences,
+            systemMetrics: systemMetrics
+        )
         let isEnabled = preferences.sleepPreventionEnabled || sleepPreventionTriggerStatus.isMatched
         sleepPreventionController.setEnabled(
             isEnabled,

@@ -102,7 +102,7 @@ struct BatteryStatusSnapshot: Equatable {
         self.temperatureCelsius = Self.temperatureCelsius(description["Temperature"])
     }
 
-    private init(
+    init(
         isPresent: Bool,
         percent: Int?,
         isCharging: Bool?,
