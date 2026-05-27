@@ -257,6 +257,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setAnimationPaused(let isPaused):
             RunnerPreferences.setAnimationPaused(isPaused)
             refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionMode(let mode):
+            RunnerPreferences.setSleepPreventionMode(mode)
+            refreshUsage(allowLiveRefresh: false)
         case .setSleepPreventionEnabled(let isEnabled):
             RunnerPreferences.setSleepPreventionEnabled(isEnabled)
             refreshUsage(allowLiveRefresh: false)
@@ -321,13 +324,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             action: #selector(menuToggleAnimationPaused),
             state: preferences.animationPaused ? .on : .off
         ))
-        menu.addItem(menuItem(
-            "시스템 잠자기 방지",
-            action: #selector(menuToggleSleepPrevention),
-            state: preferences.sleepPreventionEnabled ? .on : .off
-        ))
-        menu.addItem(sleepSessionSubmenuItem())
-        menu.addItem(sleepTriggerSubmenuItem())
+        menu.addItem(sleepModeSubmenuItem())
+        menu.addItem(sleepDurationSubmenuItem())
         menu.addItem(menuItem("배터리 설정 열기", action: #selector(menuOpenBatterySettings)))
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
@@ -362,11 +360,29 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return menuItem("데스크톱 펫 보기", action: #selector(menuShowDesktopPet))
     }
 
-    private func sleepSessionSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "잠자기 방지 시간", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "잠자기 방지 시간")
+    private func sleepModeSubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "잠자기 방지 모드", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "잠자기 방지 모드")
+
+        for mode in SleepPreventionMode.allCases {
+            submenu.addItem(menuItem(
+                mode.label,
+                action: #selector(menuSetSleepPreventionMode),
+                state: preferences.sleepPreventionMode == mode ? .on : .off,
+                representedObject: mode.rawValue
+            ))
+        }
+
+        parent.submenu = submenu
+        return parent
+    }
+
+    private func sleepDurationSubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "시간 기준 길이", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "시간 기준 길이")
 
         for preset in SleepPreventionSessionPreset.allCases {
+            guard preset.durationMinutes != nil else { continue }
             submenu.addItem(menuItem(
                 preset.label,
                 action: #selector(menuSetSleepPreventionSessionPreset),
@@ -376,6 +392,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         parent.submenu = submenu
+        parent.isEnabled = preferences.sleepPreventionMode == .timed
         return parent
     }
 
@@ -440,8 +457,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
-    private func menuToggleSleepPrevention() {
-        perform(.setSleepPreventionEnabled(!preferences.sleepPreventionEnabled))
+    private func menuSetSleepPreventionMode(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let mode = SleepPreventionMode(rawValue: rawValue)
+        else { return }
+
+        perform(.setSleepPreventionMode(mode))
     }
 
     @objc
@@ -451,6 +473,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             let preset = SleepPreventionSessionPreset(rawValue: rawValue)
         else { return }
 
+        if preferences.sleepPreventionMode != .timed {
+            RunnerPreferences.setSleepPreventionMode(.timed)
+        }
         perform(.setSleepPreventionSessionPreset(preset))
     }
 

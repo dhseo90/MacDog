@@ -4,6 +4,7 @@ enum PetAction: Equatable {
     case setDisplayBasis(UsageDisplayBasis)
     case setReducedMotion(Bool)
     case setAnimationPaused(Bool)
+    case setSleepPreventionMode(SleepPreventionMode)
     case setSleepPreventionEnabled(Bool)
     case setSleepPreventionSessionPreset(SleepPreventionSessionPreset)
     case setSleepPreventionPowerAdapterTrigger(Bool)

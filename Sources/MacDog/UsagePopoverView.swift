@@ -201,26 +201,28 @@ private struct SystemMetricsPanel: View {
                 metricRow("전원", snapshot.battery.powerSummary)
                 metricRow("충전 한도", snapshot.chargeLimitSupport.summary)
                 metricRow("잠자기 방지", sleepPreventionStatus.summary)
+                metricRow("방지 모드", currentSleepPreventionMode.label)
                 metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
             }
 
-            Toggle("시스템 잠자기 방지", isOn: $sleepPreventionEnabled)
-                .font(.caption)
-
-            Picker("잠자기 방지 시간", selection: $sleepPreventionSessionPreset) {
-                ForEach(SleepPreventionSessionPreset.allCases) { preset in
-                    Text(preset.label).tag(preset.rawValue)
+            controlLabel("잠자기 방지")
+            Picker("잠자기 방지", selection: sleepPreventionModeBinding) {
+                ForEach(SleepPreventionMode.allCases) { mode in
+                    Text(mode.label).tag(mode.rawValue)
                 }
             }
             .labelsHidden()
-            .pickerStyle(.segmented)
-            .disabled(!sleepPreventionEnabled)
+            .pickerStyle(.menu)
 
-            Toggle("전원 연결 중 자동 방지", isOn: $powerAdapterTriggerEnabled)
-                .font(.caption)
-
-            Toggle("Codex 앱 실행 중 자동 방지", isOn: $codexAppTriggerEnabled)
-                .font(.caption)
+            if currentSleepPreventionMode == .timed {
+                Picker("시간 기준 길이", selection: $sleepPreventionSessionPreset) {
+                    ForEach(SleepPreventionSessionPreset.timedCases) { preset in
+                        Text(preset.label).tag(preset.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
 
             Button {
                 onAction(.openBatterySettings)
@@ -261,6 +263,30 @@ private struct SystemMetricsPanel: View {
 
     private var batterySettingsLabel: String {
         snapshot.chargeLimitSupport.isNativeChargeLimitAvailable ? "충전 한도 설정 열기" : "배터리 설정 열기"
+    }
+
+    private var currentSleepPreventionMode: SleepPreventionMode {
+        RunnerPreferences().sleepPreventionMode
+    }
+
+    private var sleepPreventionModeBinding: Binding<String> {
+        Binding(
+            get: { currentSleepPreventionMode.rawValue },
+            set: { rawValue in
+                guard let mode = SleepPreventionMode(rawValue: rawValue) else { return }
+                RunnerPreferences.setSleepPreventionMode(mode)
+                onPreferencesChanged()
+            }
+        )
+    }
+
+    private func controlLabel(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
     }
 }
 

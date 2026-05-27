@@ -15,8 +15,8 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - Mac 상태 1차 모듈: CPU load, 메모리, 디스크, 네트워크 누적 I/O, 배터리/전원 상태 표시
 - Apple native Charge Limit 지원 감지: macOS 26.4+ / Apple silicon 기준 표시
 - 충전 한도 설정 연결: 공개 제어 API 대신 macOS 배터리 설정 화면으로 이동
-- 일반 잠자기 방지 모듈: IOKit power assertion으로 시스템 idle sleep 방지, 계속/30분/1시간/2시간 세션 preset
-- 조건부 잠자기 방지 MVP: 전원 연결 중, Codex 앱 실행 중 자동 방지 trigger
+- 일반 잠자기 방지 모듈: IOKit power assertion으로 항상 금지, 충전 중 금지, 시간 기준 금지, Codex 앱 실행 중 금지 지원
+- 시간 기준 잠자기 방지: 30분/1시간/2시간 세션 preset
 - 메뉴바 우클릭 메뉴: 새로고침, 러너 속도 기준, 움직임 줄이기, 애니메이션 일시 정지, 데스크톱 펫 보기, 종료
 - 데스크톱 플로팅 펫: 40프레임 sprite, 화면 경계 안 로밍 이동, 드래그 위치 저장, 우클릭 메뉴
 - 설치/삭제 스크립트와 로그인 자동 실행 LaunchAgent 지원

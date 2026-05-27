@@ -39,6 +39,22 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionPowerAdapterTriggerEnabled: Bool
     let sleepPreventionCodexAppTriggerEnabled: Bool
 
+    var sleepPreventionMode: SleepPreventionMode {
+        if sleepPreventionEnabled {
+            return sleepPreventionSessionPreset.durationMinutes == nil ? .always : .timed
+        }
+
+        if sleepPreventionPowerAdapterTriggerEnabled {
+            return .charging
+        }
+
+        if sleepPreventionCodexAppTriggerEnabled {
+            return .application
+        }
+
+        return .off
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
@@ -77,6 +93,36 @@ struct RunnerPreferences: Equatable {
             refreshSleepPreventionEndDate(defaults: defaults)
         } else {
             defaults.removeObject(forKey: sleepPreventionEndsAtKey)
+        }
+    }
+
+    static func setSleepPreventionMode(_ mode: SleepPreventionMode, defaults: UserDefaults = .standard) {
+        switch mode {
+        case .off:
+            setSleepPreventionEnabled(false, defaults: defaults)
+            setSleepPreventionPowerAdapterTrigger(false, defaults: defaults)
+            setSleepPreventionCodexAppTrigger(false, defaults: defaults)
+        case .always:
+            setSleepPreventionPowerAdapterTrigger(false, defaults: defaults)
+            setSleepPreventionCodexAppTrigger(false, defaults: defaults)
+            defaults.set(SleepPreventionSessionPreset.indefinite.rawValue, forKey: sleepPreventionSessionPresetKey)
+            setSleepPreventionEnabled(true, defaults: defaults)
+        case .charging:
+            setSleepPreventionEnabled(false, defaults: defaults)
+            setSleepPreventionCodexAppTrigger(false, defaults: defaults)
+            setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
+        case .timed:
+            setSleepPreventionPowerAdapterTrigger(false, defaults: defaults)
+            setSleepPreventionCodexAppTrigger(false, defaults: defaults)
+            let currentPreset = SleepPreventionSessionPreset(rawValue: defaults.string(forKey: sleepPreventionSessionPresetKey) ?? "") ?? defaultSleepPreventionSessionPreset
+            if currentPreset.durationMinutes == nil {
+                defaults.set(SleepPreventionSessionPreset.oneHour.rawValue, forKey: sleepPreventionSessionPresetKey)
+            }
+            setSleepPreventionEnabled(true, defaults: defaults)
+        case .application:
+            setSleepPreventionEnabled(false, defaults: defaults)
+            setSleepPreventionPowerAdapterTrigger(false, defaults: defaults)
+            setSleepPreventionCodexAppTrigger(true, defaults: defaults)
         }
     }
 
@@ -164,6 +210,8 @@ enum SleepPreventionSessionPreset: String, CaseIterable, Identifiable {
     case oneHour
     case twoHours
 
+    static let timedCases: [SleepPreventionSessionPreset] = [.thirtyMinutes, .oneHour, .twoHours]
+
     var id: String { rawValue }
 
     var durationMinutes: Int? {
@@ -189,6 +237,31 @@ enum SleepPreventionSessionPreset: String, CaseIterable, Identifiable {
             "1시간"
         case .twoHours:
             "2시간"
+        }
+    }
+}
+
+enum SleepPreventionMode: String, CaseIterable, Identifiable {
+    case off
+    case always
+    case charging
+    case timed
+    case application
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .off:
+            "끔"
+        case .always:
+            "항상 금지"
+        case .charging:
+            "충전 중 금지"
+        case .timed:
+            "시간 기준 금지"
+        case .application:
+            "Codex 앱 실행 중"
         }
     }
 }
