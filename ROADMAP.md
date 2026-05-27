@@ -261,6 +261,7 @@ Popover 정보 구조:
 - 40프레임 sprite resource를 사용한다.
 - 플로팅 펫은 click, right-click, drag 위치 저장, 화면 경계 안 로밍 이동을 지원한다.
 - 움직임 줄이기와 애니메이션 일시 정지 설정을 반영한다.
+- `script/build_and_run.sh --verify-floating-pet-runtime`으로 플로팅 펫 모드 CPU/RSS 샘플을 확인한다.
 
 방향:
 
@@ -304,9 +305,13 @@ Popover 정보 구조:
 - SwiftPM `MacDogWidget` library에 timeline provider와 small/medium view 지원 코드가 있다.
 - 메뉴바 앱 번들은 `macdog://open` URL scheme을 받아 popover를 열 수 있다.
 - 실제 `.appex` 배포 경계는 `Docs/WidgetPackaging.md`에 정리했다.
-- App Group cache URL helper는 구현했지만, 실제 entitlement와 Xcode target 연결은 아직 하지 않았다.
-- 실제 macOS `.appex` 위젯 번들, Xcode extension 타깃, 위젯 설치/표시 검증은 아직 포함하지 않는다.
-- 설치 스크립트는 menu bar app과 CLI만 설치하며 WidgetKit extension을 배포하지 않는다.
+- `MacDog.xcodeproj`에 `MacDogWidgetHost` macOS app target과 `MacDogWidgetExtension` app-extension target이 있다.
+- `Apps/MacDogWidgetExtension`에 Widget Extension entrypoint, Info.plist, entitlement가 있다.
+- `script/verify_widget_packaging.sh`로 Xcode host/extension build와 embedded `.appex` 산출물을 검증한다.
+- `MacDogWidgetPresentationTests`로 empty/stale/error/updated 위젯 상태 표현을 검증한다.
+- App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
+- 실제 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 UI 검수는 아직 수동 검증 항목으로 남긴다.
+- 설치 스크립트는 `MacDog.app`과 CLI를 설치하며, 앱 번들 안에 WidgetKit extension을 포함한다.
 
 작업:
 
@@ -341,6 +346,7 @@ Popover 정보 구조:
 - LaunchAgent 옵션 제공
 - 로그인 시 자동 실행 옵션 추가
 - uninstall 스크립트 작성
+- 설치/삭제 후 상태 검증 스크립트 작성
 - README 작성
 - 문제 해결 가이드 작성
 
@@ -349,6 +355,7 @@ Popover 정보 구조:
 - 새 터미널에서 `codex-usage status`가 바로 동작한다.
 - 앱을 로그인 항목으로 등록할 수 있다.
 - 삭제 시 cache/LaunchAgent/symlink 정리가 가능하다.
+- 설치/삭제 후 상태를 스크립트로 확인할 수 있다.
 
 ## Milestone 9: MacDog 리브랜딩 후속 정리
 
@@ -359,7 +366,8 @@ Popover 정보 구조:
 - 레포와 프로젝트 이름은 `MacDog`를 기준으로 둔다.
 - 기존 Codex 사용량 기능은 `Codex` 또는 `Codex Usage` 모듈로 유지한다.
 - 앱 이름, bundle display name, README, ROADMAP, 설치 스크립트, 빌드 산출물 이름을 새 이름에 맞춘다.
-- 기존 CLI 명령 `codex-usage`는 호환성을 유지하거나 명확한 migration 경로를 제공한다.
+- 기존 CLI 명령 `codex-usage`는 호환성을 유지한다.
+- 기존 deep link `codexusage://`는 `macdog://` 전환 중 호환 scheme으로만 유지한다.
 - 기존 cache/schema/app-server 해석 계약은 리브랜딩 과정에서 깨지 않도록 별도 점검한다.
 
 작업:
@@ -379,6 +387,13 @@ Popover 정보 구조:
 ## Milestone 10: MacDog 시스템 유틸리티 모듈
 
 목표: Codex 사용량 외에도 MacDog 안에서 매일 쓰는 Mac 상태/편의 기능을 확장한다.
+
+현재 상태:
+
+- Mac 상태 1차 모듈 구현 완료.
+- Popover 오른쪽 모듈 전환에서 `Codex`와 `Mac`을 선택해 탐색한다.
+- Mac 상태 모듈에 CPU load, 메모리 사용률, 디스크 사용률, 네트워크 누적 I/O를 표시한다.
+- 각 모듈 on/off와 세부 설정은 후속 작업으로 남긴다.
 
 후보 모듈:
 

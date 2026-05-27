@@ -5,6 +5,8 @@ struct UsagePopoverView: View {
     let state: UsageMonitorState
     let onPreferencesChanged: () -> Void
 
+    @AppStorage("macDogPopoverModule") private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
+
     init(state: UsageMonitorState, onPreferencesChanged: @escaping () -> Void = {}) {
         self.state = state
         self.onPreferencesChanged = onPreferencesChanged
@@ -12,51 +14,81 @@ struct UsagePopoverView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            header
-
-            if let limit = state.codexLimit {
-                if let message = state.highUsageMessage {
-                    PressureBanner(message: message, phase: state.phase)
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    UsageRow(title: "5시간", window: limit.fiveHour)
-                    UsageRow(title: "주간", window: limit.weekly)
-                }
-
-                Divider()
-
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                    metadataRow("플랜", limit.planType ?? "알 수 없음")
-                    metadataRow("크레딧", limit.credits?.balance ?? "알 수 없음")
-                    metadataRow("소스", state.sourceLabel)
-                }
-            } else if state.isRefreshing {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("사용량 새로고침 중...")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Text(state.errorMessage ?? "사용량을 확인할 수 없음")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 10) {
+                header
+                modulePicker
             }
 
-            if let error = state.errorMessage, !state.isRefreshing {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
+            Divider()
+
+            switch selectedModule {
+            case .codex:
+                codexUsageContent
+            case .mac:
+                SystemMetricsPanel(snapshot: state.systemMetrics)
             }
 
             RunnerControls(onChange: onPreferencesChanged)
         }
         .padding(16)
         .frame(width: 280, alignment: .leading)
+    }
+
+    private var selectedModule: MacDogPopoverModule {
+        MacDogPopoverModule(rawValue: selectedModuleRaw) ?? .codex
+    }
+
+    private var modulePicker: some View {
+        Picker("모듈", selection: $selectedModuleRaw) {
+            ForEach(MacDogPopoverModule.allCases) { module in
+                Text(module.shortLabel).tag(module.rawValue)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .frame(width: 112)
+    }
+
+    @ViewBuilder
+    private var codexUsageContent: some View {
+        if let limit = state.codexLimit {
+            if let message = state.highUsageMessage {
+                PressureBanner(message: message, phase: state.phase)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                UsageRow(title: "5시간", window: limit.fiveHour)
+                UsageRow(title: "주간", window: limit.weekly)
+            }
+
+            Divider()
+
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                metadataRow("플랜", limit.planType ?? "알 수 없음")
+                metadataRow("크레딧", limit.credits?.balance ?? "알 수 없음")
+                metadataRow("소스", state.sourceLabel)
+            }
+        } else if state.isRefreshing {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("사용량 새로고침 중...")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Text(state.errorMessage ?? "사용량을 확인할 수 없음")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+
+        if let error = state.errorMessage, !state.isRefreshing {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .lineLimit(2)
+        }
     }
 
     private var header: some View {
@@ -99,6 +131,56 @@ struct UsagePopoverView: View {
     }
 
     private func metadataRow(_ key: String, _ value: String) -> some View {
+        GridRow {
+            Text(key)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .lineLimit(1)
+        }
+        .font(.caption)
+    }
+}
+
+private enum MacDogPopoverModule: String, CaseIterable, Identifiable {
+    case codex
+    case mac
+
+    var id: String { rawValue }
+
+    var shortLabel: String {
+        switch self {
+        case .codex:
+            "Codex"
+        case .mac:
+            "Mac"
+        }
+    }
+}
+
+private struct SystemMetricsPanel: View {
+    let snapshot: SystemMetricsSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Mac 상태", systemImage: "desktopcomputer")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text("인터페이스 \(snapshot.activeInterfaceCount)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
+                metricRow("CPU", snapshot.cpuSummary)
+                metricRow("메모리", snapshot.memorySummary)
+                metricRow("디스크", snapshot.diskSummary)
+                metricRow("네트워크", snapshot.networkSummary)
+            }
+        }
+    }
+
+    private func metricRow(_ key: String, _ value: String) -> some View {
         GridRow {
             Text(key)
                 .foregroundStyle(.secondary)
