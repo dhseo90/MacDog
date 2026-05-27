@@ -31,7 +31,7 @@ case "$MODE" in
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
     echo "Cache agent interval: 300 seconds"
-    echo "Widget extension: not installed by this script; see Docs/WidgetPackaging.md"
+    echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
     exit 0
     ;;
   -h|--help|help)
@@ -53,7 +53,7 @@ mkdir -p "$HOME/Applications" "$BIN_DIR" "$LAUNCH_AGENT_DIR" "$LOG_DIR"
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 
 rm -rf "$APP_DEST"
-/usr/bin/ditto --noextattr "$APP_SOURCE" "$APP_DEST"
+/usr/bin/ditto --norsrc --noextattr "$APP_SOURCE" "$APP_DEST"
 /usr/bin/xattr -cr "$APP_DEST" >/dev/null 2>&1 || true
 /usr/bin/codesign --force --sign - "$APP_DEST" >/dev/null
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DEST" >/dev/null

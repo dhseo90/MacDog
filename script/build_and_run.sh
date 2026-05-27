@@ -12,15 +12,20 @@ APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
+APP_PLUGINS="$APP_CONTENTS/PlugIns"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+WIDGET_HOST_APP="$ROOT_DIR/.build/xcode-widget/Build/Products/Debug/MacDogWidgetHost.app"
+WIDGET_APPEX="$WIDGET_HOST_APP/Contents/PlugIns/MacDogWidgetExtension.appex"
+APP_WIDGET_APPEX="$APP_PLUGINS/MacDogWidgetExtension.appex"
+WIDGET_EXTENSION_ENTITLEMENTS="$ROOT_DIR/Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
 
 usage() {
   cat <<USAGE
-usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--logs|--telemetry|--debug|--help]
+usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--verify-floating-pet-runtime [SECONDS]|--logs|--telemetry|--debug|--help]
 
 Build and run the MacDog SwiftPM macOS app.
 
@@ -30,6 +35,8 @@ Commands:
   --verify                    Build, launch, and verify the app process exists.
   --verify-deeplink           Verify app launch and macdog://open handling.
   --verify-runtime [SECONDS]  Verify launch and sample runtime CPU. Default: 10.
+  --verify-floating-pet-runtime [SECONDS]
+                              Verify launch with desktop pet enabled and sample CPU/RSS. Default: 10.
   --logs                      Build, launch, and stream app logs.
   --telemetry                 Build, launch, and stream subsystem logs.
   --debug                     Build and launch the executable under lldb.
@@ -69,11 +76,11 @@ build_bundle() {
   build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 
   rm -rf "$APP_BUNDLE"
-  mkdir -p "$APP_MACOS" "$APP_RESOURCES"
+  mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   chmod +x "$APP_BINARY"
   if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
-    /usr/bin/ditto --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
+    /usr/bin/ditto --norsrc --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
   fi
 
   cat >"$INFO_PLIST" <<PLIST
@@ -119,9 +126,35 @@ build_bundle() {
 </plist>
 PLIST
 
+  embed_widget_extension
+
   /usr/bin/xattr -cr "$APP_BUNDLE" >/dev/null 2>&1 || true
   /usr/bin/codesign --force --sign - "$APP_BUNDLE" >/dev/null
-  /usr/bin/xattr -c "$APP_BUNDLE" >/dev/null 2>&1 || true
+  verify_bundle_signature "$APP_BUNDLE"
+}
+
+verify_bundle_signature() {
+  local source_bundle="$1"
+  local verify_parent
+  local verify_bundle
+  verify_parent="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-signature.XXXXXX")"
+  verify_bundle="$verify_parent/$(basename "$source_bundle")"
+
+  /usr/bin/ditto --norsrc --noextattr "$source_bundle" "$verify_bundle"
+  local status=0
+  /usr/bin/codesign --verify --deep --strict --verbose=2 "$verify_bundle" >/dev/null || status=$?
+  rm -rf "$verify_parent"
+  return "$status"
+}
+
+embed_widget_extension() {
+  "$ROOT_DIR/script/verify_widget_packaging.sh" >/dev/null
+  [[ -d "$WIDGET_APPEX" ]] || die "built widget extension not found: $WIDGET_APPEX"
+
+  rm -rf "$APP_WIDGET_APPEX"
+  /usr/bin/ditto --norsrc --noextattr "$WIDGET_APPEX" "$APP_WIDGET_APPEX"
+  /usr/bin/xattr -cr "$APP_WIDGET_APPEX" >/dev/null 2>&1 || true
+  /usr/bin/codesign --force --sign - --entitlements "$WIDGET_EXTENSION_ENTITLEMENTS" "$APP_WIDGET_APPEX" >/dev/null
 }
 
 open_app() {
@@ -145,6 +178,12 @@ verify_deeplink() {
 
 verify_runtime() {
   local duration="${1:-10}"
+  sample_runtime_resources "$duration" "Runtime"
+}
+
+sample_runtime_resources() {
+  local duration="${1:-10}"
+  local label="${2:-Runtime}"
   [[ "$duration" =~ ^[0-9]+$ ]] && (( duration > 0 ))
 
   local pid
@@ -153,24 +192,62 @@ verify_runtime() {
 
   local samples=()
   local cpu
+  local rss
   for ((i = 0; i < duration; i++)); do
-    cpu="$(ps -o %cpu= -p "$pid" | awk '{$1=$1; print}')"
-    [[ -n "$cpu" ]]
-    samples+=("$cpu")
+    read -r cpu rss < <(ps -o %cpu= -o rss= -p "$pid" | awk '{$1=$1; print}')
+    [[ -n "$cpu" && -n "$rss" ]]
+    samples+=("$cpu $rss")
     sleep 1
   done
 
-  printf "%s\n" "${samples[@]}" | awk '
-    NR == 1 || $1 > max { max = $1 }
-    { sum += $1 }
+  printf "%s\n" "${samples[@]}" | awk -v label="$label" '
+    NR == 1 || $1 > max_cpu { max_cpu = $1 }
+    NR == 1 || $2 > max_rss { max_rss = $2 }
+    { sum_cpu += $1; sum_rss += $2 }
     END {
-      avg = sum / NR
-      printf("Runtime CPU samples: count=%d avg=%.2f%% max=%.2f%%\n", NR, avg, max)
-      if (max > 50) {
+      avg_cpu = sum_cpu / NR
+      avg_rss_mib = (sum_rss / NR) / 1024
+      max_rss_mib = max_rss / 1024
+      printf("%s resource samples: count=%d cpu_avg=%.2f%% cpu_max=%.2f%% rss_avg=%.1fMiB rss_max=%.1fMiB\n", label, NR, avg_cpu, max_cpu, avg_rss_mib, max_rss_mib)
+      if (max_cpu > 50 || max_rss > 250000) {
         exit 1
       }
     }
   '
+}
+
+restore_desktop_pet_default() {
+  case "${PREVIOUS_DESKTOP_PET_STATE:-unset}" in
+    true|false)
+      /usr/bin/defaults write "$BUNDLE_ID" desktopPetEnabled -bool "$PREVIOUS_DESKTOP_PET_STATE" >/dev/null 2>&1 || true
+      ;;
+    unset)
+      /usr/bin/defaults delete "$BUNDLE_ID" desktopPetEnabled >/dev/null 2>&1 || true
+      ;;
+  esac
+}
+
+prepare_floating_pet_runtime() {
+  PREVIOUS_DESKTOP_PET_STATE="unset"
+  local previous
+  if previous="$(/usr/bin/defaults read "$BUNDLE_ID" desktopPetEnabled 2>/dev/null)"; then
+    if [[ "$previous" == "1" || "$previous" == "true" || "$previous" == "TRUE" ]]; then
+      PREVIOUS_DESKTOP_PET_STATE="true"
+    else
+      PREVIOUS_DESKTOP_PET_STATE="false"
+    fi
+  fi
+  trap restore_desktop_pet_default EXIT
+  /usr/bin/defaults write "$BUNDLE_ID" desktopPetEnabled -bool true
+}
+
+verify_floating_pet_runtime() {
+  local duration="${1:-10}"
+  prepare_floating_pet_runtime
+  open_app
+  sleep 2
+  pgrep -x "$APP_NAME" >/dev/null
+  sample_runtime_resources "$duration" "Floating pet runtime"
 }
 
 case "$MODE" in
@@ -202,6 +279,11 @@ case "$MODE" in
     build_bundle
     verify_app
     verify_runtime "${2:-10}"
+    ;;
+  --verify-floating-pet-runtime|verify-floating-pet-runtime)
+    pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+    build_bundle
+    verify_floating_pet_runtime "${2:-10}"
     ;;
   --logs|logs)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true

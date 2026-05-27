@@ -6,12 +6,15 @@ This document records the packaging boundary for the MacDog WidgetKit work.
 
 - `Sources/MacDogWidget` contains reusable WidgetKit code for small and medium widgets.
 - The widget reads `CodexUsageCacheStore` snapshots and does not call Codex app-server directly.
-- The SwiftPM package builds `MacDogWidget` as a library only.
-- The install script currently installs the CLI and menu bar app only. It does not build or install a `.appex` widget bundle.
+- The SwiftPM package builds `MacDogWidget` as the reusable widget implementation library.
+- `MacDog.xcodeproj` contains a `MacDogWidgetHost` macOS app target and a `MacDogWidgetExtension` app-extension target.
+- `Apps/MacDogWidgetExtension` contains the extension entrypoint, Info.plist, and entitlements for the WidgetKit extension target.
+- `script/verify_widget_packaging.sh` builds the Xcode host/extension target and verifies `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`.
+- The install script installs the CLI and `MacDog.app`; the app bundle includes `Contents/PlugIns/MacDogWidgetExtension.appex`.
 
 ## Packaging Decision
 
-A real macOS widget must ship as a Widget Extension target embedded in an app bundle. The SwiftPM widget library is kept as shared implementation, but distribution needs an Xcode app target and a Widget Extension target.
+A real macOS widget ships as a Widget Extension target embedded in an app bundle. The SwiftPM widget library is kept as shared implementation, while `MacDog.xcodeproj` owns the WidgetKit host/extension packaging check.
 
 Proposed bundle layout:
 
@@ -28,7 +31,7 @@ MacDog.app/
 Proposed identifiers:
 
 ```text
-App bundle id:       com.dhseo.macdog.MacDog
+Host bundle id:      com.dhseo.macdog.MacDog
 Widget extension id: com.dhseo.macdog.MacDog.WidgetExtension
 Widget kind:         MacDogStatusWidget
 App Group candidate: group.com.dhseo.macdog.MacDog
@@ -57,20 +60,23 @@ Implemented status: the helper exists and falls back to the default Application 
 ## Build Flow
 
 1. Keep `CodexUsageCore` and `MacDogWidget` as SwiftPM modules.
-2. Add an Xcode macOS app target for the menu bar app.
-3. Add a macOS Widget Extension target that imports `MacDogWidget`.
-4. Embed `MacDogWidgetExtension.appex` into `MacDog.app/Contents/PlugIns`.
-5. Add matching App Group entitlements to the app target, widget extension target, and cache writer path when signed with a Developer Team.
-6. Keep ad-hoc personal install scripts on the menu bar app path until the Xcode widget target is present.
+2. Use `Apps/MacDogWidgetExtension/MacDogWidgetExtension.swift` as the Widget Extension entrypoint.
+3. Use `MacDog.xcodeproj` to build the `MacDogWidgetHost` app target and `MacDogWidgetExtension` app-extension target.
+4. The extension target imports `MacDogWidget`.
+5. Verify `MacDogWidgetExtension.appex` in `MacDogWidgetHost.app/Contents/PlugIns`.
+6. Copy the verified `.appex` into the SwiftPM-built `MacDog.app/Contents/PlugIns`.
+7. Add matching App Group entitlements to the app target, widget extension target, and cache writer path when signed with a Developer Team.
 
 ## Verification Plan
 
 - `swift test`
-- `xcodebuild build` for the app target and widget extension target
-- Verify the final app bundle contains `Contents/PlugIns/MacDogWidgetExtension.appex`
+- `script/verify_widget_packaging.sh`
+- `xcodebuild -project MacDog.xcodeproj -scheme MacDogWidgetHost -destination 'platform=macOS' -derivedDataPath .build/xcode-widget CODE_SIGNING_ALLOWED=NO build`
+- Verify the final host bundle contains `Contents/PlugIns/MacDogWidgetExtension.appex`
+- Verify `dist/MacDog.app` contains `Contents/PlugIns/MacDogWidgetExtension.appex`
 - Verify the widget extension reads only the shared cache
 - Verify stale, empty, and error cache states in small and medium widget families
-- Manually add the widget from the macOS widget gallery
+- Manually add the widget from the macOS widget gallery after signed distribution packaging is prepared
 - Click the widget and confirm `macdog://open` opens the menu bar app popover
 
 ## Non-Goals

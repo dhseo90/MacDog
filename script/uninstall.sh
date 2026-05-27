@@ -23,7 +23,7 @@ case "$MODE" in
     echo "Would remove: $MONITOR_PLIST"
     echo "Would remove: $CLI_DEST"
     echo "Would remove: $APP_DEST"
-    echo "Widget extension: not managed by this script"
+    echo "Widget extension: removed with $APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
     exit 0
     ;;
   -h|--help|help)

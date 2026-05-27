@@ -16,7 +16,8 @@ Checks:
   2. Runner PNG assets have the expected count and size.
   3. Swift tests pass.
   4. The menu bar app builds.
-  5. Unless --no-run is passed, the app launches and its process is detected.
+  5. WidgetKit host/extension packaging builds an embedded .appex.
+  6. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -68,5 +69,8 @@ else
   echo "==> Building and launching app"
   ./script/build_and_run.sh --verify
 fi
+
+echo "==> Verifying WidgetKit packaging"
+./script/verify_widget_packaging.sh
 
 echo "Local verification ok"
