@@ -176,6 +176,8 @@ private struct SystemMetricsPanel: View {
                 metricRow("메모리", snapshot.memorySummary)
                 metricRow("디스크", snapshot.diskSummary)
                 metricRow("네트워크", snapshot.networkSummary)
+                metricRow("배터리", snapshot.battery.summary)
+                metricRow("전원", snapshot.battery.powerSummary)
             }
         }
     }

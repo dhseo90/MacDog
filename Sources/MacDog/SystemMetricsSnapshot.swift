@@ -9,7 +9,8 @@ struct SystemMetricsSnapshot: Equatable {
         diskUsedPercent: nil,
         networkReceivedBytes: nil,
         networkSentBytes: nil,
-        activeInterfaceCount: 0
+        activeInterfaceCount: 0,
+        battery: .unavailable
     )
 
     let capturedAt: Date
@@ -19,6 +20,7 @@ struct SystemMetricsSnapshot: Equatable {
     let networkReceivedBytes: UInt64?
     let networkSentBytes: UInt64?
     let activeInterfaceCount: Int
+    let battery: BatteryStatusSnapshot
 
     static func capture() -> SystemMetricsSnapshot {
         let network = networkUsage()
@@ -29,7 +31,8 @@ struct SystemMetricsSnapshot: Equatable {
             diskUsedPercent: diskUsedPercent(),
             networkReceivedBytes: network?.receivedBytes,
             networkSentBytes: network?.sentBytes,
-            activeInterfaceCount: network?.activeInterfaceCount ?? 0
+            activeInterfaceCount: network?.activeInterfaceCount ?? 0,
+            battery: BatteryStatusSnapshot.capture()
         )
     }
 
