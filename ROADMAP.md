@@ -339,6 +339,7 @@ Popover 정보 구조:
 - App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
 - 실제 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 UI 검수는 아직 수동 검증 항목으로 남긴다.
 - 설치 스크립트는 `MacDog.app`과 CLI를 설치하며, 앱 번들 안에 WidgetKit extension을 포함한다.
+- monitor LaunchAgent는 `RunAtLoad`로 앱을 로그인/재시작 후 자동 실행하고, 앱은 `UserDefaults`의 기존 설정을 다시 읽어 잠자기 방지 모드와 자동 조건을 복원한다.
 
 작업:
 

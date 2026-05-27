@@ -31,6 +31,8 @@ case "$MODE" in
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
     echo "Cache agent interval: 300 seconds"
+    echo "Monitor agent RunAtLoad: true"
+    echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
     exit 0
     ;;

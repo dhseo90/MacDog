@@ -102,4 +102,19 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
+
+    func testAutomaticTriggerSettingsPersistAcrossPreferenceReads() {
+        RunnerPreferences.setSleepPreventionMode(.charging, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+
+        let firstRead = RunnerPreferences(defaults: defaults)
+        let secondRead = RunnerPreferences(defaults: defaults)
+
+        XCTAssertEqual(firstRead.sleepPreventionMode, .charging)
+        XCTAssertEqual(secondRead.sleepPreventionMode, .charging)
+        XCTAssertTrue(secondRead.sleepPreventionPowerAdapterTriggerEnabled)
+        XCTAssertTrue(secondRead.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertTrue(secondRead.sleepPreventionNetworkActivityTriggerEnabled)
+    }
 }

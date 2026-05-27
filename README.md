@@ -111,7 +111,8 @@ Plan: pro
 
 ## 설치
 
-설치 스크립트는 release build, 앱 번들 생성, CLI 설치, 로그인 시 자동 실행 LaunchAgent 등록을 수행한다.
+설치 스크립트는 release build, 앱 번들 생성, CLI 설치, 로그인/재시작 후 자동 실행 LaunchAgent 등록을 수행한다.
+잠자기 방지 모드와 자동 조건은 macOS `UserDefaults`에 저장되므로, 예를 들어 `충전 중 금지`를 선택해 둔 상태라면 다음 실행 때 같은 설정을 다시 읽어 적용한다.
 
 ```sh
 ./script/install.sh
@@ -176,6 +177,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - `MacDog` 메뉴바 앱은 SwiftPM executable로 빌드한다.
 - WidgetKit은 `MacDog.xcodeproj`의 `MacDogWidgetHost`/`MacDogWidgetExtension` target으로 embedded `.appex` 빌드까지 검증한다.
 - 설치 스크립트는 `MacDog.app` 안에 WidgetKit `.appex` 번들을 포함해 배포한다.
+- 설치된 앱은 monitor LaunchAgent의 `RunAtLoad`로 로그인/재시작 후 자동 실행되며 기존 설정값을 보존한다.
 - 메뉴바 popover, Mac/Codex 탭, 우클릭 메뉴, 배터리 설정 열기, 데스크톱 플로팅 펫, 위젯 갤러리와 클릭 동작은 사용자 수동 검수 완료.
 - 다음 제품 확장은 잠자기 방지 고급 trigger 설정과 충전 제어 연구 스파이크를 우선한다.
 

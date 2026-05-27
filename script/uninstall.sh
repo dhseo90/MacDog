@@ -23,6 +23,7 @@ case "$MODE" in
     echo "Would remove: $MONITOR_PLIST"
     echo "Would remove: $CLI_DEST"
     echo "Would remove: $APP_DEST"
+    echo "Would preserve: MacDog UserDefaults preferences"
     echo "Widget extension: removed with $APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
     exit 0
     ;;

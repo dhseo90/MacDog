@@ -17,11 +17,12 @@ Checks:
   3. Swift tests pass.
   4. Cache schema and privacy contract checks pass.
   5. Install/uninstall dry-run output is stable.
-  6. The menu bar app builds.
-  7. The generated app bundle contains the WidgetKit extension.
-  8. WidgetKit host/extension packaging builds an embedded .appex.
-  9. The current install state can be reported without changing the system.
-  10. Unless --no-run is passed, the app launches and its process is detected.
+  6. Restart/login autostart contract preserves app preferences.
+  7. The menu bar app builds.
+  8. The generated app bundle contains the WidgetKit extension.
+  9. WidgetKit host/extension packaging builds an embedded .appex.
+  10. The current install state can be reported without changing the system.
+  11. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -75,6 +76,9 @@ echo "==> Verifying cache contract"
 
 echo "==> Verifying install dry-run output"
 ./script/verify_install_dry_run.sh
+
+echo "==> Verifying autostart contract"
+./script/verify_autostart_contract.sh
 
 if [[ "$MODE" == "--no-run" || "$MODE" == "no-run" ]]; then
   echo "==> Building app bundle without launch"
