@@ -54,7 +54,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CodexUsageCoreTests",
-            dependencies: ["CodexUsageCore"],
+            dependencies: ["CodexUsageCore", "MacDogWidget"],
             resources: [
                 .process("Fixtures")
             ]

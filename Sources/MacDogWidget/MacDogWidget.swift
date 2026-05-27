@@ -61,6 +61,24 @@ public struct CodexUsageEntry: TimelineEntry {
     }
 }
 
+
+struct WidgetUsagePresentation: Equatable {
+    let maxUsedPercent: Double
+    let statusText: String
+
+    init(entry: CodexUsageEntry) {
+        self.maxUsedPercent = entry.codexLimit?.maxUsedPercent ?? 0
+
+        if let error = entry.errorMessage {
+            self.statusText = "stale: \(error)"
+        } else if let snapshot = entry.snapshot {
+            self.statusText = snapshot.isStale(now: entry.date) ? "stale cache" : "updated"
+        } else {
+            self.statusText = "no cache"
+        }
+    }
+}
+
 public struct CodexUsageTimelineProvider: TimelineProvider {
     private let cacheURL: URL
 
@@ -195,18 +213,16 @@ public struct MacDogUsageWidgetView: View {
         .containerBackground(.background, for: .widget)
     }
 
+    private var presentation: WidgetUsagePresentation {
+        WidgetUsagePresentation(entry: entry)
+    }
+
     private var maxUsedPercent: Double {
-        entry.codexLimit?.maxUsedPercent ?? 0
+        presentation.maxUsedPercent
     }
 
     private var statusText: String {
-        if let error = entry.errorMessage {
-            return "stale: \(error)"
-        }
-        guard let snapshot = entry.snapshot else {
-            return "no cache"
-        }
-        return snapshot.isStale(now: entry.date) ? "stale cache" : "updated"
+        presentation.statusText
     }
 
     private var phaseColor: Color {
