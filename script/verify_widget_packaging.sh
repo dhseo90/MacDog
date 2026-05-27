@@ -45,6 +45,17 @@ require_plist_value() {
   }
 }
 
+require_text_match() {
+  local pattern="$1"
+  local file="$2"
+
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$file"
+  else
+    /usr/bin/grep -Eq "$pattern" "$file"
+  fi
+}
+
 require_file "$ENTRYPOINT"
 require_file "$PLIST"
 require_file "$ENTITLEMENTS"
@@ -53,8 +64,8 @@ require_file "$HOST_PLIST"
 require_file "$HOST_ENTITLEMENTS"
 require_dir "$XCODE_PROJECT"
 
-rg -q 'import SwiftUI' "$ENTRYPOINT"
-rg -q 'MacDogStatusWidget\(appGroupIdentifier: "group\.com\.dhseo\.macdog\.MacDog"\)' "$ENTRYPOINT"
+require_text_match 'import SwiftUI' "$ENTRYPOINT"
+require_text_match 'MacDogStatusWidget\(appGroupIdentifier: "group\.com\.dhseo\.macdog\.MacDog"\)' "$ENTRYPOINT"
 require_plist_value "$PLIST" "CFBundleIdentifier" "com.dhseo.macdog.MacDog.WidgetExtension"
 require_plist_value "$PLIST" "NSExtension:NSExtensionPointIdentifier" "com.apple.widgetkit-extension"
 require_plist_value "$ENTITLEMENTS" "com.apple.security.application-groups:0" "group.com.dhseo.macdog.MacDog"
