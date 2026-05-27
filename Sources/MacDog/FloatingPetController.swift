@@ -38,11 +38,8 @@ final class FloatingPetController: NSObject {
         petView.onClick = { [weak self] in self?.actionHandler(.showUsageDetails) }
         petView.onRightClick = { [weak self] point in self?.showMenu(at: point) }
         petView.onDragStarted = { [weak self] in self?.isDragging = true }
-        petView.onDragEnded = { [weak self] in
-            self?.isDragging = false
-            self?.lastUpdateTimestamp = ProcessInfo.processInfo.systemUptime
-            self?.saveCurrentPosition()
-        }
+        petView.onDragMoved = { [weak self] delta, startFrame in self?.moveDrag(delta: delta, from: startFrame) }
+        petView.onDragEnded = { [weak self] in self?.finishDrag() }
     }
 
     var isShown: Bool {
@@ -225,6 +222,13 @@ final class FloatingPetController: NSObject {
         frame.origin.x += cos(heading) * speed * CGFloat(elapsed)
         frame.origin.y += sin(heading) * speed * CGFloat(elapsed)
 
+        if let safeHeading = FloatingPetMotionBounds.headingTowardSafeAreaIfNeeded(
+            frame: frame,
+            visibleFrame: visibleFrame
+        ) {
+            targetHeading = safeHeading
+        }
+
         if frame.minX < visibleFrame.minX {
             frame.origin.x = visibleFrame.minX
             reflectHorizontally()
@@ -252,8 +256,16 @@ final class FloatingPetController: NSObject {
             return
         }
 
-        let turn = CGFloat.random(in: (-CGFloat.pi * 0.7)...(CGFloat.pi * 0.7))
-        targetHeading = Self.normalizedAngle(heading + turn)
+        if let panel,
+           let safeHeading = FloatingPetMotionBounds.headingTowardSafeAreaIfNeeded(
+            frame: panel.frame,
+            visibleFrame: screenVisibleFrame(for: panel.frame)
+           ) {
+            targetHeading = safeHeading
+        } else {
+            let turn = CGFloat.random(in: (-CGFloat.pi * 0.7)...(CGFloat.pi * 0.7))
+            targetHeading = Self.normalizedAngle(heading + turn)
+        }
         renderFrame()
     }
 
@@ -313,6 +325,47 @@ final class FloatingPetController: NSObject {
         RunnerPreferences.setDesktopPetOrigin(panel.frame.origin)
     }
 
+    private func moveDrag(delta: NSPoint, from startFrame: NSRect) {
+        guard let panel else { return }
+        var frame = startFrame
+        frame.origin.x += delta.x
+        frame.origin.y += delta.y
+        frame.origin = FloatingPetMotionBounds.clamped(
+            origin: frame.origin,
+            size: frame.size,
+            visibleFrame: screenVisibleFrame(for: frame)
+        )
+        panel.setFrame(frame, display: true)
+    }
+
+    private func finishDrag() {
+        isDragging = false
+        lastUpdateTimestamp = ProcessInfo.processInfo.systemUptime
+        retargetElapsed = 0
+        nextRetargetInterval = Self.randomRetargetInterval()
+
+        guard let panel else { return }
+        var frame = panel.frame
+        let visibleFrame = screenVisibleFrame(for: frame)
+        frame.origin = FloatingPetMotionBounds.clamped(
+            origin: frame.origin,
+            size: frame.size,
+            visibleFrame: visibleFrame
+        )
+        panel.setFrame(frame, display: true)
+
+        if let safeHeading = FloatingPetMotionBounds.headingTowardSafeAreaIfNeeded(
+            frame: frame,
+            visibleFrame: visibleFrame
+        ) {
+            heading = safeHeading
+            targetHeading = safeHeading
+        }
+
+        saveCurrentPosition()
+        renderFrame()
+    }
+
     private func defaultOrigin() -> NSPoint {
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 720)
         return NSPoint(
@@ -322,19 +375,28 @@ final class FloatingPetController: NSObject {
     }
 
     private func clamped(origin: NSPoint, size: NSSize) -> NSPoint {
-        let visibleFrame = NSScreen.screens
-            .first { $0.visibleFrame.insetBy(dx: -40, dy: -40).contains(origin) }?
-            .visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-        return NSPoint(
-            x: min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width),
-            y: min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+        let frame = NSRect(origin: origin, size: size)
+        return FloatingPetMotionBounds.clamped(
+            origin: origin,
+            size: size,
+            visibleFrame: screenVisibleFrame(for: frame)
         )
     }
 
     private func screenVisibleFrame(for frame: NSRect) -> NSRect {
-        NSScreen.screens
-            .first { $0.visibleFrame.intersects(frame) }?
-            .visibleFrame ?? NSScreen.main?.visibleFrame ?? frame
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        if let screen = NSScreen.screens.first(where: { $0.visibleFrame.contains(center) }) {
+            return screen.visibleFrame
+        }
+
+        if let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(frame) }) {
+            return screen.visibleFrame
+        }
+
+        return NSScreen.screens.min { lhs, rhs in
+            Self.distanceSquared(from: center, to: lhs.visibleFrame) <
+                Self.distanceSquared(from: center, to: rhs.visibleFrame)
+        }?.visibleFrame ?? NSScreen.main?.visibleFrame ?? frame
     }
 
     private func showMenu(at point: NSPoint) {
@@ -396,8 +458,58 @@ final class FloatingPetController: NSObject {
         return normalized < 0 ? normalized + fullTurn : normalized
     }
 
+    private static func distanceSquared(from point: NSPoint, to rect: NSRect) -> CGFloat {
+        let dx: CGFloat
+        if point.x < rect.minX {
+            dx = rect.minX - point.x
+        } else if point.x > rect.maxX {
+            dx = point.x - rect.maxX
+        } else {
+            dx = 0
+        }
+
+        let dy: CGFloat
+        if point.y < rect.minY {
+            dy = rect.minY - point.y
+        } else if point.y > rect.maxY {
+            dy = point.y - rect.maxY
+        } else {
+            dy = 0
+        }
+
+        return dx * dx + dy * dy
+    }
+
     private static func randomRetargetInterval() -> TimeInterval {
         TimeInterval.random(in: retargetRange)
+    }
+}
+
+struct FloatingPetMotionBounds {
+    static func clamped(origin: NSPoint, size: NSSize, visibleFrame: NSRect) -> NSPoint {
+        NSPoint(
+            x: min(max(origin.x, visibleFrame.minX), visibleFrame.maxX - size.width),
+            y: min(max(origin.y, visibleFrame.minY), visibleFrame.maxY - size.height)
+        )
+    }
+
+    static func headingTowardSafeAreaIfNeeded(
+        frame: NSRect,
+        visibleFrame: NSRect,
+        margin: CGFloat = 80
+    ) -> CGFloat? {
+        let safeFrame = visibleFrame.insetBy(
+            dx: min(margin, max(0, visibleFrame.width / 2 - 1)),
+            dy: min(margin, max(0, visibleFrame.height / 2 - 1))
+        )
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        guard !safeFrame.contains(center) else { return nil }
+
+        let target = NSPoint(
+            x: min(max(center.x, safeFrame.minX), safeFrame.maxX),
+            y: min(max(center.y, safeFrame.minY), safeFrame.maxY)
+        )
+        return atan2(target.y - center.y, target.x - center.x)
     }
 }
 
@@ -483,6 +595,7 @@ private final class FloatingPetView: NSView {
     var onClick: (() -> Void)?
     var onRightClick: ((NSPoint) -> Void)?
     var onDragStarted: (() -> Void)?
+    var onDragMoved: ((NSPoint, NSRect) -> Void)?
     var onDragEnded: (() -> Void)?
     private var dragStartScreenLocation: NSPoint?
     private var dragStartFrame: NSRect?
@@ -518,10 +631,14 @@ private final class FloatingPetView: NSView {
             onDragStarted?()
             didDrag = true
         }
-        var frame = dragStartFrame
-        frame.origin.x += delta.x
-        frame.origin.y += delta.y
-        window.setFrame(frame, display: true)
+        if let onDragMoved {
+            onDragMoved(delta, dragStartFrame)
+        } else {
+            var frame = dragStartFrame
+            frame.origin.x += delta.x
+            frame.origin.y += delta.y
+            window.setFrame(frame, display: true)
+        }
     }
 
     override func mouseUp(with event: NSEvent) {
