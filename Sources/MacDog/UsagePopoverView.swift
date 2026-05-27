@@ -28,6 +28,7 @@ struct UsagePopoverView: View {
                 SystemMetricsPanel(
                     snapshot: state.systemMetrics,
                     sleepPreventionStatus: state.sleepPreventionStatus,
+                    sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
                     onPreferencesChanged: onPreferencesChanged
                 )
             }
@@ -164,10 +165,13 @@ private enum MacDogPopoverModule: String, CaseIterable, Identifiable {
 private struct SystemMetricsPanel: View {
     let snapshot: SystemMetricsSnapshot
     let sleepPreventionStatus: SleepPreventionStatus
+    let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionEnabledKey) private var sleepPreventionEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionSessionPresetKey) private var sleepPreventionSessionPreset = RunnerPreferences.defaultSleepPreventionSessionPreset.rawValue
+    @AppStorage(RunnerPreferences.sleepPreventionPowerAdapterTriggerKey) private var powerAdapterTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionCodexAppTriggerKey) private var codexAppTriggerEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -188,6 +192,7 @@ private struct SystemMetricsPanel: View {
                 metricRow("배터리", snapshot.battery.summary)
                 metricRow("전원", snapshot.battery.powerSummary)
                 metricRow("잠자기 방지", sleepPreventionStatus.summary)
+                metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
             }
 
             Toggle("시스템 잠자기 방지", isOn: $sleepPreventionEnabled)
@@ -201,6 +206,12 @@ private struct SystemMetricsPanel: View {
             .labelsHidden()
             .pickerStyle(.segmented)
             .disabled(!sleepPreventionEnabled)
+
+            Toggle("전원 연결 중 자동 방지", isOn: $powerAdapterTriggerEnabled)
+                .font(.caption)
+
+            Toggle("Codex 앱 실행 중 자동 방지", isOn: $codexAppTriggerEnabled)
+                .font(.caption)
         }
         .onChange(of: sleepPreventionEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionEnabled(enabled)
@@ -209,6 +220,14 @@ private struct SystemMetricsPanel: View {
         .onChange(of: sleepPreventionSessionPreset) { _, rawValue in
             guard let preset = SleepPreventionSessionPreset(rawValue: rawValue) else { return }
             RunnerPreferences.setSleepPreventionSessionPreset(preset)
+            onPreferencesChanged()
+        }
+        .onChange(of: powerAdapterTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionPowerAdapterTrigger(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: codexAppTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionCodexAppTrigger(enabled)
             onPreferencesChanged()
         }
     }

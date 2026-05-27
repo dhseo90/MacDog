@@ -9,6 +9,8 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionEnabledKey = "sleepPreventionEnabled"
     static let sleepPreventionSessionPresetKey = "sleepPreventionSessionPreset"
     static let sleepPreventionEndsAtKey = "sleepPreventionEndsAt"
+    static let sleepPreventionPowerAdapterTriggerKey = "sleepPreventionPowerAdapterTrigger"
+    static let sleepPreventionCodexAppTriggerKey = "sleepPreventionCodexAppTrigger"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
@@ -21,7 +23,9 @@ struct RunnerPreferences: Equatable {
             animationPausedKey: false,
             desktopPetEnabledKey: false,
             sleepPreventionEnabledKey: false,
-            sleepPreventionSessionPresetKey: defaultSleepPreventionSessionPreset.rawValue
+            sleepPreventionSessionPresetKey: defaultSleepPreventionSessionPreset.rawValue,
+            sleepPreventionPowerAdapterTriggerKey: false,
+            sleepPreventionCodexAppTriggerKey: false
         ])
     }
 
@@ -32,6 +36,8 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionEnabled: Bool
     let sleepPreventionSessionPreset: SleepPreventionSessionPreset
     let sleepPreventionEndsAt: Date?
+    let sleepPreventionPowerAdapterTriggerEnabled: Bool
+    let sleepPreventionCodexAppTriggerEnabled: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
@@ -45,6 +51,8 @@ struct RunnerPreferences: Equatable {
         } else {
             self.sleepPreventionEndsAt = nil
         }
+        self.sleepPreventionPowerAdapterTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionPowerAdapterTriggerKey)
+        self.sleepPreventionCodexAppTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCodexAppTriggerKey)
     }
 
     static func setDisplayBasis(_ basis: UsageDisplayBasis, defaults: UserDefaults = .standard) {
@@ -92,6 +100,14 @@ struct RunnerPreferences: Equatable {
         if now >= endsAt {
             setSleepPreventionEnabled(false, defaults: defaults)
         }
+    }
+
+    static func setSleepPreventionPowerAdapterTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionPowerAdapterTriggerKey)
+    }
+
+    static func setSleepPreventionCodexAppTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionCodexAppTriggerKey)
     }
 
     private static func refreshSleepPreventionEndDate(defaults: UserDefaults) {

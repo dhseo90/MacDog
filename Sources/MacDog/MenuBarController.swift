@@ -9,6 +9,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
     private let sleepPreventionController = SleepPreventionController()
+    private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
@@ -122,7 +123,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
-                sleepPreventionStatus: sleepPreventionController.status
+                sleepPreventionStatus: sleepPreventionController.status,
+                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
             )
         }
 
@@ -133,7 +135,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
             animationPaused: preferences.animationPaused,
-            sleepPreventionStatus: sleepPreventionController.status
+            sleepPreventionStatus: sleepPreventionController.status,
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
         )
     }
 
@@ -193,7 +196,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
-                sleepPreventionStatus: sleepPreventionController.status
+                sleepPreventionStatus: sleepPreventionController.status,
+                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
             )
         case .failure(let message, let snapshot):
             if let snapshot, let report = snapshot.report {
@@ -204,7 +208,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
-                    sleepPreventionStatus: sleepPreventionController.status
+                    sleepPreventionStatus: sleepPreventionController.status,
+                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
                 )
             } else {
                 UsageMonitorState(
@@ -214,7 +219,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
-                    sleepPreventionStatus: sleepPreventionController.status
+                    sleepPreventionStatus: sleepPreventionController.status,
+                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
                 )
             }
         }
@@ -248,6 +254,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             refreshUsage(allowLiveRefresh: false)
         case .setSleepPreventionSessionPreset(let preset):
             RunnerPreferences.setSleepPreventionSessionPreset(preset)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionPowerAdapterTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionPowerAdapterTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionCodexAppTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionCodexAppTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)
         case .showDesktopPet:
             RunnerPreferences.setDesktopPetEnabled(true)
@@ -305,6 +317,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             state: preferences.sleepPreventionEnabled ? .on : .off
         ))
         menu.addItem(sleepSessionSubmenuItem())
+        menu.addItem(sleepTriggerSubmenuItem())
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
         menu.addItem(.separator())
@@ -351,6 +364,23 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             ))
         }
 
+        parent.submenu = submenu
+        return parent
+    }
+
+    private func sleepTriggerSubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "자동 잠자기 방지", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "자동 잠자기 방지")
+        submenu.addItem(menuItem(
+            "전원 연결 중",
+            action: #selector(menuTogglePowerAdapterTrigger),
+            state: preferences.sleepPreventionPowerAdapterTriggerEnabled ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "Codex 앱 실행 중",
+            action: #selector(menuToggleCodexAppTrigger),
+            state: preferences.sleepPreventionCodexAppTriggerEnabled ? .on : .off
+        ))
         parent.submenu = submenu
         return parent
     }
@@ -414,6 +444,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
+    private func menuTogglePowerAdapterTrigger() {
+        perform(.setSleepPreventionPowerAdapterTrigger(!preferences.sleepPreventionPowerAdapterTriggerEnabled))
+    }
+
+    @objc
+    private func menuToggleCodexAppTrigger() {
+        perform(.setSleepPreventionCodexAppTrigger(!preferences.sleepPreventionCodexAppTriggerEnabled))
+    }
+
+    @objc
     private func menuShowDesktopPet() {
         perform(.showDesktopPet)
     }
@@ -439,9 +479,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func syncSleepPrevention() {
+        sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.capture(preferences: preferences)
+        let isEnabled = preferences.sleepPreventionEnabled || sleepPreventionTriggerStatus.isMatched
         sleepPreventionController.setEnabled(
-            preferences.sleepPreventionEnabled,
-            endsAt: preferences.sleepPreventionEndsAt
+            isEnabled,
+            endsAt: preferences.sleepPreventionEnabled ? preferences.sleepPreventionEndsAt : nil
         )
     }
 

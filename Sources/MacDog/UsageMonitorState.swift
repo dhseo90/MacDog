@@ -13,6 +13,7 @@ struct UsageMonitorState: Equatable {
     let isRefreshing: Bool
     let systemMetrics: SystemMetricsSnapshot
     let sleepPreventionStatus: SleepPreventionStatus
+    let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
 
     init(
         report: CodexUsageReport?,
@@ -23,7 +24,8 @@ struct UsageMonitorState: Equatable {
         animationPaused: Bool = false,
         isRefreshing: Bool = false,
         systemMetrics: SystemMetricsSnapshot = .capture(),
-        sleepPreventionStatus: SleepPreventionStatus = .disabled
+        sleepPreventionStatus: SleepPreventionStatus = .disabled,
+        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
@@ -34,6 +36,7 @@ struct UsageMonitorState: Equatable {
         self.isRefreshing = isRefreshing
         self.systemMetrics = systemMetrics
         self.sleepPreventionStatus = sleepPreventionStatus
+        self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -46,7 +49,8 @@ struct UsageMonitorState: Equatable {
             animationPaused: animationPaused,
             isRefreshing: isRefreshing,
             systemMetrics: systemMetrics,
-            sleepPreventionStatus: sleepPreventionStatus
+            sleepPreventionStatus: sleepPreventionStatus,
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
         )
     }
 
