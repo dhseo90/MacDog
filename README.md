@@ -22,6 +22,28 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - 설치/삭제 스크립트와 로그인 자동 실행 LaunchAgent 지원
 - RunCat식 상세 시스템 모니터, Amphetamine식 잠자기 세션, 충전 제어 연구 스파이크는 후속 로드맵에 반영
 
+## 캐릭터 이미지
+
+`Codex Pup`은 MacDog의 기본 강아지 캐릭터다. RunCat의 캐릭터나 asset을 복제하지 않고, 별도로 생성한 sprite를 메뉴바 러너와 데스크톱 플로팅 펫에 사용한다.
+
+### 메뉴바 러너
+
+![Codex Pup menu bar runner sprite sheet](Assets/Generated/pup-runner-sheet-source.png)
+
+- 원본 sheet: `Assets/Generated/pup-runner-sheet-source.png` (`2172x724`)
+- 런타임 frame: `Sources/MacDog/Resources/Runner/pup-runner-*.png`
+- 구성: `80x48` PNG frame 8장
+
+### 데스크톱 플로팅 펫
+
+![Codex Pup desktop sprite sheet](Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png)
+
+- 원본 sheet: `Assets/Generated/pup-desktop-sheet-source-v1.png` (`1536x1024`)
+- 정리된 sheet: `Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png` (`1536x1020`)
+- 런타임 frame: `Sources/MacDog/Resources/DesktopPet/pup-*.png`
+- 구성: `192x204` PNG frame 40장
+- pose: `run-right`, `run-up`, `run-down`, `idle-front`, `idle-side`, `alert`, `rest`
+
 ## 필요 환경
 
 - macOS 14 이상
