@@ -12,6 +12,7 @@ struct UsageMonitorState: Equatable {
     let animationPaused: Bool
     let isRefreshing: Bool
     let systemMetrics: SystemMetricsSnapshot
+    let sleepPreventionStatus: SleepPreventionStatus
 
     init(
         report: CodexUsageReport?,
@@ -21,7 +22,8 @@ struct UsageMonitorState: Equatable {
         reducedMotion: Bool = false,
         animationPaused: Bool = false,
         isRefreshing: Bool = false,
-        systemMetrics: SystemMetricsSnapshot = .capture()
+        systemMetrics: SystemMetricsSnapshot = .capture(),
+        sleepPreventionStatus: SleepPreventionStatus = .disabled
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
@@ -31,6 +33,7 @@ struct UsageMonitorState: Equatable {
         self.animationPaused = animationPaused
         self.isRefreshing = isRefreshing
         self.systemMetrics = systemMetrics
+        self.sleepPreventionStatus = sleepPreventionStatus
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -42,7 +45,8 @@ struct UsageMonitorState: Equatable {
             reducedMotion: reducedMotion,
             animationPaused: animationPaused,
             isRefreshing: isRefreshing,
-            systemMetrics: systemMetrics
+            systemMetrics: systemMetrics,
+            sleepPreventionStatus: sleepPreventionStatus
         )
     }
 

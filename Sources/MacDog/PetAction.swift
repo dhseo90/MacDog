@@ -4,6 +4,7 @@ enum PetAction: Equatable {
     case setDisplayBasis(UsageDisplayBasis)
     case setReducedMotion(Bool)
     case setAnimationPaused(Bool)
+    case setSleepPreventionEnabled(Bool)
     case showDesktopPet
     case returnToMenuBar
     case quit

@@ -6,6 +6,7 @@ struct RunnerPreferences: Equatable {
     static let reducedMotionKey = "reducedMotion"
     static let animationPausedKey = "animationPaused"
     static let desktopPetEnabledKey = "desktopPetEnabled"
+    static let sleepPreventionEnabledKey = "sleepPreventionEnabled"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
@@ -15,7 +16,8 @@ struct RunnerPreferences: Equatable {
             displayBasisKey: defaultDisplayBasis.rawValue,
             reducedMotionKey: false,
             animationPausedKey: false,
-            desktopPetEnabledKey: false
+            desktopPetEnabledKey: false,
+            sleepPreventionEnabledKey: false
         ])
     }
 
@@ -23,12 +25,14 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
     let animationPaused: Bool
     let desktopPetEnabled: Bool
+    let sleepPreventionEnabled: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
         self.animationPaused = defaults.bool(forKey: Self.animationPausedKey)
         self.desktopPetEnabled = defaults.bool(forKey: Self.desktopPetEnabledKey)
+        self.sleepPreventionEnabled = defaults.bool(forKey: Self.sleepPreventionEnabledKey)
     }
 
     static func setDisplayBasis(_ basis: UsageDisplayBasis, defaults: UserDefaults = .standard) {
@@ -45,6 +49,10 @@ struct RunnerPreferences: Equatable {
 
     static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: desktopPetEnabledKey)
+    }
+
+    static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionEnabledKey)
     }
 
     static func desktopPetOrigin(defaults: UserDefaults = .standard) -> NSPoint? {

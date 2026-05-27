@@ -8,6 +8,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
+    private let sleepPreventionController = SleepPreventionController()
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
@@ -90,6 +91,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPhase = state.phase
         let previousPreferences = preferences
         preferences = RunnerPreferences()
+        syncSleepPrevention()
         applyState(loadCachedState())
 
         if previousPhase != state.phase || previousPreferences != preferences {
@@ -118,7 +120,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 errorMessage: errorMessage ?? snapshot.error?.message,
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
-                animationPaused: preferences.animationPaused
+                animationPaused: preferences.animationPaused,
+                sleepPreventionStatus: sleepPreventionController.status
             )
         }
 
@@ -128,7 +131,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
-            animationPaused: preferences.animationPaused
+            animationPaused: preferences.animationPaused,
+            sleepPreventionStatus: sleepPreventionController.status
         )
     }
 
@@ -187,7 +191,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 errorMessage: nil,
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
-                animationPaused: preferences.animationPaused
+                animationPaused: preferences.animationPaused,
+                sleepPreventionStatus: sleepPreventionController.status
             )
         case .failure(let message, let snapshot):
             if let snapshot, let report = snapshot.report {
@@ -197,7 +202,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     errorMessage: message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
-                    animationPaused: preferences.animationPaused
+                    animationPaused: preferences.animationPaused,
+                    sleepPreventionStatus: sleepPreventionController.status
                 )
             } else {
                 UsageMonitorState(
@@ -206,7 +212,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     errorMessage: message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
-                    animationPaused: preferences.animationPaused
+                    animationPaused: preferences.animationPaused,
+                    sleepPreventionStatus: sleepPreventionController.status
                 )
             }
         }
@@ -234,6 +241,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             refreshUsage(allowLiveRefresh: false)
         case .setAnimationPaused(let isPaused):
             RunnerPreferences.setAnimationPaused(isPaused)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionEnabled(let isEnabled):
+            RunnerPreferences.setSleepPreventionEnabled(isEnabled)
             refreshUsage(allowLiveRefresh: false)
         case .showDesktopPet:
             RunnerPreferences.setDesktopPetEnabled(true)
@@ -284,6 +294,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             "애니메이션 일시 정지",
             action: #selector(menuToggleAnimationPaused),
             state: preferences.animationPaused ? .on : .off
+        ))
+        menu.addItem(menuItem(
+            "시스템 잠자기 방지",
+            action: #selector(menuToggleSleepPrevention),
+            state: preferences.sleepPreventionEnabled ? .on : .off
         ))
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
@@ -362,6 +377,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
+    private func menuToggleSleepPrevention() {
+        perform(.setSleepPreventionEnabled(!preferences.sleepPreventionEnabled))
+    }
+
+    @objc
     private func menuShowDesktopPet() {
         perform(.showDesktopPet)
     }
@@ -384,6 +404,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         } else {
             floatingPetController?.hide()
         }
+    }
+
+    private func syncSleepPrevention() {
+        sleepPreventionController.setEnabled(preferences.sleepPreventionEnabled)
     }
 
     private func desktopPetController() -> FloatingPetController {

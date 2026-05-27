@@ -25,7 +25,11 @@ struct UsagePopoverView: View {
             case .codex:
                 codexUsageContent
             case .mac:
-                SystemMetricsPanel(snapshot: state.systemMetrics)
+                SystemMetricsPanel(
+                    snapshot: state.systemMetrics,
+                    sleepPreventionStatus: state.sleepPreventionStatus,
+                    onPreferencesChanged: onPreferencesChanged
+                )
             }
 
             RunnerControls(onChange: onPreferencesChanged)
@@ -159,6 +163,10 @@ private enum MacDogPopoverModule: String, CaseIterable, Identifiable {
 
 private struct SystemMetricsPanel: View {
     let snapshot: SystemMetricsSnapshot
+    let sleepPreventionStatus: SleepPreventionStatus
+    let onPreferencesChanged: () -> Void
+
+    @AppStorage(RunnerPreferences.sleepPreventionEnabledKey) private var sleepPreventionEnabled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -178,8 +186,13 @@ private struct SystemMetricsPanel: View {
                 metricRow("네트워크", snapshot.networkSummary)
                 metricRow("배터리", snapshot.battery.summary)
                 metricRow("전원", snapshot.battery.powerSummary)
+                metricRow("잠자기 방지", sleepPreventionStatus.summary)
             }
+
+            Toggle("시스템 잠자기 방지", isOn: $sleepPreventionEnabled)
+                .font(.caption)
         }
+        .onChange(of: sleepPreventionEnabled) { _, _ in onPreferencesChanged() }
     }
 
     private func metricRow(_ key: String, _ value: String) -> some View {
