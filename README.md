@@ -175,7 +175,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 ## 후속 방향
 
 - 잠자기 방지 고급 trigger: 조건별 threshold 조정, 지정 앱 선택, trigger 종료 조건 정리
-- Charge Limit 직접 제어: 공개 API, Shortcuts, 시스템 설정 연동 가능성을 먼저 확인하고, SMC/helper 방식은 별도 연구 스파이크로 분리
+- Charge Limit 직접 제어: 공개 설정 연결을 유지하고, Shortcuts/SMC-helper 방식은 조사 결과에 따라 별도 설계
 - 덮개 닫힘/closed-display mode: 공개 IOKit assertion 범위와 관리자 권한 우회 리스크를 조사 완료, 구현은 별도 설계
 
 ## 문서
@@ -183,6 +183,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 MacDog 확장 계획
 - [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 설계와 검증 경계
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘/closed-display mode 조사 결과
+- [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 직접 제어 가능성 조사 결과
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 
 ## 라이선스
