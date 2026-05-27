@@ -167,6 +167,7 @@ private struct SystemMetricsPanel: View {
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionEnabledKey) private var sleepPreventionEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionSessionPresetKey) private var sleepPreventionSessionPreset = RunnerPreferences.defaultSleepPreventionSessionPreset.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -191,8 +192,25 @@ private struct SystemMetricsPanel: View {
 
             Toggle("시스템 잠자기 방지", isOn: $sleepPreventionEnabled)
                 .font(.caption)
+
+            Picker("잠자기 방지 시간", selection: $sleepPreventionSessionPreset) {
+                ForEach(SleepPreventionSessionPreset.allCases) { preset in
+                    Text(preset.label).tag(preset.rawValue)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .disabled(!sleepPreventionEnabled)
         }
-        .onChange(of: sleepPreventionEnabled) { _, _ in onPreferencesChanged() }
+        .onChange(of: sleepPreventionEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionEnabled(enabled)
+            onPreferencesChanged()
+        }
+        .onChange(of: sleepPreventionSessionPreset) { _, rawValue in
+            guard let preset = SleepPreventionSessionPreset(rawValue: rawValue) else { return }
+            RunnerPreferences.setSleepPreventionSessionPreset(preset)
+            onPreferencesChanged()
+        }
     }
 
     private func metricRow(_ key: String, _ value: String) -> some View {

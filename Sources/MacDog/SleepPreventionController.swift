@@ -5,16 +5,21 @@ struct SleepPreventionStatus: Equatable {
     static let disabled = SleepPreventionStatus(
         isEnabled: false,
         isActive: false,
+        endsAt: nil,
         errorMessage: nil
     )
 
     let isEnabled: Bool
     let isActive: Bool
+    let endsAt: Date?
     let errorMessage: String?
 
     var summary: String {
         if isActive {
-            return "켜짐 · 시스템 잠자기 방지"
+            if let endsAt {
+                return "켜짐 · \(endsAt.formatted(date: .omitted, time: .shortened))까지"
+            }
+            return "켜짐 · 계속"
         }
         if let errorMessage {
             return "오류 · \(errorMessage)"
@@ -26,6 +31,7 @@ struct SleepPreventionStatus: Equatable {
 final class SleepPreventionController {
     private var assertionID: IOPMAssertionID?
     private var requestedEnabled = false
+    private var endsAt: Date?
     private var lastErrorMessage: String?
 
     deinit {
@@ -36,17 +42,20 @@ final class SleepPreventionController {
         SleepPreventionStatus(
             isEnabled: requestedEnabled,
             isActive: assertionID != nil,
+            endsAt: endsAt,
             errorMessage: lastErrorMessage
         )
     }
 
-    func setEnabled(_ isEnabled: Bool) {
+    func setEnabled(_ isEnabled: Bool, endsAt: Date?) {
         requestedEnabled = isEnabled
+        self.endsAt = endsAt
 
         if isEnabled {
             acquireAssertionIfNeeded()
         } else {
             releaseAssertion()
+            self.endsAt = nil
             lastErrorMessage = nil
         }
     }

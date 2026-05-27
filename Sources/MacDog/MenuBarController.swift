@@ -90,6 +90,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func refreshUsage(allowLiveRefresh: Bool) {
         let previousPhase = state.phase
         let previousPreferences = preferences
+        RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
         syncSleepPrevention()
         applyState(loadCachedState())
@@ -245,6 +246,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setSleepPreventionEnabled(let isEnabled):
             RunnerPreferences.setSleepPreventionEnabled(isEnabled)
             refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionSessionPreset(let preset):
+            RunnerPreferences.setSleepPreventionSessionPreset(preset)
+            refreshUsage(allowLiveRefresh: false)
         case .showDesktopPet:
             RunnerPreferences.setDesktopPetEnabled(true)
             refreshUsage(allowLiveRefresh: false)
@@ -300,6 +304,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             action: #selector(menuToggleSleepPrevention),
             state: preferences.sleepPreventionEnabled ? .on : .off
         ))
+        menu.addItem(sleepSessionSubmenuItem())
         menu.addItem(.separator())
         menu.addItem(desktopSurfaceMenuItem(surface: surface))
         menu.addItem(.separator())
@@ -331,6 +336,23 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         return menuItem("데스크톱 펫 보기", action: #selector(menuShowDesktopPet))
+    }
+
+    private func sleepSessionSubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "잠자기 방지 시간", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "잠자기 방지 시간")
+
+        for preset in SleepPreventionSessionPreset.allCases {
+            submenu.addItem(menuItem(
+                preset.label,
+                action: #selector(menuSetSleepPreventionSessionPreset),
+                state: preferences.sleepPreventionSessionPreset == preset ? .on : .off,
+                representedObject: preset.rawValue
+            ))
+        }
+
+        parent.submenu = submenu
+        return parent
     }
 
     private func menuItem(
@@ -382,6 +404,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
+    private func menuSetSleepPreventionSessionPreset(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let preset = SleepPreventionSessionPreset(rawValue: rawValue)
+        else { return }
+
+        perform(.setSleepPreventionSessionPreset(preset))
+    }
+
+    @objc
     private func menuShowDesktopPet() {
         perform(.showDesktopPet)
     }
@@ -407,7 +439,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func syncSleepPrevention() {
-        sleepPreventionController.setEnabled(preferences.sleepPreventionEnabled)
+        sleepPreventionController.setEnabled(
+            preferences.sleepPreventionEnabled,
+            endsAt: preferences.sleepPreventionEndsAt
+        )
     }
 
     private func desktopPetController() -> FloatingPetController {
