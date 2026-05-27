@@ -70,6 +70,13 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 ./script/check.sh --no-run
 ```
 
+짧은 runtime CPU/RSS smoke:
+
+```sh
+./script/build_and_run.sh --verify-runtime 10
+./script/build_and_run.sh --verify-floating-pet-runtime 10
+```
+
 메뉴바 앱만 빌드하고 실행:
 
 ```sh
@@ -183,6 +190,7 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 MacDog 확장 계획
 - [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
 - [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 설계와 검증 경계
+- [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘/closed-display mode 조사 결과
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 직접 제어 가능성 조사 결과
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트

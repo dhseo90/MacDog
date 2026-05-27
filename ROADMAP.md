@@ -288,6 +288,7 @@ Popover 정보 구조:
 - 플로팅 펫은 click, right-click, drag 위치 저장, 화면 경계 안 로밍 이동을 지원한다.
 - 움직임 줄이기와 애니메이션 일시 정지 설정을 반영한다.
 - `script/build_and_run.sh --verify-floating-pet-runtime`으로 플로팅 펫 모드 CPU/RSS 샘플을 확인한다.
+- runtime 검증 절차는 [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md)에 정리한다.
 
 방향:
 

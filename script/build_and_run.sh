@@ -184,7 +184,9 @@ verify_runtime() {
 sample_runtime_resources() {
   local duration="${1:-10}"
   local label="${2:-Runtime}"
-  [[ "$duration" =~ ^[0-9]+$ ]] && (( duration > 0 ))
+  if ! [[ "$duration" =~ ^[0-9]+$ ]] || (( duration <= 0 )); then
+    die "runtime duration must be a positive integer: $duration"
+  fi
 
   local pid
   pid="$(pgrep -x "$APP_NAME" | head -n 1)"
