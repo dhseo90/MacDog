@@ -20,6 +20,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - 메뉴바 우클릭 메뉴: 새로고침, 러너 속도 기준, 움직임 줄이기, 애니메이션 일시 정지, 데스크톱 펫 보기, 종료
 - 데스크톱 플로팅 펫: 40프레임 sprite, 화면 경계 안 로밍 이동, 드래그 위치 저장, 우클릭 메뉴
 - 설치/삭제 스크립트와 로그인 자동 실행 LaunchAgent 지원
+- RunCat식 상세 시스템 모니터, Amphetamine식 잠자기 세션, 충전 제어 연구 스파이크는 후속 로드맵에 반영
 
 ## 필요 환경
 
@@ -28,6 +29,7 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 - `/usr/bin/xcrun`에서 Swift toolchain 사용 가능
 - Codex 앱 또는 Codex CLI가 설치되어 있고 현재 사용자 계정에서 사용량 조회 가능
 - 설치 스크립트 사용 시 `~/Applications`, `~/bin`, `~/Library/LaunchAgents` 쓰기 권한
+- 검증 스크립트는 기본 macOS 도구를 우선 사용하며, `rg`가 없으면 `grep`으로 대체한다.
 
 ## 빠른 시작
 
@@ -142,7 +144,15 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - `MacDog` 메뉴바 앱은 SwiftPM executable로 빌드한다.
 - WidgetKit은 `MacDog.xcodeproj`의 `MacDogWidgetHost`/`MacDogWidgetExtension` target으로 embedded `.appex` 빌드까지 검증한다.
 - 설치 스크립트는 `MacDog.app` 안에 WidgetKit `.appex` 번들을 포함해 배포한다.
-- 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 동작 UI 검수는 별도 수동 단계에서 진행한다.
+- 메뉴바 popover, Mac/Codex 탭, 우클릭 메뉴, 배터리 설정 열기, 데스크톱 플로팅 펫, 위젯 갤러리와 클릭 동작은 사용자 수동 검수 완료.
+- 다음 제품 확장은 잠자기 방지 4대 세션 UI와 RunCat식 상세 시스템 모니터를 우선한다.
+
+## 후속 방향
+
+- 잠자기 방지 4대 세션: 항상 금지, 충전 중 금지, 시간 기준 금지, 지정 앱 실행 중 금지
+- RunCat식 상세 시스템 모니터: CPU breakdown, memory pressure, 저장공간, 네트워크 속도, 배터리 세부 정보
+- Charge Limit 직접 제어: 공개 API, Shortcuts, 시스템 설정 연동 가능성을 먼저 확인하고, SMC/helper 방식은 별도 연구 스파이크로 분리
+- 덮개 닫힘/closed-display mode: 관리자 권한, helper/script, 실패 복구 UX까지 포함해 별도 설계
 
 ## 문서
 
