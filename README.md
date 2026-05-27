@@ -28,18 +28,20 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 
 ### 메뉴바 러너
 
-![Codex Pup menu bar runner sprite sheet](Assets/Generated/pup-runner-sheet-source.png)
+![Codex Pup menu bar runner preview](Assets/Generated/Docs/pup-runner-preview.png)
 
 - 원본 sheet: `Assets/Generated/pup-runner-sheet-source.png` (`2172x724`)
+- 문서용 preview: `Assets/Generated/Docs/pup-runner-preview.png`
 - 런타임 frame: `Sources/MacDog/Resources/Runner/pup-runner-*.png`
 - 구성: `80x48` PNG frame 8장
 
 ### 데스크톱 플로팅 펫
 
-![Codex Pup desktop sprite sheet](Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png)
+![Codex Pup desktop preview](Assets/Generated/Docs/pup-desktop-preview.png)
 
 - 원본 sheet: `Assets/Generated/pup-desktop-sheet-source-v1.png` (`1536x1024`)
 - 정리된 sheet: `Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png` (`1536x1020`)
+- 문서용 preview: `Assets/Generated/Docs/pup-desktop-preview.png`
 - 런타임 frame: `Sources/MacDog/Resources/DesktopPet/pup-*.png`
 - 구성: `192x204` PNG frame 40장
 - pose: `run-right`, `run-up`, `run-down`, `idle-front`, `idle-side`, `alert`, `rest`
