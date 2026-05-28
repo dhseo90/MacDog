@@ -3,9 +3,11 @@ import AppKit
 
 struct RunnerPreferences: Equatable {
     static let displayBasisKey = "displayBasis"
+    static let popoverModuleKey = "macDogPopoverModule"
     static let reducedMotionKey = "reducedMotion"
     static let animationPausedKey = "animationPaused"
     static let desktopPetEnabledKey = "desktopPetEnabled"
+    static let sleepPreventionControlModeKey = "sleepPreventionControlMode"
     static let sleepPreventionEnabledKey = "sleepPreventionEnabled"
     static let sleepPreventionSessionPresetKey = "sleepPreventionSessionPreset"
     static let sleepPreventionEndsAtKey = "sleepPreventionEndsAt"
@@ -18,6 +20,7 @@ struct RunnerPreferences: Equatable {
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
+    static let defaultSleepPreventionControlMode = SleepPreventionControlMode.off
     static let defaultSleepPreventionSessionPreset = SleepPreventionSessionPreset.indefinite
     static let sleepPreventionBatteryThresholdPercent = 80
     static let sleepPreventionCPUThresholdPercent = 80
@@ -29,6 +32,7 @@ struct RunnerPreferences: Equatable {
             reducedMotionKey: false,
             animationPausedKey: false,
             desktopPetEnabledKey: false,
+            sleepPreventionControlModeKey: defaultSleepPreventionControlMode.rawValue,
             sleepPreventionEnabledKey: false,
             sleepPreventionSessionPresetKey: defaultSleepPreventionSessionPreset.rawValue,
             sleepPreventionPowerAdapterTriggerKey: false,
@@ -44,6 +48,7 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
     let animationPaused: Bool
     let desktopPetEnabled: Bool
+    let sleepPreventionControlMode: SleepPreventionControlMode
     let sleepPreventionEnabled: Bool
     let sleepPreventionSessionPreset: SleepPreventionSessionPreset
     let sleepPreventionEndsAt: Date?
@@ -55,19 +60,20 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionExternalVolumeTriggerEnabled: Bool
 
     var sleepPreventionMode: SleepPreventionMode {
-        if sleepPreventionEnabled {
+        switch sleepPreventionControlMode {
+        case .off:
+            return .off
+        case .time:
             return sleepPreventionSessionPreset.durationMinutes == nil ? .always : .timed
+        case .condition:
+            if sleepPreventionPowerAdapterTriggerEnabled {
+                return .charging
+            }
+            if sleepPreventionCodexAppTriggerEnabled {
+                return .application
+            }
+            return .condition
         }
-
-        if sleepPreventionPowerAdapterTriggerEnabled {
-            return .charging
-        }
-
-        if sleepPreventionCodexAppTriggerEnabled {
-            return .application
-        }
-
-        return .off
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -88,6 +94,16 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionCPUThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCPUThresholdTriggerKey)
         self.sleepPreventionNetworkActivityTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionNetworkActivityTriggerKey)
         self.sleepPreventionExternalVolumeTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionExternalVolumeTriggerKey)
+
+        let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
+            ?? Self.defaultSleepPreventionControlMode
+        if sleepPreventionEnabled {
+            self.sleepPreventionControlMode = .time
+        } else if Self.hasAutomaticSleepPreventionTrigger(defaults: defaults) {
+            self.sleepPreventionControlMode = .condition
+        } else {
+            self.sleepPreventionControlMode = storedMode == .condition ? .condition : .off
+        }
     }
 
     static func setDisplayBasis(_ basis: UsageDisplayBasis, defaults: UserDefaults = .standard) {
@@ -107,10 +123,33 @@ struct RunnerPreferences: Equatable {
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled ? SleepPreventionControlMode.time.rawValue : SleepPreventionControlMode.off.rawValue, forKey: sleepPreventionControlModeKey)
         defaults.set(isEnabled, forKey: sleepPreventionEnabledKey)
         if isEnabled {
             refreshSleepPreventionEndDate(defaults: defaults)
         } else {
+            defaults.removeObject(forKey: sleepPreventionEndsAtKey)
+            clearAutomaticSleepPreventionTriggers(defaults: defaults)
+        }
+    }
+
+    static func setSleepPreventionControlMode(
+        _ mode: SleepPreventionControlMode,
+        defaults: UserDefaults = .standard
+    ) {
+        defaults.set(mode.rawValue, forKey: sleepPreventionControlModeKey)
+
+        switch mode {
+        case .off:
+            defaults.set(false, forKey: sleepPreventionEnabledKey)
+            defaults.removeObject(forKey: sleepPreventionEndsAtKey)
+            clearAutomaticSleepPreventionTriggers(defaults: defaults)
+        case .time:
+            clearAutomaticSleepPreventionTriggers(defaults: defaults)
+            defaults.set(true, forKey: sleepPreventionEnabledKey)
+            refreshSleepPreventionEndDate(defaults: defaults)
+        case .condition:
+            defaults.set(false, forKey: sleepPreventionEnabledKey)
             defaults.removeObject(forKey: sleepPreventionEndsAtKey)
         }
     }
@@ -118,27 +157,26 @@ struct RunnerPreferences: Equatable {
     static func setSleepPreventionMode(_ mode: SleepPreventionMode, defaults: UserDefaults = .standard) {
         switch mode {
         case .off:
-            setSleepPreventionEnabled(false, defaults: defaults)
-            clearAutomaticSleepPreventionTriggers(defaults: defaults)
+            setSleepPreventionControlMode(.off, defaults: defaults)
         case .always:
-            clearAutomaticSleepPreventionTriggers(defaults: defaults)
             defaults.set(SleepPreventionSessionPreset.indefinite.rawValue, forKey: sleepPreventionSessionPresetKey)
-            setSleepPreventionEnabled(true, defaults: defaults)
+            setSleepPreventionControlMode(.time, defaults: defaults)
         case .charging:
-            setSleepPreventionEnabled(false, defaults: defaults)
             clearAutomaticSleepPreventionTriggers(defaults: defaults)
+            setSleepPreventionControlMode(.condition, defaults: defaults)
             setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
         case .timed:
-            clearAutomaticSleepPreventionTriggers(defaults: defaults)
             let currentPreset = SleepPreventionSessionPreset(rawValue: defaults.string(forKey: sleepPreventionSessionPresetKey) ?? "") ?? defaultSleepPreventionSessionPreset
             if currentPreset.durationMinutes == nil {
                 defaults.set(SleepPreventionSessionPreset.oneHour.rawValue, forKey: sleepPreventionSessionPresetKey)
             }
-            setSleepPreventionEnabled(true, defaults: defaults)
+            setSleepPreventionControlMode(.time, defaults: defaults)
         case .application:
-            setSleepPreventionEnabled(false, defaults: defaults)
             clearAutomaticSleepPreventionTriggers(defaults: defaults)
+            setSleepPreventionControlMode(.condition, defaults: defaults)
             setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        case .condition:
+            setSleepPreventionControlMode(.condition, defaults: defaults)
         }
     }
 
@@ -165,36 +203,57 @@ struct RunnerPreferences: Equatable {
     }
 
     static func setSleepPreventionPowerAdapterTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionPowerAdapterTriggerKey)
     }
 
     static func setSleepPreventionCodexAppTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionCodexAppTriggerKey)
     }
 
     static func setSleepPreventionChargingBelowThresholdTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionChargingBelowThresholdTriggerKey)
     }
 
     static func setSleepPreventionCPUThresholdTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionCPUThresholdTriggerKey)
     }
 
     static func setSleepPreventionNetworkActivityTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionNetworkActivityTriggerKey)
     }
 
     static func setSleepPreventionExternalVolumeTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
         defaults.set(isEnabled, forKey: sleepPreventionExternalVolumeTriggerKey)
     }
 
+    private static func setConditionControlMode(defaults: UserDefaults) {
+        defaults.set(SleepPreventionControlMode.condition.rawValue, forKey: sleepPreventionControlModeKey)
+        defaults.set(false, forKey: sleepPreventionEnabledKey)
+        defaults.removeObject(forKey: sleepPreventionEndsAtKey)
+    }
+
     private static func clearAutomaticSleepPreventionTriggers(defaults: UserDefaults) {
-        setSleepPreventionPowerAdapterTrigger(false, defaults: defaults)
-        setSleepPreventionCodexAppTrigger(false, defaults: defaults)
-        setSleepPreventionChargingBelowThresholdTrigger(false, defaults: defaults)
-        setSleepPreventionCPUThresholdTrigger(false, defaults: defaults)
-        setSleepPreventionNetworkActivityTrigger(false, defaults: defaults)
-        setSleepPreventionExternalVolumeTrigger(false, defaults: defaults)
+        defaults.set(false, forKey: sleepPreventionPowerAdapterTriggerKey)
+        defaults.set(false, forKey: sleepPreventionCodexAppTriggerKey)
+        defaults.set(false, forKey: sleepPreventionChargingBelowThresholdTriggerKey)
+        defaults.set(false, forKey: sleepPreventionCPUThresholdTriggerKey)
+        defaults.set(false, forKey: sleepPreventionNetworkActivityTriggerKey)
+        defaults.set(false, forKey: sleepPreventionExternalVolumeTriggerKey)
+    }
+
+    private static func hasAutomaticSleepPreventionTrigger(defaults: UserDefaults) -> Bool {
+        defaults.bool(forKey: sleepPreventionPowerAdapterTriggerKey)
+            || defaults.bool(forKey: sleepPreventionCodexAppTriggerKey)
+            || defaults.bool(forKey: sleepPreventionChargingBelowThresholdTriggerKey)
+            || defaults.bool(forKey: sleepPreventionCPUThresholdTriggerKey)
+            || defaults.bool(forKey: sleepPreventionNetworkActivityTriggerKey)
+            || defaults.bool(forKey: sleepPreventionExternalVolumeTriggerKey)
     }
 
     private static func refreshSleepPreventionEndDate(defaults: UserDefaults) {
@@ -282,12 +341,32 @@ enum SleepPreventionSessionPreset: String, CaseIterable, Identifiable {
     }
 }
 
+enum SleepPreventionControlMode: String, CaseIterable, Identifiable {
+    case off
+    case time
+    case condition
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .off:
+            "끔"
+        case .time:
+            "시간 제어"
+        case .condition:
+            "상태 기준"
+        }
+    }
+}
+
 enum SleepPreventionMode: String, CaseIterable, Identifiable {
     case off
     case always
     case charging
     case timed
     case application
+    case condition
 
     var id: String { rawValue }
 
@@ -303,6 +382,8 @@ enum SleepPreventionMode: String, CaseIterable, Identifiable {
             "시간 기준 금지"
         case .application:
             "Codex 앱 실행 중"
+        case .condition:
+            "상태 기준 제어"
         }
     }
 }

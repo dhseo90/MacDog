@@ -8,6 +8,7 @@ struct SystemMetricsSnapshot: Equatable {
         memoryUsedPercent: nil,
         memoryDetails: nil,
         diskUsedPercent: nil,
+        diskDetails: nil,
         networkReceivedBytes: nil,
         networkSentBytes: nil,
         networkReceivedRateBytesPerSecond: nil,
@@ -25,6 +26,7 @@ struct SystemMetricsSnapshot: Equatable {
     let memoryUsedPercent: Double?
     let memoryDetails: MemoryDetailsSnapshot?
     let diskUsedPercent: Double?
+    let diskDetails: DiskDetailsSnapshot?
     let networkReceivedBytes: UInt64?
     let networkSentBytes: UInt64?
     let networkReceivedRateBytesPerSecond: Double?
@@ -39,12 +41,14 @@ struct SystemMetricsSnapshot: Equatable {
     static func capture() -> SystemMetricsSnapshot {
         let network = networkUsage()
         let memory = memoryDetails()
+        let disk = diskDetails()
         return SystemMetricsSnapshot(
             capturedAt: Date(),
             cpuLoadPercent: cpuLoadPercent(),
             memoryUsedPercent: memory?.usedPercent,
             memoryDetails: memory,
-            diskUsedPercent: diskUsedPercent(),
+            diskUsedPercent: disk?.usedPercent,
+            diskDetails: disk,
             networkReceivedBytes: network?.receivedBytes,
             networkSentBytes: network?.sentBytes,
             networkReceivedRateBytesPerSecond: network?.receivedRateBytesPerSecond,
@@ -59,12 +63,12 @@ struct SystemMetricsSnapshot: Equatable {
     }
 
     var cpuSummary: String {
-        cpuLoadPercent.map { "\(Self.percent($0))% load" } ?? "확인 불가"
+        cpuLoadPercent.map { "\(Self.percent($0))% 사용 중" } ?? "확인 불가"
     }
 
     var cpuDetailSummary: String {
         guard let cpuBreakdown else { return "확인 불가" }
-        return "시스템 \(Self.percent(cpuBreakdown.systemPercent)) · 사용자 \(Self.percent(cpuBreakdown.userPercent)) · 대기 \(Self.percent(cpuBreakdown.idlePercent))"
+        return "시스템 \(Self.percent(cpuBreakdown.systemPercent))% · 사용자 \(Self.percent(cpuBreakdown.userPercent))% · 대기 \(Self.percent(cpuBreakdown.idlePercent))%"
     }
 
     var memorySummary: String {
@@ -78,6 +82,11 @@ struct SystemMetricsSnapshot: Equatable {
 
     var diskSummary: String {
         diskUsedPercent.map { "\(Self.percent($0))% 사용" } ?? "확인 불가"
+    }
+
+    var diskDetailSummary: String {
+        guard let diskDetails else { return "용량 정보 확인 불가" }
+        return "사용 \(Self.bytes(diskDetails.usedBytes)) / 전체 \(Self.bytes(diskDetails.totalBytes))"
     }
 
     var networkSummary: String {
@@ -157,7 +166,7 @@ struct SystemMetricsSnapshot: Equatable {
         )
     }
 
-    private static func diskUsedPercent() -> Double? {
+    private static func diskDetails() -> DiskDetailsSnapshot? {
         guard
             let attributes = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()),
             let total = attributes[.systemSize] as? NSNumber,
@@ -167,7 +176,12 @@ struct SystemMetricsSnapshot: Equatable {
         let totalBytes = total.doubleValue
         let freeBytes = free.doubleValue
         guard totalBytes > 0 else { return nil }
-        return clamp(((totalBytes - freeBytes) / totalBytes) * 100)
+        let usedBytes = max(totalBytes - freeBytes, 0)
+        return DiskDetailsSnapshot(
+            usedPercent: clamp((usedBytes / totalBytes) * 100),
+            usedBytes: UInt64(usedBytes),
+            totalBytes: UInt64(totalBytes)
+        )
     }
 
     private static func networkUsage() -> (
@@ -296,6 +310,12 @@ struct MemoryDetailsSnapshot: Equatable {
     let appMemoryBytes: UInt64
     let wiredMemoryBytes: UInt64
     let compressedMemoryBytes: UInt64
+}
+
+struct DiskDetailsSnapshot: Equatable {
+    let usedPercent: Double
+    let usedBytes: UInt64
+    let totalBytes: UInt64
 }
 
 private final class NetworkRateSampler: @unchecked Sendable {

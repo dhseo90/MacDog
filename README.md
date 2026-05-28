@@ -1,67 +1,53 @@
 # MacDog
 
-MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 펫으로 확인하는 Mac 유틸리티다. 현재는 Codex의 5시간/주간 사용량을 중심으로 동작하며, 장기적으로는 강아지 기반 Mac 유틸리티 앱으로 확장할 계획이다.
+MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 빠르게 확인하고, 필요할 때 데스크톱 위 강아지 펫으로 띄워두는 macOS 유틸리티다. 현재는 Codex 5시간/주간 사용량, Mac 활성 자원, 잠들지 않기, 배터리 상태를 한 popover 안에서 다룬다.
 
-작은 강아지 러너 `Codex Pup`이 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직인다. 필요할 때는 데스크톱 플로팅 펫으로 꺼내 화면 위에서 움직이게 할 수 있다.
+## 화면
+
+아래 이미지는 README 검수용 fake data로 렌더링한 현재 메뉴바 popover 4개 탭이다. 네 이미지는 같은 크기(`740x816`)로 생성한다.
+
+| Codex 사용량 | 활성 자원 |
+| --- | --- |
+| ![MacDog Codex usage tab](Assets/Generated/Docs/PopoverTabs/macdog-popover-codex.png) | ![MacDog active resources tab](Assets/Generated/Docs/PopoverTabs/macdog-popover-mac.png) |
+
+| 잠들지 않기 | 배터리 |
+| --- | --- |
+| ![MacDog sleep prevention tab](Assets/Generated/Docs/PopoverTabs/macdog-popover-sleep.png) | ![MacDog battery tab](Assets/Generated/Docs/PopoverTabs/macdog-popover-battery.png) |
+
+데스크톱 플로팅 펫은 아래 정면 sprite와 같은 스타일의 강아지가 화면 경계 안에서 움직인다.
+
+![MacDog desktop pet front sprite](Assets/Generated/Docs/macdog-desktop-pet-front.png)
 
 ## 주요 기능
 
-- `codex-usage` CLI로 5시간/주간 사용량, 남은 비율, reset 시각 확인
-- Codex app-server `account/rateLimits/read` 기반 사용량 조회
-- shared cache 저장으로 CLI, 메뉴바 앱, 위젯 코드가 같은 snapshot 사용
-- WidgetKit host/extension Xcode target과 embedded `.appex` 패키징 검증
-- macOS 메뉴바 러너: 사용량 단계에 따라 애니메이션 속도 변경
-- 메뉴바 popover: Codex 사용량과 Mac 상태 모듈 전환, 5시간/주간 사용량, plan, credits 표시
-- Mac 상태 모듈: CPU load/breakdown, 메모리 상세, 디스크, 네트워크 누적/속도, 로컬 IP, 배터리/전원 세부 상태 표시
-- Apple native Charge Limit 지원 감지: macOS 26.4+ / Apple silicon 기준 표시
-- 충전 한도 설정 연결: 공개 제어 API 대신 macOS 배터리 설정 화면으로 이동
-- 일반 잠자기 방지 모듈: IOKit power assertion으로 시스템/디스플레이 idle sleep을 함께 막고, 항상 금지, 충전 중 금지, 시간 기준 금지, Codex 앱 실행 중 금지 지원
-- 자동 잠자기 방지 조건: 전원 연결, Codex 앱 실행, 충전 80% 미만, CPU 80% 이상, 네트워크 100KB/s 이상, 외장/네트워크 볼륨 연결
-- 시간 기준 잠자기 방지: 30분/1시간/2시간 세션 preset
-- 메뉴바 우클릭 메뉴: 새로고침, 러너 속도 기준, 움직임 줄이기, 애니메이션 일시 정지, 데스크톱 펫 보기, 종료
-- 데스크톱 플로팅 펫: 40프레임 sprite, 화면 경계 안 로밍 이동, 드래그 위치 저장, 좌클릭 사용량 popover, 우클릭 메뉴
-- 설치/삭제 스크립트와 로그인 자동 실행 LaunchAgent 지원
-- Amphetamine식 고급 trigger 설정과 충전 제어 연구 스파이크는 후속 로드맵에 반영
-
-## 캐릭터 이미지
-
-`Codex Pup`은 MacDog의 기본 강아지 캐릭터다. RunCat의 캐릭터나 asset을 복제하지 않고, 별도로 생성한 sprite를 메뉴바 러너와 데스크톱 플로팅 펫에 사용한다.
-
-### 메뉴바 러너
-
-![Codex Pup menu bar runner preview](Assets/Generated/Docs/pup-runner-preview.png)
-
-- 원본 sheet: `Assets/Generated/pup-runner-sheet-source.png` (`2172x724`)
-- 문서용 preview: `Assets/Generated/Docs/pup-runner-preview.png` (`728x88`, 중립 배경)
-- 런타임 frame: `Sources/MacDog/Resources/Runner/pup-runner-*.png`
-- 구성: `80x48` PNG frame 8장
-
-### 데스크톱 플로팅 펫
-
-![Codex Pup desktop preview](Assets/Generated/Docs/pup-desktop-preview.png)
-
-- 원본 sheet: `Assets/Generated/pup-desktop-sheet-source-v1.png` (`1536x1024`)
-- 정리된 sheet: `Assets/Generated/DesktopPet/v1/pup-desktop-sheet-crop-8x5.png` (`1536x1020`)
-- 문서용 preview: `Assets/Generated/Docs/pup-desktop-preview.png` (`448x320`, 중립 배경)
-- 런타임 frame: `Sources/MacDog/Resources/DesktopPet/pup-*.png`
-- 구성: `192x204` PNG frame 40장
-- pose: `run-right`, `run-up`, `run-down`, `idle-front`, `idle-side`, `alert`, `rest`
-
-## 필요 환경
-
-- macOS 14 이상
-- Xcode 또는 Xcode Command Line Tools
-- `/usr/bin/xcrun`에서 Swift toolchain 사용 가능
-- Codex 앱 또는 Codex CLI가 설치되어 있고 현재 사용자 계정에서 사용량 조회 가능
-- 설치 스크립트 사용 시 `~/Applications`, `~/bin`, `~/Library/LaunchAgents` 쓰기 권한
-- 검증 스크립트는 기본 macOS 도구를 우선 사용하며, `rg`가 없으면 `grep`으로 대체한다.
+- `codex-usage` CLI: 5시간/주간 사용량, 잔여율, reset 시각, JSON 출력, cache 쓰기
+- 메뉴바 앱: 사용량에 따라 움직이는 강아지 러너, 우측 세로 탭 popover, 우클릭 메뉴
+- Codex 탭: 5시간/주간 사용률, plan, 갱신 시각, 러너 속도 기준
+- 활성 자원 탭: CPU, 메모리, 저장 용량, 네트워크 상태
+- 잠들지 않기 탭: 끔/시간 제어/상태 기준, IOKit assertion, 덮개 닫힘 보호
+- 배터리 탭: 배터리/전원 상태와 macOS 배터리 설정 연결
+- 데스크톱 플로팅 펫: 화면 경계 안 이동, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴
+- WidgetKit host/extension 패키징 검증과 shared cache 기반 widget 표시
+- 설치/삭제 스크립트와 로그인 자동 실행 LaunchAgent
 
 ## 빠른 시작
 
-전체 검증과 앱 실행:
+필요 환경:
+
+- macOS 14 이상
+- Xcode 또는 Xcode Command Line Tools
+- Codex 앱 또는 Codex CLI
+
+전체 검증:
 
 ```sh
 ./script/check.sh
+```
+
+앱 빌드 및 실행:
+
+```sh
+./script/build_and_run.sh
 ```
 
 앱을 띄우지 않고 빌드와 테스트만 확인:
@@ -70,26 +56,14 @@ MacDog는 Codex 사용량을 터미널, macOS 메뉴바, 데스크톱 플로팅 
 ./script/check.sh --no-run
 ```
 
-짧은 runtime CPU/RSS smoke:
+runtime smoke:
 
 ```sh
 ./script/build_and_run.sh --verify-runtime 10
 ./script/build_and_run.sh --verify-floating-pet-runtime 10
 ```
 
-메뉴바 앱만 빌드하고 실행:
-
-```sh
-./script/build_and_run.sh
-```
-
-사용 가능한 실행 옵션:
-
-```sh
-./script/build_and_run.sh --help
-```
-
-## CLI 사용
+## CLI
 
 ```sh
 codex-usage status
@@ -111,8 +85,7 @@ Plan: pro
 
 ## 설치
 
-설치 스크립트는 release build, 앱 번들 생성, CLI 설치, 로그인/재시작 후 자동 실행 LaunchAgent 등록을 수행한다.
-잠자기 방지 모드와 자동 조건은 macOS `UserDefaults`에 저장되므로, 예를 들어 `충전 중 금지`를 선택해 둔 상태라면 다음 실행 때 같은 설정을 다시 읽어 적용한다.
+설치 스크립트는 release build, 앱 번들 생성, CLI 설치, WidgetKit `.appex` 포함, 로그인/재시작 후 자동 실행 LaunchAgent 등록을 수행한다.
 
 ```sh
 ./script/install.sh
@@ -148,21 +121,11 @@ Plan: pro
 ./script/uninstall.sh
 ```
 
-## 프로젝트 구조
+## 잠들지 않기
 
-```text
-Sources/CodexUsageCore/       사용량 조회, 모델, cache, formatter
-Sources/CodexUsageCLI/        codex-usage CLI
-Sources/MacDog/               macOS 메뉴바 앱과 데스크톱 펫
-Sources/MacDogWidget/         WidgetKit용 view/provider 코드
-Apps/MacDogWidgetHost/        Widget Extension 검증용 macOS host target
-Apps/MacDogWidgetExtension/   Widget Extension target entrypoint와 plist
-MacDog.xcodeproj/             WidgetKit host/extension 패키징 검증용 Xcode project
-Tests/                        core parser/cache 테스트
-script/                       빌드, 실행, 설치, 검증 스크립트
-Docs/                         위젯 패키징 등 보조 문서
-Assets/Generated/             생성형 sprite 원본과 검수 산출물
-```
+MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용한다. 덮개 닫힘 보호는 현재 1차 구현으로, 사용자가 관리자 권한을 승인하면 `pmset disablesleep`을 켜고 MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
+
+현재 구현은 동작 검증은 되었지만, 설정 변경 때마다 관리자 권한 프롬프트가 뜰 수 있다. 다음 본작업은 Amphetamine Enhancer와 유사한 helper 구조를 도입해 최초 설치/승인 이후에는 설정 변경을 비밀번호 없이 처리하는 것이다.
 
 ## 데이터와 보안
 
@@ -171,22 +134,19 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - auth token, refresh token, cookie, session material은 읽거나 저장하지 않는다.
 - shared cache에는 plan, 사용률, reset 시각, credits, stale/error 상태만 저장한다.
 
-## 현재 상태
+## 프로젝트 구조
 
-- CLI MVP, shared cache, macOS 메뉴바 앱, Codex Pup 러너, 데스크톱 플로팅 펫 MVP, RunCat식 Mac 상태/배터리 상세 모듈, 잠자기 방지 세션/trigger MVP, Apple native Charge Limit 지원 감지와 배터리 설정 연결 구현 완료
-- `MacDog` 메뉴바 앱은 SwiftPM executable로 빌드한다.
-- WidgetKit은 `MacDog.xcodeproj`의 `MacDogWidgetHost`/`MacDogWidgetExtension` target으로 embedded `.appex` 빌드까지 검증한다.
-- 설치 스크립트는 `MacDog.app` 안에 WidgetKit `.appex` 번들을 포함해 배포한다.
-- 설치된 앱은 monitor LaunchAgent의 `RunAtLoad`로 로그인/재시작 후 자동 실행되며 기존 설정값을 보존한다.
-- 앱 시작 시 같은 bundle id의 기존 MacDog 프로세스가 있으면 새 인스턴스를 종료해 중복 러너를 방지한다.
-- 메뉴바 popover, Mac/Codex 탭, 우클릭 메뉴, 배터리 설정 열기, 데스크톱 플로팅 펫, 위젯 갤러리와 클릭 동작은 사용자 수동 검수 완료.
-- 다음 제품 확장은 잠자기 방지 고급 trigger 설정과 충전 제어 연구 스파이크를 우선한다.
-
-## 후속 방향
-
-- 잠자기 방지 고급 trigger: 조건별 threshold 조정, 지정 앱 선택, trigger 종료 조건 정리
-- Charge Limit 직접 제어: 공개 설정 연결을 유지하고, Shortcuts/SMC-helper 방식은 조사 결과에 따라 별도 설계
-- 덮개 닫힘/closed-display mode: 공개 IOKit assertion 범위와 관리자 권한 우회 리스크를 조사 완료, 구현은 별도 설계
+```text
+Sources/CodexUsageCore/       사용량 조회, 모델, cache, formatter
+Sources/CodexUsageCLI/        codex-usage CLI
+Sources/MacDog/               macOS 메뉴바 앱과 데스크톱 펫
+Sources/MacDogWidget/         WidgetKit view/provider
+Apps/                         Widget host/extension target
+Tests/                        core/app 테스트
+script/                       빌드, 실행, 설치, 검증 스크립트
+Docs/                         보조 설계/검증 문서
+Assets/Generated/             생성형 asset과 README 검수 산출물
+```
 
 ## 문서
 
@@ -194,10 +154,10 @@ Assets/Generated/             생성형 sprite 원본과 검수 산출물
 - [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
 - [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 설계와 검증 경계
 - [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
-- [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘/closed-display mode 조사 결과
+- [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 1차 구현 경계
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 직접 제어 가능성 조사 결과
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 
 ## 라이선스
 
-아직 정하지 않았다.
+Apache License 2.0. 자세한 내용은 [LICENSE](LICENSE)를 참고한다.

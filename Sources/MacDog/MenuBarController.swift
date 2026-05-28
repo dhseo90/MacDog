@@ -13,6 +13,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
+    private var popoverMetricsTimer: Timer?
     private var liveRefreshTask: Task<Void, Never>?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
@@ -45,7 +46,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.delegate = self
-        popover.contentSize = NSSize(width: 320, height: 540)
+        popover.contentSize = NSSize(width: 370, height: 408)
         popover.contentViewController = makePopoverController()
     }
 
@@ -56,6 +57,45 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 self?.refreshUsage(allowLiveRefresh: false)
             }
         }
+    }
+
+    private func startPopoverMetricsTimer() {
+        popoverMetricsTimer?.invalidate()
+        popoverMetricsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshPopoverMetricsIfNeeded()
+            }
+        }
+        popoverMetricsTimer?.tolerance = 0.15
+    }
+
+    private func stopPopoverMetricsTimer() {
+        popoverMetricsTimer?.invalidate()
+        popoverMetricsTimer = nil
+    }
+
+    private func refreshPopoverMetricsIfNeeded() {
+        guard popover.isShown, shouldRefreshLocalMetricsForSelectedPopoverModule else { return }
+
+        preferences = RunnerPreferences()
+
+        if MacDogDemoData.isEnabled {
+            applyState(MacDogDemoData.state(preferences: preferences))
+            return
+        }
+
+        let systemMetrics = SystemMetricsSnapshot.capture()
+        syncSleepPrevention(systemMetrics: systemMetrics)
+        applyState(state.withSystemMetrics(
+            systemMetrics,
+            sleepPreventionStatus: sleepPreventionController.status,
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+        ))
+    }
+
+    private var shouldRefreshLocalMetricsForSelectedPopoverModule: Bool {
+        let rawValue = UserDefaults.standard.string(forKey: RunnerPreferences.popoverModuleKey) ?? MacDogPopoverModule.codex.rawValue
+        return rawValue == MacDogPopoverModule.mac.rawValue
     }
 
     private func restartAnimationTimer() {
@@ -93,6 +133,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
+
+        if MacDogDemoData.isEnabled {
+            applyState(MacDogDemoData.state(preferences: preferences))
+            if previousPhase != state.phase || previousPreferences != preferences {
+                restartAnimationTimer()
+            }
+            syncDesktopPetVisibility()
+            return
+        }
+
         let systemMetrics = SystemMetricsSnapshot.capture()
         syncSleepPrevention(systemMetrics: systemMetrics)
         applyState(loadCachedState(systemMetrics: systemMetrics))
@@ -110,7 +160,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func applyState(_ newState: UsageMonitorState) {
         state = newState
-        popover.contentViewController = makePopoverController()
+        updatePopoverController()
         statusItem.button?.toolTip = state.toolTip
         renderCurrentFrame()
     }
@@ -144,6 +194,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func requestLiveRefresh() {
+        guard !MacDogDemoData.isEnabled else {
+            applyState(MacDogDemoData.state(preferences: preferences))
+            return
+        }
+
         liveRefreshTask?.cancel()
         applyState(state.withRefreshing(true))
         liveRefreshTask = Task { [weak self] in
@@ -235,7 +290,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func makePopoverController() -> NSViewController {
-        NSHostingController(rootView: UsagePopoverView(
+        NSHostingController(rootView: makePopoverView())
+    }
+
+    private func updatePopoverController() {
+        if let hostingController = popover.contentViewController as? NSHostingController<UsagePopoverView> {
+            hostingController.rootView = makePopoverView()
+        } else {
+            popover.contentViewController = makePopoverController()
+        }
+    }
+
+    private func makePopoverView() -> UsagePopoverView {
+        UsagePopoverView(
             state: state,
             onPreferencesChanged: {
                 Task { @MainActor in
@@ -247,7 +314,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     self.perform(action)
                 }
             }
-        ))
+        )
     }
 
     private func perform(_ action: PetAction) {
@@ -436,7 +503,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             state: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled ? .on : .off
         ))
         submenu.addItem(menuItem(
-            "CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상",
+            "CPU 사용 \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상",
             action: #selector(menuToggleCPUThresholdTrigger),
             state: preferences.sleepPreventionCPUThresholdTriggerEnabled ? .on : .off
         ))
@@ -638,16 +705,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             popover.show(
                 relativeTo: popoverAnchorRect(in: sourceView, placement: placement),
                 of: sourceView,
-                preferredEdge: placement.preferredEdge
+                preferredEdge: preferredEdge(for: sourceView, placement: placement)
             )
+            startPopoverMetricsTimer()
         }
         positionPopoverWindow(relativeTo: sourceView, placement: placement)
+        refreshPopoverMetricsIfNeeded()
         requestLiveRefresh()
     }
 
     nonisolated func popoverDidClose(_ notification: Notification) {
         Task { @MainActor in
             self.cancelLiveRefresh()
+            self.stopPopoverMetricsTimer()
             self.removeOutsideClickMonitors()
         }
     }
@@ -722,6 +792,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return frame.insetBy(dx: -4, dy: -4).contains(point)
     }
 
+    private func preferredEdge(for sourceView: NSView, placement: UsagePopoverPlacement) -> NSRectEdge {
+        guard placement == .desktopPet,
+              let sourceWindow = sourceView.window
+        else {
+            return placement.defaultPreferredEdge
+        }
+
+        let sourceFrame = sourceWindow.convertToScreen(sourceView.convert(sourceView.bounds, to: nil))
+        let screenFrame = (sourceWindow.screen ?? NSScreen.main)?.visibleFrame ?? sourceFrame
+        return shouldShowDesktopPopoverOnRight(sourceFrame: sourceFrame, screenFrame: screenFrame) ? .maxX : .minX
+    }
+
     private func positionPopoverWindow(relativeTo sourceView: NSView, placement: UsagePopoverPlacement) {
         guard
             let popoverWindow = popover.contentViewController?.view.window,
@@ -738,7 +820,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             frame.origin.y = max(screenFrame.minY + 8, sourceFrame.minY - frame.height - 4)
         case .desktopPet:
             let padding: CGFloat = 8
-            let showOnRight = sourceFrame.midX <= screenFrame.midX
+            let showOnRight = shouldShowDesktopPopoverOnRight(sourceFrame: sourceFrame, screenFrame: screenFrame)
             frame.origin.x = showOnRight
                 ? sourceFrame.maxX + padding
                 : sourceFrame.minX - frame.width - padding
@@ -748,13 +830,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         frame.origin.y = min(max(frame.origin.y, screenFrame.minY + 8), screenFrame.maxY - frame.height - 8)
         popoverWindow.setFrame(frame, display: true)
     }
+
+    private func shouldShowDesktopPopoverOnRight(sourceFrame: NSRect, screenFrame: NSRect) -> Bool {
+        sourceFrame.midX <= screenFrame.midX
+    }
 }
 
 private enum UsagePopoverPlacement {
     case menuBar
     case desktopPet
 
-    var preferredEdge: NSRectEdge {
+    var defaultPreferredEdge: NSRectEdge {
         switch self {
         case .menuBar:
             return .maxY

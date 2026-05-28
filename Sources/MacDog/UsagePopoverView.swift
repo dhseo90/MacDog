@@ -1,3 +1,4 @@
+import AppKit
 import CodexUsageCore
 import SwiftUI
 
@@ -6,7 +7,7 @@ struct UsagePopoverView: View {
     let onPreferencesChanged: () -> Void
     let onAction: (PetAction) -> Void
 
-    @AppStorage("macDogPopoverModule") private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
+    @AppStorage(RunnerPreferences.popoverModuleKey) private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
 
     init(
         state: UsageMonitorState,
@@ -19,131 +20,158 @@ struct UsagePopoverView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 10) {
-                header
-                modulePicker
-            }
-
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    switch selectedModule {
-                    case .codex:
-                        codexUsageContent
-                        RunnerControls(onChange: onPreferencesChanged)
-                    case .mac:
-                        SystemMetricsPanel(
-                            snapshot: state.systemMetrics,
-                            sleepPreventionStatus: state.sleepPreventionStatus,
-                            sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
-                            onPreferencesChanged: onPreferencesChanged,
-                            onAction: onAction
-                        )
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 452)
+        HStack(alignment: .top, spacing: 8) {
+            contentSurface
+            tabRail
         }
-        .padding(16)
-        .frame(width: 280, alignment: .leading)
+        .padding(10)
+        .frame(width: 370, height: 408, alignment: .topLeading)
     }
 
     private var selectedModule: MacDogPopoverModule {
         MacDogPopoverModule(rawValue: selectedModuleRaw) ?? .codex
     }
 
-    private var modulePicker: some View {
-        Picker("모듈", selection: $selectedModuleRaw) {
+    private var contentSurface: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            textHeader
+            Divider()
+
+            ScrollView {
+                tabContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 326)
+        }
+        .padding(12)
+        .frame(width: 278, height: 388, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private var tabRail: some View {
+        VStack(spacing: 8) {
             ForEach(MacDogPopoverModule.allCases) { module in
-                Text(module.shortLabel).tag(module.rawValue)
+                tabButton(module)
             }
         }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .frame(width: 112)
+        .frame(width: 64)
+    }
+
+    private var textHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(selectedModule.title)
+                .font(.headline)
+                .lineLimit(1)
+            Text(selectedModuleSubtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
+    private var tabContent: some View {
+        switch selectedModule {
+        case .codex:
+            VStack(alignment: .leading, spacing: 16) {
+                codexUsageContent
+                RunnerControls(onChange: onPreferencesChanged)
+            }
+        case .mac:
+            MacResourcesPanel(snapshot: state.systemMetrics)
+        case .sleep:
+            SleepPreventionPanel(
+                sleepPreventionStatus: state.sleepPreventionStatus,
+                sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
+                onPreferencesChanged: onPreferencesChanged
+            )
+        case .battery:
+            BatteryPanel(snapshot: state.systemMetrics, onAction: onAction)
+        }
+    }
+
+    private func tabButton(_ module: MacDogPopoverModule) -> some View {
+        let isSelected = selectedModule == module
+        return Button {
+            selectedModuleRaw = module.rawValue
+            onPreferencesChanged()
+        } label: {
+            PopoverTabArtwork(
+                resourceName: module.artworkName,
+                fallbackSystemImage: module.systemImage
+            )
+            .frame(width: 64, height: 64)
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.74) : Color.primary.opacity(0.14), lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(module.title)
+        .accessibilityLabel(module.title)
+    }
+
+    private var selectedModuleSubtitle: String {
+        switch selectedModule {
+        case .codex:
+            return state.phase.statusLabel
+        case .mac:
+            return state.systemMetrics.cpuSummary
+        case .sleep:
+            return state.sleepPreventionStatus.summary
+        case .battery:
+            return state.systemMetrics.battery.summary
+        }
+    }
+
     private var codexUsageContent: some View {
-        if let limit = state.codexLimit {
-            if let message = state.highUsageMessage {
-                PressureBanner(message: message, phase: state.phase)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            if let limit = state.codexLimit {
+                if let message = state.highUsageMessage {
+                    PressureBanner(message: message, phase: state.phase)
+                }
 
-            VStack(alignment: .leading, spacing: 10) {
-                UsageRow(title: "5시간", window: limit.fiveHour)
-                UsageRow(title: "주간", window: limit.weekly)
-            }
+                VStack(alignment: .leading, spacing: 12) {
+                    UsageRow(title: "5시간", window: limit.fiveHour)
+                    UsageRow(title: "주간", window: limit.weekly)
+                }
 
-            Divider()
+                Divider()
 
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                metadataRow("플랜", limit.planType ?? "알 수 없음")
-                metadataRow("크레딧", limit.credits?.balance ?? "알 수 없음")
-                metadataRow("속도 기준", state.displayBasis.label)
-                metadataRow("상태 기준", UsagePressurePhase.thresholdSummary)
-                metadataRow("갱신", state.lastUpdatedSummary)
-                metadataRow("소스", state.sourceLabel)
-            }
-        } else if state.isRefreshing {
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("사용량 새로고침 중...")
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                    metadataRow("플랜", limit.planType ?? "알 수 없음")
+                    metadataRow("갱신", state.lastUpdatedSummary)
+                }
+            } else if state.isRefreshing {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("사용량 새로고침 중...")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text(state.errorMessage ?? "사용량을 확인할 수 없음")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-        } else {
-            Text(state.errorMessage ?? "사용량을 확인할 수 없음")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
 
-        if let error = state.errorMessage, !state.isRefreshing {
-            Text(error)
-                .font(.caption)
-                .foregroundStyle(.red)
-                .lineLimit(2)
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(phaseColor)
-                .frame(width: 10, height: 10)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("코덱스 사용량")
-                    .font(.headline)
-                Text(statusText)
+            if let error = state.errorMessage, !state.isRefreshing {
+                Text(error)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
             }
-
-            Spacer()
-        }
-    }
-
-    private var statusText: String {
-        state.phase.statusLabel
-    }
-
-    private var phaseColor: Color {
-        switch state.phase {
-        case .calm:
-            .secondary
-        case .active:
-            .accentColor
-        case .fast:
-            .orange
-        case .sprint, .limit:
-            .red
         }
     }
 
@@ -159,30 +187,124 @@ struct UsagePopoverView: View {
     }
 }
 
-private enum MacDogPopoverModule: String, CaseIterable, Identifiable {
+enum MacDogPopoverModule: String, CaseIterable, Identifiable {
     case codex
     case mac
+    case sleep
+    case battery
 
     var id: String { rawValue }
 
-    var shortLabel: String {
+    var title: String {
+        switch self {
+        case .codex:
+            "Codex 사용량"
+        case .mac:
+            "활성 자원"
+        case .sleep:
+            "잠들지 않기"
+        case .battery:
+            "배터리"
+        }
+    }
+
+    var tabLabel: String {
         switch self {
         case .codex:
             "Codex"
         case .mac:
             "Mac"
+        case .sleep:
+            "잠들지\n않기"
+        case .battery:
+            "배터리"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .codex:
+            "pawprint"
+        case .mac:
+            "waveform.path.ecg"
+        case .sleep:
+            "moon.zzz"
+        case .battery:
+            "battery.100percent"
+        }
+    }
+
+    var artworkName: String {
+        switch self {
+        case .codex:
+            "codex-tab"
+        case .mac:
+            "mac-tab"
+        case .sleep:
+            "sleep-tab"
+        case .battery:
+            "battery-tab"
         }
     }
 }
 
-private struct SystemMetricsPanel: View {
+private struct MacResourcesPanel: View {
     let snapshot: SystemMetricsSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ResourceMetricBlock(
+                title: "CPU",
+                systemImage: "cpu",
+                value: snapshot.cpuSummary,
+                details: [snapshot.cpuDetailSummary],
+                progress: snapshot.cpuLoadPercent.map { Self.progress($0) }
+            )
+            Divider()
+            ResourceMetricBlock(
+                title: "메모리",
+                systemImage: "memorychip",
+                value: snapshot.memorySummary,
+                details: [snapshot.memoryDetailSummary],
+                progress: snapshot.memoryUsedPercent.map { Self.progress($0) }
+            )
+            Divider()
+            ResourceMetricBlock(
+                title: "저장 용량",
+                systemImage: "internaldrive",
+                value: snapshot.diskSummary,
+                details: [
+                    snapshot.diskDetailSummary,
+                    "홈 볼륨 기준"
+                ],
+                progress: snapshot.diskUsedPercent.map { Self.progress($0) }
+            )
+            Divider()
+            ResourceMetricBlock(
+                title: "네트워크",
+                systemImage: "network",
+                value: snapshot.primaryNetworkInterfaceName ?? "활성 인터페이스 \(snapshot.activeInterfaceCount)",
+                details: [
+                    snapshot.localNetworkSummary,
+                    snapshot.networkRateSummary,
+                    snapshot.networkSummary
+                ],
+                progress: nil
+            )
+        }
+    }
+
+    private static func progress(_ percent: Double) -> Double {
+        min(max(percent / 100, 0), 1)
+    }
+}
+
+private struct SleepPreventionPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let onPreferencesChanged: () -> Void
-    let onAction: (PetAction) -> Void
 
-    @AppStorage(RunnerPreferences.sleepPreventionEnabledKey) private var sleepPreventionEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionControlModeKey) private var sleepPreventionControlMode = RunnerPreferences.defaultSleepPreventionControlMode.rawValue
     @AppStorage(RunnerPreferences.sleepPreventionSessionPresetKey) private var sleepPreventionSessionPreset = RunnerPreferences.defaultSleepPreventionSessionPreset.rawValue
     @AppStorage(RunnerPreferences.sleepPreventionPowerAdapterTriggerKey) private var powerAdapterTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionCodexAppTriggerKey) private var codexAppTriggerEnabled = false
@@ -193,138 +315,245 @@ private struct SystemMetricsPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            macStatusSection
-            Divider()
-            sleepPreventionSection
-            Divider()
-            chargeLimitSection
-        }
-        .onChange(of: sleepPreventionEnabled) { _, enabled in
-            RunnerPreferences.setSleepPreventionEnabled(enabled)
-            onPreferencesChanged()
-        }
-        .onChange(of: sleepPreventionSessionPreset) { _, rawValue in
-            guard let preset = SleepPreventionSessionPreset(rawValue: rawValue) else { return }
-            RunnerPreferences.setSleepPreventionSessionPreset(preset)
-            onPreferencesChanged()
+            PopoverFormSection(title: "제어 방식", systemImage: "power") {
+                controlModeButtons
+
+                Text(controlModeSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if currentControlMode == .time {
+                PopoverFormSection(title: "유지 시간", systemImage: "timer") {
+                    sessionPresetButtons
+
+                    Text("선택한 시간 동안 덮개 닫힘 보호까지 유지하고, 만료되면 원복합니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text(closedLidSummary)
+                .font(.caption2)
+                .foregroundStyle(sleepPreventionStatus.errorMessage == nil ? Color.secondary : Color.red)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if currentControlMode == .condition {
+                PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
+                    Text("체크한 조건 중 하나라도 맞으면 잠들지 않게 유지합니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                        GridRow {
+                            triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
+                            triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
+                        }
+                        GridRow {
+                            triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
+                            triggerToggle("CPU 사용 \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
+                        }
+                        GridRow {
+                            triggerToggle("네트워크 100KB/s", isOn: $networkActivityTriggerEnabled)
+                            triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
+                        }
+                    }
+                }
+            }
         }
         .onChange(of: powerAdapterTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionPowerAdapterTrigger(enabled)
-            onPreferencesChanged()
+            deferredPreferencesChanged()
         }
         .onChange(of: codexAppTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionCodexAppTrigger(enabled)
-            onPreferencesChanged()
+            deferredPreferencesChanged()
         }
         .onChange(of: chargingBelowThresholdTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(enabled)
-            onPreferencesChanged()
+            deferredPreferencesChanged()
         }
         .onChange(of: cpuThresholdTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionCPUThresholdTrigger(enabled)
-            onPreferencesChanged()
+            deferredPreferencesChanged()
         }
         .onChange(of: networkActivityTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionNetworkActivityTrigger(enabled)
-            onPreferencesChanged()
+            deferredPreferencesChanged()
         }
         .onChange(of: externalVolumeTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionExternalVolumeTrigger(enabled)
+            deferredPreferencesChanged()
+        }
+    }
+
+    private var controlModeButtons: some View {
+        HStack(spacing: 4) {
+            ForEach(SleepPreventionControlMode.allCases) { mode in
+                segmentButton(
+                    title: mode.label,
+                    isSelected: currentControlMode == mode
+                ) {
+                    selectControlMode(mode)
+                }
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    private var sessionPresetButtons: some View {
+        HStack(spacing: 4) {
+            ForEach(SleepPreventionSessionPreset.allCases) { preset in
+                segmentButton(
+                    title: preset.label,
+                    isSelected: currentSessionPreset == preset
+                ) {
+                    selectSessionPreset(preset)
+                }
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    private func segmentButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(isSelected ? .semibold : .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(maxWidth: .infinity, minHeight: 24)
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(isSelected ? Color.accentColor : Color.clear)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var currentControlMode: SleepPreventionControlMode {
+        SleepPreventionControlMode(rawValue: sleepPreventionControlMode) ?? RunnerPreferences.defaultSleepPreventionControlMode
+    }
+
+    private var currentSessionPreset: SleepPreventionSessionPreset {
+        SleepPreventionSessionPreset(rawValue: sleepPreventionSessionPreset) ?? RunnerPreferences.defaultSleepPreventionSessionPreset
+    }
+
+    private var controlModeSummary: String {
+        switch currentControlMode {
+        case .off:
+            return "꺼짐"
+        case .time:
+            return sleepPreventionStatus.summary
+        case .condition:
+            if sleepPreventionTriggerStatus.isMatched {
+                return sleepPreventionTriggerStatus.summary
+            }
+            return "대기 중 · 기준을 선택하세요"
+        }
+    }
+
+    private var closedLidSummary: String {
+        if let errorMessage = sleepPreventionStatus.errorMessage {
+            return "덮개 닫힘 보호 오류 · \(errorMessage)"
+        }
+
+        guard currentControlMode != .off else {
+            return "덮개 닫힘 보호도 함께 꺼져 있습니다."
+        }
+
+        if sleepPreventionStatus.isClosedLidSleepDisabled {
+            return "덮개 닫힘 보호 활성 · 배터리 소모가 커질 수 있습니다."
+        }
+
+        return "덮개 닫힘 보호는 활성 조건이 맞고 관리자 승인을 받으면 켜집니다."
+    }
+
+    private func selectControlMode(_ mode: SleepPreventionControlMode) {
+        sleepPreventionControlMode = mode.rawValue
+        RunnerPreferences.setSleepPreventionControlMode(mode)
+        deferredPreferencesChanged()
+    }
+
+    private func selectSessionPreset(_ preset: SleepPreventionSessionPreset) {
+        sleepPreventionSessionPreset = preset.rawValue
+        RunnerPreferences.setSleepPreventionSessionPreset(preset)
+        deferredPreferencesChanged()
+    }
+
+    private func deferredPreferencesChanged() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             onPreferencesChanged()
         }
     }
 
-    private var macStatusSection: some View {
-        panelSection(title: "Mac 상태", systemImage: "desktopcomputer") {
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
-                metricRow("CPU", snapshot.cpuSummary)
-                metricRow("CPU 상세", snapshot.cpuDetailSummary)
-                metricRow("메모리", snapshot.memorySummary)
-                metricRow("메모리 상세", snapshot.memoryDetailSummary)
-                metricRow("디스크", snapshot.diskSummary)
-                metricRow("네트워크", snapshot.networkSummary)
-                metricRow("네트워크 속도", snapshot.networkRateSummary)
-                metricRow("로컬 IP", snapshot.localNetworkSummary)
-                metricRow("인터페이스", "\(snapshot.activeInterfaceCount)")
-            }
-        }
+    private func triggerToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.checkbox)
+            .font(.caption)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
     }
+}
 
-    private var sleepPreventionSection: some View {
-        panelSection(title: "시스템 잠들기", systemImage: "moon.zzz") {
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
-                metricRow("상태", sleepPreventionStatus.summary)
-                metricRow("모드", currentSleepPreventionMode.label)
-                metricRow("자동 조건", sleepPreventionTriggerStatus.summary)
-            }
+private struct BatteryPanel: View {
+    let snapshot: SystemMetricsSnapshot
+    let onAction: (PetAction) -> Void
 
-            controlLabel("방지 모드")
-            Picker("방지 모드", selection: sleepPreventionModeBinding) {
-                ForEach(SleepPreventionMode.allCases) { mode in
-                    Text(mode.label).tag(mode.rawValue)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            ResourceMetricBlock(
+                title: "배터리",
+                systemImage: "battery.100percent",
+                value: snapshot.battery.summary,
+                details: [
+                    snapshot.battery.powerSummary,
+                    snapshot.battery.detailSummary
+                ],
+                progress: snapshot.battery.percent.map { Double($0) / 100 }
+            )
 
-            if currentSleepPreventionMode == .timed {
-                controlLabel("지속 시간")
-                Picker("지속 시간", selection: $sleepPreventionSessionPreset) {
-                    ForEach(SleepPreventionSessionPreset.timedCases) { preset in
-                        Text(preset.label).tag(preset.rawValue)
+            PopoverFormSection(title: "충전 제어", systemImage: "slider.horizontal.3") {
+                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                    GridRow {
+                        metricRow("지원", snapshot.chargeLimitSupport.summary)
+                    }
+                    GridRow {
+                        metricRow("요구 사항", snapshot.chargeLimitSupport.requirementSummary)
                     }
                 }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-            }
 
-            controlLabel("자동 조건")
-            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                GridRow {
-                    triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
-                    triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
+                Button {
+                    onAction(.openBatterySettings)
+                } label: {
+                    Label(batterySettingsLabel, systemImage: "battery.100percent")
                 }
-                GridRow {
-                    triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
-                    triggerToggle("CPU \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
-                }
-                GridRow {
-                    triggerToggle("네트워크 100KB/s", isOn: $networkActivityTriggerEnabled)
-                    triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
-                }
+                .font(.caption)
+                .buttonStyle(.borderless)
             }
         }
     }
 
-    private var chargeLimitSection: some View {
-        panelSection(title: "충전 한도", systemImage: "battery.100percent") {
-            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
-                metricRow("배터리", snapshot.battery.summary)
-                metricRow("배터리 상세", snapshot.battery.detailSummary)
-                metricRow("전원", snapshot.battery.powerSummary)
-                metricRow("지원", snapshot.chargeLimitSupport.summary)
-            }
-
-            Button {
-                onAction(.openBatterySettings)
-            } label: {
-                Label(batterySettingsLabel, systemImage: "battery.100percent")
-            }
-            .font(.caption)
-            .buttonStyle(.borderless)
-        }
-    }
-
-    private func panelSection<Content: View>(
-        title: String,
-        systemImage: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-            content()
-        }
+    private var batterySettingsLabel: String {
+        snapshot.chargeLimitSupport.isNativeChargeLimitAvailable ? "충전 한도 설정 열기" : "배터리 설정 열기"
     }
 
     private func metricRow(_ key: String, _ value: String) -> some View {
@@ -337,40 +566,125 @@ private struct SystemMetricsPanel: View {
         }
         .font(.caption)
     }
+}
 
-    private var batterySettingsLabel: String {
-        snapshot.chargeLimitSupport.isNativeChargeLimitAvailable ? "충전 한도 설정 열기" : "배터리 설정 열기"
-    }
+private struct ResourceMetricBlock: View {
+    let title: String
+    let systemImage: String
+    let value: String
+    let details: [String]
+    let progress: Double?
 
-    private var currentSleepPreventionMode: SleepPreventionMode {
-        RunnerPreferences().sleepPreventionMode
-    }
-
-    private var sleepPreventionModeBinding: Binding<String> {
-        Binding(
-            get: { currentSleepPreventionMode.rawValue },
-            set: { rawValue in
-                guard let mode = SleepPreventionMode(rawValue: rawValue) else { return }
-                RunnerPreferences.setSleepPreventionMode(mode)
-                onPreferencesChanged()
-            }
-        )
-    }
-
-    private func controlLabel(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.caption.weight(.semibold))
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(.secondary)
-            Spacer()
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(title): \(value)")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                ForEach(details, id: \.self) { detail in
+                    Text(detail)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let progress {
+                    ProgressView(value: progress)
+                        .tint(.accentColor)
+                        .padding(.top, 2)
+                }
+            }
         }
     }
+}
 
-    private func triggerToggle(_ title: String, isOn: Binding<Bool>) -> some View {
-        Toggle(title, isOn: isOn)
-            .toggleStyle(.checkbox)
-            .font(.caption)
-            .lineLimit(1)
+private struct PopoverFormSection<Content: View>: View {
+    let title: String
+    let systemImage: String
+    let content: Content
+
+    init(title: String, systemImage: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            content
+        }
+    }
+}
+
+private struct PopoverTabArtwork: View {
+    let resourceName: String
+    let fallbackSystemImage: String
+
+    var body: some View {
+        Group {
+            if let image = Self.image(named: resourceName) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .clipped()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                    Image(systemName: fallbackSystemImage)
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private static func image(named resourceName: String) -> NSImage? {
+        let localResourceURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Sources", isDirectory: true)
+            .appendingPathComponent("MacDog", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("PopoverTabs", isDirectory: true)
+            .appendingPathComponent("\(resourceName).png")
+        if FileManager.default.fileExists(atPath: localResourceURL.path) {
+            return NSImage(contentsOf: localResourceURL)
+        }
+
+        if let url = Bundle.main.resourceURL?
+            .appendingPathComponent("PopoverTabs", isDirectory: true)
+            .appendingPathComponent("\(resourceName).png") {
+            return NSImage(contentsOf: url)
+        }
+
+        if let url = Bundle.main.resourceURL?.appendingPathComponent("\(resourceName).png") {
+            return NSImage(contentsOf: url)
+        }
+
+        if let url = Bundle.module.url(
+            forResource: resourceName,
+            withExtension: "png",
+            subdirectory: "PopoverTabs"
+        ) {
+            return NSImage(contentsOf: url)
+        }
+
+        guard let url = Bundle.module.url(forResource: resourceName, withExtension: "png") else {
+            return nil
+        }
+
+        return NSImage(contentsOf: url)
     }
 }
 
@@ -423,7 +737,7 @@ private struct RunnerControls: View {
     @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Divider()
 
             controlLabel("러너 속도")
@@ -438,6 +752,7 @@ private struct RunnerControls: View {
 
             Toggle("움직임 줄이기", isOn: $reducedMotion)
                 .font(.caption)
+                .padding(.top, 2)
 
             Toggle("애니메이션 일시 정지", isOn: $animationPaused)
                 .font(.caption)

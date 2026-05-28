@@ -6,12 +6,16 @@ struct SleepPreventionStatus: Equatable {
         isEnabled: false,
         isActive: false,
         endsAt: nil,
+        isClosedLidSleepDisabled: false,
+        isScreenLockDisabled: false,
         errorMessage: nil
     )
 
     let isEnabled: Bool
     let isActive: Bool
     let endsAt: Date?
+    let isClosedLidSleepDisabled: Bool
+    let isScreenLockDisabled: Bool
     let errorMessage: String?
 
     var summary: String {
@@ -31,20 +35,35 @@ struct SleepPreventionStatus: Equatable {
 final class SleepPreventionController {
     private static let requiredAssertions: [SleepPreventionAssertionKind] = [
         .displaySleep,
-        .systemSleep
+        .systemSleep,
+        .networkClient
     ]
 
     private let assertionManager: PowerAssertionManaging
+    private let closedLidSleepDisabler: ClosedLidSleepDisabling
+    private let screenLockDisabler: ScreenLockDisabling
     private var assertionIDs: [SleepPreventionAssertionKind: IOPMAssertionID] = [:]
     private var requestedEnabled = false
+    private var closedLidDisableAttempted = false
+    private var screenLockDisableAttempted = false
+    private var isClosedLidSleepDisabled = false
+    private var isScreenLockDisabled = false
     private var endsAt: Date?
     private var lastErrorMessage: String?
 
-    init(assertionManager: PowerAssertionManaging = IOKitPowerAssertionManager()) {
+    init(
+        assertionManager: PowerAssertionManaging = IOKitPowerAssertionManager(),
+        closedLidSleepDisabler: ClosedLidSleepDisabling = PMSetClosedLidSleepDisabler(),
+        screenLockDisabler: ScreenLockDisabling = ScreenSaverLockDisabler()
+    ) {
         self.assertionManager = assertionManager
+        self.closedLidSleepDisabler = closedLidSleepDisabler
+        self.screenLockDisabler = screenLockDisabler
     }
 
     deinit {
+        restoreScreenLockIfNeeded()
+        restoreClosedLidSleepIfNeeded()
         releaseAssertions()
     }
 
@@ -53,6 +72,8 @@ final class SleepPreventionController {
             isEnabled: requestedEnabled,
             isActive: hasRequiredAssertions,
             endsAt: endsAt,
+            isClosedLidSleepDisabled: isClosedLidSleepDisabled,
+            isScreenLockDisabled: isScreenLockDisabled,
             errorMessage: lastErrorMessage
         )
     }
@@ -63,10 +84,16 @@ final class SleepPreventionController {
 
         if isEnabled {
             acquireAssertionsIfNeeded()
+            disableClosedLidSleepIfNeeded()
+            disableScreenLockIfNeeded()
         } else {
+            restoreScreenLockIfNeeded()
+            restoreClosedLidSleepIfNeeded()
             releaseAssertions()
             self.endsAt = nil
             lastErrorMessage = nil
+            closedLidDisableAttempted = false
+            screenLockDisableAttempted = false
         }
     }
 
@@ -98,6 +125,48 @@ final class SleepPreventionController {
         lastErrorMessage = nil
     }
 
+    private func disableClosedLidSleepIfNeeded() {
+        guard hasRequiredAssertions, !closedLidDisableAttempted else { return }
+        closedLidDisableAttempted = true
+
+        do {
+            isClosedLidSleepDisabled = try closedLidSleepDisabler.setClosedLidSleepDisabled(true)
+        } catch {
+            isClosedLidSleepDisabled = false
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func disableScreenLockIfNeeded() {
+        guard hasRequiredAssertions, !screenLockDisableAttempted else { return }
+        screenLockDisableAttempted = true
+
+        do {
+            isScreenLockDisabled = try screenLockDisabler.setScreenLockDisabled(true)
+        } catch {
+            isScreenLockDisabled = false
+            lastErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func restoreClosedLidSleepIfNeeded() {
+        do {
+            _ = try closedLidSleepDisabler.setClosedLidSleepDisabled(false)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+        isClosedLidSleepDisabled = false
+    }
+
+    private func restoreScreenLockIfNeeded() {
+        do {
+            _ = try screenLockDisabler.setScreenLockDisabled(false)
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
+        isScreenLockDisabled = false
+    }
+
     private func releaseAssertions() {
         for assertionID in assertionIDs.values {
             assertionManager.releaseAssertion(assertionID)
@@ -109,6 +178,7 @@ final class SleepPreventionController {
 enum SleepPreventionAssertionKind: Hashable {
     case displaySleep
     case systemSleep
+    case networkClient
 
     var assertionType: CFString {
         switch self {
@@ -116,6 +186,8 @@ enum SleepPreventionAssertionKind: Hashable {
             kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString
         case .systemSleep:
             kIOPMAssertionTypePreventUserIdleSystemSleep as CFString
+        case .networkClient:
+            kIOPMAssertNetworkClientActive as CFString
         }
     }
 
@@ -125,6 +197,8 @@ enum SleepPreventionAssertionKind: Hashable {
             "MacDog display sleep prevention" as CFString
         case .systemSleep:
             "MacDog system sleep prevention" as CFString
+        case .networkClient:
+            "MacDog closed-display sleep prevention" as CFString
         }
     }
 
@@ -134,6 +208,8 @@ enum SleepPreventionAssertionKind: Hashable {
             "display"
         case .systemSleep:
             "system"
+        case .networkClient:
+            "network"
         }
     }
 }

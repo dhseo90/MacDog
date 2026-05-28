@@ -20,7 +20,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         super.tearDown()
     }
 
-    func testCPUThresholdTriggerMatchesWhenLoadIsHigh() {
+    func testCPUThresholdTriggerMatchesWhenUsageIsHigh() {
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
 
         let status = SleepPreventionTriggerStatus.evaluate(
@@ -31,7 +31,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · CPU")
+        XCTAssertEqual(status.summary, "활성 · CPU 사용")
     }
 
     func testNetworkActivityTriggerMatchesWhenTrafficIsHigh() {
@@ -102,6 +102,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
             memoryUsedPercent: nil,
             memoryDetails: nil,
             diskUsedPercent: nil,
+            diskDetails: nil,
             networkReceivedBytes: nil,
             networkSentBytes: nil,
             networkReceivedRateBytesPerSecond: networkReceivedRateBytesPerSecond,

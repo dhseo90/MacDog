@@ -24,6 +24,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = MenuBarController()
         controller.start()
         self.controller = controller
+
+        if ProcessInfo.processInfo.environment["MACDOG_OPEN_POPOVER_ON_LAUNCH"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                controller.showUsagePopover()
+            }
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {

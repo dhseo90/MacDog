@@ -25,6 +25,7 @@ final class SleepPreventionModeTests: XCTestCase {
 
         let preferences = RunnerPreferences(defaults: defaults)
         XCTAssertEqual(preferences.sleepPreventionMode, .always)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .time)
         XCTAssertTrue(preferences.sleepPreventionEnabled)
         XCTAssertEqual(preferences.sleepPreventionSessionPreset, .indefinite)
         XCTAssertNil(preferences.sleepPreventionEndsAt)
@@ -41,6 +42,7 @@ final class SleepPreventionModeTests: XCTestCase {
 
         let preferences = RunnerPreferences(defaults: defaults)
         XCTAssertEqual(preferences.sleepPreventionMode, .charging)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .condition)
         XCTAssertFalse(preferences.sleepPreventionEnabled)
         XCTAssertTrue(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
@@ -55,6 +57,7 @@ final class SleepPreventionModeTests: XCTestCase {
 
         let preferences = RunnerPreferences(defaults: defaults)
         XCTAssertEqual(preferences.sleepPreventionMode, .timed)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .time)
         XCTAssertTrue(preferences.sleepPreventionEnabled)
         XCTAssertEqual(preferences.sleepPreventionSessionPreset, .oneHour)
         XCTAssertNotNil(preferences.sleepPreventionEndsAt)
@@ -71,6 +74,7 @@ final class SleepPreventionModeTests: XCTestCase {
 
         let preferences = RunnerPreferences(defaults: defaults)
         XCTAssertEqual(preferences.sleepPreventionMode, .application)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .condition)
         XCTAssertFalse(preferences.sleepPreventionEnabled)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertTrue(preferences.sleepPreventionCodexAppTriggerEnabled)
@@ -93,6 +97,7 @@ final class SleepPreventionModeTests: XCTestCase {
 
         let preferences = RunnerPreferences(defaults: defaults)
         XCTAssertEqual(preferences.sleepPreventionMode, .off)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .off)
         XCTAssertFalse(preferences.sleepPreventionEnabled)
         XCTAssertNil(preferences.sleepPreventionEndsAt)
         XCTAssertFalse(preferences.sleepPreventionPowerAdapterTriggerEnabled)
@@ -116,5 +121,23 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertTrue(secondRead.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionCPUThresholdTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionNetworkActivityTriggerEnabled)
+    }
+
+    func testTimeAndConditionModesAreMutuallyExclusive() {
+        RunnerPreferences.setSleepPreventionMode(.timed, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+
+        var preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .condition)
+        XCTAssertFalse(preferences.sleepPreventionEnabled)
+        XCTAssertNil(preferences.sleepPreventionEndsAt)
+        XCTAssertTrue(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+
+        RunnerPreferences.setSleepPreventionControlMode(.time, defaults: defaults)
+
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.sleepPreventionControlMode, .time)
+        XCTAssertTrue(preferences.sleepPreventionEnabled)
+        XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
     }
 }

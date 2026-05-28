@@ -54,6 +54,25 @@ struct UsageMonitorState: Equatable {
         )
     }
 
+    func withSystemMetrics(
+        _ systemMetrics: SystemMetricsSnapshot,
+        sleepPreventionStatus: SleepPreventionStatus,
+        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
+    ) -> UsageMonitorState {
+        UsageMonitorState(
+            report: report,
+            cacheSnapshot: cacheSnapshot,
+            errorMessage: errorMessage,
+            displayBasis: displayBasis,
+            reducedMotion: reducedMotion,
+            animationPaused: animationPaused,
+            isRefreshing: isRefreshing,
+            systemMetrics: systemMetrics,
+            sleepPreventionStatus: sleepPreventionStatus,
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+        )
+    }
+
     var codexLimit: UsageLimitReport? {
         report?.codexLimit
     }

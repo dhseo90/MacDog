@@ -130,7 +130,7 @@ struct SleepPreventionTriggerStatus: Equatable {
             labels.append("충전 \(batteryThresholdPercent)% 미만")
         }
         if cpuThresholdTriggerEnabled && cpuAboveThreshold {
-            labels.append("CPU")
+            labels.append("CPU 사용")
         }
         if networkActivityTriggerEnabled && networkActivityAboveThreshold {
             labels.append("네트워크")
