@@ -752,6 +752,9 @@ private struct BatteryPanel: View {
                     GridRow {
                         metricRow("목표", "\(effectiveChargeLimitTargetPercent)%", emphasized: true)
                     }
+                    GridRow {
+                        metricRow("동작", chargeLimitBehaviorSummary)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -772,6 +775,11 @@ private struct BatteryPanel: View {
                     .disabled(!snapshot.chargeLimitSupport.isNativeChargeLimitAvailable)
                 }
 
+                Text("목표보다 높으면 강제 방전하지 않고 충전을 멈춘 뒤 자연 하강합니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 if let chargeLimitErrorMessage {
                     Text(chargeLimitErrorMessage)
                         .font(.caption2)
@@ -790,6 +798,22 @@ private struct BatteryPanel: View {
             return "macOS 적용됨 · \(appliedChargeLimitPercent)%"
         }
         return snapshot.chargeLimitSupport.summary
+    }
+
+    private var chargeLimitBehaviorSummary: String {
+        guard snapshot.chargeLimitSupport.isNativeChargeLimitAvailable else {
+            return "시스템 설정 확인 필요"
+        }
+        guard let percent = snapshot.battery.percent else {
+            return "배터리 상태 확인 중"
+        }
+        if percent > effectiveChargeLimitTargetPercent, snapshot.battery.isConnectedToPower == true {
+            return snapshot.battery.isCharging == true ? "목표 초과 · 충전 중" : "목표 초과 · 충전 안 함"
+        }
+        if snapshot.battery.isCharging == true {
+            return "목표까지 충전 중"
+        }
+        return "상한 유지"
     }
 
     private var effectiveChargeLimitTargetPercent: Int {
