@@ -67,12 +67,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func startPopoverMetricsTimer() {
         popoverMetricsTimer?.invalidate()
-        popoverMetricsTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        popoverMetricsTimer = Timer.scheduledTimer(withTimeInterval: PopoverMetricsRefreshPolicy.localMetricsInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refreshPopoverMetricsIfNeeded()
             }
         }
-        popoverMetricsTimer?.tolerance = 0.15
+        popoverMetricsTimer?.tolerance = PopoverMetricsRefreshPolicy.localMetricsTolerance
     }
 
     private func stopPopoverMetricsTimer() {
@@ -103,7 +103,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private var shouldRefreshLocalMetricsForSelectedPopoverModule: Bool {
         let rawValue = UserDefaults.standard.string(forKey: RunnerPreferences.popoverModuleKey) ?? MacDogPopoverModule.codex.rawValue
-        return rawValue == MacDogPopoverModule.mac.rawValue
+        return PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(forRawValue: rawValue)
     }
 
     private func restartAnimationTimer() {
