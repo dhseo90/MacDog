@@ -33,6 +33,21 @@ executable() {
   [[ -x "$1" ]]
 }
 
+print_process_state() {
+  local output
+  local status
+  output="$(pgrep -x "$APP_NAME" 2>&1)" || status=$?
+  status="${status:-0}"
+
+  if [[ "$status" == "0" ]]; then
+    echo "process:running $APP_NAME"
+  elif [[ "$status" == "1" ]]; then
+    echo "process:not-running $APP_NAME"
+  else
+    echo "process:unknown $APP_NAME ($output)"
+  fi
+}
+
 print_state() {
   if present "$APP_DEST"; then echo "app:present $APP_DEST"; else echo "app:absent $APP_DEST"; fi
   if executable "$APP_BINARY"; then echo "app-binary:executable $APP_BINARY"; else echo "app-binary:missing-or-not-executable $APP_BINARY"; fi
@@ -41,7 +56,7 @@ print_state() {
   if executable "$CLI_DEST"; then echo "cli:executable $CLI_DEST"; else echo "cli:missing-or-not-executable $CLI_DEST"; fi
   if present "$CACHE_PLIST"; then echo "cache-plist:present $CACHE_PLIST"; else echo "cache-plist:absent $CACHE_PLIST"; fi
   if present "$MONITOR_PLIST"; then echo "monitor-plist:present $MONITOR_PLIST"; else echo "monitor-plist:absent $MONITOR_PLIST"; fi
-  if pgrep -x "$APP_NAME" >/dev/null 2>&1; then echo "process:running $APP_NAME"; else echo "process:not-running $APP_NAME"; fi
+  print_process_state
 }
 
 expect_installed() {

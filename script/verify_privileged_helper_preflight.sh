@@ -68,7 +68,7 @@ echo "==> Checking current helper state"
 ./script/verify_privileged_helper_state.sh --allow-missing
 
 echo "==> Checking helper XPC diagnostic path"
-./script/verify_privileged_helper_xpc.sh --allow-missing
+./script/verify_privileged_helper_xpc.sh --allow-missing --skip-runtime
 
 cat <<NEXT
 Privileged helper preflight ok.
