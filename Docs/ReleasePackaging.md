@@ -12,16 +12,18 @@
 
 - `script/package_release.sh --dry-run`은 release artifact 계획을 출력한다.
 - `script/package_release.sh`는 `dist/MacDog.app`과 release build의 `codex-usage`를 `dist/release/MacDog-<version>`에 staging한다.
-- staging 폴더에는 `Install MacDog.command`, `Install Privileged Helper.command`, `Check Install Status.command`, `README_FIRST.txt`, `RELEASE_NOTES_DRAFT.md`가 포함된다.
+- staging 폴더에는 `Install MacDog.command`, `Install Privileged Helper.command`, `Uninstall MacDog.command`, `Uninstall Privileged Helper.command`, `Check Install Status.command`, `README_FIRST.txt`, `RELEASE_NOTES_DRAFT.md`가 포함된다.
 - `Install MacDog.command`는 더블클릭 시 사용자 영역에 앱, CLI, LaunchAgent를 설치하고 앱을 연다.
 - `Install Privileged Helper.command`는 system 변경 위치와 helper 용도를 안내한 뒤 별도 더블클릭/관리자 승인으로 bundled helper를 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons`에 설치한다.
+- `Uninstall MacDog.command`는 사용자 영역의 앱, CLI, LaunchAgent를 제거하며 optional helper는 건드리지 않는다.
+- `Uninstall Privileged Helper.command`는 system 변경 위치를 안내한 뒤 별도 더블클릭/관리자 승인으로 optional helper를 `/Library` 위치에서 제거한다.
 - `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치/로드 상태를 터미널에서 요약한다.
 - 설치/업데이트 중 MacDog가 `SleepDisabled=1`을 소유한 상태라면 app 종료 정리 루틴이 값을 0으로 되돌리지 않도록 강제 종료 경로를 사용한다.
 - 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않는다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만든다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관한다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
-- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer syntax, helper 별도 설치 경계, 관리자 승인 문구, 설치 후 상태 확인 command를 검증한다.
+- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command를 검증한다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate를 포함하는지 확인한다.
 
 2026-05-28 확인:
@@ -41,6 +43,7 @@
 - 생성된 `.dmg`를 Finder에서 열어 더블클릭 설치 실행
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent, Gatekeeper 동작 검증
 - privileged helper 더블클릭 설치 command의 실제 Finder 실행
+- 더블클릭 uninstall command와 helper uninstall command의 실제 Finder 실행
 
 ## 아직 하지 않는 것
 
@@ -49,7 +52,7 @@
 - hardened runtime 설정 확정
 - notarization 제출과 stapling
 - 깨끗한 사용자 계정/다른 Mac에서 Gatekeeper 검증
-- privileged helper를 앱 내부 설치 화면으로 자연스럽게 설치하는 UX
+- privileged helper를 앱 내부 설치/제거 화면으로 자연스럽게 관리하는 UX
 
 ## 배포 흐름 후보
 
@@ -60,8 +63,9 @@
 5. helper가 필요한 덮개 닫힘 보호는 `Install Privileged Helper.command` 또는 앱 내부 설치 UX에서 명확히 승인받는다.
 6. `Check Install Status.command`로 app/CLI/LaunchAgent/helper 상태를 확인한다.
 7. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인한다.
-8. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행한다.
-9. 공개 배포 전 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 추가한다.
+8. 제거 검증이 필요하면 `Uninstall MacDog.command`와 `Uninstall Privileged Helper.command`를 각각 실행하고 `Check Install Status.command`로 확인한다.
+9. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행한다.
+10. 공개 배포 전 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 추가한다.
 
 ## GitHub Release 완료 기준
 
@@ -70,3 +74,4 @@
 - Release note에 지원 OS, unsigned/notarized 여부, helper 권한 이유, uninstall 경로를 적는다.
 - `.dmg`를 내려받아 더블클릭 설치하는 흐름을 새 사용자 환경에서 검증한다.
 - helper 설치가 포함되는 경우 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons` 변경을 명확히 안내하고 uninstall 복구를 검증한다.
+- 더블클릭 제거 흐름이 user component와 optional helper를 분리해 처리하는지 검증한다.

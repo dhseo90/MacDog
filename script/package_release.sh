@@ -69,11 +69,15 @@ Payload:
   - bin/codex-usage
   - Install MacDog.command
   - Install Privileged Helper.command
+  - Uninstall MacDog.command
+  - Uninstall Privileged Helper.command
   - Check Install Status.command
   - README_FIRST.txt
   - RELEASE_NOTES_DRAFT.md
 Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
+Double-click uninstall: Uninstall MacDog.command removes the app, CLI, and user LaunchAgents.
+Privileged helper cleanup: Uninstall Privileged Helper.command removes the optional helper after administrator approval.
 Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
 Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases.
@@ -109,8 +113,9 @@ MacDog $VERSION
 3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
 4. The helper installer explains the system locations it changes before asking for administrator approval.
 5. Double-click "Check Install Status.command" after installation to verify app, CLI, LaunchAgents, and optional helper state.
-6. This local release candidate is intended for local unsigned validation.
-7. Uninstall support remains available from the source checkout via script/uninstall.sh.
+6. Double-click "Uninstall MacDog.command" to remove the app, CLI, and user LaunchAgents.
+7. Double-click "Uninstall Privileged Helper.command" only if you installed the optional helper and want to remove it.
+8. This local release candidate is intended for local unsigned validation.
 README
 
 cat >"$STAGE_DIR/RELEASE_NOTES_DRAFT.md" <<NOTES
@@ -139,8 +144,9 @@ Status: unsigned local release candidate.
 
 ## Uninstall
 
-- Source checkout uninstall path: \`./script/uninstall.sh --with-helper\`
-- Release-package uninstall UX is still a follow-up item for public distribution.
+- Double-click \`Uninstall MacDog.command\` to remove the app, CLI, and user LaunchAgents.
+- Double-click \`Uninstall Privileged Helper.command\` to remove the optional helper after administrator approval.
+- Source checkout uninstall path remains available: \`./script/uninstall.sh --with-helper\`
 NOTES
 
 cat >"$STAGE_DIR/Install MacDog.command" <<'INSTALL'
@@ -375,6 +381,130 @@ echo "LaunchDaemon: $HELPER_PLIST_DEST"
 echo "Run Check Install Status.command to verify the helper state."
 HELPER
 chmod +x "$STAGE_DIR/Install Privileged Helper.command"
+
+cat >"$STAGE_DIR/Uninstall MacDog.command" <<'UNINSTALL'
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
+APP_DEST="$HOME/Applications/$APP_NAME.app"
+CLI_DEST="$HOME/bin/codex-usage"
+UID_VALUE="$(id -u)"
+LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
+CACHE_LABEL="com.dhseo.macdog.usage-cache"
+MONITOR_LABEL="com.dhseo.macdog.monitor"
+CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
+MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
+
+macdog_owns_sleep_disabled() {
+  [[ "$(/usr/bin/defaults read "$BUNDLE_ID" closedLidSleepDisabledByMacDog 2>/dev/null || true)" == "1" ]] || return 1
+  /usr/bin/pmset -g live | /usr/bin/grep -q $'SleepDisabled\t\t1'
+}
+
+stop_running_app_for_update() {
+  if macdog_owns_sleep_disabled; then
+    /usr/bin/pkill -9 -x "$APP_NAME" >/dev/null 2>&1 || true
+  else
+    /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+  fi
+}
+
+cat <<NOTICE
+MacDog user uninstall
+
+This removes:
+  - $APP_DEST
+  - $CLI_DEST
+  - $CACHE_PLIST
+  - $MONITOR_PLIST
+
+It preserves MacDog UserDefaults preferences and does not remove the optional
+privileged helper. Run Uninstall Privileged Helper.command separately if needed.
+NOTICE
+
+printf "Continue with MacDog uninstall? [y/N] "
+read -r confirm
+case "$confirm" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Cancelled MacDog uninstall."
+    exit 0
+    ;;
+esac
+
+/bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
+/bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
+stop_running_app_for_update
+
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
+rm -rf "$APP_DEST"
+
+echo "Uninstalled MacDog user components"
+echo "Optional helper was not changed."
+echo "Run Check Install Status.command to verify the remaining state."
+UNINSTALL
+chmod +x "$STAGE_DIR/Uninstall MacDog.command"
+
+cat >"$STAGE_DIR/Uninstall Privileged Helper.command" <<'UNHELPER'
+#!/usr/bin/env bash
+set -euo pipefail
+
+HELPER_LABEL="com.dhseo.macdog.helper"
+HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
+HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
+
+apple_script_literal() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+bash_quote() {
+  printf '%q' "$1"
+}
+
+cat <<NOTICE
+MacDog privileged helper uninstall
+
+This removes the optional helper from these system locations:
+  - $HELPER_TOOL_DEST
+  - $HELPER_PLIST_DEST
+
+Administrator approval is required. The MacDog app, CLI, and user LaunchAgents
+are not removed by this command.
+NOTICE
+
+printf "Continue with privileged helper uninstall? [y/N] "
+read -r confirm
+case "$confirm" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Cancelled privileged helper uninstall."
+    exit 0
+    ;;
+esac
+
+root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-uninstall.XXXXXX")"
+trap 'rm -f "$root_script"' EXIT
+
+cat >"$root_script" <<ROOT
+#!/usr/bin/env bash
+set -euo pipefail
+/bin/launchctl bootout system $(bash_quote "$HELPER_PLIST_DEST") >/dev/null 2>&1 || true
+/bin/rm -f $(bash_quote "$HELPER_TOOL_DEST") $(bash_quote "$HELPER_PLIST_DEST")
+ROOT
+chmod +x "$root_script"
+
+/usr/bin/osascript -e "do shell script $(apple_script_literal "$root_script") with administrator privileges"
+
+echo "Removed MacDog privileged helper"
+echo "Privileged helper: $HELPER_TOOL_DEST"
+echo "LaunchDaemon: $HELPER_PLIST_DEST"
+echo "Run Check Install Status.command to verify the remaining state."
+UNHELPER
+chmod +x "$STAGE_DIR/Uninstall Privileged Helper.command"
 
 cat >"$STAGE_DIR/Check Install Status.command" <<'STATUS'
 #!/usr/bin/env bash
