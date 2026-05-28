@@ -192,7 +192,7 @@ Apps/                         Widget host/extension target
 Tests/                        core/app 테스트
 script/                       빌드, 실행, 설치, 검증 스크립트
 Docs/                         보조 설계/검증 문서
-Assets/Generated/             생성형 asset과 README 검수 산출물
+Assets/Generated/Docs/        README 검수용 스크린샷 산출물
 ```
 
 ## 문서
