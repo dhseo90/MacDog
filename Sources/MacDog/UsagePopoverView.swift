@@ -520,6 +520,17 @@ private struct SleepPreventionPanel: View {
                 }
             }
 
+            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
+                helperStatusRow
+
+                Text(privilegedHelperInstallSnapshot.detailSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                helperGuidance
+            }
+
             if currentControlMode == .condition {
                 PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
                     Text("체크한 조건 중 하나라도 맞으면 잠들지 않게 유지합니다.")
@@ -578,15 +589,6 @@ private struct SleepPreventionPanel: View {
                         }
                     }
                 }
-            }
-
-            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
-                helperStatusRow
-
-                Text(privilegedHelperInstallSnapshot.detailSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .onChange(of: powerAdapterTriggerEnabled) { _, enabled in
@@ -760,6 +762,23 @@ private struct SleepPreventionPanel: View {
         case .installed:
             Color.green
         }
+    }
+
+    private var helperGuidance: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(
+                privilegedHelperInstallSnapshot.guidanceTitle,
+                systemImage: privilegedHelperInstallSnapshot.requiresUserAction ? "exclamationmark.shield" : "checkmark.shield"
+            )
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(privilegedHelperInstallSnapshot.requiresUserAction ? Color.orange : Color.green)
+
+            Text(privilegedHelperInstallSnapshot.guidanceDetail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 1)
     }
 
     private func selectControlMode(_ mode: SleepPreventionControlMode) {
