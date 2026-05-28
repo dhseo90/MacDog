@@ -20,8 +20,9 @@
 - 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않는다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만든다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관한다.
+- `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
 - `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer syntax, helper 별도 설치 경계, 관리자 승인 문구, 설치 후 상태 확인 command를 검증한다.
-- `script/verify_release_workflow.sh`는 workflow가 checksum 검증과 unsigned release candidate artifact upload를 포함하는지 확인한다.
+- `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate를 포함하는지 확인한다.
 
 2026-05-28 확인:
 
@@ -31,17 +32,19 @@
 - `hdiutil verify dist/release/MacDog-0.1.0.dmg` 통과
 - `script/verify_release_packaging.sh` staging payload 검증 통과
 - `script/verify_release_workflow.sh`로 release candidate workflow guard 검증 통과
+- draft release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
 
 미확인:
 
 - GitHub Actions runner에서 workflow 실제 실행
+- GitHub draft release 생성 workflow 실제 실행
 - 생성된 `.dmg`를 Finder에서 열어 더블클릭 설치 실행
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent, Gatekeeper 동작 검증
 - privileged helper 더블클릭 설치 command의 실제 Finder 실행
 
 ## 아직 하지 않는 것
 
-- GitHub Release publication 자동화
+- public stable GitHub Release publication 자동화
 - Developer ID signing
 - hardened runtime 설정 확정
 - notarization 제출과 stapling
@@ -57,7 +60,8 @@
 5. helper가 필요한 덮개 닫힘 보호는 `Install Privileged Helper.command` 또는 앱 내부 설치 UX에서 명확히 승인받는다.
 6. `Check Install Status.command`로 app/CLI/LaunchAgent/helper 상태를 확인한다.
 7. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인한다.
-8. 공개 배포 전 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 추가한다.
+8. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행한다.
+9. 공개 배포 전 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 추가한다.
 
 ## GitHub Release 완료 기준
 

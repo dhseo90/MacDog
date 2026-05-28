@@ -1,0 +1,83 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "MacDog version label for the generated DMG"
+        required: true
+        default: "0.1.0"
+      tag:
+        description: "Git tag to create for the draft release"
+        required: true
+        default: "v0.1.0"
+      prerelease:
+        description: "Mark the draft release as a prerelease"
+        required: true
+        type: boolean
+        default: true
+      acknowledge_unsigned:
+        description: "Type UNSIGNED-DRAFT to confirm this is not a notarized public stable release"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    name: Build unsigned DMG and create draft release
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check unsigned draft acknowledgement
+        env:
+          ACKNOWLEDGE_UNSIGNED: ${{ inputs.acknowledge_unsigned }}
+        run: |
+          if [[ "$ACKNOWLEDGE_UNSIGNED" != "UNSIGNED-DRAFT" ]]; then
+            echo "Type UNSIGNED-DRAFT to create an unsigned draft release." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Verify
+        run: ./script/check.sh --no-run
+
+      - name: Package DMG
+        env:
+          MACDOG_RELEASE_VERSION: ${{ inputs.version }}
+        run: ./script/package_release.sh --skip-build
+
+      - name: Verify DMG
+        run: hdiutil verify "dist/release/MacDog-${{ inputs.version }}.dmg"
+
+      - name: Verify checksum
+        run: shasum -a 256 -c "dist/release/MacDog-${{ inputs.version }}.dmg.sha256"
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MACDOG_VERSION: ${{ inputs.version }}
+          MACDOG_TAG: ${{ inputs.tag }}
+          MACDOG_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          args=(
+            release create "$MACDOG_TAG"
+            "dist/release/MacDog-$MACDOG_VERSION.dmg"
+            "dist/release/MacDog-$MACDOG_VERSION.dmg.sha256"
+            --draft
+            --target "$GITHUB_SHA"
+            --title "MacDog $MACDOG_VERSION"
+            --notes-file "dist/release/MacDog-$MACDOG_VERSION/RELEASE_NOTES_DRAFT.md"
+          )
+
+          if [[ "$MACDOG_PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+
+          gh "${args[@]}"
