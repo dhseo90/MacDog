@@ -8,6 +8,7 @@ APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 RELEASE_ROOT="$ROOT_DIR/dist/release"
 STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"
 DMG_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION.dmg"
+CHECKSUM_PATH="$DMG_PATH.sha256"
 DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
@@ -40,6 +41,7 @@ while [[ $# -gt 0 ]]; do
       VERSION="$1"
       STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"
       DMG_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION.dmg"
+      CHECKSUM_PATH="$DMG_PATH.sha256"
       ;;
     -h|--help|help)
       usage
@@ -61,6 +63,7 @@ Build app bundle: $([[ "$SKIP_BUILD" == "1" ]] && echo "skipped" || echo "$ROOT_
 App source: $APP_BUNDLE
 Stage directory: $STAGE_DIR
 DMG path: $DMG_PATH
+SHA-256 path: $CHECKSUM_PATH
 Payload:
   - MacDog.app
   - bin/codex-usage
@@ -68,10 +71,12 @@ Payload:
   - Install Privileged Helper.command
   - Check Install Status.command
   - README_FIRST.txt
+  - RELEASE_NOTES_DRAFT.md
 Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
 Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
+Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases.
 GitHub Release: upload DMG only after signing/notarization gate is satisfied for public distribution.
 DRYRUN
   exit 0
@@ -100,13 +105,43 @@ cat >"$STAGE_DIR/README_FIRST.txt" <<README
 MacDog $VERSION
 
 1. Double-click "Install MacDog.command" to install MacDog.app, codex-usage, and user LaunchAgents.
-2. This local release candidate is not notarized.
+2. This local release candidate is unsigned and not notarized. macOS Gatekeeper may block first launch.
 3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
 4. The helper installer explains the system locations it changes before asking for administrator approval.
 5. Double-click "Check Install Status.command" after installation to verify app, CLI, LaunchAgents, and optional helper state.
 6. This local release candidate is intended for local unsigned validation.
 7. Uninstall support remains available from the source checkout via script/uninstall.sh.
 README
+
+cat >"$STAGE_DIR/RELEASE_NOTES_DRAFT.md" <<NOTES
+# MacDog $VERSION Release Notes Draft
+
+Status: unsigned local release candidate.
+
+## Install
+
+- Open the DMG.
+- Double-click \`Install MacDog.command\` to install the app, CLI, and user LaunchAgents.
+- Double-click \`Install Privileged Helper.command\` only if you need closed-lid sleep prevention without repeated password prompts.
+- Double-click \`Check Install Status.command\` after installation.
+
+## Security And Gatekeeper
+
+- This candidate is ad-hoc signed for local validation and is not notarized.
+- Do not publish it as a public stable release until Developer ID signing, hardened runtime, notarization, stapling, and Gatekeeper checks pass.
+- The privileged helper installer changes \`/Library/PrivilegedHelperTools/com.dhseo.macdog.helper\` and \`/Library/LaunchDaemons/com.dhseo.macdog.helper.plist\` after administrator approval.
+
+## Supported Scope
+
+- Codex usage popover and CLI.
+- Mac resource, sleep-prevention, and native Charge Limit UI.
+- Native Charge Limit requires Apple silicon and macOS 26.4 or later.
+
+## Uninstall
+
+- Source checkout uninstall path: \`./script/uninstall.sh --with-helper\`
+- Release-package uninstall UX is still a follow-up item for public distribution.
+NOTES
 
 cat >"$STAGE_DIR/Install MacDog.command" <<'INSTALL'
 #!/usr/bin/env bash
@@ -435,13 +470,16 @@ chmod +x "$STAGE_DIR/Check Install Status.command"
 if [[ "$CREATE_DMG" == "1" ]]; then
   mkdir -p "$RELEASE_ROOT"
   rm -f "$DMG_PATH"
+  rm -f "$CHECKSUM_PATH"
   /usr/bin/hdiutil create \
     -volname "$APP_NAME $VERSION" \
     -srcfolder "$STAGE_DIR" \
     -ov \
     -format UDZO \
     "$DMG_PATH" >/dev/null
+  /usr/bin/shasum -a 256 "$DMG_PATH" >"$CHECKSUM_PATH"
   echo "$DMG_PATH"
+  echo "$CHECKSUM_PATH"
 else
   echo "$STAGE_DIR"
 fi

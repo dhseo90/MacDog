@@ -35,9 +35,14 @@ jobs:
       - name: Verify DMG
         run: hdiutil verify "dist/release/MacDog-${{ inputs.version }}.dmg"
 
-      - name: Upload DMG artifact
+      - name: Verify checksum
+        run: shasum -a 256 -c "dist/release/MacDog-${{ inputs.version }}.dmg.sha256"
+
+      - name: Upload release candidate artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "MacDog-${{ inputs.version }}-unsigned-dmg"
-          path: "dist/release/MacDog-${{ inputs.version }}.dmg"
+          name: "MacDog-${{ inputs.version }}-unsigned-release-candidate"
+          path: |
+            dist/release/MacDog-${{ inputs.version }}.dmg
+            dist/release/MacDog-${{ inputs.version }}.dmg.sha256
           if-no-files-found: error

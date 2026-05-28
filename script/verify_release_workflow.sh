@@ -21,7 +21,9 @@ require_match 'MACDOG_RELEASE_VERSION'
 require_match './script/check\.sh --no-run'
 require_match './script/package_release\.sh --skip-build'
 require_match 'hdiutil verify'
+require_match 'shasum -a 256 -c'
 require_match 'actions/upload-artifact@v4'
-require_match 'unsigned-dmg'
+require_match 'unsigned-release-candidate'
+require_match '\.dmg\.sha256'
 
 echo "Release workflow verification ok"
