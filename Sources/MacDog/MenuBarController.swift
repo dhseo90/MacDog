@@ -386,6 +386,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setSleepPreventionExternalVolumeTrigger(let isEnabled):
             RunnerPreferences.setSleepPreventionExternalVolumeTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionPreventDisplaySleep(let isEnabled):
+            RunnerPreferences.setSleepPreventionPreventDisplaySleep(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionPreventClosedLidSleep(let isEnabled):
+            RunnerPreferences.setSleepPreventionPreventClosedLidSleep(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionDisableScreenLock(let isEnabled):
+            RunnerPreferences.setSleepPreventionDisableScreenLock(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
         case .openBatterySettings:
             _ = SystemSettingsDestination.openBatterySettings()
         case .showDesktopPet:
@@ -440,6 +449,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         ))
         menu.addItem(sleepModeSubmenuItem())
         menu.addItem(sleepDurationSubmenuItem())
+        menu.addItem(sleepPolicySubmenuItem())
         menu.addItem(sleepTriggerSubmenuItem())
         menu.addItem(menuItem("배터리 설정 열기", action: #selector(menuOpenBatterySettings)))
         menu.addItem(.separator())
@@ -548,6 +558,28 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return parent
     }
 
+    private func sleepPolicySubmenuItem() -> NSMenuItem {
+        let parent = NSMenuItem(title: "잠자기 방지 옵션", action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: "잠자기 방지 옵션")
+        submenu.addItem(menuItem(
+            "화면 잠자기 방지",
+            action: #selector(menuTogglePreventDisplaySleep),
+            state: preferences.sleepPreventionPreventDisplaySleep ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "덮개 닫힘 보호",
+            action: #selector(menuTogglePreventClosedLidSleep),
+            state: preferences.sleepPreventionPreventClosedLidSleep ? .on : .off
+        ))
+        submenu.addItem(menuItem(
+            "잠금 요구 해제",
+            action: #selector(menuToggleDisableScreenLock),
+            state: preferences.sleepPreventionDisableScreenLock ? .on : .off
+        ))
+        parent.submenu = submenu
+        return parent
+    }
+
     private func menuItem(
         _ title: String,
         action: Selector,
@@ -645,6 +677,21 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc
+    private func menuTogglePreventDisplaySleep() {
+        perform(.setSleepPreventionPreventDisplaySleep(!preferences.sleepPreventionPreventDisplaySleep))
+    }
+
+    @objc
+    private func menuTogglePreventClosedLidSleep() {
+        perform(.setSleepPreventionPreventClosedLidSleep(!preferences.sleepPreventionPreventClosedLidSleep))
+    }
+
+    @objc
+    private func menuToggleDisableScreenLock() {
+        perform(.setSleepPreventionDisableScreenLock(!preferences.sleepPreventionDisableScreenLock))
+    }
+
+    @objc
     private func menuOpenBatterySettings() {
         perform(.openBatterySettings)
     }
@@ -682,7 +729,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let isEnabled = preferences.sleepPreventionEnabled || sleepPreventionTriggerStatus.isMatched
         sleepPreventionController.setEnabled(
             isEnabled,
-            endsAt: preferences.sleepPreventionEnabled ? preferences.sleepPreventionEndsAt : nil
+            endsAt: preferences.sleepPreventionEnabled ? preferences.sleepPreventionEndsAt : nil,
+            policy: preferences.sleepPreventionPolicy
         )
     }
 

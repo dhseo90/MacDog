@@ -116,6 +116,9 @@ final class SleepPreventionModeTests: XCTestCase {
         RunnerPreferences.setSleepPreventionCPUThresholdPercent(65, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
         RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
+        RunnerPreferences.setSleepPreventionPreventDisplaySleep(false, defaults: defaults)
+        RunnerPreferences.setSleepPreventionPreventClosedLidSleep(false, defaults: defaults)
+        RunnerPreferences.setSleepPreventionDisableScreenLock(false, defaults: defaults)
 
         let firstRead = RunnerPreferences(defaults: defaults)
         let secondRead = RunnerPreferences(defaults: defaults)
@@ -129,6 +132,17 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertEqual(secondRead.sleepPreventionCPUThresholdPercent, 65)
         XCTAssertEqual(secondRead.sleepPreventionNetworkThresholdKBPerSecond, 256)
         XCTAssertEqual(secondRead.sleepPreventionAppMatchText, "Xcode")
+        XCTAssertFalse(secondRead.sleepPreventionPreventDisplaySleep)
+        XCTAssertFalse(secondRead.sleepPreventionPreventClosedLidSleep)
+        XCTAssertFalse(secondRead.sleepPreventionDisableScreenLock)
+        XCTAssertEqual(
+            secondRead.sleepPreventionPolicy,
+            SleepPreventionPolicy(
+                preventDisplaySleep: false,
+                preventClosedLidSleep: false,
+                disableScreenLock: false
+            )
+        )
     }
 
     func testAutomaticTriggerDetailSettingsClampAndNormalize() {

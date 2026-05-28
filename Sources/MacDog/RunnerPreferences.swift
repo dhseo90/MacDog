@@ -21,6 +21,9 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionCPUThresholdPercentKey = "sleepPreventionCPUThresholdPercent"
     static let sleepPreventionNetworkThresholdKBPerSecondKey = "sleepPreventionNetworkThresholdKBPerSecond"
     static let sleepPreventionAppMatchTextKey = "sleepPreventionAppMatchText"
+    static let sleepPreventionPreventDisplaySleepKey = "sleepPreventionPreventDisplaySleep"
+    static let sleepPreventionPreventClosedLidSleepKey = "sleepPreventionPreventClosedLidSleep"
+    static let sleepPreventionDisableScreenLockKey = "sleepPreventionDisableScreenLock"
     static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
@@ -35,6 +38,9 @@ struct RunnerPreferences: Equatable {
     static let defaultSleepPreventionCPUThresholdPercent = 80
     static let defaultSleepPreventionNetworkThresholdKBPerSecond = 100
     static let defaultSleepPreventionAppMatchText = "codex"
+    static let defaultSleepPreventionPreventDisplaySleep = true
+    static let defaultSleepPreventionPreventClosedLidSleep = true
+    static let defaultSleepPreventionDisableScreenLock = true
     static let minimumSleepPreventionBatteryThresholdPercent = 20
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -61,6 +67,9 @@ struct RunnerPreferences: Equatable {
             sleepPreventionCPUThresholdPercentKey: defaultSleepPreventionCPUThresholdPercent,
             sleepPreventionNetworkThresholdKBPerSecondKey: defaultSleepPreventionNetworkThresholdKBPerSecond,
             sleepPreventionAppMatchTextKey: defaultSleepPreventionAppMatchText,
+            sleepPreventionPreventDisplaySleepKey: defaultSleepPreventionPreventDisplaySleep,
+            sleepPreventionPreventClosedLidSleepKey: defaultSleepPreventionPreventClosedLidSleep,
+            sleepPreventionDisableScreenLockKey: defaultSleepPreventionDisableScreenLock,
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent
         ])
     }
@@ -83,6 +92,9 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionCPUThresholdPercent: Int
     let sleepPreventionNetworkThresholdKBPerSecond: Int
     let sleepPreventionAppMatchText: String
+    let sleepPreventionPreventDisplaySleep: Bool
+    let sleepPreventionPreventClosedLidSleep: Bool
+    let sleepPreventionDisableScreenLock: Bool
     let chargeLimitTargetPercent: Int
 
     var sleepPreventionMode: SleepPreventionMode {
@@ -100,6 +112,14 @@ struct RunnerPreferences: Equatable {
             }
             return .condition
         }
+    }
+
+    var sleepPreventionPolicy: SleepPreventionPolicy {
+        SleepPreventionPolicy(
+            preventDisplaySleep: sleepPreventionPreventDisplaySleep,
+            preventClosedLidSleep: sleepPreventionPreventClosedLidSleep,
+            disableScreenLock: sleepPreventionDisableScreenLock
+        )
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -124,6 +144,9 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionCPUThresholdPercent = Self.sleepPreventionCPUThresholdPercent(defaults: defaults)
         self.sleepPreventionNetworkThresholdKBPerSecond = Self.sleepPreventionNetworkThresholdKBPerSecond(defaults: defaults)
         self.sleepPreventionAppMatchText = Self.sleepPreventionAppMatchText(defaults: defaults)
+        self.sleepPreventionPreventDisplaySleep = Self.sleepPreventionPreventDisplaySleep(defaults: defaults)
+        self.sleepPreventionPreventClosedLidSleep = Self.sleepPreventionPreventClosedLidSleep(defaults: defaults)
+        self.sleepPreventionDisableScreenLock = Self.sleepPreventionDisableScreenLock(defaults: defaults)
         self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
@@ -238,6 +261,39 @@ struct RunnerPreferences: Equatable {
     static func normalizedSleepPreventionAppMatchText(_ text: String) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? defaultSleepPreventionAppMatchText : trimmed
+    }
+
+    static func sleepPreventionPreventDisplaySleep(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: sleepPreventionPreventDisplaySleepKey) != nil else {
+            return defaultSleepPreventionPreventDisplaySleep
+        }
+        return defaults.bool(forKey: sleepPreventionPreventDisplaySleepKey)
+    }
+
+    static func setSleepPreventionPreventDisplaySleep(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionPreventDisplaySleepKey)
+    }
+
+    static func sleepPreventionPreventClosedLidSleep(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: sleepPreventionPreventClosedLidSleepKey) != nil else {
+            return defaultSleepPreventionPreventClosedLidSleep
+        }
+        return defaults.bool(forKey: sleepPreventionPreventClosedLidSleepKey)
+    }
+
+    static func setSleepPreventionPreventClosedLidSleep(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionPreventClosedLidSleepKey)
+    }
+
+    static func sleepPreventionDisableScreenLock(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: sleepPreventionDisableScreenLockKey) != nil else {
+            return defaultSleepPreventionDisableScreenLock
+        }
+        return defaults.bool(forKey: sleepPreventionDisableScreenLockKey)
+    }
+
+    static func setSleepPreventionDisableScreenLock(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: sleepPreventionDisableScreenLockKey)
     }
 
     static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {

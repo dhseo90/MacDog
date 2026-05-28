@@ -32,17 +32,36 @@ struct SleepPreventionStatus: Equatable {
     }
 }
 
-final class SleepPreventionController {
-    private static let requiredAssertions: [SleepPreventionAssertionKind] = [
-        .displaySleep,
-        .systemSleep,
-        .networkClient
-    ]
+struct SleepPreventionPolicy: Equatable {
+    static let `default` = SleepPreventionPolicy(
+        preventDisplaySleep: true,
+        preventClosedLidSleep: true,
+        disableScreenLock: true
+    )
 
+    let preventDisplaySleep: Bool
+    let preventClosedLidSleep: Bool
+    let disableScreenLock: Bool
+
+    var requiredAssertions: [SleepPreventionAssertionKind] {
+        var assertions: [SleepPreventionAssertionKind] = []
+        if preventDisplaySleep {
+            assertions.append(.displaySleep)
+        }
+        assertions.append(.systemSleep)
+        if preventClosedLidSleep {
+            assertions.append(.networkClient)
+        }
+        return assertions
+    }
+}
+
+final class SleepPreventionController {
     private let assertionManager: PowerAssertionManaging
     private let closedLidSleepDisabler: ClosedLidSleepDisabling
     private let screenLockDisabler: ScreenLockDisabling
     private var assertionIDs: [SleepPreventionAssertionKind: IOPMAssertionID] = [:]
+    private var policy: SleepPreventionPolicy = .default
     private var requestedEnabled = false
     private var closedLidDisableAttempted = false
     private var screenLockDisableAttempted = false
@@ -62,8 +81,8 @@ final class SleepPreventionController {
     }
 
     deinit {
-        restoreScreenLockIfNeeded()
-        restoreClosedLidSleepIfNeeded()
+        restoreScreenLockIfNeeded(force: true)
+        restoreClosedLidSleepIfNeeded(force: true)
         releaseAssertions()
     }
 
@@ -78,17 +97,20 @@ final class SleepPreventionController {
         )
     }
 
-    func setEnabled(_ isEnabled: Bool, endsAt: Date?) {
+    func setEnabled(_ isEnabled: Bool, endsAt: Date?, policy: SleepPreventionPolicy = .default) {
         requestedEnabled = isEnabled
         self.endsAt = endsAt
+        self.policy = policy
 
         if isEnabled {
             acquireAssertionsIfNeeded()
-            disableClosedLidSleepIfNeeded()
-            disableScreenLockIfNeeded()
+            guard hasRequiredAssertions else { return }
+            lastErrorMessage = nil
+            syncClosedLidSleepPolicy()
+            syncScreenLockPolicy()
         } else {
-            restoreScreenLockIfNeeded()
-            restoreClosedLidSleepIfNeeded()
+            restoreScreenLockIfNeeded(force: true)
+            restoreClosedLidSleepIfNeeded(force: true)
             releaseAssertions()
             self.endsAt = nil
             lastErrorMessage = nil
@@ -98,16 +120,18 @@ final class SleepPreventionController {
     }
 
     private var hasRequiredAssertions: Bool {
-        Self.requiredAssertions.allSatisfy { assertionIDs[$0] != nil }
+        policy.requiredAssertions.allSatisfy { assertionIDs[$0] != nil }
     }
 
     private func acquireAssertionsIfNeeded() {
+        releaseAssertionsNoLongerRequired()
+
         guard !hasRequiredAssertions else {
             lastErrorMessage = nil
             return
         }
 
-        for kind in Self.requiredAssertions where assertionIDs[kind] == nil {
+        for kind in policy.requiredAssertions where assertionIDs[kind] == nil {
             let (result, assertionID) = assertionManager.createAssertion(
                 type: kind.assertionType,
                 reason: kind.reason
@@ -125,8 +149,26 @@ final class SleepPreventionController {
         lastErrorMessage = nil
     }
 
+    private func releaseAssertionsNoLongerRequired() {
+        let requiredAssertions = Set(policy.requiredAssertions)
+        let obsoleteAssertions = assertionIDs.filter { kind, _ in !requiredAssertions.contains(kind) }
+        for (kind, assertionID) in obsoleteAssertions {
+            assertionManager.releaseAssertion(assertionID)
+            assertionIDs.removeValue(forKey: kind)
+        }
+    }
+
+    private func syncClosedLidSleepPolicy() {
+        if policy.preventClosedLidSleep {
+            disableClosedLidSleepIfNeeded()
+        } else {
+            restoreClosedLidSleepIfNeeded()
+            closedLidDisableAttempted = false
+        }
+    }
+
     private func disableClosedLidSleepIfNeeded() {
-        guard hasRequiredAssertions, !closedLidDisableAttempted else { return }
+        guard !closedLidDisableAttempted else { return }
         closedLidDisableAttempted = true
 
         do {
@@ -137,8 +179,17 @@ final class SleepPreventionController {
         }
     }
 
+    private func syncScreenLockPolicy() {
+        if policy.disableScreenLock {
+            disableScreenLockIfNeeded()
+        } else {
+            restoreScreenLockIfNeeded()
+            screenLockDisableAttempted = false
+        }
+    }
+
     private func disableScreenLockIfNeeded() {
-        guard hasRequiredAssertions, !screenLockDisableAttempted else { return }
+        guard !screenLockDisableAttempted else { return }
         screenLockDisableAttempted = true
 
         do {
@@ -149,7 +200,8 @@ final class SleepPreventionController {
         }
     }
 
-    private func restoreClosedLidSleepIfNeeded() {
+    private func restoreClosedLidSleepIfNeeded(force: Bool = false) {
+        guard force || closedLidDisableAttempted || isClosedLidSleepDisabled else { return }
         do {
             _ = try closedLidSleepDisabler.setClosedLidSleepDisabled(false)
         } catch {
@@ -158,7 +210,8 @@ final class SleepPreventionController {
         isClosedLidSleepDisabled = false
     }
 
-    private func restoreScreenLockIfNeeded() {
+    private func restoreScreenLockIfNeeded(force: Bool = false) {
+        guard force || screenLockDisableAttempted || isScreenLockDisabled else { return }
         do {
             _ = try screenLockDisabler.setScreenLockDisabled(false)
         } catch {

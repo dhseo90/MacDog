@@ -28,6 +28,111 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertEqual(screenLockDisabler.requests, [true])
     }
 
+    func testDisplaySleepPreventionCanBeDisabledPerSessionPolicy() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let controller = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: RecordingClosedLidSleepDisabler(),
+            screenLockDisabler: RecordingScreenLockDisabler()
+        )
+
+        controller.setEnabled(
+            true,
+            endsAt: nil,
+            policy: SleepPreventionPolicy(
+                preventDisplaySleep: false,
+                preventClosedLidSleep: true,
+                disableScreenLock: true
+            )
+        )
+
+        XCTAssertTrue(controller.status.isActive)
+        XCTAssertEqual(assertionManager.createdAssertionTypes, [
+            "PreventUserIdleSystemSleep",
+            "NetworkClientActive"
+        ])
+    }
+
+    func testClosedLidProtectionCanBeDisabledPerSessionPolicy() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let closedLidSleepDisabler = RecordingClosedLidSleepDisabler()
+        let controller = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: closedLidSleepDisabler,
+            screenLockDisabler: RecordingScreenLockDisabler()
+        )
+
+        controller.setEnabled(
+            true,
+            endsAt: nil,
+            policy: SleepPreventionPolicy(
+                preventDisplaySleep: true,
+                preventClosedLidSleep: false,
+                disableScreenLock: true
+            )
+        )
+
+        XCTAssertTrue(controller.status.isActive)
+        XCTAssertFalse(controller.status.isClosedLidSleepDisabled)
+        XCTAssertEqual(assertionManager.createdAssertionTypes, [
+            "PreventUserIdleDisplaySleep",
+            "PreventUserIdleSystemSleep"
+        ])
+        XCTAssertTrue(closedLidSleepDisabler.requests.isEmpty)
+    }
+
+    func testScreenLockCanBeLeftUntouchedPerSessionPolicy() {
+        let screenLockDisabler = RecordingScreenLockDisabler()
+        let controller = SleepPreventionController(
+            assertionManager: RecordingPowerAssertionManager(),
+            closedLidSleepDisabler: RecordingClosedLidSleepDisabler(),
+            screenLockDisabler: screenLockDisabler
+        )
+
+        controller.setEnabled(
+            true,
+            endsAt: nil,
+            policy: SleepPreventionPolicy(
+                preventDisplaySleep: true,
+                preventClosedLidSleep: true,
+                disableScreenLock: false
+            )
+        )
+
+        XCTAssertTrue(controller.status.isActive)
+        XCTAssertFalse(controller.status.isScreenLockDisabled)
+        XCTAssertTrue(screenLockDisabler.requests.isEmpty)
+    }
+
+    func testChangingPolicyWhileEnabledRestoresDisabledScopes() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let closedLidSleepDisabler = RecordingClosedLidSleepDisabler()
+        let screenLockDisabler = RecordingScreenLockDisabler()
+        let controller = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: closedLidSleepDisabler,
+            screenLockDisabler: screenLockDisabler
+        )
+
+        controller.setEnabled(true, endsAt: nil)
+        controller.setEnabled(
+            true,
+            endsAt: nil,
+            policy: SleepPreventionPolicy(
+                preventDisplaySleep: false,
+                preventClosedLidSleep: false,
+                disableScreenLock: false
+            )
+        )
+
+        XCTAssertTrue(controller.status.isActive)
+        XCTAssertFalse(controller.status.isClosedLidSleepDisabled)
+        XCTAssertFalse(controller.status.isScreenLockDisabled)
+        XCTAssertEqual(assertionManager.releasedAssertionIDs.sorted(), [1, 3])
+        XCTAssertEqual(closedLidSleepDisabler.requests, [true, false])
+        XCTAssertEqual(screenLockDisabler.requests, [true, false])
+    }
+
     func testDisablingReleasesAllAssertions() {
         let assertionManager = RecordingPowerAssertionManager()
         let closedLidSleepDisabler = RecordingClosedLidSleepDisabler()

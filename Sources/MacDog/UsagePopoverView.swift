@@ -488,6 +488,9 @@ private struct SleepPreventionPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdPercentKey) private var cpuThresholdPercent = RunnerPreferences.defaultSleepPreventionCPUThresholdPercent
     @AppStorage(RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey) private var networkThresholdKBPerSecond = RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond
     @AppStorage(RunnerPreferences.sleepPreventionAppMatchTextKey) private var appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
+    @AppStorage(RunnerPreferences.sleepPreventionPreventDisplaySleepKey) private var preventDisplaySleep = RunnerPreferences.defaultSleepPreventionPreventDisplaySleep
+    @AppStorage(RunnerPreferences.sleepPreventionPreventClosedLidSleepKey) private var preventClosedLidSleep = RunnerPreferences.defaultSleepPreventionPreventClosedLidSleep
+    @AppStorage(RunnerPreferences.sleepPreventionDisableScreenLockKey) private var disableScreenLock = RunnerPreferences.defaultSleepPreventionDisableScreenLock
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -510,10 +513,29 @@ private struct SleepPreventionPanel: View {
                 }
             }
 
-            Text(closedLidSummary)
-                .font(.caption2)
-                .foregroundStyle(sleepPreventionStatus.errorMessage == nil ? Color.secondary : Color.red)
-                .fixedSize(horizontal: false, vertical: true)
+            if let sleepPreventionErrorMessage {
+                Text(sleepPreventionErrorMessage)
+                    .font(.caption2)
+                    .foregroundStyle(Color.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            PopoverFormSection(title: "세션 옵션", systemImage: "display") {
+                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                    GridRow {
+                        triggerToggle("화면 잠자기 방지", isOn: $preventDisplaySleep)
+                        triggerToggle("덮개 닫힘 보호", isOn: $preventClosedLidSleep)
+                    }
+                    GridRow {
+                        triggerToggle("잠금 요구 해제", isOn: $disableScreenLock)
+                        Text(screenLockPolicyNote)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                    }
+                }
+            }
 
             if currentControlMode == .condition {
                 PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
@@ -610,6 +632,18 @@ private struct SleepPreventionPanel: View {
         }
         .onChange(of: appMatchText) { _, value in
             RunnerPreferences.setSleepPreventionAppMatchText(value)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: preventDisplaySleep) { _, enabled in
+            RunnerPreferences.setSleepPreventionPreventDisplaySleep(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: preventClosedLidSleep) { _, enabled in
+            RunnerPreferences.setSleepPreventionPreventClosedLidSleep(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: disableScreenLock) { _, enabled in
+            RunnerPreferences.setSleepPreventionDisableScreenLock(enabled)
             deferredPreferencesChanged()
         }
     }
@@ -712,20 +746,13 @@ private struct SleepPreventionPanel: View {
         }
     }
 
-    private var closedLidSummary: String {
-        if let errorMessage = sleepPreventionStatus.errorMessage {
-            return "덮개 닫힘 보호 오류 · \(errorMessage)"
-        }
+    private var sleepPreventionErrorMessage: String? {
+        guard let errorMessage = sleepPreventionStatus.errorMessage else { return nil }
+        return "잠자기 방지 오류 · \(errorMessage)"
+    }
 
-        guard currentControlMode != .off else {
-            return "덮개 닫힘 보호도 함께 꺼져 있습니다."
-        }
-
-        if sleepPreventionStatus.isClosedLidSleepDisabled {
-            return "덮개 닫힘 보호 활성 · 배터리 소모가 커질 수 있습니다."
-        }
-
-        return "덮개 닫힘 보호는 활성 조건이 맞고 관리자 승인을 받으면 켜집니다."
+    private var screenLockPolicyNote: String {
+        disableScreenLock ? "보호기 후 암호 요구 해제" : "잠금 설정 유지"
     }
 
     private var helperStatusRow: some View {

@@ -13,6 +13,9 @@ enum PetAction: Equatable {
     case setSleepPreventionCPUThresholdTrigger(Bool)
     case setSleepPreventionNetworkActivityTrigger(Bool)
     case setSleepPreventionExternalVolumeTrigger(Bool)
+    case setSleepPreventionPreventDisplaySleep(Bool)
+    case setSleepPreventionPreventClosedLidSleep(Bool)
+    case setSleepPreventionDisableScreenLock(Bool)
     case openBatterySettings
     case showDesktopPet
     case returnToMenuBar

@@ -34,6 +34,9 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.sleepPreventionCPUThresholdPercentKey,
             RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey,
             RunnerPreferences.sleepPreventionAppMatchTextKey,
+            RunnerPreferences.sleepPreventionPreventDisplaySleepKey,
+            RunnerPreferences.sleepPreventionPreventClosedLidSleepKey,
+            RunnerPreferences.sleepPreventionDisableScreenLockKey,
             RunnerPreferences.chargeLimitTargetPercentKey
         ]
         var previousValues: [String: Any] = [:]
