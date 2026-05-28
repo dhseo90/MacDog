@@ -14,6 +14,7 @@ HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_INSTALLER_SOURCE="$ROOT_DIR/Sources/MacDog/PrivilegedHelperInstaller.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
+POPOVER_ACTION_SOURCE="$ROOT_DIR/Sources/MacDog/PrivilegedHelperPopoverAction.swift"
 
 usage() {
   echo "usage: $0 [--build]"
@@ -53,8 +54,9 @@ echo "==> Checking helper-only install dry-run"
 ./script/install.sh --dry-run --helper-only >/dev/null
 
 echo "==> Checking app helper install UI path"
-/usr/bin/grep -Fq "installPrivilegedHelper" "$POPOVER_SOURCE" || die "popover helper install action missing"
-/usr/bin/grep -Fq "uninstallPrivilegedHelper" "$POPOVER_SOURCE" || die "popover helper uninstall action missing"
+/usr/bin/grep -Fq "PrivilegedHelperPopoverAction.actions" "$POPOVER_SOURCE" || die "popover helper action model missing"
+/usr/bin/grep -Fq "installPrivilegedHelper" "$POPOVER_ACTION_SOURCE" || die "popover helper install action missing"
+/usr/bin/grep -Fq "uninstallPrivilegedHelper" "$POPOVER_ACTION_SOURCE" || die "popover helper uninstall action missing"
 /usr/bin/grep -Fq "with administrator privileges" "$HELPER_INSTALLER_SOURCE" || die "app helper installer administrator approval path missing"
 /usr/bin/grep -Fq "PrivilegedHelperInstallScriptBuilder" "$HELPER_INSTALLER_SOURCE" || die "app helper installer script builder missing"
 

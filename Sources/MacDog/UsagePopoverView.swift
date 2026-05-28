@@ -787,34 +787,24 @@ private struct SleepPreventionPanel: View {
 
     @ViewBuilder
     private var helperActionButtons: some View {
-        switch privilegedHelperInstallSnapshot.status {
-        case .missing:
-            helperActionButton("도우미 설치", systemImage: "plus.circle") {
-                onAction(.installPrivilegedHelper)
-            }
-        case .partial:
+        let actions = PrivilegedHelperPopoverAction.actions(for: privilegedHelperInstallSnapshot)
+
+        if actions.count > 1 {
             HStack(spacing: 6) {
-                helperActionButton("제거", systemImage: "trash") {
-                    onAction(.uninstallPrivilegedHelper)
-                }
-                helperActionButton("다시 설치", systemImage: "arrow.clockwise") {
-                    onAction(.installPrivilegedHelper)
+                ForEach(actions) { action in
+                    helperActionButton(action)
                 }
             }
-        case .installed:
-            helperActionButton("도우미 제거", systemImage: "trash") {
-                onAction(.uninstallPrivilegedHelper)
-            }
+        } else if let action = actions.first {
+            helperActionButton(action)
         }
     }
 
-    private func helperActionButton(
-        _ title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
+    private func helperActionButton(_ action: PrivilegedHelperPopoverAction) -> some View {
+        Button {
+            onAction(action.action)
+        } label: {
+            Label(action.title, systemImage: action.systemImage)
                 .font(.caption2.weight(.semibold))
         }
         .buttonStyle(.bordered)
