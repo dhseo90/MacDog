@@ -162,7 +162,7 @@ Privileged helper를 opt-in으로 설치하면 추가로 아래 system 위치를
 
 MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용한다. 덮개 닫힘 보호는 현재 1차 구현으로, 사용자가 관리자 권한을 승인하면 `pmset disablesleep`을 켜고 MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
 
-Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코드는 준비되어 있고, 2026-05-28 기준 helper-only 실제 설치, 실제 삭제/재설치, XPC 조회/변경/복구 검증, 최신 설치본 UI에서 `시간 제어`/`끔` 클릭 검증, 짧은 덮개 닫힘 실기 검증, Chrome Remote Desktop 상태의 약 10분 덮개 닫힘 재검증까지 완료했다. 대조군으로 `SleepDisabled=0`에서 덮개를 닫으면 즉시 잠금이 걸리고 검정 화면/비밀번호 화면으로 이어지는 것도 확인했다.
+Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코드는 준비되어 있고, 2026-05-28 기준 helper-only 실제 설치, 실제 삭제/재설치, XPC 조회/변경/복구 검증, 최신 설치본 UI에서 `시간 제어`/`끔` 클릭 검증, 짧은 덮개 닫힘 실기 검증, Chrome Remote Desktop 상태의 약 10분 덮개 닫힘 재검증까지 완료했다. 대조군으로 `SleepDisabled=0`에서 덮개를 닫으면 즉시 잠금이 걸리고 검정 화면/비밀번호 화면으로 이어지는 것도 확인했다. 2026-05-28 23:50 KST부터 전원 연결 기준 슬립 방지와 `SleepDisabled=1` 상태로 장시간 에이징을 시작했고, 2026-05-29 사용자 실사용 확인에서 덮개 닫힘 상태가 슬립/락으로 떨어지지 않았다.
 
 주의: UI 검수 전에는 실행 중인 `/Users/dhseo/Applications/MacDog.app`이 최신 `dist/MacDog.app`와 같은 빌드인지 확인한다. 이전 설치본이 실행 중이면 helper 연동 이전 경로로 비밀번호 프롬프트가 발생할 수 있다.
 
@@ -170,7 +170,7 @@ Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코
 
 MacDog는 macOS 26.4 이상 Apple silicon Mac에서 native Charge Limit 값을 읽고 80~100% 범위로 적용한다. 2026-05-28 기준 개발 Mac에서 현재 시스템 한도 `95%`, 사용 가능 값 `80,85,90,95,100` 읽기와 같은 값 `95%` set/restore 검증을 완료했다.
 
-실제 90% 적용과 장시간 덮개 닫힘 검증은 이전 빌드/설치본을 정리한 클린 설치 상태에서 별도 수행한다.
+2026-05-28 23:50 KST에 UI에서 목표 한도 `90%`를 적용했고, 진단 read에서 `charge-limit current=90`을 확인했다. 2026-05-29 사용자 실사용 확인에서 AC 연결 상태의 배터리가 `95%`에서 `90%`로 내려가 native Charge Limit 적용 결과를 확인했다. 이 기능은 배터리를 즉시 강제 방전시키는 기능이 아니라 macOS 충전 상한을 적용하고 자연 하강/유지를 확인하는 방식이다.
 
 ## 데이터와 보안
 
