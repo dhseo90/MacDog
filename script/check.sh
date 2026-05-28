@@ -22,11 +22,12 @@ Checks:
   8. The menu bar app builds.
   9. The generated app bundle contains the WidgetKit extension.
   10. WidgetKit host/extension packaging builds an embedded .appex.
-  11. The current app/helper install state can be reported without changing the system.
-  12. Release packaging dry-run is stable.
-  13. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  14. Privileged helper reinstall test plan is safe to stage before actual approval.
-  15. Unless --no-run is passed, the app launches and its process is detected.
+  11. WidgetKit cache/deep-link readiness guards pass.
+  12. The current app/helper install state can be reported without changing the system.
+  13. Release packaging dry-run is stable.
+  14. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  15. Privileged helper reinstall test plan is safe to stage before actual approval.
+  16. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -100,6 +101,9 @@ echo "==> Verifying generated app bundle"
 
 echo "==> Verifying WidgetKit packaging"
 ./script/verify_widget_packaging.sh
+
+echo "==> Verifying WidgetKit readiness"
+./script/verify_widget_readiness.sh
 
 echo "==> Verifying release packaging dry-run"
 ./script/verify_release_packaging.sh

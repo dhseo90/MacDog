@@ -10,6 +10,7 @@ This document records the packaging boundary for the MacDog WidgetKit work.
 - `MacDog.xcodeproj` contains a `MacDogWidgetHost` macOS app target and a `MacDogWidgetExtension` app-extension target.
 - `Apps/MacDogWidgetExtension` contains the extension entrypoint, Info.plist, and entitlements for the WidgetKit extension target.
 - `script/verify_widget_packaging.sh` builds the Xcode host/extension target and verifies `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`.
+- `script/verify_widget_readiness.sh` verifies the widget stays on the shared cache path, uses the `macdog://open` deep link, keeps empty/stale/error presentation covered by tests, and leaves widget gallery/click checks as manual verification.
 - The install script installs the CLI and `MacDog.app`; the app bundle includes `Contents/PlugIns/MacDogWidgetExtension.appex`.
 
 ## Packaging Decision
@@ -75,6 +76,7 @@ Implemented status: the helper exists and falls back to the default Application 
 - Verify the final host bundle contains `Contents/PlugIns/MacDogWidgetExtension.appex`
 - Verify `dist/MacDog.app` contains `Contents/PlugIns/MacDogWidgetExtension.appex`
 - Verify the widget extension reads only the shared cache
+- Verify `script/verify_widget_readiness.sh`
 - Verify stale, empty, and error cache states in small and medium widget families
 - Manually add the widget from the macOS widget gallery after signed distribution packaging is prepared
 - Click the widget and confirm `macdog://open` opens the menu bar app popover

@@ -338,6 +338,7 @@ Popover 정보 구조:
 - `MacDog.xcodeproj`에 `MacDogWidgetHost` macOS app target과 `MacDogWidgetExtension` app-extension target이 있다.
 - `Apps/MacDogWidgetExtension`에 Widget Extension entrypoint, Info.plist, entitlement가 있다.
 - `script/verify_widget_packaging.sh`로 Xcode host/extension build와 embedded `.appex` 산출물을 검증한다.
+- `script/verify_widget_readiness.sh`로 shared cache 전용 경계, `macdog://open` deep link, empty/stale/error test coverage를 자동 검증한다.
 - `MacDogWidgetPresentationTests`로 empty/stale/error/updated 위젯 상태 표현을 검증한다.
 - App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
 - 실제 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 UI 검수는 아직 수동 검증 항목으로 남긴다.

@@ -18,6 +18,10 @@ public struct MacDogWidgetBundle: WidgetBundle {
     }
 }
 
+public enum MacDogWidgetDeepLink {
+    public static let openURL = URL(string: "macdog://open")!
+}
+
 public struct MacDogStatusWidget: Widget {
     public let kind = "MacDogStatusWidget"
     private let provider: CodexUsageTimelineProvider
@@ -33,7 +37,7 @@ public struct MacDogStatusWidget: Widget {
     public var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: provider) { entry in
             MacDogUsageWidgetView(entry: entry)
-                .widgetURL(URL(string: "macdog://open"))
+                .widgetURL(MacDogWidgetDeepLink.openURL)
         }
         .configurationDisplayName("MacDog")
         .description("공유 캐시의 Codex 5시간/주간 사용량을 보여줍니다.")

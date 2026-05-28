@@ -3,6 +3,10 @@ import XCTest
 @testable import MacDogWidget
 
 final class MacDogWidgetPresentationTests: XCTestCase {
+    func testWidgetDeepLinkTargetsMacDogOpenURL() {
+        XCTAssertEqual(MacDogWidgetDeepLink.openURL.absoluteString, "macdog://open")
+    }
+
     func testPresentationShowsNoCacheWhenSnapshotIsMissing() {
         let entry = CodexUsageEntry(date: Date(timeIntervalSince1970: 1_779_800_000), snapshot: nil, errorMessage: nil)
         let presentation = WidgetUsagePresentation(entry: entry)
