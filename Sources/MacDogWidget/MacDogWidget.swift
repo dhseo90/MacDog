@@ -69,9 +69,15 @@ public struct CodexUsageEntry: TimelineEntry {
 struct WidgetUsagePresentation: Equatable {
     let maxUsedPercent: Double
     let statusText: String
+    let resetText: String
 
     init(entry: CodexUsageEntry) {
         self.maxUsedPercent = entry.codexLimit?.maxUsedPercent ?? 0
+        if let highestWindow = Self.highestUsageWindow(from: entry.codexLimit) {
+            self.resetText = Self.resetText(label: highestWindow.label, window: highestWindow.window, now: entry.date)
+        } else {
+            self.resetText = "초기화 시각 알 수 없음"
+        }
 
         if let error = entry.errorMessage {
             self.statusText = "오류: \(error)"
@@ -80,6 +86,58 @@ struct WidgetUsagePresentation: Equatable {
         } else {
             self.statusText = "캐시 없음"
         }
+    }
+
+    static func resetText(label: String?, window: UsageWindowReport?, now: Date) -> String {
+        let prefix = label.map { "\($0) " } ?? ""
+        guard let window else { return "\(prefix)확인 불가" }
+        guard let resetsAt = window.resetsAt else { return "\(prefix)초기화 시각 알 수 없음" }
+
+        let resetDate = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        let remaining = resetRemainingSummary(until: resetDate, now: now)
+        if remaining == "초기화 확인 중" {
+            return "\(prefix)\(remaining)"
+        }
+        return "\(prefix)초기화까지 \(remaining)"
+    }
+
+    private static func highestUsageWindow(from limit: UsageLimitReport?) -> (label: String, window: UsageWindowReport)? {
+        guard let limit else { return nil }
+
+        let windows: [(String, UsageWindowReport)] = [
+            ("5시간", limit.fiveHour),
+            ("주간", limit.weekly)
+        ].compactMap { label, window in
+            guard let window else { return nil }
+            return (label, window)
+        }
+
+        return windows.max { $0.1.usedPercent < $1.1.usedPercent }
+    }
+
+    private static func resetRemainingSummary(until resetDate: Date, now: Date) -> String {
+        let seconds = Int(ceil(resetDate.timeIntervalSince(now)))
+        guard seconds > 0 else { return "초기화 확인 중" }
+        guard seconds >= 60 else { return "1분 미만 남음" }
+
+        let minutes = Int(ceil(Double(seconds) / 60))
+        guard minutes >= 60 else { return "\(minutes)분 남음" }
+
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        guard hours >= 24 else {
+            if remainingMinutes == 0 {
+                return "\(hours)시간 남음"
+            }
+            return "\(hours)시간 \(remainingMinutes)분 남음"
+        }
+
+        let days = hours / 24
+        let remainingHours = hours % 24
+        if remainingHours == 0 {
+            return "\(days)일 남음"
+        }
+        return "\(days)일 \(remainingHours)시간 남음"
     }
 }
 
@@ -190,6 +248,12 @@ public struct MacDogUsageWidgetView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
+
+            Text(presentation.resetText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .containerBackground(.background, for: .widget)
     }
@@ -205,8 +269,8 @@ public struct MacDogUsageWidgetView: View {
                     .foregroundStyle(.secondary)
             }
 
-            WidgetUsageRow(title: "5시간", window: entry.codexLimit?.fiveHour)
-            WidgetUsageRow(title: "주간", window: entry.codexLimit?.weekly)
+            WidgetUsageRow(title: "5시간", window: entry.codexLimit?.fiveHour, date: entry.date)
+            WidgetUsageRow(title: "주간", window: entry.codexLimit?.weekly, date: entry.date)
         }
         .containerBackground(.background, for: .widget)
     }
@@ -247,6 +311,7 @@ public struct MacDogUsageWidgetView: View {
 private struct WidgetUsageRow: View {
     let title: String
     let window: UsageWindowReport?
+    let date: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -260,6 +325,11 @@ private struct WidgetUsageRow: View {
             }
             ProgressView(value: progress)
                 .tint(tint)
+            Text(resetText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 
@@ -270,6 +340,10 @@ private struct WidgetUsageRow: View {
 
     private var progress: Double {
         min(max((window?.usedPercent ?? 0) / 100, 0), 1)
+    }
+
+    private var resetText: String {
+        WidgetUsagePresentation.resetText(label: nil, window: window, now: date)
     }
 
     private var tint: Color {

@@ -66,6 +66,8 @@ require_text_match 'CodexUsageCacheStore\.defaultFileURL\(appGroupIdentifier:' "
 require_text_match 'statusText = "캐시 없음"' "$WIDGET_SOURCE" "empty cache state is presented"
 require_text_match 'statusText = snapshot\.isStale' "$WIDGET_SOURCE" "stale cache state is presented"
 require_text_match 'statusText = "오류:' "$WIDGET_SOURCE" "error cache state is presented"
+require_text_match 'let resetText: String' "$WIDGET_SOURCE" "widget presentation tracks reset timing"
+require_text_match '초기화까지' "$WIDGET_SOURCE" "widget displays reset countdown copy"
 
 reject_text_match 'CodexAppServerClient|account/rateLimits/read|auth\.json|codex app-server' "$WIDGET_SOURCE" "widget must not perform live Codex auth or app-server work"
 
@@ -73,6 +75,8 @@ require_text_match 'MacDogWidgetDeepLink\.openURL\.absoluteString' "$WIDGET_TEST
 require_text_match '캐시 없음' "$WIDGET_TESTS" "empty cache widget state is covered by tests"
 require_text_match '오래된 캐시' "$WIDGET_TESTS" "stale widget state is covered by tests"
 require_text_match '오류:' "$WIDGET_TESTS" "error widget state is covered by tests"
+require_text_match 'resetText' "$WIDGET_TESTS" "reset timing is covered by tests"
+require_text_match '초기화까지' "$WIDGET_TESTS" "reset countdown copy is covered by tests"
 
 require_text_match 'application\(_ application: NSApplication, open urls: \[URL\]\)' "$APP_MAIN" "menu bar app handles URL opens"
 require_text_match '"macdog", "codexusage"' "$APP_MAIN" "menu bar app accepts macdog and compatibility URL schemes"
