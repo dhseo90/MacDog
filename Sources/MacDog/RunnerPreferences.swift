@@ -17,11 +17,16 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionCPUThresholdTriggerKey = "sleepPreventionCPUThresholdTrigger"
     static let sleepPreventionNetworkActivityTriggerKey = "sleepPreventionNetworkActivityTrigger"
     static let sleepPreventionExternalVolumeTriggerKey = "sleepPreventionExternalVolumeTrigger"
+    static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
     static let defaultSleepPreventionControlMode = SleepPreventionControlMode.off
     static let defaultSleepPreventionSessionPreset = SleepPreventionSessionPreset.indefinite
+    static let defaultChargeLimitTargetPercent = 80
+    static let minimumChargeLimitTargetPercent = 80
+    static let maximumChargeLimitTargetPercent = 100
+    static let chargeLimitTargetStepPercent = 5
     static let sleepPreventionBatteryThresholdPercent = 80
     static let sleepPreventionCPUThresholdPercent = 80
     static let sleepPreventionNetworkActivityThresholdBytesPerSecond: Double = 100 * 1024
@@ -40,7 +45,8 @@ struct RunnerPreferences: Equatable {
             sleepPreventionChargingBelowThresholdTriggerKey: false,
             sleepPreventionCPUThresholdTriggerKey: false,
             sleepPreventionNetworkActivityTriggerKey: false,
-            sleepPreventionExternalVolumeTriggerKey: false
+            sleepPreventionExternalVolumeTriggerKey: false,
+            chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent
         ])
     }
 
@@ -58,6 +64,7 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionCPUThresholdTriggerEnabled: Bool
     let sleepPreventionNetworkActivityTriggerEnabled: Bool
     let sleepPreventionExternalVolumeTriggerEnabled: Bool
+    let chargeLimitTargetPercent: Int
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -94,6 +101,7 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionCPUThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCPUThresholdTriggerKey)
         self.sleepPreventionNetworkActivityTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionNetworkActivityTriggerKey)
         self.sleepPreventionExternalVolumeTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionExternalVolumeTriggerKey)
+        self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -116,6 +124,24 @@ struct RunnerPreferences: Equatable {
 
     static func setAnimationPaused(_ isPaused: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isPaused, forKey: animationPausedKey)
+    }
+
+    static func chargeLimitTargetPercent(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: chargeLimitTargetPercentKey) != nil else {
+            return defaultChargeLimitTargetPercent
+        }
+        return normalizedChargeLimitTargetPercent(defaults.integer(forKey: chargeLimitTargetPercentKey))
+    }
+
+    static func setChargeLimitTargetPercent(_ percent: Int, defaults: UserDefaults = .standard) {
+        defaults.set(normalizedChargeLimitTargetPercent(percent), forKey: chargeLimitTargetPercentKey)
+    }
+
+    static func normalizedChargeLimitTargetPercent(_ percent: Int) -> Int {
+        let clamped = min(max(percent, minimumChargeLimitTargetPercent), maximumChargeLimitTargetPercent)
+        let offset = clamped - minimumChargeLimitTargetPercent
+        let roundedSteps = Int((Double(offset) / Double(chargeLimitTargetStepPercent)).rounded())
+        return minimumChargeLimitTargetPercent + roundedSteps * chargeLimitTargetStepPercent
     }
 
     static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {

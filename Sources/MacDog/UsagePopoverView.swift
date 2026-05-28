@@ -96,7 +96,7 @@ struct UsagePopoverView: View {
                 onPreferencesChanged: onPreferencesChanged
             )
         case .battery:
-            BatteryPanel(snapshot: state.systemMetrics, onAction: onAction)
+            BatteryPanel(snapshot: state.systemMetrics)
         }
     }
 
@@ -552,7 +552,8 @@ private struct SleepPreventionPanel: View {
 
 private struct BatteryPanel: View {
     let snapshot: SystemMetricsSnapshot
-    let onAction: (PetAction) -> Void
+
+    @AppStorage(RunnerPreferences.chargeLimitTargetPercentKey) private var chargeLimitTargetPercent = RunnerPreferences.defaultChargeLimitTargetPercent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -573,23 +574,49 @@ private struct BatteryPanel: View {
                         metricRow("지원", snapshot.chargeLimitSupport.summary)
                     }
                     GridRow {
+                        metricRow("목표", "\(normalizedChargeLimitTargetPercent)%")
+                    }
+                    GridRow {
                         metricRow("요구 사항", snapshot.chargeLimitSupport.requirementSummary)
                     }
                 }
 
-                Button {
-                    onAction(.openBatterySettings)
-                } label: {
-                    Label(batterySettingsLabel, systemImage: "battery.100percent")
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("\(RunnerPreferences.minimumChargeLimitTargetPercent)%")
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 8)
+                        Text("\(RunnerPreferences.maximumChargeLimitTargetPercent)%")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption2)
+
+                    Slider(
+                        value: chargeLimitTargetBinding,
+                        in: Double(RunnerPreferences.minimumChargeLimitTargetPercent)...Double(RunnerPreferences.maximumChargeLimitTargetPercent),
+                        step: Double(RunnerPreferences.chargeLimitTargetStepPercent)
+                    )
+                    .disabled(!snapshot.chargeLimitSupport.isNativeChargeLimitAvailable)
                 }
-                .font(.caption)
-                .buttonStyle(.borderless)
             }
         }
     }
 
-    private var batterySettingsLabel: String {
-        snapshot.chargeLimitSupport.isNativeChargeLimitAvailable ? "충전 한도 설정 열기" : "배터리 설정 열기"
+    private var normalizedChargeLimitTargetPercent: Int {
+        RunnerPreferences.normalizedChargeLimitTargetPercent(chargeLimitTargetPercent)
+    }
+
+    private var chargeLimitTargetBinding: Binding<Double> {
+        Binding(
+            get: {
+                Double(normalizedChargeLimitTargetPercent)
+            },
+            set: { newValue in
+                let percent = RunnerPreferences.normalizedChargeLimitTargetPercent(Int(newValue.rounded()))
+                RunnerPreferences.setChargeLimitTargetPercent(percent)
+                chargeLimitTargetPercent = percent
+            }
+        )
     }
 
     private func metricRow(_ key: String, _ value: String) -> some View {

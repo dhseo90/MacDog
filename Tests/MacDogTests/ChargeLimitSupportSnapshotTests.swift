@@ -39,6 +39,42 @@ final class ChargeLimitSupportSnapshotTests: XCTestCase {
         XCTAssertEqual(firstURL.absoluteString, "x-apple.systempreferences:com.apple.Battery-Settings.extension")
     }
 
+    func testChargeLimitTargetPreferenceClampsAndRoundsToNativeRange() throws {
+        let suiteName = "MacDogChargeLimitTargetPreferenceTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        XCTAssertEqual(RunnerPreferences.chargeLimitTargetPercent(defaults: defaults), 80)
+
+        RunnerPreferences.setChargeLimitTargetPercent(83, defaults: defaults)
+        XCTAssertEqual(RunnerPreferences.chargeLimitTargetPercent(defaults: defaults), 85)
+
+        RunnerPreferences.setChargeLimitTargetPercent(101, defaults: defaults)
+        XCTAssertEqual(RunnerPreferences.chargeLimitTargetPercent(defaults: defaults), 100)
+
+        RunnerPreferences.setChargeLimitTargetPercent(77, defaults: defaults)
+        XCTAssertEqual(RunnerPreferences.chargeLimitTargetPercent(defaults: defaults), 80)
+    }
+
+    func testBatterySummaryDistinguishesConnectedButNotCharging() {
+        let snapshot = BatteryStatusSnapshot(
+            isPresent: true,
+            percent: 95,
+            isCharging: false,
+            isCharged: false,
+            isConnectedToPower: true,
+            timeToFullChargeMinutes: nil,
+            timeToEmptyMinutes: nil,
+            cycleCount: 7,
+            temperatureCelsius: 30.1
+        )
+
+        XCTAssertEqual(snapshot.summary, "95% · 충전 안 함")
+        XCTAssertEqual(snapshot.powerSummary, "전원 연결 · 충전 안 함")
+    }
+
     func testFloatingPetMenuPlacementUsesRightSideInLeftHalfOfScreen() {
         let placement = FloatingPetMenuPlacement.resolve(
             petFrame: NSRect(x: 120, y: 200, width: 96, height: 102),

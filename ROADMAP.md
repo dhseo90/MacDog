@@ -445,7 +445,7 @@ GitHub 배포 후속 목표:
 - 덮개 닫힘 보호는 관리자 승인 후 `pmset disablesleep`을 켜고, MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
 - privileged helper가 설치된 최신 설치본에서는 `잠들지 않기` UI의 `시간 제어`/`끔` 클릭이 helper XPC 경로로 `SleepDisabled`를 변경하며, 설정 변경 중 비밀번호 프롬프트가 반복되지 않는 것을 확인했다.
 - Apple native Charge Limit은 macOS 26.4 이상, Apple silicon 조건을 기준으로 지원 가능 여부를 표시한다.
-- 충전 한도 설정 연결은 공개 제어 API를 호출하지 않고 macOS 배터리 설정 화면을 여는 방식으로 제공한다.
+- 충전 한도 설정 연결은 공개 제어 API를 호출하지 않고 80~100% 목표값 저장과 메뉴의 macOS 배터리 설정 열기로 제공한다.
 - 각 모듈 on/off와 세부 설정은 후속 작업으로 남긴다.
 
 후보 모듈:
@@ -483,6 +483,7 @@ GitHub 배포 후속 목표:
   - 기존 서드파티 앱은 SMC/IOKit low-level 제어와 privileged helper를 사용하는 방식으로 보인다.
   - MacDog helper의 첫 책임은 덮개 닫힘 보호의 반복 관리자 프롬프트를 제거하는 것이다.
   - 배터리 충전 제어는 같은 helper 통로를 재사용할 수 있지만, 공개 API/Shortcuts/시스템 설정 연동 가능성을 먼저 확인한다.
+  - 현재 Mac에서는 macOS 26.5 + arm64 조건을 확인했고, Shortcuts CLI는 helper application 통신 실패로 자동화 검증이 막혀 있다.
   - SMC 방식은 충전 원복, uninstall, macOS 업데이트 호환성, 배터리 calibration 리스크를 문서화한 뒤 별도 승인으로만 진행한다.
   - 현재 결론은 [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md)에 기록한다.
 

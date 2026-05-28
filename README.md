@@ -193,7 +193,7 @@ Assets/Generated/             생성형 asset과 README 검수 산출물
 - [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 1차 구현 경계
 - [Docs/PrivilegedHelperPlan.md](Docs/PrivilegedHelperPlan.md): helper 설치 통합 계획과 1차 contract
-- [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 직접 제어 가능성 조사 결과
+- [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 설정 연동과 직접 제어 가능성 조사 결과
 - [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release용 더블클릭 설치 artifact 계획
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 

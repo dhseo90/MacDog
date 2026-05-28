@@ -64,6 +64,9 @@ struct BatteryStatusSnapshot: Equatable {
             if let timeToFullChargeMinutes, timeToFullChargeMinutes > 0 {
                 return "전원 연결 · 완충까지 \(Self.minutes(timeToFullChargeMinutes))"
             }
+            if isCharging == false {
+                return "전원 연결 · 충전 안 함"
+            }
             return "전원 연결"
         }
 
@@ -132,7 +135,7 @@ struct BatteryStatusSnapshot: Equatable {
             return "충전 중"
         }
         if isConnectedToPower == true {
-            return "전원 연결"
+            return "충전 안 함"
         }
         return "방전 중"
     }

@@ -29,7 +29,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.sleepPreventionChargingBelowThresholdTriggerKey,
             RunnerPreferences.sleepPreventionCPUThresholdTriggerKey,
             RunnerPreferences.sleepPreventionNetworkActivityTriggerKey,
-            RunnerPreferences.sleepPreventionExternalVolumeTriggerKey
+            RunnerPreferences.sleepPreventionExternalVolumeTriggerKey,
+            RunnerPreferences.chargeLimitTargetPercentKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -77,6 +78,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         if module == .sleep {
             defaults.set(SleepPreventionSessionPreset.oneHour.rawValue, forKey: RunnerPreferences.sleepPreventionSessionPresetKey)
             RunnerPreferences.setSleepPreventionControlMode(.time, defaults: defaults)
+        }
+
+        if module == .battery {
+            RunnerPreferences.setChargeLimitTargetPercent(90, defaults: defaults)
         }
     }
 
