@@ -13,6 +13,7 @@ struct UsageMonitorState: Equatable {
     let animationPaused: Bool
     let isRefreshing: Bool
     let systemMetrics: SystemMetricsSnapshot
+    let systemMetricsHistory: SystemMetricsHistory
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
@@ -26,6 +27,7 @@ struct UsageMonitorState: Equatable {
         animationPaused: Bool = false,
         isRefreshing: Bool = false,
         systemMetrics: SystemMetricsSnapshot = .capture(),
+        systemMetricsHistory: SystemMetricsHistory = .empty,
         sleepPreventionStatus: SleepPreventionStatus = .disabled,
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing
@@ -38,6 +40,7 @@ struct UsageMonitorState: Equatable {
         self.animationPaused = animationPaused
         self.isRefreshing = isRefreshing
         self.systemMetrics = systemMetrics
+        self.systemMetricsHistory = systemMetricsHistory
         self.sleepPreventionStatus = sleepPreventionStatus
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
@@ -53,6 +56,7 @@ struct UsageMonitorState: Equatable {
             animationPaused: animationPaused,
             isRefreshing: isRefreshing,
             systemMetrics: systemMetrics,
+            systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
@@ -61,6 +65,7 @@ struct UsageMonitorState: Equatable {
 
     func withSystemMetrics(
         _ systemMetrics: SystemMetricsSnapshot,
+        systemMetricsHistory: SystemMetricsHistory? = nil,
         sleepPreventionStatus: SleepPreventionStatus,
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
@@ -74,6 +79,7 @@ struct UsageMonitorState: Equatable {
             animationPaused: animationPaused,
             isRefreshing: isRefreshing,
             systemMetrics: systemMetrics,
+            systemMetricsHistory: systemMetricsHistory ?? self.systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot

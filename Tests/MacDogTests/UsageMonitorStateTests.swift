@@ -58,15 +58,39 @@ final class UsageMonitorStateTests: XCTestCase {
     func testSystemMetricsUpdateReplacesPrivilegedHelperInstallSnapshot() {
         let state = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: true)
+        let history = SystemMetricsHistory(samples: [
+            SystemMetricsHistorySample(capturedAt: Date(timeIntervalSince1970: 1), cpuLoadPercent: 42, memoryUsedPercent: 55)
+        ])
 
         let updated = state.withSystemMetrics(
             .unavailable,
+            systemMetricsHistory: history,
             sleepPreventionStatus: .disabled,
             sleepPreventionTriggerStatus: .disabled,
             privilegedHelperInstallSnapshot: snapshot
         )
 
         XCTAssertEqual(updated.privilegedHelperInstallSnapshot, snapshot)
+        XCTAssertEqual(updated.systemMetricsHistory, history)
+    }
+
+    func testSystemMetricsHistoryKeepsMostRecentSamples() {
+        let start = Date(timeIntervalSince1970: 100)
+        let history = (0..<65).reduce(SystemMetricsHistory.empty) { history, index in
+            history.appending(
+                Self.systemMetricsSnapshot(
+                    capturedAt: start.addingTimeInterval(Double(index)),
+                    cpuLoadPercent: Double(index),
+                    memoryUsedPercent: Double(index + 10)
+                )
+            )
+        }
+
+        XCTAssertEqual(history.samples.count, SystemMetricsHistory.defaultMaxSamples)
+        XCTAssertEqual(history.cpuLoadPercents.first, 5)
+        XCTAssertEqual(history.cpuLoadPercents.last, 64)
+        XCTAssertEqual(history.memoryUsedPercents.first, 15)
+        XCTAssertEqual(history.memoryUsedPercents.last, 74)
     }
 
     private static func report(fiveHourUsedPercent: Double, weeklyUsedPercent: Double) -> CodexUsageReport {
@@ -100,6 +124,31 @@ final class UsageMonitorStateTests: XCTestCase {
             credits: nil,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static func systemMetricsSnapshot(
+        capturedAt: Date,
+        cpuLoadPercent: Double,
+        memoryUsedPercent: Double
+    ) -> SystemMetricsSnapshot {
+        SystemMetricsSnapshot(
+            capturedAt: capturedAt,
+            cpuLoadPercent: cpuLoadPercent,
+            memoryUsedPercent: memoryUsedPercent,
+            memoryDetails: nil,
+            diskUsedPercent: nil,
+            diskDetails: nil,
+            networkReceivedBytes: nil,
+            networkSentBytes: nil,
+            networkReceivedRateBytesPerSecond: nil,
+            networkSentRateBytesPerSecond: nil,
+            activeInterfaceCount: 0,
+            primaryNetworkInterfaceName: nil,
+            localIPAddress: nil,
+            cpuBreakdown: nil,
+            battery: .unavailable,
+            chargeLimitSupport: .unavailable
         )
     }
 }

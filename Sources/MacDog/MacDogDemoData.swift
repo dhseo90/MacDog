@@ -17,6 +17,7 @@ enum MacDogDemoData {
             reducedMotion: preferences.reducedMotion,
             animationPaused: preferences.animationPaused,
             systemMetrics: systemMetrics,
+            systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus(preferences: preferences),
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus(preferences: preferences),
             privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot(
@@ -24,6 +25,20 @@ enum MacDogDemoData {
                 launchDaemonExists: false
             )
         )
+    }
+
+    private static var systemMetricsHistory: SystemMetricsHistory {
+        let now = Date()
+        let cpuValues: [Double] = [18, 22, 20, 27, 31, 26, 24.9, 29, 34, 28, 25]
+        let memoryValues: [Double] = [44, 45.5, 46, 47.8, 48.2, 48.9, 49.1, 49.4, 49.0, 49.6, 49.1]
+        let samples = zip(cpuValues.indices, cpuValues).map { index, cpu in
+            SystemMetricsHistorySample(
+                capturedAt: now.addingTimeInterval(Double(index - cpuValues.count + 1)),
+                cpuLoadPercent: cpu,
+                memoryUsedPercent: memoryValues[index]
+            )
+        }
+        return SystemMetricsHistory(samples: samples)
     }
 
     private static var report: CodexUsageReport {

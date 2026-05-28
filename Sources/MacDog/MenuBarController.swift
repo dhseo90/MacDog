@@ -24,6 +24,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var floatingPetController: FloatingPetController?
     private var frameIndex = 0
     private var state = UsageMonitorState.empty
+    private var systemMetricsHistory = SystemMetricsHistory.empty
 
     func start() {
         configureStatusItem()
@@ -88,10 +89,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        let systemMetrics = SystemMetricsSnapshot.capture()
+        let systemMetrics = captureSystemMetrics()
         syncSleepPrevention(systemMetrics: systemMetrics)
         applyState(state.withSystemMetrics(
             systemMetrics,
+            systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionController.status,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -148,7 +150,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return
         }
 
-        let systemMetrics = SystemMetricsSnapshot.capture()
+        let systemMetrics = captureSystemMetrics()
         syncSleepPrevention(systemMetrics: systemMetrics)
         applyState(loadCachedState(systemMetrics: systemMetrics))
 
@@ -180,6 +182,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
                 systemMetrics: systemMetrics,
+                systemMetricsHistory: systemMetricsHistory,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -194,6 +197,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             reducedMotion: preferences.reducedMotion,
             animationPaused: preferences.animationPaused,
             systemMetrics: systemMetrics,
+            systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionController.status,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -214,7 +218,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             let previousPhase = self.state.phase
             let previousPreferences = self.preferences
             self.preferences = RunnerPreferences()
-            let systemMetrics = SystemMetricsSnapshot.capture()
+            let systemMetrics = self.captureSystemMetrics()
             self.syncSleepPrevention(systemMetrics: systemMetrics)
             self.applyState(self.state(from: result, systemMetrics: systemMetrics))
             self.liveRefreshTask = nil
@@ -232,7 +236,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         liveRefreshTask = nil
 
         if state.isRefreshing {
-            applyState(loadCachedState())
+            applyState(loadCachedState(systemMetrics: captureSystemMetrics()))
         }
     }
 
@@ -264,6 +268,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
                 systemMetrics: systemMetrics,
+                systemMetricsHistory: systemMetricsHistory,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -278,6 +283,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
                     systemMetrics: systemMetrics,
+                    systemMetricsHistory: systemMetricsHistory,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                     privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -291,6 +297,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     reducedMotion: preferences.reducedMotion,
                     animationPaused: preferences.animationPaused,
                     systemMetrics: systemMetrics,
+                    systemMetricsHistory: systemMetricsHistory,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                     privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
@@ -301,6 +308,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func privilegedHelperInstallSnapshot() -> PrivilegedHelperInstallSnapshot {
         privilegedHelperInstallStateReader.snapshot()
+    }
+
+    private func captureSystemMetrics() -> SystemMetricsSnapshot {
+        let snapshot = SystemMetricsSnapshot.capture()
+        systemMetricsHistory = systemMetricsHistory.appending(snapshot)
+        return snapshot
     }
 
     private func makePopoverController() -> NSViewController {

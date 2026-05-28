@@ -318,6 +318,54 @@ struct DiskDetailsSnapshot: Equatable {
     let totalBytes: UInt64
 }
 
+struct SystemMetricsHistory: Equatable {
+    static let empty = SystemMetricsHistory(samples: [])
+    static let defaultMaxSamples = 60
+
+    let samples: [SystemMetricsHistorySample]
+
+    func appending(_ snapshot: SystemMetricsSnapshot, maxSamples: Int = defaultMaxSamples) -> SystemMetricsHistory {
+        var updated = samples
+        updated.append(SystemMetricsHistorySample(snapshot: snapshot))
+        if updated.count > maxSamples {
+            updated.removeFirst(updated.count - maxSamples)
+        }
+        return SystemMetricsHistory(samples: updated)
+    }
+
+    var cpuLoadPercents: [Double] {
+        samples.compactMap(\.cpuLoadPercent)
+    }
+
+    var memoryUsedPercents: [Double] {
+        samples.compactMap(\.memoryUsedPercent)
+    }
+}
+
+struct SystemMetricsHistorySample: Equatable {
+    let capturedAt: Date
+    let cpuLoadPercent: Double?
+    let memoryUsedPercent: Double?
+
+    init(
+        capturedAt: Date,
+        cpuLoadPercent: Double?,
+        memoryUsedPercent: Double?
+    ) {
+        self.capturedAt = capturedAt
+        self.cpuLoadPercent = cpuLoadPercent
+        self.memoryUsedPercent = memoryUsedPercent
+    }
+
+    init(snapshot: SystemMetricsSnapshot) {
+        self.init(
+            capturedAt: snapshot.capturedAt,
+            cpuLoadPercent: snapshot.cpuLoadPercent,
+            memoryUsedPercent: snapshot.memoryUsedPercent
+        )
+    }
+}
+
 private final class NetworkRateSampler: @unchecked Sendable {
     private struct Sample {
         let receivedBytes: UInt64
