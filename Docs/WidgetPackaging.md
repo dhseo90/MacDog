@@ -11,6 +11,7 @@ This document records the packaging boundary for the MacDog WidgetKit work.
 - `Apps/MacDogWidgetExtension` contains the extension entrypoint, Info.plist, and entitlements for the WidgetKit extension target.
 - `script/verify_widget_packaging.sh` builds the Xcode host/extension target and verifies `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`.
 - `script/verify_widget_readiness.sh` verifies the widget stays on the shared cache path, uses the `macdog://open` deep link, keeps empty/stale/error presentation covered by tests, and leaves widget gallery/click checks as manual verification.
+- `script/verify_manual_ui_prerequisites.sh` runs the read-only prerequisite gate before widget gallery/click manual verification and fails by default if the installed app is not the latest `dist/MacDog.app`.
 - The install script installs the CLI and `MacDog.app`; the app bundle includes `Contents/PlugIns/MacDogWidgetExtension.appex`.
 
 ## Packaging Decision
