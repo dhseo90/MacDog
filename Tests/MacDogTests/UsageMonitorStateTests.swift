@@ -93,6 +93,22 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(history.memoryUsedPercents.last, 74)
     }
 
+    func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {
+        XCTAssertFalse(MacDogPopoverModule.codex.usesScrollableContent)
+        XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
+        XCTAssertTrue(MacDogPopoverModule.sleep.usesScrollableContent)
+        XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
+    }
+
+    func testDemoDataProvidesCpuAndMemoryTrendSamplesForMacTab() {
+        let state = MacDogDemoData.state()
+
+        XCTAssertGreaterThan(state.systemMetricsHistory.cpuLoadPercents.count, 1)
+        XCTAssertGreaterThan(state.systemMetricsHistory.memoryUsedPercents.count, 1)
+        XCTAssertEqual(state.systemMetricsHistory.cpuLoadPercents.last, state.systemMetrics.cpuLoadPercent)
+        XCTAssertEqual(state.systemMetricsHistory.memoryUsedPercents.last, state.systemMetrics.memoryUsedPercent)
+    }
+
     private static func report(fiveHourUsedPercent: Double, weeklyUsedPercent: Double) -> CodexUsageReport {
         let fiveHour = UsageWindowReport(
             kind: .fiveHour,

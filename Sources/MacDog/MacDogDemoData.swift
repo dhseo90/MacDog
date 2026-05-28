@@ -29,7 +29,7 @@ enum MacDogDemoData {
 
     private static var systemMetricsHistory: SystemMetricsHistory {
         let now = Date()
-        let cpuValues: [Double] = [18, 22, 20, 27, 31, 26, 24.9, 29, 34, 28, 25]
+        let cpuValues: [Double] = [18, 22, 20, 27, 31, 26, 24.9, 29, 34, 28, 24.9]
         let memoryValues: [Double] = [44, 45.5, 46, 47.8, 48.2, 48.9, 49.1, 49.4, 49.0, 49.6, 49.1]
         let samples = zip(cpuValues.indices, cpuValues).map { index, cpu in
             SystemMetricsHistorySample(
