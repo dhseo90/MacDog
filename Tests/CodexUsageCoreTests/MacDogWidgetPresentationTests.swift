@@ -7,7 +7,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         let entry = CodexUsageEntry(date: Date(timeIntervalSince1970: 1_779_800_000), snapshot: nil, errorMessage: nil)
         let presentation = WidgetUsagePresentation(entry: entry)
 
-        XCTAssertEqual(presentation.statusText, "no cache")
+        XCTAssertEqual(presentation.statusText, "캐시 없음")
         XCTAssertEqual(presentation.maxUsedPercent, 0)
     }
 
@@ -19,7 +19,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         )
         let presentation = WidgetUsagePresentation(entry: entry)
 
-        XCTAssertEqual(presentation.statusText, "updated")
+        XCTAssertEqual(presentation.statusText, "갱신됨")
         XCTAssertEqual(presentation.maxUsedPercent, 38)
     }
 
@@ -31,7 +31,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         )
         let presentation = WidgetUsagePresentation(entry: entry)
 
-        XCTAssertEqual(presentation.statusText, "stale cache")
+        XCTAssertEqual(presentation.statusText, "오래된 캐시")
     }
 
     func testPresentationShowsErrorStateFromCacheSnapshot() {
@@ -47,7 +47,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         )
         let presentation = WidgetUsagePresentation(entry: entry)
 
-        XCTAssertEqual(presentation.statusText, "stale: network unavailable")
+        XCTAssertEqual(presentation.statusText, "오류: network unavailable")
         XCTAssertEqual(presentation.maxUsedPercent, 38)
     }
 

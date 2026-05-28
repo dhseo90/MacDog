@@ -36,7 +36,7 @@ public struct MacDogStatusWidget: Widget {
                 .widgetURL(URL(string: "macdog://open"))
         }
         .configurationDisplayName("MacDog")
-        .description("Shows Codex 5-hour and weekly usage from the shared cache.")
+        .description("공유 캐시의 Codex 5시간/주간 사용량을 보여줍니다.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -70,11 +70,11 @@ struct WidgetUsagePresentation: Equatable {
         self.maxUsedPercent = entry.codexLimit?.maxUsedPercent ?? 0
 
         if let error = entry.errorMessage {
-            self.statusText = "stale: \(error)"
+            self.statusText = "오류: \(error)"
         } else if let snapshot = entry.snapshot {
-            self.statusText = snapshot.isStale(now: entry.date) ? "stale cache" : "updated"
+            self.statusText = snapshot.isStale(now: entry.date) ? "오래된 캐시" : "갱신됨"
         } else {
-            self.statusText = "no cache"
+            self.statusText = "캐시 없음"
         }
     }
 }
@@ -178,7 +178,7 @@ public struct MacDogUsageWidgetView: View {
             Text("Codex")
                 .font(.headline)
 
-            Text("\(percent(maxUsedPercent))% used")
+            Text("\(percent(maxUsedPercent))% 사용 중")
                 .font(.title2.bold())
                 .foregroundStyle(phaseColor)
 
@@ -201,14 +201,8 @@ public struct MacDogUsageWidgetView: View {
                     .foregroundStyle(.secondary)
             }
 
-            WidgetUsageRow(title: "5h", window: entry.codexLimit?.fiveHour)
-            WidgetUsageRow(title: "Weekly", window: entry.codexLimit?.weekly)
-
-            if let credits = entry.codexLimit?.credits?.balance {
-                Text("Credits \(credits)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            WidgetUsageRow(title: "5시간", window: entry.codexLimit?.fiveHour)
+            WidgetUsageRow(title: "주간", window: entry.codexLimit?.weekly)
         }
         .containerBackground(.background, for: .widget)
     }
@@ -266,8 +260,8 @@ private struct WidgetUsageRow: View {
     }
 
     private var summary: String {
-        guard let window else { return "unavailable" }
-        return "\(percent(window.usedPercent))% / \(percent(window.remainingPercent))% left"
+        guard let window else { return "확인 불가" }
+        return "\(percent(window.usedPercent))% 사용 / \(percent(window.remainingPercent))% 남음"
     }
 
     private var progress: Double {

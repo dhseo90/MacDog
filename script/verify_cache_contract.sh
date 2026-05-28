@@ -25,7 +25,7 @@ require_match 'cacheAgentRefreshIntervalSeconds = 300' "$CACHE_SOURCE"
 require_match 'schemaVersion' "$CACHE_TESTS"
 require_match 'writeFailure' "$CACHE_TESTS"
 require_match 'isStale' "$CACHE_TESTS"
-require_match 'stale cache|no cache|updated' "$WIDGET_TESTS"
+require_match '오래된 캐시|캐시 없음|갱신됨' "$WIDGET_TESTS"
 
 if /usr/bin/grep -Eiq "$SENSITIVE_PATTERN" "$CACHE_SOURCE" "$CACHE_TESTS" "$WIDGET_TESTS"; then
   die "sensitive cache/session material pattern found in cache contract files"
