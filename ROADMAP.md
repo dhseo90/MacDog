@@ -85,7 +85,7 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 러너 변경은 "메뉴바 16-22pt 크기에서도 한눈에 읽히는가"를 기준으로 한다.
 Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가 약하므로 기본 UI 옵션으로 노출하지 않는다.
 현재 앱은 Codex Pup 하나만 유지해 설정이 장난감처럼 느껴지지 않게 한다.
-현재 우측 탭 버튼은 버튼에 맞춘 임시 artwork를 사용한다. 후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 캐릭터 프로필로 묶는다.
+현재 우측 탭 버튼, 플로팅 펫, 메뉴바 러너 프레임은 `MacDogCharacterProfile.codexPup`이 소유하는 하나의 캐릭터 프로필로 연결되어 있다. 후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 asset set으로 교체한다.
 
 ### 1차 캐릭터: Codex Pup
 
@@ -100,7 +100,7 @@ Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가
 
 ### 후속 후보
 
-- 캐릭터 프로필: 버튼 artwork, 플로팅 펫 sprite, 메뉴바 runner frame, 상태별 accent를 하나의 asset set으로 연결
+- 캐릭터 artwork polish: 버튼 artwork, 플로팅 펫 sprite, 메뉴바 runner frame이 더 같은 캐릭터로 보이도록 비주얼 톤을 다듬기
 - Terminal Runner: `>_` 터미널 형태를 작게 의인화한 개발자 도구형 러너
 - 사용자 커스텀 runner PNG import: MVP 이후 확장 기능으로 유지
 
@@ -492,8 +492,7 @@ GitHub 배포 후속 목표:
 후속 개발 순서:
 
 1. WidgetKit 수동 검수: 위젯 갤러리 추가, 클릭/deep link, stale/error 표시 확인
-2. 캐릭터 asset 통일: 데스크톱 강아지, 메뉴바 러너, 오른쪽 탭 버튼을 같은 캐릭터 팩으로 묶기
-   - 현재 오른쪽 탭 버튼은 버튼용 임시 생성 artwork이며, 최종 캐릭터 통일 완료로 보지 않는다.
+2. 캐릭터 artwork polish: 현재 asset은 하나의 Codex Pup 프로필로 연결되어 있으며, 버튼/데스크톱/메뉴바 비주얼 톤 추가 정리는 후속 polish로 다룬다.
 3. SMC 충전 제어는 helper 안정화 이후 별도 승인 기능으로 분리
 
 원칙:

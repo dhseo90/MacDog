@@ -120,6 +120,7 @@ struct UsagePopoverView: View {
             onPreferencesChanged()
         } label: {
             PopoverTabArtwork(
+                resourceDirectory: MacDogCharacterProfile.codexPup.popoverTabs.resourceDirectory,
                 resourceName: module.artworkName,
                 fallbackSystemImage: module.systemImage
             )
@@ -237,29 +238,11 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
     }
 
     var systemImage: String {
-        switch self {
-        case .codex:
-            "pawprint"
-        case .mac:
-            "waveform.path.ecg"
-        case .sleep:
-            "moon.zzz"
-        case .battery:
-            "battery.100percent"
-        }
+        MacDogCharacterProfile.codexPup.popoverTabs.artwork(for: self).systemImage
     }
 
     var artworkName: String {
-        switch self {
-        case .codex:
-            "codex-tab"
-        case .mac:
-            "mac-tab"
-        case .sleep:
-            "sleep-tab"
-        case .battery:
-            "battery-tab"
-        }
+        MacDogCharacterProfile.codexPup.popoverTabs.artwork(for: self).resourceName
     }
 
     var usesScrollableContent: Bool {
@@ -1073,12 +1056,13 @@ private struct PopoverFormSection<Content: View>: View {
 }
 
 private struct PopoverTabArtwork: View {
+    let resourceDirectory: String
     let resourceName: String
     let fallbackSystemImage: String
 
     var body: some View {
         Group {
-            if let image = Self.image(named: resourceName) {
+            if let image = Self.image(named: resourceName, resourceDirectory: resourceDirectory) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
@@ -1096,19 +1080,19 @@ private struct PopoverTabArtwork: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private static func image(named resourceName: String) -> NSImage? {
+    private static func image(named resourceName: String, resourceDirectory: String) -> NSImage? {
         let localResourceURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             .appendingPathComponent("Sources", isDirectory: true)
             .appendingPathComponent("MacDog", isDirectory: true)
             .appendingPathComponent("Resources", isDirectory: true)
-            .appendingPathComponent("PopoverTabs", isDirectory: true)
+            .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(resourceName).png")
         if FileManager.default.fileExists(atPath: localResourceURL.path) {
             return NSImage(contentsOf: localResourceURL)
         }
 
         if let url = Bundle.main.resourceURL?
-            .appendingPathComponent("PopoverTabs", isDirectory: true)
+            .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(resourceName).png") {
             return NSImage(contentsOf: url)
         }
@@ -1120,7 +1104,7 @@ private struct PopoverTabArtwork: View {
         if let url = Bundle.module.url(
             forResource: resourceName,
             withExtension: "png",
-            subdirectory: "PopoverTabs"
+            subdirectory: resourceDirectory
         ) {
             return NSImage(contentsOf: url)
         }

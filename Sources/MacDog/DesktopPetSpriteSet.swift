@@ -3,10 +3,18 @@ import AppKit
 struct DesktopPetSpriteSet {
     private let frameCache: [DesktopPetPose: DesktopPetAnimation]
 
-    init() {
+    init(profile: MacDogCharacterProfile = .codexPup) {
         self.frameCache = Dictionary(
             uniqueKeysWithValues: DesktopPetPose.allCases.map { pose in
-                (pose, Self.loadFrames(prefix: pose.resourcePrefix, count: pose.frameCount))
+                let asset = profile.desktopPet.asset(for: pose)
+                return (
+                    pose,
+                    Self.loadFrames(
+                        prefix: asset.resourcePrefix,
+                        count: asset.frameCount,
+                        resourceDirectory: profile.desktopPet.resourceDirectory
+                    )
+                )
             }
         )
     }
@@ -17,18 +25,18 @@ struct DesktopPetSpriteSet {
         return selectedFrames[frame % selectedFrames.count]
     }
 
-    private static func loadFrames(prefix: String, count: Int) -> DesktopPetAnimation {
+    private static func loadFrames(prefix: String, count: Int, resourceDirectory: String) -> DesktopPetAnimation {
         let images = (0..<count).compactMap { index in
-            loadImage(named: "\(prefix)-\(index)")
+            loadImage(named: "\(prefix)-\(index)", resourceDirectory: resourceDirectory)
         }
         let regular = horizontallyAlignedFrames(from: images)
         let flipped = regular.map { $0.horizontallyFlipped() }
         return DesktopPetAnimation(regular: regular, flipped: flipped)
     }
 
-    private static func loadImage(named name: String) -> NSImage? {
+    private static func loadImage(named name: String, resourceDirectory: String) -> NSImage? {
         if let url = Bundle.main.resourceURL?
-            .appendingPathComponent("DesktopPet", isDirectory: true)
+            .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(name).png") {
             return NSImage(contentsOf: url)
         }
@@ -36,7 +44,7 @@ struct DesktopPetSpriteSet {
         if let url = Bundle.module.url(
             forResource: name,
             withExtension: "png",
-            subdirectory: "DesktopPet"
+            subdirectory: resourceDirectory
         ) {
             return NSImage(contentsOf: url)
         }
@@ -118,31 +126,11 @@ enum DesktopPetPose: CaseIterable {
     case alert
 
     var resourcePrefix: String {
-        switch self {
-        case .runRight:
-            "pup-run-right"
-        case .runUp:
-            "pup-run-up"
-        case .runDown:
-            "pup-run-down"
-        case .idleFront:
-            "pup-idle-front"
-        case .idleSide:
-            "pup-idle-side"
-        case .rest:
-            "pup-rest"
-        case .alert:
-            "pup-alert"
-        }
+        MacDogCharacterProfile.codexPup.desktopPet.asset(for: self).resourcePrefix
     }
 
     var frameCount: Int {
-        switch self {
-        case .runRight, .runUp, .runDown:
-            8
-        case .idleFront, .idleSide, .rest, .alert:
-            4
-        }
+        MacDogCharacterProfile.codexPup.desktopPet.asset(for: self).frameCount
     }
 }
 

@@ -1,7 +1,13 @@
 import AppKit
 
 struct RunnerIconRenderer {
-    static let frameCount = 8
+    static let frameCount = MacDogCharacterProfile.codexPup.runner.frameCount
+
+    private let profile: MacDogCharacterProfile
+
+    init(profile: MacDogCharacterProfile = .codexPup) {
+        self.profile = profile
+    }
 
     func image(
         frame: Int,
@@ -37,9 +43,9 @@ struct RunnerIconRenderer {
     }
 
     private func spriteImage(frame: Int, phase: UsagePressurePhase) -> NSImage? {
-        let resourceName = "pup-runner-\(frame % Self.frameCount)"
+        let resourceName = "\(profile.runner.framePrefix)-\(frame % profile.runner.frameCount)"
         if let mainResourceURL = Bundle.main.resourceURL?
-            .appendingPathComponent("Runner", isDirectory: true)
+            .appendingPathComponent(profile.runner.resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(resourceName).png"),
             let image = spriteImage(from: mainResourceURL, phase: phase) {
             return image
@@ -53,7 +59,7 @@ struct RunnerIconRenderer {
         if let url = Bundle.module.url(
             forResource: resourceName,
             withExtension: "png",
-            subdirectory: "Runner"
+            subdirectory: profile.runner.resourceDirectory
         ) {
             return spriteImage(from: url, phase: phase)
         }

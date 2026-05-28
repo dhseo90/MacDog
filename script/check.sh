@@ -14,20 +14,21 @@ Run the standard local verification for a new checkout.
 Checks:
   1. Required macOS/Xcode tools are available.
   2. Runner PNG assets have the expected count and size.
-  3. Swift tests pass.
-  4. Cache schema and privacy contract checks pass.
-  5. Install/uninstall dry-run output is stable.
-  6. Restart/login autostart contract preserves app preferences.
-  7. The privileged helper product builds without installing it.
-  8. The menu bar app builds.
-  9. The generated app bundle contains the WidgetKit extension.
-  10. WidgetKit host/extension packaging builds an embedded .appex.
-  11. WidgetKit cache/deep-link readiness guards pass.
-  12. The current app/helper install state can be reported without changing the system.
-  13. Release packaging dry-run is stable.
-  14. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  15. Privileged helper reinstall test plan is safe to stage before actual approval.
-  16. Unless --no-run is passed, the app launches and its process is detected.
+  3. Character profile links runner, desktop pet, and tab artwork assets.
+  4. Swift tests pass.
+  5. Cache schema and privacy contract checks pass.
+  6. Install/uninstall dry-run output is stable.
+  7. Restart/login autostart contract preserves app preferences.
+  8. The privileged helper product builds without installing it.
+  9. The menu bar app builds.
+  10. The generated app bundle contains the WidgetKit extension.
+  11. WidgetKit host/extension packaging builds an embedded .appex.
+  12. WidgetKit cache/deep-link readiness guards pass.
+  13. The current app/helper install state can be reported without changing the system.
+  14. Release packaging dry-run is stable.
+  15. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  16. Privileged helper reinstall test plan is safe to stage before actual approval.
+  17. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -69,6 +70,9 @@ cd "$ROOT_DIR"
 
 echo "==> Verifying runner assets"
 ./script/verify_runner_baseline.sh
+
+echo "==> Verifying character profile"
+./script/verify_character_profile.sh
 
 echo "==> Running Swift tests"
 "$XCRUN" swift test --no-parallel

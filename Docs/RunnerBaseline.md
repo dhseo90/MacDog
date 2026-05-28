@@ -6,6 +6,7 @@ This document fixes the current Codex Pup runner as the app runner baseline.
 
 - Asset path: `Sources/MacDog/Resources/Runner`
 - Frame files: `pup-runner-0.png` through `pup-runner-7.png`
+- Character profile: `MacDogCharacterProfile.codexPup`
 - Frame count: 8
 - Frame size: 80x48 px
 - Menu bar status item length: 38 pt
