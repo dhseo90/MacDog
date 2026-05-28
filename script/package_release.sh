@@ -66,9 +66,11 @@ Payload:
   - bin/codex-usage
   - Install MacDog.command
   - Install Privileged Helper.command
+  - Check Install Status.command
   - README_FIRST.txt
 Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
+Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
 GitHub Release: upload DMG only after signing/notarization gate is satisfied for public distribution.
 DRYRUN
@@ -100,8 +102,10 @@ MacDog $VERSION
 1. Double-click "Install MacDog.command" to install MacDog.app, codex-usage, and user LaunchAgents.
 2. This local release candidate is not notarized.
 3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
-4. The helper installer asks for administrator approval and is intended for local unsigned validation.
-5. Uninstall support remains available from the source checkout via script/uninstall.sh.
+4. The helper installer explains the system locations it changes before asking for administrator approval.
+5. Double-click "Check Install Status.command" after installation to verify app, CLI, LaunchAgents, and optional helper state.
+6. This local release candidate is intended for local unsigned validation.
+7. Uninstall support remains available from the source checkout via script/uninstall.sh.
 README
 
 cat >"$STAGE_DIR/Install MacDog.command" <<'INSTALL'
@@ -217,6 +221,7 @@ echo "App: $APP_DEST"
 echo "CLI: $CLI_DEST"
 echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
 echo "For full closed-lid sleep prevention, run Install Privileged Helper.command."
+echo "Then run Check Install Status.command to verify the install."
 INSTALL
 chmod +x "$STAGE_DIR/Install MacDog.command"
 
@@ -253,6 +258,29 @@ apple_script_literal() {
 [[ -d "$APP_SOURCE" ]] || die "missing app bundle: $APP_SOURCE"
 [[ -x "$HELPER_SOURCE" ]] || die "missing helper executable: $HELPER_SOURCE"
 /usr/bin/codesign --verify --strict --verbose=2 "$HELPER_SOURCE" >/dev/null
+
+cat <<NOTICE
+MacDog privileged helper installer
+
+This installs an opt-in LaunchDaemon used only for closed-lid sleep prevention.
+It changes these system locations:
+  - $HELPER_TOOL_DEST
+  - $HELPER_PLIST_DEST
+  - $HELPER_LOG_DIR
+
+After this one administrator approval, MacDog can change SleepDisabled through XPC
+without asking for your password on every sleep-prevention setting change.
+NOTICE
+
+printf "Continue with privileged helper install? [y/N] "
+read -r confirm
+case "$confirm" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Cancelled privileged helper install."
+    exit 0
+    ;;
+esac
 
 temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
 root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-install.XXXXXX")"
@@ -309,8 +337,100 @@ chmod +x "$root_script"
 echo "Installed MacDog privileged helper"
 echo "Privileged helper: $HELPER_TOOL_DEST"
 echo "LaunchDaemon: $HELPER_PLIST_DEST"
+echo "Run Check Install Status.command to verify the helper state."
 HELPER
 chmod +x "$STAGE_DIR/Install Privileged Helper.command"
+
+cat >"$STAGE_DIR/Check Install Status.command" <<'STATUS'
+#!/usr/bin/env bash
+set -u
+
+APP_NAME="MacDog"
+APP_DEST="$HOME/Applications/$APP_NAME.app"
+CLI_DEST="$HOME/bin/codex-usage"
+UID_VALUE="$(id -u)"
+CACHE_LABEL="com.dhseo.macdog.usage-cache"
+MONITOR_LABEL="com.dhseo.macdog.monitor"
+CACHE_PLIST="$HOME/Library/LaunchAgents/$CACHE_LABEL.plist"
+MONITOR_PLIST="$HOME/Library/LaunchAgents/$MONITOR_LABEL.plist"
+HELPER_LABEL="com.dhseo.macdog.helper"
+HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
+HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
+required_failures=0
+
+ok() {
+  printf "OK      %s\n" "$1"
+}
+
+warn() {
+  printf "WARN    %s\n" "$1"
+}
+
+missing_required() {
+  printf "MISSING %s\n" "$1"
+  required_failures=$((required_failures + 1))
+}
+
+echo "MacDog install status"
+echo
+
+if [[ -x "$APP_DEST/Contents/MacOS/$APP_NAME" ]]; then
+  ok "app installed: $APP_DEST"
+else
+  missing_required "app executable: $APP_DEST/Contents/MacOS/$APP_NAME"
+fi
+
+if [[ -x "$CLI_DEST" ]]; then
+  ok "CLI installed: $CLI_DEST"
+else
+  missing_required "CLI executable: $CLI_DEST"
+fi
+
+if [[ -f "$CACHE_PLIST" ]]; then
+  ok "cache LaunchAgent plist: $CACHE_PLIST"
+else
+  missing_required "cache LaunchAgent plist: $CACHE_PLIST"
+fi
+
+if [[ -f "$MONITOR_PLIST" ]]; then
+  ok "monitor LaunchAgent plist: $MONITOR_PLIST"
+else
+  missing_required "monitor LaunchAgent plist: $MONITOR_PLIST"
+fi
+
+if /bin/launchctl print "gui/$UID_VALUE/$CACHE_LABEL" >/dev/null 2>&1; then
+  ok "cache LaunchAgent loaded"
+else
+  warn "cache LaunchAgent is not loaded"
+fi
+
+if /bin/launchctl print "gui/$UID_VALUE/$MONITOR_LABEL" >/dev/null 2>&1; then
+  ok "monitor LaunchAgent loaded"
+else
+  warn "monitor LaunchAgent is not loaded"
+fi
+
+if [[ -x "$HELPER_TOOL_DEST" && -f "$HELPER_PLIST_DEST" ]]; then
+  ok "privileged helper files installed"
+  if /bin/launchctl print "system/$HELPER_LABEL" >/dev/null 2>&1; then
+    ok "privileged helper loaded"
+  else
+    warn "privileged helper files exist but LaunchDaemon is not loaded"
+  fi
+else
+  warn "privileged helper is optional and not installed"
+fi
+
+echo
+if [[ "$required_failures" -eq 0 ]]; then
+  echo "MacDog required install checks passed."
+  exit 0
+fi
+
+echo "MacDog required install checks failed: $required_failures"
+exit 1
+STATUS
+chmod +x "$STAGE_DIR/Check Install Status.command"
 
 if [[ "$CREATE_DMG" == "1" ]]; then
   mkdir -p "$RELEASE_ROOT"

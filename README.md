@@ -130,7 +130,8 @@ GitHub Release용 더블클릭 설치 artifact 후보:
 
 현재 release packaging은 로컬 검증용 `.dmg` 후보를 만들며 Developer ID signing/notarization은 아직 수행하지 않는다.
 생성된 `Install MacDog.command`는 앱, CLI, user LaunchAgent를 설치하고 MacDog를 연다.
-생성된 `Install Privileged Helper.command`는 별도 관리자 승인으로 helper를 설치한다.
+생성된 `Install Privileged Helper.command`는 변경할 system 위치를 안내하고 별도 관리자 승인으로 helper를 설치한다.
+생성된 `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치 상태를 터미널에서 요약한다.
 공개 배포 전에는 앱 내부 helper 설치 UX와 Gatekeeper 검증을 완료해야 한다.
 GitHub Actions의 `Release Candidate` 수동 workflow는 unsigned `.dmg` 후보를 artifact로 만들지만, GitHub Release publication은 아직 자동화하지 않는다.
 
