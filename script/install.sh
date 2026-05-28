@@ -21,14 +21,160 @@ HELPER_SOURCE="$APP_SOURCE/Contents/Library/LaunchServices/$HELPER_EXECUTABLE"
 HELPER_PLIST_SOURCE="$APP_SOURCE/Contents/Library/LaunchDaemons/$HELPER_LABEL.plist"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
+HELPER_LOG_DIR="/Library/Logs/MacDog"
 UID_VALUE="$(id -u)"
 WITH_HELPER=0
+HELPER_ONLY=0
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
 
 usage() {
-  echo "usage: $0 [--dry-run] [--with-helper]"
+  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only]"
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+run_as_root() {
+  if [[ "$(id -u)" == "0" ]]; then
+    "$@"
+  else
+    /usr/bin/sudo "$@"
+  fi
+}
+
+xml_escape() {
+  local value="$1"
+  value="${value//&/&amp;}"
+  value="${value//</&lt;}"
+  value="${value//>/&gt;}"
+  value="${value//\"/&quot;}"
+  value="${value//\'/&apos;}"
+  printf '%s' "$value"
+}
+
+detect_host_team_identifier() {
+  local bundle_path="$1"
+  local output
+  output="$(/usr/bin/codesign -dv "$bundle_path" 2>&1 || true)"
+  local team_id
+  team_id="$(printf '%s\n' "$output" | awk -F= '/^TeamIdentifier=/{print $2; exit}')"
+  if [[ -n "$team_id" && "$team_id" != "not set" ]]; then
+    printf '%s' "$team_id"
+  fi
+}
+
+write_helper_launch_daemon_plist() {
+  local target="$1"
+  local host_team_id="$2"
+  local allow_adhoc_host="$3"
+
+  cat >"$target" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$HELPER_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HELPER_TOOL_DEST</string>
+    <string>--run-xpc-service</string>
+  </array>
+  <key>MachServices</key>
+  <dict>
+    <key>$HELPER_MACH_SERVICE</key>
+    <true/>
+  </dict>
+PLIST
+
+  if [[ -n "$host_team_id" || "$allow_adhoc_host" == "1" ]]; then
+    cat >>"$target" <<PLIST
+  <key>EnvironmentVariables</key>
+  <dict>
+PLIST
+    if [[ -n "$host_team_id" ]]; then
+      cat >>"$target" <<PLIST
+    <key>MACDOG_HELPER_HOST_TEAM_ID</key>
+    <string>$(xml_escape "$host_team_id")</string>
+PLIST
+    fi
+    if [[ "$allow_adhoc_host" == "1" ]]; then
+      cat >>"$target" <<PLIST
+    <key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>
+    <string>1</string>
+PLIST
+    fi
+    cat >>"$target" <<PLIST
+  </dict>
+PLIST
+  fi
+
+  cat >>"$target" <<PLIST
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$HELPER_LOG_DIR/helper.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>$HELPER_LOG_DIR/helper.err.log</string>
+</dict>
+</plist>
+PLIST
+}
+
+install_privileged_helper() {
+  local host_bundle_path="${1:-$APP_DEST}"
+
+  [[ -x "$HELPER_SOURCE" ]] || die "privileged helper executable missing: $HELPER_SOURCE"
+  [[ -f "$HELPER_PLIST_SOURCE" ]] || die "privileged helper launch daemon plist missing: $HELPER_PLIST_SOURCE"
+  [[ -d "$host_bundle_path" ]] || die "host app bundle missing: $host_bundle_path"
+  /usr/bin/codesign --verify --strict --verbose=2 "$HELPER_SOURCE" >/dev/null
+  /usr/bin/plutil -lint "$HELPER_PLIST_SOURCE" >/dev/null
+
+  local host_team_id
+  host_team_id="${MACDOG_HELPER_HOST_TEAM_ID:-$(detect_host_team_identifier "$host_bundle_path")}"
+  local allow_adhoc_host=0
+  if [[ -z "$host_team_id" ]]; then
+    allow_adhoc_host=1
+  fi
+
+  local temp_plist
+  temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
+  write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$allow_adhoc_host"
+  /usr/bin/plutil -lint "$temp_plist" >/dev/null
+
+  run_as_root /usr/bin/true
+  run_as_root /bin/launchctl bootout system "$HELPER_PLIST_DEST" >/dev/null 2>&1 || true
+  run_as_root /bin/mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons "$HELPER_LOG_DIR"
+  run_as_root /usr/bin/install -o root -g wheel -m 755 "$HELPER_SOURCE" "$HELPER_TOOL_DEST"
+  run_as_root /usr/bin/install -o root -g wheel -m 644 "$temp_plist" "$HELPER_PLIST_DEST"
+  rm -f "$temp_plist"
+
+  run_as_root /bin/launchctl bootstrap system "$HELPER_PLIST_DEST"
+  run_as_root /bin/launchctl print "system/$HELPER_LABEL" >/dev/null
+  /usr/bin/codesign --verify --strict --verbose=2 "$HELPER_TOOL_DEST" >/dev/null
+}
+
+print_helper_install_dry_run() {
+  echo "Privileged helper: opt-in enabled"
+  echo "Helper label: $HELPER_LABEL"
+  echo "Helper executable source: $HELPER_SOURCE"
+  echo "Helper host app source: $APP_SOURCE"
+  echo "Helper launch daemon source: $HELPER_PLIST_SOURCE"
+  echo "Helper tool destination: $HELPER_TOOL_DEST"
+  echo "Helper launch daemon destination: $HELPER_PLIST_DEST"
+  echo "Helper mach service: $HELPER_MACH_SERVICE"
+  echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
+  echo "Helper install status: implemented; actual run requires administrator approval"
+  echo "Helper host requirement: team id when signed, local ad-hoc allowance for unsigned development builds"
+  temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-dry-run.XXXXXX")"
+  write_helper_launch_daemon_plist "$temp_plist" "" "1"
+  /usr/bin/plutil -lint "$temp_plist" >/dev/null
+  rm -f "$temp_plist"
+  echo "Helper launch daemon plist validation: ok"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -36,6 +182,10 @@ while [[ $# -gt 0 ]]; do
     install) MODE="install" ;;
     --dry-run|dry-run) MODE="dry-run" ;;
     --with-helper) WITH_HELPER=1 ;;
+    --helper-only)
+      WITH_HELPER=1
+      HELPER_ONLY=1
+      ;;
     -h|--help|help)
       usage
       exit 0
@@ -51,6 +201,18 @@ done
 case "$MODE" in
   install) ;;
   dry-run)
+    if [[ "$HELPER_ONLY" == "1" ]]; then
+      echo "MacDog helper-only install dry run"
+      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+      echo "App source: $APP_SOURCE"
+      echo "App install: skipped"
+      echo "CLI install: skipped"
+      echo "LaunchAgent changes: skipped"
+      echo "Running app process: left untouched"
+      print_helper_install_dry_run
+      exit 0
+    fi
+
     echo "MacDog install dry run"
     echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
     echo "App source: $APP_SOURCE"
@@ -64,15 +226,7 @@ case "$MODE" in
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
     if [[ "$WITH_HELPER" == "1" ]]; then
-      echo "Privileged helper: opt-in enabled"
-      echo "Helper label: $HELPER_LABEL"
-      echo "Helper executable source: $HELPER_SOURCE"
-      echo "Helper launch daemon source: $HELPER_PLIST_SOURCE"
-      echo "Helper tool destination: $HELPER_TOOL_DEST"
-      echo "Helper launch daemon destination: $HELPER_PLIST_DEST"
-      echo "Helper mach service: $HELPER_MACH_SERVICE"
-      echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
-      echo "Helper install status: dry-run only; actual privileged install not implemented yet"
+      print_helper_install_dry_run
     else
       echo "Privileged helper: skipped; pass --with-helper for dry-run plan"
     fi
@@ -84,9 +238,13 @@ case "$MODE" in
     ;;
 esac
 
-if [[ "$WITH_HELPER" == "1" ]]; then
-  echo "error: privileged helper install is not implemented yet; use --dry-run --with-helper" >&2
-  exit 2
+if [[ "$HELPER_ONLY" == "1" ]]; then
+  "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
+  install_privileged_helper "$APP_SOURCE"
+  echo "Installed MacDog privileged helper"
+  echo "Privileged helper: $HELPER_TOOL_DEST"
+  echo "LaunchDaemon: $HELPER_PLIST_DEST"
+  exit 0
 fi
 
 "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
@@ -104,6 +262,10 @@ rm -rf "$APP_DEST"
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DEST" >/dev/null
 cp "$build_bin/codex-usage" "$CLI_DEST"
 chmod +x "$CLI_DEST"
+
+if [[ "$WITH_HELPER" == "1" ]]; then
+  install_privileged_helper "$APP_DEST"
+fi
 
 cat >"$CACHE_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -168,3 +330,7 @@ echo "Installed MacDog"
 echo "App: $APP_DEST"
 echo "CLI: $CLI_DEST"
 echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+if [[ "$WITH_HELPER" == "1" ]]; then
+  echo "Privileged helper: $HELPER_TOOL_DEST"
+  echo "LaunchDaemon: $HELPER_PLIST_DEST"
+fi

@@ -12,6 +12,15 @@ require_contains() {
   fi
 }
 
+require_not_contains() {
+  local output="$1"
+  local unexpected="$2"
+  if [[ "$output" == *"$unexpected"* ]]; then
+    echo "unexpected dry-run text: $unexpected" >&2
+    exit 1
+  fi
+}
+
 install_output="$("$ROOT_DIR/script/install.sh" --dry-run)"
 require_contains "$install_output" "MacDog install dry run"
 require_contains "$install_output" "App destination:"
@@ -26,8 +35,20 @@ require_contains "$install_output" "Privileged helper: skipped"
 helper_install_output="$("$ROOT_DIR/script/install.sh" --dry-run --with-helper)"
 require_contains "$helper_install_output" "Privileged helper: opt-in enabled"
 require_contains "$helper_install_output" "Helper label: com.dhseo.macdog.helper"
+require_contains "$helper_install_output" "Helper host app source:"
 require_contains "$helper_install_output" "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
-require_contains "$helper_install_output" "Helper install status: dry-run only"
+require_contains "$helper_install_output" "Helper install status: implemented"
+require_contains "$helper_install_output" "Helper host requirement: team id when signed"
+require_contains "$helper_install_output" "Helper launch daemon plist validation: ok"
+require_not_contains "$helper_install_output" "not implemented"
+
+helper_only_install_output="$("$ROOT_DIR/script/install.sh" --dry-run --helper-only)"
+require_contains "$helper_only_install_output" "MacDog helper-only install dry run"
+require_contains "$helper_only_install_output" "App install: skipped"
+require_contains "$helper_only_install_output" "Running app process: left untouched"
+require_contains "$helper_only_install_output" "Helper host app source:"
+require_contains "$helper_only_install_output" "Helper launch daemon plist validation: ok"
+require_not_contains "$helper_only_install_output" "not implemented"
 
 uninstall_output="$("$ROOT_DIR/script/uninstall.sh" --dry-run)"
 require_contains "$uninstall_output" "MacDog uninstall dry run"
@@ -41,6 +62,14 @@ helper_uninstall_output="$("$ROOT_DIR/script/uninstall.sh" --dry-run --with-help
 require_contains "$helper_uninstall_output" "Privileged helper: opt-in cleanup enabled"
 require_contains "$helper_uninstall_output" "Would bootout system helper: com.dhseo.macdog.helper"
 require_contains "$helper_uninstall_output" "Would remove helper tool: /Library/PrivilegedHelperTools/com.dhseo.macdog.helper"
-require_contains "$helper_uninstall_output" "Helper uninstall status: dry-run only"
+require_contains "$helper_uninstall_output" "Helper uninstall status: implemented"
+require_not_contains "$helper_uninstall_output" "not implemented"
+
+helper_only_uninstall_output="$("$ROOT_DIR/script/uninstall.sh" --dry-run --helper-only)"
+require_contains "$helper_only_uninstall_output" "MacDog helper-only uninstall dry run"
+require_contains "$helper_only_uninstall_output" "App uninstall: skipped"
+require_contains "$helper_only_uninstall_output" "Running app process: left untouched"
+require_contains "$helper_only_uninstall_output" "Helper uninstall status: implemented"
+require_not_contains "$helper_only_uninstall_output" "not implemented"
 
 echo "Install dry-run verification ok"

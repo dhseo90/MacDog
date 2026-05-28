@@ -22,7 +22,7 @@ Checks:
   8. The menu bar app builds.
   9. The generated app bundle contains the WidgetKit extension.
   10. WidgetKit host/extension packaging builds an embedded .appex.
-  11. The current install state can be reported without changing the system.
+  11. The current app/helper install state can be reported without changing the system.
   12. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
@@ -100,5 +100,8 @@ echo "==> Verifying WidgetKit packaging"
 
 echo "==> Reporting install state"
 ./script/verify_install_state.sh --report
+./script/verify_privileged_helper_state.sh --allow-missing
+./script/verify_privileged_helper_xpc.sh --allow-missing
+./script/verify_privileged_helper_preflight.sh
 
 echo "Local verification ok"

@@ -15,9 +15,24 @@ HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
 UID_VALUE="$(id -u)"
 WITH_HELPER=0
+HELPER_ONLY=0
 
 usage() {
-  echo "usage: $0 [--dry-run] [--with-helper]"
+  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only]"
+}
+
+run_as_root() {
+  if [[ "$(id -u)" == "0" ]]; then
+    "$@"
+  else
+    /usr/bin/sudo "$@"
+  fi
+}
+
+uninstall_privileged_helper() {
+  run_as_root /usr/bin/true
+  run_as_root /bin/launchctl bootout system "$HELPER_PLIST_DEST" >/dev/null 2>&1 || true
+  run_as_root /bin/rm -f "$HELPER_TOOL_DEST" "$HELPER_PLIST_DEST"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -25,6 +40,10 @@ while [[ $# -gt 0 ]]; do
     uninstall) MODE="uninstall" ;;
     --dry-run|dry-run) MODE="dry-run" ;;
     --with-helper) WITH_HELPER=1 ;;
+    --helper-only)
+      WITH_HELPER=1
+      HELPER_ONLY=1
+      ;;
     -h|--help|help)
       usage
       exit 0
@@ -40,6 +59,20 @@ done
 case "$MODE" in
   uninstall) ;;
   dry-run)
+    if [[ "$HELPER_ONLY" == "1" ]]; then
+      echo "MacDog helper-only uninstall dry run"
+      echo "App uninstall: skipped"
+      echo "CLI uninstall: skipped"
+      echo "LaunchAgent changes: skipped"
+      echo "Running app process: left untouched"
+      echo "Privileged helper: opt-in cleanup enabled"
+      echo "Would bootout system helper: $HELPER_LABEL"
+      echo "Would remove helper tool: $HELPER_TOOL_DEST"
+      echo "Would remove helper launch daemon: $HELPER_PLIST_DEST"
+      echo "Helper uninstall status: implemented; actual run requires administrator approval"
+      exit 0
+    fi
+
     echo "MacDog uninstall dry run"
     echo "Would bootout: gui/$UID_VALUE $CACHE_PLIST"
     echo "Would bootout: gui/$UID_VALUE $MONITOR_PLIST"
@@ -55,7 +88,7 @@ case "$MODE" in
       echo "Would bootout system helper: $HELPER_LABEL"
       echo "Would remove helper tool: $HELPER_TOOL_DEST"
       echo "Would remove helper launch daemon: $HELPER_PLIST_DEST"
-      echo "Helper uninstall status: dry-run only; actual privileged uninstall not implemented yet"
+      echo "Helper uninstall status: implemented; actual run requires administrator approval"
     else
       echo "Privileged helper: skipped; pass --with-helper for dry-run cleanup plan"
     fi
@@ -67,9 +100,16 @@ case "$MODE" in
     ;;
 esac
 
+if [[ "$HELPER_ONLY" == "1" ]]; then
+  uninstall_privileged_helper
+  echo "Removed MacDog privileged helper"
+  echo "Removed privileged helper: $HELPER_TOOL_DEST"
+  echo "Removed LaunchDaemon: $HELPER_PLIST_DEST"
+  exit 0
+fi
+
 if [[ "$WITH_HELPER" == "1" ]]; then
-  echo "error: privileged helper uninstall is not implemented yet; use --dry-run --with-helper" >&2
-  exit 2
+  uninstall_privileged_helper
 fi
 
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
@@ -80,3 +120,7 @@ rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
 rm -rf "$APP_DEST"
 
 echo "Uninstalled MacDog"
+if [[ "$WITH_HELPER" == "1" ]]; then
+  echo "Removed privileged helper: $HELPER_TOOL_DEST"
+  echo "Removed LaunchDaemon: $HELPER_PLIST_DEST"
+fi

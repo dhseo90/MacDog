@@ -96,6 +96,10 @@ Plan: pro
 ```sh
 ./script/install.sh --dry-run
 ./script/uninstall.sh --dry-run
+./script/install.sh --dry-run --with-helper
+./script/uninstall.sh --dry-run --with-helper
+./script/install.sh --dry-run --helper-only
+./script/uninstall.sh --dry-run --helper-only
 ```
 
 설치/삭제 후 상태 확인:
@@ -103,6 +107,15 @@ Plan: pro
 ```sh
 ./script/verify_install_state.sh --expect-installed
 ./script/verify_install_state.sh --expect-uninstalled
+./script/verify_privileged_helper_state.sh --expect-installed
+./script/verify_privileged_helper_xpc.sh --expect-installed
+```
+
+`verify_privileged_helper_xpc.sh`는 새로 빌드된 `dist/MacDog.app`이 있으면 그 실행 파일을 우선 사용하고, 없으면 설치된 앱을 사용한다.
+helper 실제 설치 전에는 아래 preflight로 helper bundle, dry-run, 현재 설치 상태, XPC 진단 경로를 먼저 확인한다.
+
+```sh
+./script/verify_privileged_helper_preflight.sh --build
 ```
 
 설치 위치:
@@ -115,6 +128,14 @@ Plan: pro
 ~/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist
 ```
 
+Privileged helper를 opt-in으로 설치하면 추가로 아래 system 위치를 사용한다.
+덮개 닫힘 테스트처럼 앱 재시작을 피해야 하는 경우 `--helper-only`로 helper만 설치/삭제할 수 있다.
+
+```text
+/Library/PrivilegedHelperTools/com.dhseo.macdog.helper
+/Library/LaunchDaemons/com.dhseo.macdog.helper.plist
+```
+
 삭제:
 
 ```sh
@@ -125,7 +146,7 @@ Plan: pro
 
 MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용한다. 덮개 닫힘 보호는 현재 1차 구현으로, 사용자가 관리자 권한을 승인하면 `pmset disablesleep`을 켜고 MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
 
-현재 구현은 동작 검증은 되었지만, 설정 변경 때마다 관리자 권한 프롬프트가 뜰 수 있다. 다음 본작업은 Amphetamine Enhancer와 유사한 helper 구조를 도입해 최초 설치/승인 이후에는 설정 변경을 비밀번호 없이 처리하는 것이다.
+Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코드는 준비되어 있지만 실제 helper 설치와 XPC 런타임 검증은 아직 전이다. 검증 전 설치본에서는 설정 변경 때마다 관리자 권한 프롬프트가 뜰 수 있다.
 
 ## 데이터와 보안
 

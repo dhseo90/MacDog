@@ -12,13 +12,16 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
 
     private let defaults: UserDefaults
     private let commandRunner: CommandRunning
+    private let helperController: ClosedLidSleepHelperControlling?
 
     init(
         defaults: UserDefaults = .standard,
-        commandRunner: CommandRunning = ProcessCommandRunner()
+        commandRunner: CommandRunning = ProcessCommandRunner(),
+        helperController: ClosedLidSleepHelperControlling? = XPCClosedLidSleepHelperController()
     ) {
         self.defaults = defaults
         self.commandRunner = commandRunner
+        self.helperController = helperController
     }
 
     @discardableResult
@@ -70,6 +73,14 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
     }
 
     private func currentSleepDisabledValue() throws -> Bool {
+        if let helperController, helperController.isInstalled {
+            do {
+                return try helperController.readSleepDisabled()
+            } catch {
+                // Fall back to direct read so a broken helper does not prevent restoring the local setting.
+            }
+        }
+
         let result = try commandRunner.run(
             executablePath: "/usr/bin/pmset",
             arguments: ["-g", "live"]
@@ -95,6 +106,15 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
         }
 
         let invocation = PrivilegedHelperCommandPlanner.pmsetInvocation(for: .setSleepDisabled(isDisabled))
+        if let helperController, helperController.isInstalled {
+            do {
+                try helperController.setSleepDisabled(isDisabled)
+                return
+            } catch {
+                // Preserve the previous AppleScript behavior when the helper is missing, stale, or unhealthy.
+            }
+        }
+
         let command = invocation.displayCommand
         let script = "do shell script \(Self.appleScriptLiteral(command)) with administrator privileges"
         let result = try commandRunner.run(
@@ -120,6 +140,100 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         return "\"\(escaped)\""
+    }
+}
+
+protocol ClosedLidSleepHelperControlling {
+    var isInstalled: Bool { get }
+    func readSleepDisabled() throws -> Bool
+    func setSleepDisabled(_ isDisabled: Bool) throws
+}
+
+struct XPCClosedLidSleepHelperController: ClosedLidSleepHelperControlling {
+    private let requestSender: PrivilegedHelperRequestSending
+    private let installSnapshotProvider: () -> PrivilegedHelperInstallSnapshot
+    private let timeoutSeconds: TimeInterval
+
+    init(
+        requestSender: PrivilegedHelperRequestSending = MacDogPrivilegedHelperClient(),
+        installSnapshotProvider: @escaping () -> PrivilegedHelperInstallSnapshot = {
+            PrivilegedHelperInstallStateReader(
+                fileChecker: FileManagerPrivilegedHelperFileChecker()
+            ).snapshot()
+        },
+        timeoutSeconds: TimeInterval = 3
+    ) {
+        self.requestSender = requestSender
+        self.installSnapshotProvider = installSnapshotProvider
+        self.timeoutSeconds = timeoutSeconds
+    }
+
+    var isInstalled: Bool {
+        installSnapshotProvider().status == .installed
+    }
+
+    func readSleepDisabled() throws -> Bool {
+        let response = try send(.readSleepDisabled)
+        guard response.status == .success, let sleepDisabled = response.sleepDisabled else {
+            throw ClosedLidSleepHelperError.failed(response.errorMessage ?? response.status.rawValue)
+        }
+        return sleepDisabled
+    }
+
+    func setSleepDisabled(_ isDisabled: Bool) throws {
+        let response = try send(.setSleepDisabled(isDisabled))
+        guard response.status == .success else {
+            throw ClosedLidSleepHelperError.failed(response.errorMessage ?? response.status.rawValue)
+        }
+    }
+
+    private func send(_ command: PrivilegedHelperCommand) throws -> PrivilegedHelperResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        let resultLock = NSLock()
+        var result: Result<PrivilegedHelperResponse, Error>?
+
+        requestSender.send(PrivilegedHelperRequest(command: command)) { response in
+            resultLock.lock()
+            if result == nil {
+                result = response
+                semaphore.signal()
+            }
+            resultLock.unlock()
+        }
+
+        guard semaphore.wait(timeout: .now() + timeoutSeconds) == .success else {
+            throw ClosedLidSleepHelperError.timedOut
+        }
+
+        resultLock.lock()
+        let completedResult = result
+        resultLock.unlock()
+
+        switch completedResult {
+        case .success(let response):
+            return response
+        case .failure(let error):
+            throw error
+        case nil:
+            throw ClosedLidSleepHelperError.unavailable
+        }
+    }
+}
+
+enum ClosedLidSleepHelperError: LocalizedError, Equatable {
+    case unavailable
+    case timedOut
+    case failed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            "권한 도우미에 연결할 수 없습니다."
+        case .timedOut:
+            "권한 도우미 응답 시간이 초과되었습니다."
+        case .failed(let detail):
+            "권한 도우미 실패: \(detail)"
+        }
     }
 }
 
