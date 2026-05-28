@@ -75,54 +75,41 @@ private func render(_ item: TabArt) -> NSBitmapImageRep {
 
 private func drawDog(_ item: TabArt, sprite: NSImage) {
     NSGraphicsContext.saveGraphicsState()
-    let shadow = NSBezierPath(ovalIn: NSRect(x: 70, y: 36, width: 134, height: 24))
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 61, y: 36, width: 150, height: 25))
     NSColor.black.withAlphaComponent(0.24).setFill()
     shadow.fill()
 
-    let dogRect = NSRect(x: 72, y: 42, width: 142, height: 151)
+    let dogRect = NSRect(x: 56, y: 43, width: 150, height: 159)
     sprite.draw(in: dogRect, from: .zero, operation: .sourceOver, fraction: 1)
-
-    fillRoundedRect(NSRect(x: 93, y: 46, width: 100, height: 12), radius: 6, color: item.accent.withAlphaComponent(0.86))
     NSGraphicsContext.restoreGraphicsState()
 }
 
 private func drawTopicBadge(_ item: TabArt) {
-    let shadow = NSBezierPath(ovalIn: NSRect(x: 31, y: 172, width: 76, height: 72))
-    NSColor.black.withAlphaComponent(0.22).setFill()
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 28, y: 179, width: 62, height: 59))
+    NSColor.black.withAlphaComponent(0.18).setFill()
     shadow.fill()
 
-    let badgeRect = NSRect(x: 28, y: 176, width: 76, height: 72)
+    let badgeRect = NSRect(x: 25, y: 183, width: 62, height: 59)
     let badge = NSBezierPath(ovalIn: badgeRect)
     (item.accent.blended(withFraction: 0.08, of: .white) ?? item.accent).setFill()
     badge.fill()
 
-    NSColor.white.withAlphaComponent(0.34).setStroke()
-    badge.lineWidth = 3
+    NSColor.white.withAlphaComponent(0.30).setStroke()
+    badge.lineWidth = 2
     badge.stroke()
 
     drawSymbol(
         item.topicSymbol,
-        in: NSRect(x: 43, y: 190, width: 46, height: 44),
+        in: NSRect(x: 39, y: 197, width: 34, height: 32),
         color: NSColor.white.withAlphaComponent(0.98),
         shadowColor: NSColor.black.withAlphaComponent(0.18)
     )
 }
 
 private func drawButtonBackground(_ item: TabArt) {
-    let background = NSBezierPath(roundedRect: NSRect(x: 16, y: 16, width: 224, height: 224), xRadius: 38, yRadius: 38)
-    let fill = item.accent.blended(withFraction: 0.88, of: NSColor(calibratedWhite: 0.18, alpha: 1)) ?? item.accent
-    fill.withAlphaComponent(0.24).setFill()
-    background.fill()
-
-    item.accent.withAlphaComponent(0.20).setStroke()
-    background.lineWidth = 4
-    background.stroke()
-}
-
-private func fillRoundedRect(_ rect: NSRect, radius: CGFloat, color: NSColor) {
-    let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
-    color.setFill()
-    path.fill()
+    let glow = NSBezierPath(ovalIn: NSRect(x: 54, y: 32, width: 156, height: 34))
+    item.accent.withAlphaComponent(0.20).setFill()
+    glow.fill()
 }
 
 private func drawSymbol(
