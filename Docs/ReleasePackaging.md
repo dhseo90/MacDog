@@ -24,6 +24,7 @@
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관한다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
 - `.github/workflows/release-stable.yml`은 `SIGNED-STABLE` 확인 입력, GitHub Environment approval, Developer ID Application 인증서 secret, notarization secret이 모두 있어야 signed/notarized `.dmg`를 public GitHub Release로 올린다.
+- public stable payload는 `MACDOG_REQUIRE_SIGNED_HELPER_HOST=1`로 생성해 `Install Privileged Helper.command`가 Developer ID로 서명된 `MacDog.app`의 TeamIdentifier 없이는 helper 설치를 거부하게 한다. 로컬 unsigned 후보에서만 ad-hoc host 허용 plist를 생성한다.
 - `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command의 freshness smoke를 검증한다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인한다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증한다.
@@ -39,6 +40,7 @@
 - draft release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
 - public stable release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
 - public stable release는 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 포함해야 통과하도록 gate를 둔다.
+- public stable helper installer gate는 workflow와 packaging verifier에 구성되어 있으나, 실제 Developer ID 서명/TeamIdentifier를 가진 DMG에서 실행 검증하지 않았다.
 
 미확인:
 
@@ -54,6 +56,7 @@
 - GitHub Actions runner에서 public stable workflow 실제 실행
 - Apple Developer ID / notarization secrets 실제 등록
 - Developer ID signing 결과물 실제 확인
+- public stable DMG에서 helper installer가 TeamIdentifier requirement로 설치되는지 실제 확인
 - notarization 제출과 stapling 실제 수행
 - 깨끗한 사용자 계정/다른 Mac에서 Gatekeeper 검증
 - privileged helper를 앱 내부 설치/제거 화면으로 자연스럽게 관리하는 UX

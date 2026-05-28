@@ -56,6 +56,7 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_stable_match 'contents: write'
   require_stable_match 'SIGNED-STABLE'
   require_stable_match 'public-stable-release'
+  require_stable_match 'MACDOG_REQUIRE_SIGNED_HELPER_HOST'
   require_stable_match './script/check\.sh --no-run'
   require_stable_match './script/build_and_run\.sh --no-run'
   require_stable_match 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'

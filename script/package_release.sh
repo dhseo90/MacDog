@@ -12,6 +12,7 @@ CHECKSUM_PATH="$DMG_PATH.sha256"
 DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
+REQUIRE_SIGNED_HELPER_HOST="${MACDOG_REQUIRE_SIGNED_HELPER_HOST:-0}"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
@@ -22,6 +23,8 @@ usage: $0 [--dry-run] [--skip-build] [--no-dmg] [--version VERSION]
 
 Build a local GitHub Release candidate payload.
 The generated DMG is not notarized and is intended for local validation.
+Set MACDOG_REQUIRE_SIGNED_HELPER_HOST=1 for public stable payloads so the
+privileged helper installer refuses unsigned/ad-hoc host apps.
 USAGE
 }
 
@@ -76,6 +79,7 @@ Payload:
   - RELEASE_NOTES_DRAFT.md
 Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
+Helper host requirement: $([[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]] && echo "Developer ID signed host required" || echo "signed host preferred; local ad-hoc host allowed for validation")
 Double-click uninstall: Uninstall MacDog.command removes the app, CLI, and user LaunchAgents.
 Privileged helper cleanup: Uninstall Privileged Helper.command removes the optional helper after administrator approval.
 Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
@@ -279,6 +283,7 @@ HELPER_SOURCE="$APP_SOURCE/Contents/Library/LaunchServices/$HELPER_EXECUTABLE"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
 HELPER_LOG_DIR="/Library/Logs/MacDog"
+REQUIRE_SIGNED_HELPER_HOST="__MACDOG_REQUIRE_SIGNED_HELPER_HOST__"
 
 die() {
   echo "error: $*" >&2
@@ -296,38 +301,33 @@ apple_script_literal() {
   printf '"%s"' "$value"
 }
 
-[[ -d "$APP_SOURCE" ]] || die "missing app bundle: $APP_SOURCE"
-[[ -x "$HELPER_SOURCE" ]] || die "missing helper executable: $HELPER_SOURCE"
-/usr/bin/codesign --verify --strict --verbose=2 "$HELPER_SOURCE" >/dev/null
+xml_escape() {
+  local value="$1"
+  value="${value//&/&amp;}"
+  value="${value//\"/&quot;}"
+  value="${value//\'/&apos;}"
+  value="${value//</&lt;}"
+  value="${value//>/&gt;}"
+  printf '%s' "$value"
+}
 
-cat <<NOTICE
-MacDog privileged helper installer
+detect_host_team_identifier() {
+  local bundle_path="$1"
+  local output
+  output="$(/usr/bin/codesign -dv "$bundle_path" 2>&1 || true)"
+  local team_id
+  team_id="$(printf '%s\n' "$output" | awk -F= '/^TeamIdentifier=/{print $2; exit}')"
+  if [[ -n "$team_id" && "$team_id" != "not set" ]]; then
+    printf '%s' "$team_id"
+  fi
+}
 
-This installs an opt-in LaunchDaemon used only for closed-lid sleep prevention.
-It changes these system locations:
-  - $HELPER_TOOL_DEST
-  - $HELPER_PLIST_DEST
-  - $HELPER_LOG_DIR
+write_helper_launch_daemon_plist() {
+  local target="$1"
+  local host_team_id="$2"
+  local allow_adhoc_host="$3"
 
-After this one administrator approval, MacDog can change SleepDisabled through XPC
-without asking for your password on every sleep-prevention setting change.
-NOTICE
-
-printf "Continue with privileged helper install? [y/N] "
-read -r confirm
-case "$confirm" in
-  y|Y|yes|YES) ;;
-  *)
-    echo "Cancelled privileged helper install."
-    exit 0
-    ;;
-esac
-
-temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
-root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-install.XXXXXX")"
-trap 'rm -f "$temp_plist" "$root_script"' EXIT
-
-cat >"$temp_plist" <<PLIST
+  cat >"$target" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -344,11 +344,31 @@ cat >"$temp_plist" <<PLIST
     <key>$HELPER_MACH_SERVICE</key>
     <true/>
   </dict>
+PLIST
+
+  if [[ -n "$host_team_id" || "$allow_adhoc_host" == "1" ]]; then
+    cat >>"$target" <<PLIST
   <key>EnvironmentVariables</key>
   <dict>
+PLIST
+    if [[ -n "$host_team_id" ]]; then
+      cat >>"$target" <<PLIST
+    <key>MACDOG_HELPER_HOST_TEAM_ID</key>
+    <string>$(xml_escape "$host_team_id")</string>
+PLIST
+    fi
+    if [[ "$allow_adhoc_host" == "1" ]]; then
+      cat >>"$target" <<PLIST
     <key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>
     <string>1</string>
+PLIST
+    fi
+    cat >>"$target" <<PLIST
   </dict>
+PLIST
+  fi
+
+  cat >>"$target" <<PLIST
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>
@@ -358,6 +378,55 @@ cat >"$temp_plist" <<PLIST
 </dict>
 </plist>
 PLIST
+}
+
+[[ -d "$APP_SOURCE" ]] || die "missing app bundle: $APP_SOURCE"
+[[ -x "$HELPER_SOURCE" ]] || die "missing helper executable: $HELPER_SOURCE"
+/usr/bin/codesign --verify --strict --verbose=2 "$HELPER_SOURCE" >/dev/null
+
+host_team_id="${MACDOG_HELPER_HOST_TEAM_ID:-$(detect_host_team_identifier "$APP_SOURCE")}"
+allow_adhoc_host=0
+if [[ -z "$host_team_id" ]]; then
+  if [[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]]; then
+    die "public stable helper install requires a Developer ID signed MacDog.app with TeamIdentifier"
+  fi
+  allow_adhoc_host=1
+fi
+
+cat <<NOTICE
+MacDog privileged helper installer
+
+This installs an opt-in LaunchDaemon used only for closed-lid sleep prevention.
+It changes these system locations:
+  - $HELPER_TOOL_DEST
+  - $HELPER_PLIST_DEST
+  - $HELPER_LOG_DIR
+
+After this one administrator approval, MacDog can change SleepDisabled through XPC
+without asking for your password on every sleep-prevention setting change.
+NOTICE
+
+if [[ -n "$host_team_id" ]]; then
+  echo "Helper host requirement: TeamIdentifier $host_team_id"
+else
+  echo "Helper host requirement: local unsigned/ad-hoc MacDog.app"
+fi
+
+printf "Continue with privileged helper install? [y/N] "
+read -r confirm
+case "$confirm" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Cancelled privileged helper install."
+    exit 0
+    ;;
+esac
+
+temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
+root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-install.XXXXXX")"
+trap 'rm -f "$temp_plist" "$root_script"' EXIT
+
+write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$allow_adhoc_host"
 /usr/bin/plutil -lint "$temp_plist" >/dev/null
 
 cat >"$root_script" <<ROOT
@@ -380,6 +449,7 @@ echo "Privileged helper: $HELPER_TOOL_DEST"
 echo "LaunchDaemon: $HELPER_PLIST_DEST"
 echo "Run Check Install Status.command to verify the helper state."
 HELPER
+/usr/bin/perl -0pi -e "s/__MACDOG_REQUIRE_SIGNED_HELPER_HOST__/$REQUIRE_SIGNED_HELPER_HOST/g" "$STAGE_DIR/Install Privileged Helper.command"
 chmod +x "$STAGE_DIR/Install Privileged Helper.command"
 
 cat >"$STAGE_DIR/Uninstall MacDog.command" <<'UNINSTALL'

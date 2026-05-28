@@ -83,6 +83,9 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/Install MacDog.command" || die "installer status handoff missing"
   /usr/bin/grep -Fq 'launchctl bootstrap "gui/$UID_VALUE"' "$stage/Install MacDog.command" || die "installer LaunchAgent bootstrap missing"
   /usr/bin/grep -Fq 'pkill -9 -x "$APP_NAME"' "$stage/Install MacDog.command" || die "installer sleep-safe app restart step missing"
+  /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="0"' "$stage/Install Privileged Helper.command" || die "helper installer local signed-host flag missing"
+  /usr/bin/grep -Fq 'detect_host_team_identifier' "$stage/Install Privileged Helper.command" || die "helper installer TeamIdentifier detection missing"
+  /usr/bin/grep -Fq 'MACDOG_HELPER_HOST_TEAM_ID' "$stage/Install Privileged Helper.command" || die "helper installer signed host environment missing"
   /usr/bin/grep -Fq 'MACDOG_HELPER_ALLOW_ADHOC_HOST' "$stage/Install Privileged Helper.command" || die "helper installer local ad-hoc host gate missing"
   /usr/bin/grep -Fq 'with administrator privileges' "$stage/Install Privileged Helper.command" || die "helper installer administrator approval missing"
   /usr/bin/grep -Fq 'Continue with privileged helper install?' "$stage/Install Privileged Helper.command" || die "helper installer confirmation prompt missing"
@@ -109,6 +112,14 @@ if [[ -d "$APP_BUNDLE" ]]; then
   if /usr/bin/grep -Eq 'PrivilegedHelperTools|LaunchDaemons|SMJobBless|sudo ' "$stage/Uninstall MacDog.command"; then
     die "uninstaller command unexpectedly contains privileged helper cleanup material"
   fi
+
+  strict_version="verify-strict"
+  strict_stage="$ROOT_DIR/dist/release/MacDog-$strict_version"
+  MACDOG_RELEASE_VERSION="$strict_version" MACDOG_REQUIRE_SIGNED_HELPER_HOST=1 "$ROOT_DIR/script/package_release.sh" --skip-build --no-dmg >/dev/null
+  [[ -x "$strict_stage/Install Privileged Helper.command" ]] || die "strict helper installer command missing or not executable"
+  /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="1"' "$strict_stage/Install Privileged Helper.command" || die "strict helper installer signed-host flag missing"
+  /usr/bin/grep -Fq 'public stable helper install requires a Developer ID signed MacDog.app with TeamIdentifier' "$strict_stage/Install Privileged Helper.command" || die "strict helper installer refusal copy missing"
+  bash -n "$strict_stage/Install Privileged Helper.command"
 else
   echo "Release packaging stage verification skipped: dist/MacDog.app missing"
 fi
