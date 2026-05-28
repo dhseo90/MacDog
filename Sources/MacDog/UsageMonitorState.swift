@@ -1,5 +1,6 @@
 import CodexUsageCore
 import Foundation
+import MacDogPrivilegedHelperSupport
 
 struct UsageMonitorState: Equatable {
     static let empty = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
@@ -14,6 +15,7 @@ struct UsageMonitorState: Equatable {
     let systemMetrics: SystemMetricsSnapshot
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
+    let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
 
     init(
         report: CodexUsageReport?,
@@ -25,7 +27,8 @@ struct UsageMonitorState: Equatable {
         isRefreshing: Bool = false,
         systemMetrics: SystemMetricsSnapshot = .capture(),
         sleepPreventionStatus: SleepPreventionStatus = .disabled,
-        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled
+        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
+        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
@@ -37,6 +40,7 @@ struct UsageMonitorState: Equatable {
         self.systemMetrics = systemMetrics
         self.sleepPreventionStatus = sleepPreventionStatus
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
+        self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -50,14 +54,16 @@ struct UsageMonitorState: Equatable {
             isRefreshing: isRefreshing,
             systemMetrics: systemMetrics,
             sleepPreventionStatus: sleepPreventionStatus,
-            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
         )
     }
 
     func withSystemMetrics(
         _ systemMetrics: SystemMetricsSnapshot,
         sleepPreventionStatus: SleepPreventionStatus,
-        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
+        sleepPreventionTriggerStatus: SleepPreventionTriggerStatus,
+        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     ) -> UsageMonitorState {
         UsageMonitorState(
             report: report,
@@ -69,7 +75,8 @@ struct UsageMonitorState: Equatable {
             isRefreshing: isRefreshing,
             systemMetrics: systemMetrics,
             sleepPreventionStatus: sleepPreventionStatus,
-            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
         )
     }
 

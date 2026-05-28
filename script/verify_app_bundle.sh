@@ -8,6 +8,8 @@ INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
 WIDGET_APPEX="$APP_BUNDLE/Contents/PlugIns/MacDogWidgetExtension.appex"
 WIDGET_BINARY="$WIDGET_APPEX/Contents/MacOS/MacDogWidgetExtension"
 WIDGET_INFO_PLIST="$WIDGET_APPEX/Contents/Info.plist"
+HELPER_BINARY="$APP_BUNDLE/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
+HELPER_PLIST="$APP_BUNDLE/Contents/Library/LaunchDaemons/com.dhseo.macdog.helper.plist"
 
 die() {
   echo "error: $*" >&2
@@ -31,6 +33,14 @@ plist_value() {
 [[ -x "$WIDGET_BINARY" ]] || die "widget binary missing or not executable: $WIDGET_BINARY"
 [[ -f "$WIDGET_INFO_PLIST" ]] || die "widget Info.plist missing: $WIDGET_INFO_PLIST"
 [[ "$(plist_value ':NSExtension:NSExtensionPointIdentifier' "$WIDGET_INFO_PLIST")" == "com.apple.widgetkit-extension" ]] || die "unexpected widget extension point"
+
+[[ -x "$HELPER_BINARY" ]] || die "privileged helper missing or not executable: $HELPER_BINARY"
+[[ -f "$HELPER_PLIST" ]] || die "privileged helper LaunchDaemon plist missing: $HELPER_PLIST"
+[[ "$(plist_value ':Label' "$HELPER_PLIST")" == "com.dhseo.macdog.helper" ]] || die "unexpected helper label"
+[[ "$(plist_value ':ProgramArguments:0' "$HELPER_PLIST")" == "/Library/PrivilegedHelperTools/com.dhseo.macdog.helper" ]] || die "unexpected helper destination"
+[[ "$(plist_value ':ProgramArguments:1' "$HELPER_PLIST")" == "--run-xpc-service" ]] || die "unexpected helper launch argument"
+[[ "$(plist_value ':MachServices:com.dhseo.macdog.helper.xpc' "$HELPER_PLIST")" == "true" ]] || die "missing helper mach service"
+/usr/bin/codesign --verify --strict --verbose=2 "$HELPER_BINARY" >/dev/null
 
 verify_parent="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-app-bundle.XXXXXX")"
 trap 'rm -rf "$verify_parent"' EXIT

@@ -1,5 +1,6 @@
 import CodexUsageCore
 import Foundation
+import MacDogPrivilegedHelperSupport
 
 enum MacDogDemoData {
     static var isEnabled: Bool {
@@ -17,7 +18,11 @@ enum MacDogDemoData {
             animationPaused: preferences.animationPaused,
             systemMetrics: systemMetrics,
             sleepPreventionStatus: sleepPreventionStatus(preferences: preferences),
-            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus(preferences: preferences)
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus(preferences: preferences),
+            privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot(
+                helperToolExists: false,
+                launchDaemonExists: false
+            )
         )
     }
 

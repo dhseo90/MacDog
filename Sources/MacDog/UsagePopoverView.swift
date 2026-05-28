@@ -1,5 +1,6 @@
 import AppKit
 import CodexUsageCore
+import MacDogPrivilegedHelperSupport
 import SwiftUI
 
 struct UsagePopoverView: View {
@@ -91,6 +92,7 @@ struct UsagePopoverView: View {
             SleepPreventionPanel(
                 sleepPreventionStatus: state.sleepPreventionStatus,
                 sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
+                privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
                 onPreferencesChanged: onPreferencesChanged
             )
         case .battery:
@@ -302,6 +304,7 @@ private struct MacResourcesPanel: View {
 private struct SleepPreventionPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
+    let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionControlModeKey) private var sleepPreventionControlMode = RunnerPreferences.defaultSleepPreventionControlMode.rawValue
@@ -338,6 +341,15 @@ private struct SleepPreventionPanel: View {
                 .font(.caption2)
                 .foregroundStyle(sleepPreventionStatus.errorMessage == nil ? Color.secondary : Color.red)
                 .fixedSize(horizontal: false, vertical: true)
+
+            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
+                helperStatusRow
+
+                Text(privilegedHelperInstallSnapshot.detailSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if currentControlMode == .condition {
                 PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
@@ -485,6 +497,30 @@ private struct SleepPreventionPanel: View {
         }
 
         return "덮개 닫힘 보호는 활성 조건이 맞고 관리자 승인을 받으면 켜집니다."
+    }
+
+    private var helperStatusRow: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(helperStatusColor)
+                .frame(width: 7, height: 7)
+            Text(privilegedHelperInstallSnapshot.summary)
+                .font(.caption.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var helperStatusColor: Color {
+        switch privilegedHelperInstallSnapshot.status {
+        case .missing:
+            Color.secondary
+        case .partial:
+            Color.orange
+        case .installed:
+            Color.green
+        }
     }
 
     private func selectControlMode(_ mode: SleepPreventionControlMode) {

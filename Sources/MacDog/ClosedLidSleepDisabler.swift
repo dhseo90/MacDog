@@ -1,4 +1,5 @@
 import Foundation
+import MacDogPrivilegedHelperSupport
 
 protocol ClosedLidSleepDisabling {
     @discardableResult
@@ -81,13 +82,11 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
             )
         }
 
-        for line in result.stdout.split(whereSeparator: \.isNewline) {
-            let parts = line.split(whereSeparator: \.isWhitespace)
-            guard parts.first == "SleepDisabled", let rawValue = parts.dropFirst().first else { continue }
-            return rawValue == "1"
+        do {
+            return try SleepDisabledLiveParser.parse(result.stdout)
+        } catch {
+            throw ClosedLidSleepDisablerError.unsupported
         }
-
-        throw ClosedLidSleepDisablerError.unsupported
     }
 
     private func setSleepDisabledValue(_ isDisabled: Bool) throws {
@@ -95,8 +94,8 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
             return
         }
 
-        let value = isDisabled ? "1" : "0"
-        let command = "/usr/bin/pmset -a disablesleep \(value)"
+        let invocation = PrivilegedHelperCommandPlanner.pmsetInvocation(for: .setSleepDisabled(isDisabled))
+        let command = invocation.displayCommand
         let script = "do shell script \(Self.appleScriptLiteral(command)) with administrator privileges"
         let result = try commandRunner.run(
             executablePath: "/usr/bin/osascript",
@@ -105,7 +104,7 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
 
         guard result.exitCode == 0 else {
             throw ClosedLidSleepDisablerError.commandFailed(
-                command: "pmset -a disablesleep \(value)",
+                command: command,
                 detail: result.failureSummary
             )
         }

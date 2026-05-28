@@ -16,6 +16,10 @@ let package = Package(
             name: "MacDogWidget",
             targets: ["MacDogWidget"]
         ),
+        .library(
+            name: "MacDogPrivilegedHelperSupport",
+            targets: ["MacDogPrivilegedHelperSupport"]
+        ),
         .executable(
             name: "codex-usage-probe",
             targets: ["CodexUsageProbe"]
@@ -27,6 +31,10 @@ let package = Package(
         .executable(
             name: "MacDog",
             targets: ["MacDog"]
+        ),
+        .executable(
+            name: "MacDogPrivilegedHelper",
+            targets: ["MacDogPrivilegedHelper"]
         )
     ],
     targets: [
@@ -36,6 +44,9 @@ let package = Package(
         .target(
             name: "MacDogWidget",
             dependencies: ["CodexUsageCore"]
+        ),
+        .target(
+            name: "MacDogPrivilegedHelperSupport"
         ),
         .executableTarget(
             name: "CodexUsageProbe",
@@ -47,10 +58,17 @@ let package = Package(
         ),
         .executableTarget(
             name: "MacDog",
-            dependencies: ["CodexUsageCore"],
+            dependencies: [
+                "CodexUsageCore",
+                "MacDogPrivilegedHelperSupport"
+            ],
             resources: [
                 .process("Resources")
             ]
+        ),
+        .executableTarget(
+            name: "MacDogPrivilegedHelper",
+            dependencies: ["MacDogPrivilegedHelperSupport"]
         ),
         .testTarget(
             name: "CodexUsageCoreTests",
@@ -61,7 +79,14 @@ let package = Package(
         ),
         .testTarget(
             name: "MacDogTests",
-            dependencies: ["MacDog"]
+            dependencies: [
+                "MacDog",
+                "MacDogPrivilegedHelperSupport"
+            ]
+        ),
+        .testTarget(
+            name: "MacDogPrivilegedHelperSupportTests",
+            dependencies: ["MacDogPrivilegedHelperSupport"]
         )
     ]
 )

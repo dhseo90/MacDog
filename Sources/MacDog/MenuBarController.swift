@@ -1,5 +1,6 @@
 import AppKit
 import CodexUsageCore
+import MacDogPrivilegedHelperSupport
 import SwiftUI
 
 @MainActor
@@ -8,6 +9,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore()
+    private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
+        fileChecker: FileManagerPrivilegedHelperFileChecker()
+    )
     private let sleepPreventionController = SleepPreventionController()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
@@ -89,7 +93,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         applyState(state.withSystemMetrics(
             systemMetrics,
             sleepPreventionStatus: sleepPreventionController.status,
-            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
         ))
     }
 
@@ -176,7 +181,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 animationPaused: preferences.animationPaused,
                 systemMetrics: systemMetrics,
                 sleepPreventionStatus: sleepPreventionController.status,
-                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
             )
         }
 
@@ -189,7 +195,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             animationPaused: preferences.animationPaused,
             systemMetrics: systemMetrics,
             sleepPreventionStatus: sleepPreventionController.status,
-            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+            sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
         )
     }
 
@@ -258,7 +265,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 animationPaused: preferences.animationPaused,
                 systemMetrics: systemMetrics,
                 sleepPreventionStatus: sleepPreventionController.status,
-                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
             )
         case .failure(let message, let snapshot):
             if let snapshot, let report = snapshot.report {
@@ -271,7 +279,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     animationPaused: preferences.animationPaused,
                     systemMetrics: systemMetrics,
                     sleepPreventionStatus: sleepPreventionController.status,
-                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
                 )
             } else {
                 UsageMonitorState(
@@ -283,10 +292,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     animationPaused: preferences.animationPaused,
                     systemMetrics: systemMetrics,
                     sleepPreventionStatus: sleepPreventionController.status,
-                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus
+                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
                 )
             }
         }
+    }
+
+    private func privilegedHelperInstallSnapshot() -> PrivilegedHelperInstallSnapshot {
+        privilegedHelperInstallStateReader.snapshot()
     }
 
     private func makePopoverController() -> NSViewController {

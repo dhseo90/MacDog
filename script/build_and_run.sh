@@ -10,11 +10,20 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
+APP_LIBRARY="$APP_CONTENTS/Library"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_PLUGINS="$APP_CONTENTS/PlugIns"
+APP_LAUNCH_SERVICES="$APP_LIBRARY/LaunchServices"
+APP_LAUNCH_DAEMONS="$APP_LIBRARY/LaunchDaemons"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+HELPER_NAME="MacDogPrivilegedHelper"
+HELPER_LABEL="com.dhseo.macdog.helper"
+HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
+HELPER_DESTINATION="/Library/PrivilegedHelperTools/$HELPER_LABEL"
+APP_HELPER_BINARY="$APP_LAUNCH_SERVICES/$HELPER_NAME"
+APP_HELPER_PLIST="$APP_LAUNCH_DAEMONS/$HELPER_LABEL.plist"
 WIDGET_HOST_APP="$ROOT_DIR/.build/xcode-widget/Build/Products/Debug/MacDogWidgetHost.app"
 WIDGET_APPEX="$WIDGET_HOST_APP/Contents/PlugIns/MacDogWidgetExtension.appex"
 APP_WIDGET_APPEX="$APP_PLUGINS/MacDogWidgetExtension.appex"
@@ -71,14 +80,17 @@ check_prerequisites() {
 build_bundle() {
   check_prerequisites
   "$XCRUN" swift build -c release --product "$APP_NAME"
+  "$XCRUN" swift build -c release --product "$HELPER_NAME"
   "$XCRUN" swift build -c release --product codex-usage
   local build_bin
   build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 
   rm -rf "$APP_BUNDLE"
-  mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS"
+  mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS" "$APP_LAUNCH_SERVICES" "$APP_LAUNCH_DAEMONS"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
+  cp "$build_bin/$HELPER_NAME" "$APP_HELPER_BINARY"
   chmod +x "$APP_BINARY"
+  chmod +x "$APP_HELPER_BINARY"
   if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
     /usr/bin/ditto --norsrc --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
   fi
@@ -127,6 +139,9 @@ build_bundle() {
 PLIST
 
   embed_widget_extension
+  embed_privileged_helper_launch_daemon
+
+  /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
   /usr/bin/xattr -cr "$APP_BUNDLE" >/dev/null 2>&1 || true
   /usr/bin/codesign --force --sign - "$APP_BUNDLE" >/dev/null
@@ -155,6 +170,35 @@ embed_widget_extension() {
   /usr/bin/ditto --norsrc --noextattr "$WIDGET_APPEX" "$APP_WIDGET_APPEX"
   /usr/bin/xattr -cr "$APP_WIDGET_APPEX" >/dev/null 2>&1 || true
   /usr/bin/codesign --force --sign - --entitlements "$WIDGET_EXTENSION_ENTITLEMENTS" "$APP_WIDGET_APPEX" >/dev/null
+}
+
+embed_privileged_helper_launch_daemon() {
+  cat >"$APP_HELPER_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$HELPER_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HELPER_DESTINATION</string>
+    <string>--run-xpc-service</string>
+  </array>
+  <key>MachServices</key>
+  <dict>
+    <key>$HELPER_MACH_SERVICE</key>
+    <true/>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Library/Logs/MacDog/helper.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Library/Logs/MacDog/helper.err.log</string>
+</dict>
+</plist>
+PLIST
 }
 
 open_app() {
