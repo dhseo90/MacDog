@@ -23,7 +23,10 @@ Checks:
   9. The generated app bundle contains the WidgetKit extension.
   10. WidgetKit host/extension packaging builds an embedded .appex.
   11. The current app/helper install state can be reported without changing the system.
-  12. Unless --no-run is passed, the app launches and its process is detected.
+  12. Release packaging dry-run is stable.
+  13. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  14. Privileged helper reinstall test plan is safe to stage before actual approval.
+  15. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -98,10 +101,21 @@ echo "==> Verifying generated app bundle"
 echo "==> Verifying WidgetKit packaging"
 ./script/verify_widget_packaging.sh
 
+echo "==> Verifying release packaging dry-run"
+./script/verify_release_packaging.sh
+
+echo "==> Verifying release workflow"
+./script/verify_release_workflow.sh
+
 echo "==> Reporting install state"
 ./script/verify_install_state.sh --report
 ./script/verify_privileged_helper_state.sh --allow-missing
+if [[ "$MODE" == "--no-run" || "$MODE" == "no-run" ]]; then
+  ./script/verify_privileged_helper_xpc.sh --allow-missing --skip-runtime
+else
 ./script/verify_privileged_helper_xpc.sh --allow-missing
+fi
 ./script/verify_privileged_helper_preflight.sh
+./script/verify_privileged_helper_reinstall_plan.sh
 
 echo "Local verification ok"

@@ -1,0 +1,43 @@
+name: Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "MacDog version label for the generated DMG"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build unsigned DMG candidate
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Verify
+        run: ./script/check.sh --no-run
+
+      - name: Package DMG
+        env:
+          MACDOG_RELEASE_VERSION: ${{ inputs.version }}
+        run: ./script/package_release.sh --skip-build
+
+      - name: Verify DMG
+        run: hdiutil verify "dist/release/MacDog-${{ inputs.version }}.dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "MacDog-${{ inputs.version }}-unsigned-dmg"
+          path: "dist/release/MacDog-${{ inputs.version }}.dmg"
+          if-no-files-found: error

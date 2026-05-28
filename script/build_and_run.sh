@@ -9,28 +9,33 @@ MIN_SYSTEM_VERSION="14.0"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
-APP_CONTENTS="$APP_BUNDLE/Contents"
-APP_LIBRARY="$APP_CONTENTS/Library"
-APP_MACOS="$APP_CONTENTS/MacOS"
-APP_RESOURCES="$APP_CONTENTS/Resources"
-APP_PLUGINS="$APP_CONTENTS/PlugIns"
-APP_LAUNCH_SERVICES="$APP_LIBRARY/LaunchServices"
-APP_LAUNCH_DAEMONS="$APP_LIBRARY/LaunchDaemons"
-APP_BINARY="$APP_MACOS/$APP_NAME"
-INFO_PLIST="$APP_CONTENTS/Info.plist"
 HELPER_NAME="MacDogPrivilegedHelper"
 HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
 HELPER_DESTINATION="/Library/PrivilegedHelperTools/$HELPER_LABEL"
-APP_HELPER_BINARY="$APP_LAUNCH_SERVICES/$HELPER_NAME"
-APP_HELPER_PLIST="$APP_LAUNCH_DAEMONS/$HELPER_LABEL.plist"
 WIDGET_HOST_APP="$ROOT_DIR/.build/xcode-widget/Build/Products/Debug/MacDogWidgetHost.app"
 WIDGET_APPEX="$WIDGET_HOST_APP/Contents/PlugIns/MacDogWidgetExtension.appex"
-APP_WIDGET_APPEX="$APP_PLUGINS/MacDogWidgetExtension.appex"
 WIDGET_EXTENSION_ENTITLEMENTS="$ROOT_DIR/Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
+
+configure_app_bundle_paths() {
+  APP_CONTENTS="$APP_BUNDLE/Contents"
+  APP_LIBRARY="$APP_CONTENTS/Library"
+  APP_MACOS="$APP_CONTENTS/MacOS"
+  APP_RESOURCES="$APP_CONTENTS/Resources"
+  APP_PLUGINS="$APP_CONTENTS/PlugIns"
+  APP_LAUNCH_SERVICES="$APP_LIBRARY/LaunchServices"
+  APP_LAUNCH_DAEMONS="$APP_LIBRARY/LaunchDaemons"
+  APP_BINARY="$APP_MACOS/$APP_NAME"
+  INFO_PLIST="$APP_CONTENTS/Info.plist"
+  APP_HELPER_BINARY="$APP_LAUNCH_SERVICES/$HELPER_NAME"
+  APP_HELPER_PLIST="$APP_LAUNCH_DAEMONS/$HELPER_LABEL.plist"
+  APP_WIDGET_APPEX="$APP_PLUGINS/MacDogWidgetExtension.appex"
+}
+
+configure_app_bundle_paths
 
 usage() {
   cat <<USAGE
@@ -84,6 +89,13 @@ build_bundle() {
   "$XCRUN" swift build -c release --product codex-usage
   local build_bin
   build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
+
+  local final_app_bundle
+  local staging_parent
+  final_app_bundle="$DIST_DIR/$APP_NAME.app"
+  staging_parent="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-build.XXXXXX")"
+  APP_BUNDLE="$staging_parent/$APP_NAME.app"
+  configure_app_bundle_paths
 
   rm -rf "$APP_BUNDLE"
   mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS" "$APP_LAUNCH_SERVICES" "$APP_LAUNCH_DAEMONS"
@@ -145,6 +157,15 @@ PLIST
 
   /usr/bin/xattr -cr "$APP_BUNDLE" >/dev/null 2>&1 || true
   /usr/bin/codesign --force --sign - "$APP_BUNDLE" >/dev/null
+  verify_bundle_signature "$APP_BUNDLE"
+
+  mkdir -p "$DIST_DIR"
+  rm -rf "$final_app_bundle"
+  /usr/bin/ditto --norsrc --noextattr "$APP_BUNDLE" "$final_app_bundle"
+  /usr/bin/xattr -cr "$final_app_bundle" >/dev/null 2>&1 || true
+  rm -rf "$staging_parent"
+  APP_BUNDLE="$final_app_bundle"
+  configure_app_bundle_paths
   verify_bundle_signature "$APP_BUNDLE"
 }
 
