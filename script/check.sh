@@ -24,12 +24,13 @@ Checks:
   10. The generated app bundle contains the WidgetKit extension.
   11. WidgetKit host/extension packaging builds an embedded .appex.
   12. WidgetKit cache/deep-link readiness guards pass.
-  13. The current app/helper install state can be reported without changing the system.
-  14. Release packaging dry-run is stable.
-  15. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  16. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  17. Privileged helper reinstall test plan is safe to stage before actual approval.
-  18. Unless --no-run is passed, the app launches and its process is detected.
+  13. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  14. The current app/helper install state can be reported without changing the system.
+  15. Release packaging dry-run is stable.
+  16. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  17. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  18. Privileged helper reinstall test plan is safe to stage before actual approval.
+  19. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -109,6 +110,9 @@ echo "==> Verifying WidgetKit packaging"
 
 echo "==> Verifying WidgetKit readiness"
 ./script/verify_widget_readiness.sh
+
+echo "==> Probing Shortcuts Charge Limit fallback"
+./script/verify_shortcuts_charge_limit.sh --allow-unavailable
 
 echo "==> Verifying release packaging dry-run"
 ./script/verify_release_packaging.sh

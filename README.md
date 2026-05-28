@@ -179,6 +179,7 @@ Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코
 MacDog는 macOS 26.4 이상 Apple silicon Mac에서 native Charge Limit 값을 읽고 80~100% 범위로 적용한다. 2026-05-28 기준 개발 Mac에서 현재 시스템 한도 `95%`, 사용 가능 값 `80,85,90,95,100` 읽기와 같은 값 `95%` set/restore 검증을 완료했다.
 
 2026-05-28 23:50 KST에 UI에서 목표 한도 `90%`를 적용했고, 진단 read에서 `charge-limit current=90`을 확인했다. 2026-05-29 사용자 실사용 확인에서 AC 연결 상태의 배터리가 `95%`에서 `90%`로 내려가 native Charge Limit 적용 결과를 확인했다. 이 기능은 배터리를 즉시 강제 방전시키는 기능이 아니라 macOS 충전 상한을 적용하고 자연 하강/유지를 확인하는 방식이다.
+Shortcuts 보조 경로는 `script/verify_shortcuts_charge_limit.sh`로 read-only 상태만 확인한다. 현재 개발 Mac에서는 Shortcuts helper application 통신 실패가 발생할 수 있어, 표준 체크는 available/unavailable 상태를 기록만 하고 native Charge Limit 경로를 기본 구현으로 유지한다.
 
 ## 데이터와 보안
 
