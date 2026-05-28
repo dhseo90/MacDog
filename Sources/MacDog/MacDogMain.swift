@@ -10,6 +10,12 @@ enum MacDogMain {
         if CommandLine.arguments.dropFirst().first == "--verify-privileged-helper-xpc-set" {
             exit(verifyPrivilegedHelperXPCSet(arguments: Array(CommandLine.arguments.dropFirst())))
         }
+        if CommandLine.arguments.dropFirst().first == "--verify-charge-limit-read" {
+            exit(verifyChargeLimitRead(arguments: Array(CommandLine.arguments.dropFirst())))
+        }
+        if CommandLine.arguments.dropFirst().first == "--verify-charge-limit-set" {
+            exit(verifyChargeLimitSet(arguments: Array(CommandLine.arguments.dropFirst())))
+        }
 
         RunnerPreferences.registerDefaults()
         if SingleInstanceGuard.shouldTerminateCurrentInstance() {
@@ -137,6 +143,55 @@ enum MacDogMain {
         }
     }
 
+    private static func verifyChargeLimitRead(arguments: [String]) -> Int32 {
+        let resultFile = optionValue(for: "--result-file", in: arguments)
+        let state = NativeChargeLimitController().readState()
+        guard state.isSupported else {
+            writeDiagnostic("charge-limit:error \(state.errorMessage ?? "unsupported")", resultFile: resultFile)
+            return 1
+        }
+
+        let limits = state.availableLimits.map(String.init).joined(separator: ",")
+        let current = state.currentLimitPercent.map(String.init) ?? "unknown"
+        writeDiagnostic("charge-limit:read current=\(current) available=\(limits)", resultFile: resultFile)
+        return 0
+    }
+
+    private static func verifyChargeLimitSet(arguments: [String]) -> Int32 {
+        let resultFile = optionValue(for: "--result-file", in: arguments)
+        guard
+            let rawValue = optionValue(for: "--value", in: arguments) ?? arguments.dropFirst().first,
+            let target = Int(rawValue)
+        else {
+            writeDiagnostic("charge-limit:error missing target", resultFile: resultFile)
+            return 2
+        }
+
+        let controller = NativeChargeLimitController()
+        let before = controller.readState().currentLimitPercent
+        let shouldRestore = arguments.contains("--restore")
+        do {
+            let applied = try controller.setLimitPercent(target)
+            let after = controller.readState().currentLimitPercent
+            var restored: Int?
+            if shouldRestore, let before {
+                _ = try controller.setLimitPercent(before)
+                restored = controller.readState().currentLimitPercent
+            }
+            writeDiagnostic(
+                "charge-limit:set target=\(target) applied=\(applied) before=\(before.map(String.init) ?? "unknown") after=\(after.map(String.init) ?? "unknown") restored=\(restored.map(String.init) ?? "not-requested")",
+                resultFile: resultFile
+            )
+            if shouldRestore, let before {
+                return restored == before ? 0 : 1
+            }
+            return after == applied ? 0 : 1
+        } catch {
+            writeDiagnostic("charge-limit:error \(error.localizedDescription)", resultFile: resultFile)
+            return 1
+        }
+    }
+
     private static func writeDiagnostic(_ message: String, resultFile: String?) {
         print(message)
 
@@ -158,7 +213,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.start()
         self.controller = controller
 
-        if ProcessInfo.processInfo.environment["MACDOG_OPEN_POPOVER_ON_LAUNCH"] == "1" {
+        if ProcessInfo.processInfo.environment["MACDOG_OPEN_POPOVER_ON_LAUNCH"] == "1" ||
+            CommandLine.arguments.contains("--open-popover-on-launch") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 controller.showUsagePopover()
             }

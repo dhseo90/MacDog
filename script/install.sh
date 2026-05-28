@@ -4,6 +4,7 @@ set -euo pipefail
 MODE="install"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
 APP_SOURCE="$ROOT_DIR/dist/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 BIN_DIR="$HOME/bin"
@@ -41,8 +42,15 @@ die() {
 run_as_root() {
   if [[ "$(id -u)" == "0" ]]; then
     "$@"
-  else
+  elif [[ -t 0 ]]; then
     /usr/bin/sudo "$@"
+  else
+    local command=""
+    local arg
+    for arg in "$@"; do
+      command+=" $(shell_quote "$arg")"
+    done
+    /usr/bin/osascript -e "do shell script $(apple_script_literal "${command# }") with administrator privileges"
   fi
 }
 
@@ -54,6 +62,31 @@ xml_escape() {
   value="${value//\"/&quot;}"
   value="${value//\'/&apos;}"
   printf '%s' "$value"
+}
+
+shell_quote() {
+  local value="$1"
+  printf "'%s'" "${value//\'/\'\\\'\'}"
+}
+
+apple_script_literal() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+macdog_owns_sleep_disabled() {
+  [[ "$(/usr/bin/defaults read "$BUNDLE_ID" closedLidSleepDisabledByMacDog 2>/dev/null || true)" == "1" ]] || return 1
+  /usr/bin/pmset -g live | /usr/bin/grep -q $'SleepDisabled\t\t1'
+}
+
+stop_running_app_for_update() {
+  if macdog_owns_sleep_disabled; then
+    /usr/bin/pkill -9 -x "$APP_NAME" >/dev/null 2>&1 || true
+  else
+    /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+  fi
 }
 
 detect_host_team_identifier() {
@@ -169,6 +202,7 @@ print_helper_install_dry_run() {
   echo "Helper mach service: $HELPER_MACH_SERVICE"
   echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
   echo "Helper install status: implemented; actual run requires administrator approval"
+  echo "Helper approval UX: terminal sudo when interactive, macOS administrator dialog when launched non-interactively"
   echo "Helper host requirement: team id when signed, local ad-hoc allowance for unsigned development builds"
   temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-dry-run.XXXXXX")"
   write_helper_launch_daemon_plist "$temp_plist" "" "1"
@@ -253,7 +287,7 @@ build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 mkdir -p "$HOME/Applications" "$BIN_DIR" "$LAUNCH_AGENT_DIR" "$LOG_DIR"
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+stop_running_app_for_update
 
 rm -rf "$APP_DEST"
 /usr/bin/ditto --norsrc --noextattr "$APP_SOURCE" "$APP_DEST"

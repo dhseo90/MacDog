@@ -85,7 +85,7 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 러너 변경은 "메뉴바 16-22pt 크기에서도 한눈에 읽히는가"를 기준으로 한다.
 Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가 약하므로 기본 UI 옵션으로 노출하지 않는다.
 현재 앱은 Codex Pup 하나만 유지해 설정이 장난감처럼 느껴지지 않게 한다.
-후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 캐릭터 프로필로 묶는다.
+현재 우측 탭 버튼은 버튼에 맞춘 임시 artwork를 사용한다. 후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 캐릭터 프로필로 묶는다.
 
 ### 1차 캐릭터: Codex Pup
 
@@ -444,8 +444,8 @@ GitHub 배포 후속 목표:
 - 자동 trigger 1차 확장은 전원 연결, Codex 앱 실행, 충전 80% 미만, CPU 80% 이상, 네트워크 100KB/s 이상, 외장/네트워크 볼륨 연결 조건을 제공한다.
 - 덮개 닫힘 보호는 관리자 승인 후 `pmset disablesleep`을 켜고, MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
 - privileged helper가 설치된 최신 설치본에서는 `잠들지 않기` UI의 `시간 제어`/`끔` 클릭이 helper XPC 경로로 `SleepDisabled`를 변경하며, 설정 변경 중 비밀번호 프롬프트가 반복되지 않는 것을 확인했다.
-- Apple native Charge Limit은 macOS 26.4 이상, Apple silicon 조건을 기준으로 지원 가능 여부를 표시한다.
-- 충전 한도 설정 연결은 공개 제어 API를 호출하지 않고 80~100% 목표값 저장과 메뉴의 macOS 배터리 설정 열기로 제공한다.
+- Apple native Charge Limit은 macOS 26.4 이상, Apple silicon 조건에서 native smart charge client로 현재 한도를 읽고 80~100% 목표값을 적용한다.
+- 현재 개발 Mac에서 사용 가능 한도 `80,85,90,95,100`, 현재 한도 `95`, 같은 값 set/restore를 확인했다.
 - 각 모듈 on/off와 세부 설정은 후속 작업으로 남긴다.
 
 후보 모듈:
@@ -479,11 +479,9 @@ GitHub 배포 후속 목표:
   - 시간 만료/끄기/조건 해제 시 MacDog가 켠 전역 설정만 원복한다.
   - 이전 설치본이 실행 중이면 helper 연동 이전 경로로 비밀번호 프롬프트가 발생할 수 있으므로, UI 검수 전 설치본과 `dist/MacDog.app`의 해시 일치를 확인한다.
   - 현재 결론과 검증 경계는 [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md)에 기록한다.
-- AlDente식 충전 제한 직접 제어는 helper 도입 이후 별도 기능 게이트로 분리한다.
-  - 기존 서드파티 앱은 SMC/IOKit low-level 제어와 privileged helper를 사용하는 방식으로 보인다.
-  - MacDog helper의 첫 책임은 덮개 닫힘 보호의 반복 관리자 프롬프트를 제거하는 것이다.
-  - 배터리 충전 제어는 같은 helper 통로를 재사용할 수 있지만, 공개 API/Shortcuts/시스템 설정 연동 가능성을 먼저 확인한다.
-  - 현재 Mac에서는 macOS 26.5 + arm64 조건을 확인했고, Shortcuts CLI는 helper application 통신 실패로 자동화 검증이 막혀 있다.
+- AlDente식 SMC 충전 제한 직접 제어는 별도 기능 게이트로 분리한다.
+  - MacDog 1차 배터리 제어는 native Charge Limit 경로를 사용한다.
+  - 현재 Mac에서는 macOS 26.5 + arm64 조건과 native smart charge client 읽기/쓰기 경로를 확인했고, Shortcuts CLI는 helper application 통신 실패로 자동화 검증이 막혀 있다.
   - SMC 방식은 충전 원복, uninstall, macOS 업데이트 호환성, 배터리 calibration 리스크를 문서화한 뒤 별도 승인으로만 진행한다.
   - 현재 결론은 [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md)에 기록한다.
 
@@ -494,8 +492,10 @@ GitHub 배포 후속 목표:
 3. Amphetamine식 잠자기 방지 세션 상세 polish
 4. display sleep/screen saver/lock 관련 옵션 정리
 5. closed-display 장시간 실기 검증과 배터리 보호 threshold 조정
-6. Charge Limit Shortcuts 액션 실기기 검증
-7. SMC 충전 제어는 helper 안정화 이후 별도 승인 기능으로 분리
+6. Charge Limit 90% 실제 적용 후 장시간 덮개 닫힘/충전 하강 실기 검증
+7. 캐릭터 asset 통일: 데스크톱 강아지, 메뉴바 러너, 오른쪽 탭 버튼을 같은 캐릭터 팩으로 묶기
+   - 현재 오른쪽 탭 버튼은 버튼용 임시 생성 artwork이며, 최종 캐릭터 통일 완료로 보지 않는다.
+8. SMC 충전 제어는 helper 안정화 이후 별도 승인 기능으로 분리
 
 원칙:
 

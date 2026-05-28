@@ -5,11 +5,17 @@ final class ChargeLimitSupportSnapshotTests: XCTestCase {
     func testAppleSiliconOnSupportedOSShowsNativeChargeLimitAvailable() {
         let snapshot = ChargeLimitSupportSnapshot(
             operatingSystemVersion: OperatingSystemVersion(majorVersion: 26, minorVersion: 4, patchVersion: 0),
-            isAppleSilicon: true
+            isAppleSilicon: true,
+            nativeState: NativeChargeLimitState(
+                isSupported: true,
+                availableLimits: [80, 85, 90, 95, 100],
+                currentLimitPercent: 95,
+                errorMessage: nil
+            )
         )
 
         XCTAssertTrue(snapshot.isNativeChargeLimitAvailable)
-        XCTAssertEqual(snapshot.summary, "지원 가능 · 80~100%")
+        XCTAssertEqual(snapshot.summary, "시스템 한도 · 95%")
     }
 
     func testIntelMacShowsAppleSiliconRequirement() {

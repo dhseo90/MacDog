@@ -24,8 +24,40 @@ usage() {
 run_as_root() {
   if [[ "$(id -u)" == "0" ]]; then
     "$@"
-  else
+  elif [[ -t 0 ]]; then
     /usr/bin/sudo "$@"
+  else
+    local command=""
+    local arg
+    for arg in "$@"; do
+      command+=" $(shell_quote "$arg")"
+    done
+    /usr/bin/osascript -e "do shell script $(apple_script_literal "${command# }") with administrator privileges"
+  fi
+}
+
+shell_quote() {
+  local value="$1"
+  printf "'%s'" "${value//\'/\'\\\'\'}"
+}
+
+apple_script_literal() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+macdog_owns_sleep_disabled() {
+  [[ "$(/usr/bin/defaults read com.dhseo.macdog.MacDog closedLidSleepDisabledByMacDog 2>/dev/null || true)" == "1" ]] || return 1
+  /usr/bin/pmset -g live | /usr/bin/grep -q $'SleepDisabled\t\t1'
+}
+
+stop_running_app_for_update() {
+  if macdog_owns_sleep_disabled; then
+    /usr/bin/pkill -9 -x "$APP_NAME" >/dev/null 2>&1 || true
+  else
+    /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
   fi
 }
 
@@ -114,7 +146,7 @@ fi
 
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+stop_running_app_for_update
 
 rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
 rm -rf "$APP_DEST"

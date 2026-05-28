@@ -38,6 +38,7 @@ require_contains "$helper_install_output" "Helper label: com.dhseo.macdog.helper
 require_contains "$helper_install_output" "Helper host app source:"
 require_contains "$helper_install_output" "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
 require_contains "$helper_install_output" "Helper install status: implemented"
+require_contains "$helper_install_output" "Helper approval UX:"
 require_contains "$helper_install_output" "Helper host requirement: team id when signed"
 require_contains "$helper_install_output" "Helper launch daemon plist validation: ok"
 require_not_contains "$helper_install_output" "not implemented"

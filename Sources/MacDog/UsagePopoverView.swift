@@ -38,11 +38,7 @@ struct UsagePopoverView: View {
             textHeader
             Divider()
 
-            ScrollView {
-                tabContent
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxHeight: 326)
+            tabContentContainer
         }
         .padding(12)
         .frame(width: 278, height: 388, alignment: .topLeading)
@@ -79,10 +75,24 @@ struct UsagePopoverView: View {
     }
 
     @ViewBuilder
+    private var tabContentContainer: some View {
+        if selectedModule.usesScrollableContent {
+            ScrollView {
+                tabContent
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.hidden)
+        } else {
+            tabContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    @ViewBuilder
     private var tabContent: some View {
         switch selectedModule {
         case .codex:
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
                 codexUsageContent
                 RunnerControls(onChange: onPreferencesChanged)
             }
@@ -138,13 +148,13 @@ struct UsagePopoverView: View {
     private var codexUsageContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let limit = state.codexLimit {
-                if let message = state.highUsageMessage {
-                    PressureBanner(message: message, phase: state.phase)
-                }
-
                 VStack(alignment: .leading, spacing: 12) {
                     UsageRow(title: "5시간", window: limit.fiveHour)
                     UsageRow(title: "주간", window: limit.weekly)
+                }
+
+                if let message = state.highUsageMessage {
+                    PressureBanner(message: message, phase: state.phase)
                 }
 
                 Divider()
@@ -246,6 +256,15 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
             "sleep-tab"
         case .battery:
             "battery-tab"
+        }
+    }
+
+    var usesScrollableContent: Bool {
+        switch self {
+        case .sleep:
+            true
+        case .codex, .mac, .battery:
+            false
         }
     }
 }
@@ -554,6 +573,10 @@ private struct BatteryPanel: View {
     let snapshot: SystemMetricsSnapshot
 
     @AppStorage(RunnerPreferences.chargeLimitTargetPercentKey) private var chargeLimitTargetPercent = RunnerPreferences.defaultChargeLimitTargetPercent
+    @State private var appliedChargeLimitPercent: Int?
+    @State private var chargeLimitErrorMessage: String?
+
+    private let chargeLimitController = NativeChargeLimitController()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -571,13 +594,13 @@ private struct BatteryPanel: View {
             PopoverFormSection(title: "충전 제어", systemImage: "slider.horizontal.3") {
                 Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
                     GridRow {
-                        metricRow("지원", snapshot.chargeLimitSupport.summary)
+                        metricRow("상태", chargeLimitSummary)
                     }
                     GridRow {
-                        metricRow("목표", "\(normalizedChargeLimitTargetPercent)%")
+                        metricRow("사양", snapshot.chargeLimitSupport.requirementSummary)
                     }
                     GridRow {
-                        metricRow("요구 사항", snapshot.chargeLimitSupport.requirementSummary)
+                        metricRow("목표", "\(effectiveChargeLimitTargetPercent)%", emphasized: true)
                     }
                 }
 
@@ -593,41 +616,80 @@ private struct BatteryPanel: View {
 
                     Slider(
                         value: chargeLimitTargetBinding,
-                        in: Double(RunnerPreferences.minimumChargeLimitTargetPercent)...Double(RunnerPreferences.maximumChargeLimitTargetPercent),
+                        in: Double(chargeLimitRange.lowerBound)...Double(chargeLimitRange.upperBound),
                         step: Double(RunnerPreferences.chargeLimitTargetStepPercent)
                     )
                     .disabled(!snapshot.chargeLimitSupport.isNativeChargeLimitAvailable)
                 }
+
+                if let chargeLimitErrorMessage {
+                    Text(chargeLimitErrorMessage)
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+        }
+        .onAppear {
+            appliedChargeLimitPercent = snapshot.chargeLimitSupport.currentLimitPercent
         }
     }
 
-    private var normalizedChargeLimitTargetPercent: Int {
-        RunnerPreferences.normalizedChargeLimitTargetPercent(chargeLimitTargetPercent)
+    private var chargeLimitSummary: String {
+        if let appliedChargeLimitPercent {
+            return "macOS 적용됨 · \(appliedChargeLimitPercent)%"
+        }
+        return snapshot.chargeLimitSupport.summary
+    }
+
+    private var effectiveChargeLimitTargetPercent: Int {
+        RunnerPreferences.normalizedChargeLimitTargetPercent(
+            appliedChargeLimitPercent ?? snapshot.chargeLimitSupport.currentLimitPercent ?? chargeLimitTargetPercent
+        )
+    }
+
+    private var chargeLimitRange: ClosedRange<Int> {
+        guard
+            let lowerBound = snapshot.chargeLimitSupport.availableLimits.first,
+            let upperBound = snapshot.chargeLimitSupport.availableLimits.last
+        else {
+            return RunnerPreferences.minimumChargeLimitTargetPercent...RunnerPreferences.maximumChargeLimitTargetPercent
+        }
+        return lowerBound...upperBound
     }
 
     private var chargeLimitTargetBinding: Binding<Double> {
         Binding(
             get: {
-                Double(normalizedChargeLimitTargetPercent)
+                Double(effectiveChargeLimitTargetPercent)
             },
             set: { newValue in
                 let percent = RunnerPreferences.normalizedChargeLimitTargetPercent(Int(newValue.rounded()))
-                RunnerPreferences.setChargeLimitTargetPercent(percent)
-                chargeLimitTargetPercent = percent
+                do {
+                    let appliedPercent = try chargeLimitController.setLimitPercent(percent)
+                    RunnerPreferences.setChargeLimitTargetPercent(appliedPercent)
+                    chargeLimitTargetPercent = appliedPercent
+                    appliedChargeLimitPercent = appliedPercent
+                    chargeLimitErrorMessage = nil
+                } catch {
+                    chargeLimitErrorMessage = "적용 실패 · \(error.localizedDescription)"
+                }
             }
         )
     }
 
-    private func metricRow(_ key: String, _ value: String) -> some View {
+    private func metricRow(_ key: String, _ value: String, emphasized: Bool = false) -> some View {
         GridRow {
             Text(key)
+                .font(.caption)
                 .foregroundStyle(.secondary)
             Text(value)
+                .font(emphasized ? .callout.weight(.bold) : .caption)
+                .monospacedDigit()
+                .foregroundStyle(emphasized ? Color.accentColor : Color.primary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.caption)
     }
 }
 
@@ -800,10 +862,9 @@ private struct RunnerControls: View {
     @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 7) {
             Divider()
 
-            controlLabel("러너 속도")
             Picker("러너 속도", selection: $displayBasis) {
                 ForEach(UsageDisplayBasis.allCases) { basis in
                     Text(basis.label).tag(basis.rawValue)
@@ -813,25 +874,15 @@ private struct RunnerControls: View {
             .pickerStyle(.segmented)
             .help("러너 속도를 조절할 사용량 기준을 선택합니다.")
 
-            Toggle("움직임 줄이기", isOn: $reducedMotion)
-                .font(.caption)
-                .padding(.top, 2)
-
-            Toggle("애니메이션 일시 정지", isOn: $animationPaused)
-                .font(.caption)
+            HStack(spacing: 10) {
+                Toggle("움직임 줄이기", isOn: $reducedMotion)
+                Toggle("일시 정지", isOn: $animationPaused)
+            }
+            .font(.caption)
         }
         .onChange(of: displayBasis) { _, _ in onChange() }
         .onChange(of: reducedMotion) { _, _ in onChange() }
         .onChange(of: animationPaused) { _, _ in onChange() }
-    }
-
-    private func controlLabel(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
     }
 }
 

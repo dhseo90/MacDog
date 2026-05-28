@@ -12,11 +12,13 @@
 
 - `script/package_release.sh --dry-run`은 release artifact 계획을 출력한다.
 - `script/package_release.sh`는 `dist/MacDog.app`과 release build의 `codex-usage`를 `dist/release/MacDog-<version>`에 staging한다.
-- staging 폴더에는 `Install MacDog.command`와 `README_FIRST.txt`가 포함된다.
+- staging 폴더에는 `Install MacDog.command`, `Install Privileged Helper.command`, `README_FIRST.txt`가 포함된다.
 - `Install MacDog.command`는 더블클릭 시 사용자 영역에 앱, CLI, LaunchAgent를 설치하고 앱을 연다.
+- `Install Privileged Helper.command`는 별도 더블클릭/관리자 승인으로 bundled helper를 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons`에 설치한다.
+- 설치/업데이트 중 MacDog가 `SleepDisabled=1`을 소유한 상태라면 app 종료 정리 루틴이 값을 0으로 되돌리지 않도록 강제 종료 경로를 사용한다.
 - 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않는다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보를 만들고 GitHub Actions artifact로 보관한다.
-- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, installer syntax, helper 미설치 경계를 검증한다.
+- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, installer syntax, helper 별도 설치 경계와 관리자 승인 문구를 검증한다.
 
 2026-05-28 확인:
 
@@ -32,7 +34,7 @@
 - GitHub Actions runner에서 workflow 실제 실행
 - 생성된 `.dmg`를 Finder에서 열어 더블클릭 설치 실행
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent, Gatekeeper 동작 검증
-- privileged helper를 포함한 통합 설치 UX
+- privileged helper 더블클릭 설치 command의 실제 Finder 실행
 
 ## 아직 하지 않는 것
 
@@ -49,7 +51,7 @@
 2. `./script/package_release.sh`
 3. 생성된 `dist/release/MacDog-<version>.dmg`를 열어 payload 확인
 4. 더블클릭 `Install MacDog.command`로 앱/CLI/LaunchAgent 설치 검증
-5. helper가 필요한 덮개 닫힘 보호는 앱 내부 설치 UX 또는 별도 helper installer flow에서 명확히 승인받는다.
+5. helper가 필요한 덮개 닫힘 보호는 `Install Privileged Helper.command` 또는 앱 내부 설치 UX에서 명확히 승인받는다.
 6. 공개 배포 전 Developer ID signing, notarization, Gatekeeper 검증을 추가한다.
 
 ## GitHub Release 완료 기준

@@ -60,11 +60,16 @@ let package = Package(
             name: "MacDog",
             dependencies: [
                 "CodexUsageCore",
+                "MacDogPowerUIBridge",
                 "MacDogPrivilegedHelperSupport"
             ],
             resources: [
                 .process("Resources")
             ]
+        ),
+        .target(
+            name: "MacDogPowerUIBridge",
+            publicHeadersPath: "include"
         ),
         .executableTarget(
             name: "MacDogPrivilegedHelper",

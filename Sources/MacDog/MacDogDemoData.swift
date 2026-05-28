@@ -103,7 +103,13 @@ enum MacDogDemoData {
             ),
             chargeLimitSupport: ChargeLimitSupportSnapshot(
                 operatingSystemVersion: OperatingSystemVersion(majorVersion: 26, minorVersion: 4, patchVersion: 0),
-                isAppleSilicon: true
+                isAppleSilicon: true,
+                nativeState: NativeChargeLimitState(
+                    isSupported: true,
+                    availableLimits: [80, 85, 90, 95, 100],
+                    currentLimitPercent: 90,
+                    errorMessage: nil
+                )
             )
         )
     }
