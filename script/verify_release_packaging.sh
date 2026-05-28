@@ -17,6 +17,22 @@ require_contains() {
   fi
 }
 
+with_temp_home() {
+  local temp_home
+  temp_home="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-release-home.XXXXXX")"
+  trap 'rm -rf "$temp_home"' RETURN
+  mkdir -p "$temp_home/Applications" "$temp_home/bin" "$temp_home/Library/LaunchAgents"
+  /usr/bin/ditto --norsrc --noextattr "$stage/MacDog.app" "$temp_home/Applications/MacDog.app"
+  /usr/bin/touch "$temp_home/bin/codex-usage"
+  chmod +x "$temp_home/bin/codex-usage"
+  /usr/bin/touch \
+    "$temp_home/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist" \
+    "$temp_home/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
+  HOME="$temp_home" "$stage/Check Install Status.command" >/dev/null
+  rm -rf "$temp_home"
+  trap - RETURN
+}
+
 output="$("$ROOT_DIR/script/package_release.sh" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
 require_contains "$output" "Payload:"
@@ -77,11 +93,15 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq 'LaunchDaemons' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller system location warning missing"
   /usr/bin/grep -Fq 'MacDog install status' "$stage/Check Install Status.command" || die "status checker title missing"
   /usr/bin/grep -Fq 'privileged helper is optional' "$stage/Check Install Status.command" || die "status checker optional helper copy missing"
+  /usr/bin/grep -Fq 'installed app matches bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness success copy missing"
+  /usr/bin/grep -Fq 'installed app differs from bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness failure copy missing"
+  /usr/bin/grep -Fq 'bundle_manifest' "$stage/Check Install Status.command" || die "status checker app payload comparison missing"
   bash -n "$stage/Install MacDog.command"
   bash -n "$stage/Install Privileged Helper.command"
   bash -n "$stage/Uninstall MacDog.command"
   bash -n "$stage/Uninstall Privileged Helper.command"
   bash -n "$stage/Check Install Status.command"
+  with_temp_home
 
   if /usr/bin/grep -Eq 'PrivilegedHelperTools|LaunchDaemons|SMJobBless|sudo ' "$stage/Install MacDog.command"; then
     die "installer command unexpectedly contains privileged helper installation material"

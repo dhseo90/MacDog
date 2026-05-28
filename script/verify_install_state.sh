@@ -2,7 +2,9 @@
 set -euo pipefail
 
 MODE="${1:-report}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
+DIST_APP="$ROOT_DIR/dist/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 APP_BINARY="$APP_DEST/Contents/MacOS/$APP_NAME"
 WIDGET_APPEX="$APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
@@ -15,12 +17,13 @@ case "$MODE" in
   report|--report) ;;
   --expect-installed|expect-installed) ;;
   --expect-uninstalled|expect-uninstalled) ;;
+  --expect-current-dist|expect-current-dist) ;;
   -h|--help|help)
-    echo "usage: $0 [--report|--expect-installed|--expect-uninstalled]"
+    echo "usage: $0 [--report|--expect-installed|--expect-uninstalled|--expect-current-dist]"
     exit 0
     ;;
   *)
-    echo "usage: $0 [--report|--expect-installed|--expect-uninstalled]" >&2
+    echo "usage: $0 [--report|--expect-installed|--expect-uninstalled|--expect-current-dist]" >&2
     exit 2
     ;;
 esac
@@ -31,6 +34,54 @@ present() {
 
 executable() {
   [[ -x "$1" ]]
+}
+
+bundle_manifest() {
+  local bundle="$1"
+  (
+    cd "$bundle"
+    /usr/bin/find . -type f \
+      ! -path '*/_CodeSignature/*' \
+      ! -name '.DS_Store' \
+      -print0 |
+      while IFS= read -r -d '' file; do
+        local path="${file#./}"
+        local hash
+        hash="$(/usr/bin/shasum -a 256 "$file" | /usr/bin/awk '{print $1}')"
+        printf '%s  %s\n' "$hash" "$path"
+      done |
+      /usr/bin/sort
+  )
+}
+
+compare_app_bundles() {
+  local expected="$1"
+  local actual="$2"
+  local label="$3"
+  local verbosity="${4:-verbose}"
+
+  [[ -d "$expected" ]] || { echo "$label:missing-source $expected" >&2; return 1; }
+  [[ -d "$actual" ]] || { echo "$label:missing-installed $actual" >&2; return 1; }
+
+  local expected_manifest
+  local actual_manifest
+  expected_manifest="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-expected.XXXXXX")"
+  actual_manifest="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-actual.XXXXXX")"
+  bundle_manifest "$expected" >"$expected_manifest"
+  bundle_manifest "$actual" >"$actual_manifest"
+
+  if /usr/bin/cmp -s "$expected_manifest" "$actual_manifest"; then
+    rm -f "$expected_manifest" "$actual_manifest"
+    [[ "$verbosity" == "quiet" ]] || echo "$label:matches-dist $actual"
+    return 0
+  fi
+
+  if [[ "$verbosity" != "quiet" ]]; then
+    echo "$label:differs-from-dist expected:$expected actual:$actual" >&2
+    /usr/bin/diff -u "$expected_manifest" "$actual_manifest" | /usr/bin/sed -n '1,80p' >&2 || true
+  fi
+  rm -f "$expected_manifest" "$actual_manifest"
+  return 1
 }
 
 print_process_state() {
@@ -56,6 +107,17 @@ print_state() {
   if executable "$CLI_DEST"; then echo "cli:executable $CLI_DEST"; else echo "cli:missing-or-not-executable $CLI_DEST"; fi
   if present "$CACHE_PLIST"; then echo "cache-plist:present $CACHE_PLIST"; else echo "cache-plist:absent $CACHE_PLIST"; fi
   if present "$MONITOR_PLIST"; then echo "monitor-plist:present $MONITOR_PLIST"; else echo "monitor-plist:absent $MONITOR_PLIST"; fi
+  if [[ -d "$DIST_APP" && -d "$APP_DEST" ]]; then
+    if compare_app_bundles "$DIST_APP" "$APP_DEST" "app-freshness" quiet; then
+      echo "app-freshness:matches-dist $APP_DEST"
+    else
+      echo "app-freshness:differs-from-dist expected:$DIST_APP actual:$APP_DEST"
+    fi
+  elif [[ -d "$DIST_APP" ]]; then
+    echo "app-freshness:installed-app-missing $APP_DEST"
+  else
+    echo "app-freshness:dist-app-missing $DIST_APP"
+  fi
   print_process_state
 }
 
@@ -76,6 +138,11 @@ expect_uninstalled() {
   ! present "$MONITOR_PLIST" || { echo "expected monitor plist to be absent: $MONITOR_PLIST" >&2; return 1; }
 }
 
+expect_current_dist() {
+  expect_installed
+  compare_app_bundles "$DIST_APP" "$APP_DEST" "app-freshness"
+}
+
 print_state
 case "$MODE" in
   --expect-installed|expect-installed)
@@ -85,5 +152,9 @@ case "$MODE" in
   --expect-uninstalled|expect-uninstalled)
     expect_uninstalled
     echo "Install state ok: uninstalled"
+    ;;
+  --expect-current-dist|expect-current-dist)
+    expect_current_dist
+    echo "Install state ok: current-dist"
     ;;
 esac

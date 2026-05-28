@@ -511,6 +511,8 @@ cat >"$STAGE_DIR/Check Install Status.command" <<'STATUS'
 set -u
 
 APP_NAME="MacDog"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_SOURCE="$SCRIPT_DIR/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 CLI_DEST="$HOME/bin/codex-usage"
 UID_VALUE="$(id -u)"
@@ -536,6 +538,41 @@ missing_required() {
   required_failures=$((required_failures + 1))
 }
 
+bundle_manifest() {
+  local bundle="$1"
+  (
+    cd "$bundle" || exit 1
+    /usr/bin/find . -type f \
+      ! -path '*/_CodeSignature/*' \
+      ! -name '.DS_Store' \
+      -print0 |
+      while IFS= read -r -d '' file; do
+        local path="${file#./}"
+        local hash
+        hash="$(/usr/bin/shasum -a 256 "$file" | /usr/bin/awk '{print $1}')"
+        printf '%s  %s\n' "$hash" "$path"
+      done |
+      /usr/bin/sort
+  )
+}
+
+app_payload_matches_source() {
+  local expected_manifest
+  local actual_manifest
+  expected_manifest="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-expected.XXXXXX")"
+  actual_manifest="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-actual.XXXXXX")"
+  bundle_manifest "$APP_SOURCE" >"$expected_manifest"
+  bundle_manifest "$APP_DEST" >"$actual_manifest"
+
+  if /usr/bin/cmp -s "$expected_manifest" "$actual_manifest"; then
+    rm -f "$expected_manifest" "$actual_manifest"
+    return 0
+  fi
+
+  rm -f "$expected_manifest" "$actual_manifest"
+  return 1
+}
+
 echo "MacDog install status"
 echo
 
@@ -543,6 +580,16 @@ if [[ -x "$APP_DEST/Contents/MacOS/$APP_NAME" ]]; then
   ok "app installed: $APP_DEST"
 else
   missing_required "app executable: $APP_DEST/Contents/MacOS/$APP_NAME"
+fi
+
+if [[ -d "$APP_SOURCE" && -d "$APP_DEST" ]]; then
+  if app_payload_matches_source; then
+    ok "installed app matches bundled release payload"
+  else
+    missing_required "installed app differs from bundled release payload"
+  fi
+else
+  warn "release payload app is not available for freshness check: $APP_SOURCE"
 fi
 
 if [[ -x "$CLI_DEST" ]]; then
