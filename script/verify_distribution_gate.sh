@@ -58,10 +58,22 @@ require_file_contains "$DRAFT_WORKFLOW" "--draft"
 require_file_contains "$DRAFT_WORKFLOW" "--prerelease"
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then
+  require_file_contains "$STABLE_WORKFLOW" "SIGNED-STABLE"
+  require_file_contains "$STABLE_WORKFLOW" "public-stable-release"
+  require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION_CERT_BASE64"
+  require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION"
+  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APPLE_ID"
+  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_TEAM_ID"
+  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APP_SPECIFIC_PASSWORD"
   require_file_match "$STABLE_WORKFLOW" 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
   require_file_contains "$STABLE_WORKFLOW" "notarytool"
   require_file_contains "$STABLE_WORKFLOW" "stapler"
   require_file_contains "$STABLE_WORKFLOW" "spctl"
+  require_file_contains "$STABLE_WORKFLOW" "gh release create"
+  require_file_contains "$STABLE_WORKFLOW" "--latest"
+  if /usr/bin/grep -Fq -- "--draft" "$STABLE_WORKFLOW"; then
+    die "stable release workflow must not create draft releases"
+  fi
 else
   echo "Stable release workflow not present; public stable release remains gated."
 fi

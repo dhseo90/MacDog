@@ -23,8 +23,9 @@
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만든다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관한다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
+- `.github/workflows/release-stable.yml`은 `SIGNED-STABLE` 확인 입력, GitHub Environment approval, Developer ID Application 인증서 secret, notarization secret이 모두 있어야 signed/notarized `.dmg`를 public GitHub Release로 올린다.
 - `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command의 freshness smoke를 검증한다.
-- `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate를 포함하는지 확인한다.
+- `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인한다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증한다.
 
 2026-05-28 확인:
@@ -36,7 +37,8 @@
 - `script/verify_release_packaging.sh` staging payload 검증 통과
 - `script/verify_release_workflow.sh`로 release candidate workflow guard 검증 통과
 - draft release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
-- public stable release는 `release-stable.yml`이 생기더라도 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 포함해야 통과하도록 gate를 둔다.
+- public stable release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
+- public stable release는 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 포함해야 통과하도록 gate를 둔다.
 
 미확인:
 
@@ -49,10 +51,10 @@
 
 ## 아직 하지 않는 것
 
-- public stable GitHub Release publication 자동화
-- Developer ID signing
-- hardened runtime 설정 확정
-- notarization 제출과 stapling
+- GitHub Actions runner에서 public stable workflow 실제 실행
+- Apple Developer ID / notarization secrets 실제 등록
+- Developer ID signing 결과물 실제 확인
+- notarization 제출과 stapling 실제 수행
 - 깨끗한 사용자 계정/다른 Mac에서 Gatekeeper 검증
 - privileged helper를 앱 내부 설치/제거 화면으로 자연스럽게 관리하는 UX
 
@@ -68,12 +70,13 @@
 7. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인한다.
 8. 제거 검증이 필요하면 `Uninstall MacDog.command`와 `Uninstall Privileged Helper.command`를 각각 실행하고 `Check Install Status.command`로 확인한다.
 9. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행한다.
-10. 공개 배포 전 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 추가한다.
+10. 공개 배포는 GitHub Environment `public-stable-release` 승인을 둔 `Stable Release` workflow에서 `SIGNED-STABLE` 확인 입력과 Apple signing/notarization secrets가 모두 있을 때만 실행한다.
 
 ## GitHub Release 완료 기준
 
 - GitHub Actions 또는 로컬 release script가 `.dmg`를 재현 가능하게 생성한다.
 - `.dmg.sha256` checksum을 함께 제공하고 검증한다.
+- public stable release는 Developer ID Application으로 app/CLI/DMG를 서명하고, notarytool 제출, stapler, spctl Gatekeeper 확인을 통과한다.
 - Release note에 지원 OS, unsigned/notarized 여부, helper 권한 이유, uninstall 경로를 적는다.
 - `.dmg`를 내려받아 더블클릭 설치하는 흐름을 새 사용자 환경에서 검증한다.
 - helper 설치가 포함되는 경우 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons` 변경을 명확히 안내하고 uninstall 복구를 검증한다.

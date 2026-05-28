@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOW="$ROOT_DIR/.github/workflows/release-candidate.yml"
 DRAFT_WORKFLOW="$ROOT_DIR/.github/workflows/release-draft.yml"
+STABLE_WORKFLOW="$ROOT_DIR/.github/workflows/release-stable.yml"
 
 die() {
   echo "error: $*" >&2
@@ -18,6 +19,11 @@ require_match() {
 require_draft_match() {
   local pattern="$1"
   /usr/bin/grep -Eq -- "$pattern" "$DRAFT_WORKFLOW" || die "missing expected draft release workflow pattern: $pattern"
+}
+
+require_stable_match() {
+  local pattern="$1"
+  /usr/bin/grep -Eq -- "$pattern" "$STABLE_WORKFLOW" || die "missing expected stable release workflow pattern: $pattern"
 }
 
 [[ -f "$WORKFLOW" ]] || die "release candidate workflow missing: $WORKFLOW"
@@ -44,6 +50,22 @@ require_draft_match 'gh "\$\{args\[@\]\}"'
 require_draft_match '--draft'
 require_draft_match '--notes-file'
 require_draft_match '\.dmg\.sha256'
+
+if [[ -f "$STABLE_WORKFLOW" ]]; then
+  require_stable_match 'workflow_dispatch'
+  require_stable_match 'contents: write'
+  require_stable_match 'SIGNED-STABLE'
+  require_stable_match 'public-stable-release'
+  require_stable_match './script/check\.sh --no-run'
+  require_stable_match './script/build_and_run\.sh --no-run'
+  require_stable_match 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
+  require_stable_match 'notarytool submit'
+  require_stable_match 'stapler staple'
+  require_stable_match 'spctl --assess'
+  require_stable_match 'shasum -a 256 -c'
+  require_stable_match 'gh release create'
+  require_stable_match '--latest'
+fi
 
 "$ROOT_DIR/script/verify_distribution_gate.sh" >/dev/null
 

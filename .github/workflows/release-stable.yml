@@ -1,0 +1,165 @@
+name: Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "MacDog version label for the notarized DMG"
+        required: true
+        default: "0.1.0"
+      tag:
+        description: "Git tag to create for the stable release"
+        required: true
+        default: "v0.1.0"
+      acknowledge_signed_stable:
+        description: "Type SIGNED-STABLE to publish a signed, notarized public release"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  stable:
+    name: Build signed, notarized DMG and publish release
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: public-stable-release
+
+    steps:
+      - name: Check stable release acknowledgement
+        env:
+          ACKNOWLEDGE_SIGNED_STABLE: ${{ inputs.acknowledge_signed_stable }}
+        run: |
+          if [[ "$ACKNOWLEDGE_SIGNED_STABLE" != "SIGNED-STABLE" ]]; then
+            echo "Type SIGNED-STABLE to publish a signed, notarized stable release." >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Verify
+        run: ./script/check.sh --no-run
+
+      - name: Import Developer ID Application certificate
+        env:
+          DEVELOPER_ID_APPLICATION_CERT_BASE64: ${{ secrets.MACDOG_DEVELOPER_ID_APPLICATION_CERT_BASE64 }}
+          DEVELOPER_ID_APPLICATION_CERT_PASSWORD: ${{ secrets.MACDOG_DEVELOPER_ID_APPLICATION_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACDOG_RELEASE_KEYCHAIN_PASSWORD }}
+        run: |
+          if [[ -z "$DEVELOPER_ID_APPLICATION_CERT_BASE64" || -z "$DEVELOPER_ID_APPLICATION_CERT_PASSWORD" || -z "$KEYCHAIN_PASSWORD" ]]; then
+            echo "Missing Developer ID Application certificate secrets." >&2
+            exit 1
+          fi
+
+          certificate_path="$RUNNER_TEMP/developer_id_application.p12"
+          keychain_path="$RUNNER_TEMP/macdog-signing.keychain-db"
+
+          printf '%s' "$DEVELOPER_ID_APPLICATION_CERT_BASE64" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$DEVELOPER_ID_APPLICATION_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+
+      - name: Build app bundle
+        run: ./script/build_and_run.sh --no-run
+
+      - name: Sign app bundle with hardened runtime
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.MACDOG_DEVELOPER_ID_APPLICATION }}
+        run: |
+          if [[ -z "$DEVELOPER_ID_APPLICATION" ]]; then
+            echo "Missing MACDOG_DEVELOPER_ID_APPLICATION secret." >&2
+            exit 1
+          fi
+
+          app="dist/MacDog.app"
+          appex="$app/Contents/PlugIns/MacDogWidgetExtension.appex"
+          widget_entitlements="Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
+          helper="$app/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
+
+          find "$appex" -type f \( -name '*.dylib' -o -perm +111 \) -print0 | while IFS= read -r -d '' file; do
+            codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
+          done
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$widget_entitlements" "$appex"
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$helper"
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+
+      - name: Stage release payload
+        env:
+          MACDOG_RELEASE_VERSION: ${{ inputs.version }}
+        run: ./script/package_release.sh --skip-build --no-dmg
+
+      - name: Sign CLI and create signed DMG
+        env:
+          MACDOG_VERSION: ${{ inputs.version }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.MACDOG_DEVELOPER_ID_APPLICATION }}
+        run: |
+          stage="dist/release/MacDog-$MACDOG_VERSION"
+          dmg_path="dist/release/MacDog-$MACDOG_VERSION.dmg"
+          checksum_path="$dmg_path.sha256"
+
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$stage/bin/codex-usage"
+          codesign --verify --strict --verbose=2 "$stage/bin/codex-usage"
+          codesign --verify --deep --strict --verbose=2 "$stage/MacDog.app"
+
+          rm -f "$dmg_path" "$checksum_path"
+          hdiutil create \
+            -volname "MacDog $MACDOG_VERSION" \
+            -srcfolder "$stage" \
+            -ov \
+            -format UDZO \
+            "$dmg_path"
+          codesign --force --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$dmg_path"
+          codesign --verify --strict --verbose=2 "$dmg_path"
+
+      - name: Notarize and staple DMG
+        env:
+          MACDOG_VERSION: ${{ inputs.version }}
+          APPLE_ID: ${{ secrets.MACDOG_NOTARY_APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.MACDOG_NOTARY_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.MACDOG_NOTARY_APP_SPECIFIC_PASSWORD }}
+        run: |
+          if [[ -z "$APPLE_ID" || -z "$APPLE_TEAM_ID" || -z "$APPLE_APP_SPECIFIC_PASSWORD" ]]; then
+            echo "Missing notarization secrets." >&2
+            exit 1
+          fi
+
+          dmg_path="dist/release/MacDog-$MACDOG_VERSION.dmg"
+          xcrun notarytool submit "$dmg_path" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --wait
+          xcrun stapler staple "$dmg_path"
+          xcrun stapler validate "$dmg_path"
+
+      - name: Verify notarized DMG
+        env:
+          MACDOG_VERSION: ${{ inputs.version }}
+        run: |
+          dmg_path="dist/release/MacDog-$MACDOG_VERSION.dmg"
+          hdiutil verify "$dmg_path"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
+          shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
+          shasum -a 256 -c "$dmg_path.sha256"
+
+      - name: Publish stable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MACDOG_VERSION: ${{ inputs.version }}
+          MACDOG_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$MACDOG_TAG" \
+            "dist/release/MacDog-$MACDOG_VERSION.dmg" \
+            "dist/release/MacDog-$MACDOG_VERSION.dmg.sha256" \
+            --target "$GITHUB_SHA" \
+            --title "MacDog $MACDOG_VERSION" \
+            --notes-file "dist/release/MacDog-$MACDOG_VERSION/RELEASE_NOTES_DRAFT.md" \
+            --latest
