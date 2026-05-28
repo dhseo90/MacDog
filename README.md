@@ -136,6 +136,7 @@ GitHub Release용 더블클릭 설치 artifact 후보:
 생성된 `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치 상태를 터미널에서 요약한다.
 공개 배포 전에는 앱 내부 helper 설치 UX와 Gatekeeper 검증을 완료해야 한다.
 GitHub Actions의 `Release Candidate` 수동 workflow는 unsigned `.dmg` 후보를 artifact로 만들고, `Draft Release` 수동 workflow는 `UNSIGNED-DRAFT` 확인 입력 후 unsigned `.dmg`와 `.dmg.sha256` checksum을 GitHub draft release에 첨부한다. unsigned 후보는 로컬 검증용이며 공개 stable release로 올리려면 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 먼저 통과해야 한다.
+`script/verify_distribution_gate.sh`는 unsigned draft와 public stable release gate가 섞이지 않도록 문서, dry-run 문구, release workflow를 확인한다.
 
 설치 위치:
 

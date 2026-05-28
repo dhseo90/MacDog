@@ -27,8 +27,9 @@ Checks:
   13. The current app/helper install state can be reported without changing the system.
   14. Release packaging dry-run is stable.
   15. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  16. Privileged helper reinstall test plan is safe to stage before actual approval.
-  17. Unless --no-run is passed, the app launches and its process is detected.
+  16. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  17. Privileged helper reinstall test plan is safe to stage before actual approval.
+  18. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -114,6 +115,9 @@ echo "==> Verifying release packaging dry-run"
 
 echo "==> Verifying release workflow"
 ./script/verify_release_workflow.sh
+
+echo "==> Verifying distribution gate"
+./script/verify_distribution_gate.sh
 
 echo "==> Reporting install state"
 ./script/verify_install_state.sh --report

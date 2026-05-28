@@ -45,4 +45,6 @@ require_draft_match '--draft'
 require_draft_match '--notes-file'
 require_draft_match '\.dmg\.sha256'
 
+"$ROOT_DIR/script/verify_distribution_gate.sh" >/dev/null
+
 echo "Release workflow verification ok"

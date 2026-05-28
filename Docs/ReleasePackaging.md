@@ -25,6 +25,7 @@
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
 - `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command를 검증한다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate를 포함하는지 확인한다.
+- `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증한다.
 
 2026-05-28 확인:
 
@@ -35,6 +36,7 @@
 - `script/verify_release_packaging.sh` staging payload 검증 통과
 - `script/verify_release_workflow.sh`로 release candidate workflow guard 검증 통과
 - draft release workflow는 repo에 구성되어 있으나 GitHub Actions에서 실제 실행하지 않았다.
+- public stable release는 `release-stable.yml`이 생기더라도 Developer ID signing, hardened runtime, notarization, stapling, Gatekeeper 검증을 포함해야 통과하도록 gate를 둔다.
 
 미확인:
 
