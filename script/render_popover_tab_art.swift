@@ -5,7 +5,6 @@ struct TabArt {
     let filename: String
     let topicSymbol: String
     let accent: NSColor
-    let earColor: NSColor
 }
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -14,146 +13,110 @@ let outputDirectory = root
     .appendingPathComponent("MacDog", isDirectory: true)
     .appendingPathComponent("Resources", isDirectory: true)
     .appendingPathComponent("PopoverTabs", isDirectory: true)
+let dogSourceURL = root
+    .appendingPathComponent("Sources", isDirectory: true)
+    .appendingPathComponent("MacDog", isDirectory: true)
+    .appendingPathComponent("Resources", isDirectory: true)
+    .appendingPathComponent("DesktopPet", isDirectory: true)
+    .appendingPathComponent("pup-idle-front-0.png")
 
 try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+guard let dogSprite = NSImage(contentsOf: dogSourceURL) else {
+    fatalError("Missing Codex Pup desktop sprite: \(dogSourceURL.path)")
+}
 
 let artwork = [
-    TabArt(filename: "codex-tab.png", topicSymbol: "chevron.left.forwardslash.chevron.right", accent: NSColor.systemBlue, earColor: NSColor(calibratedRed: 0.72, green: 0.47, blue: 0.27, alpha: 1)),
-    TabArt(filename: "mac-tab.png", topicSymbol: "cpu", accent: NSColor.systemMint, earColor: NSColor(calibratedRed: 0.62, green: 0.43, blue: 0.28, alpha: 1)),
-    TabArt(filename: "sleep-tab.png", topicSymbol: "moon.fill", accent: NSColor.systemIndigo, earColor: NSColor(calibratedRed: 0.50, green: 0.39, blue: 0.34, alpha: 1)),
-    TabArt(filename: "battery-tab.png", topicSymbol: "battery.100percent", accent: NSColor.systemGreen, earColor: NSColor(calibratedRed: 0.67, green: 0.46, blue: 0.30, alpha: 1))
+    TabArt(filename: "codex-tab.png", topicSymbol: "chevron.left.forwardslash.chevron.right", accent: NSColor.systemBlue),
+    TabArt(filename: "mac-tab.png", topicSymbol: "cpu", accent: NSColor.systemMint),
+    TabArt(filename: "sleep-tab.png", topicSymbol: "moon.fill", accent: NSColor.systemIndigo),
+    TabArt(filename: "battery-tab.png", topicSymbol: "battery.100percent", accent: NSColor.systemGreen)
 ]
 
 for item in artwork {
-    let image = render(item)
-    guard
-        let tiff = image.tiffRepresentation,
-        let bitmap = NSBitmapImageRep(data: tiff),
-        let png = bitmap.representation(using: .png, properties: [:])
-    else {
+    let bitmap = render(item)
+    guard let png = bitmap.representation(using: .png, properties: [:]) else {
         fatalError("Failed to encode \(item.filename)")
     }
 
     try png.write(to: outputDirectory.appendingPathComponent(item.filename))
 }
 
-private func render(_ item: TabArt) -> NSImage {
+private func render(_ item: TabArt) -> NSBitmapImageRep {
     let size = NSSize(width: 256, height: 256)
-    let image = NSImage(size: size)
-    image.lockFocus()
+    guard let bitmap = NSBitmapImageRep(
+        bitmapDataPlanes: nil,
+        pixelsWide: Int(size.width),
+        pixelsHigh: Int(size.height),
+        bitsPerSample: 8,
+        samplesPerPixel: 4,
+        hasAlpha: true,
+        isPlanar: false,
+        colorSpaceName: .deviceRGB,
+        bytesPerRow: 0,
+        bitsPerPixel: 0
+    ) else {
+        fatalError("Failed to allocate bitmap")
+    }
+    bitmap.size = size
+
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
 
     NSColor.clear.setFill()
     NSRect(origin: .zero, size: size).fill()
 
-    drawDog(item)
+    drawButtonBackground(item)
+    drawDog(item, sprite: dogSprite)
     drawTopicBadge(item)
 
-    image.unlockFocus()
-    return image
+    NSGraphicsContext.restoreGraphicsState()
+    return bitmap
 }
 
-private func drawDog(_ item: TabArt) {
+private func drawDog(_ item: TabArt, sprite: NSImage) {
     NSGraphicsContext.saveGraphicsState()
-    let scale: CGFloat = 0.66
-    let anchor = NSPoint(x: 96, y: 42)
-    let transform = NSAffineTransform()
-    transform.translateX(by: anchor.x, yBy: anchor.y)
-    transform.scale(by: scale)
-    transform.translateX(by: -anchor.x, yBy: -anchor.y)
-    transform.concat()
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 70, y: 36, width: 134, height: 24))
+    NSColor.black.withAlphaComponent(0.24).setFill()
+    shadow.fill()
 
-    drawDogShape(item)
+    let dogRect = NSRect(x: 72, y: 42, width: 142, height: 151)
+    sprite.draw(in: dogRect, from: .zero, operation: .sourceOver, fraction: 1)
+
+    fillRoundedRect(NSRect(x: 93, y: 46, width: 100, height: 12), radius: 6, color: item.accent.withAlphaComponent(0.86))
     NSGraphicsContext.restoreGraphicsState()
 }
 
-private func drawDogShape(_ item: TabArt) {
-    let shadow = NSBezierPath(ovalIn: NSRect(x: 36, y: 20, width: 184, height: 34))
+private func drawTopicBadge(_ item: TabArt) {
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 31, y: 172, width: 76, height: 72))
     NSColor.black.withAlphaComponent(0.22).setFill()
     shadow.fill()
 
-    fillRoundedRect(NSRect(x: 66, y: 28, width: 124, height: 72), radius: 40, color: NSColor(calibratedWhite: 0.93, alpha: 1))
-
-    let leftEar = NSBezierPath()
-    leftEar.move(to: NSPoint(x: 70, y: 166))
-    leftEar.curve(to: NSPoint(x: 22, y: 72), controlPoint1: NSPoint(x: 24, y: 162), controlPoint2: NSPoint(x: 20, y: 102))
-    leftEar.curve(to: NSPoint(x: 82, y: 82), controlPoint1: NSPoint(x: 32, y: 52), controlPoint2: NSPoint(x: 70, y: 54))
-    leftEar.curve(to: NSPoint(x: 70, y: 166), controlPoint1: NSPoint(x: 96, y: 118), controlPoint2: NSPoint(x: 96, y: 154))
-    item.earColor.setFill()
-    leftEar.fill()
-
-    let rightEar = NSBezierPath()
-    rightEar.move(to: NSPoint(x: 186, y: 166))
-    rightEar.curve(to: NSPoint(x: 234, y: 72), controlPoint1: NSPoint(x: 232, y: 162), controlPoint2: NSPoint(x: 236, y: 102))
-    rightEar.curve(to: NSPoint(x: 174, y: 82), controlPoint1: NSPoint(x: 224, y: 52), controlPoint2: NSPoint(x: 186, y: 54))
-    rightEar.curve(to: NSPoint(x: 186, y: 166), controlPoint1: NSPoint(x: 160, y: 118), controlPoint2: NSPoint(x: 160, y: 154))
-    item.earColor.blended(withFraction: 0.10, of: .black)?.setFill()
-    rightEar.fill()
-
-    let face = NSBezierPath(ovalIn: NSRect(x: 42, y: 58, width: 172, height: 166))
-    NSColor(calibratedWhite: 0.98, alpha: 1).setFill()
-    face.fill()
-
-    let forehead = NSBezierPath()
-    forehead.move(to: NSPoint(x: 128, y: 220))
-    forehead.curve(to: NSPoint(x: 104, y: 156), controlPoint1: NSPoint(x: 112, y: 202), controlPoint2: NSPoint(x: 100, y: 180))
-    forehead.curve(to: NSPoint(x: 152, y: 156), controlPoint1: NSPoint(x: 114, y: 146), controlPoint2: NSPoint(x: 142, y: 146))
-    forehead.curve(to: NSPoint(x: 128, y: 220), controlPoint1: NSPoint(x: 156, y: 180), controlPoint2: NSPoint(x: 144, y: 202))
-    item.earColor.withAlphaComponent(0.22).setFill()
-    forehead.fill()
-
-    NSColor.black.withAlphaComponent(0.80).setFill()
-    NSBezierPath(ovalIn: NSRect(x: 84, y: 139, width: 18, height: 22)).fill()
-    NSBezierPath(ovalIn: NSRect(x: 154, y: 139, width: 18, height: 22)).fill()
-
-    NSColor.white.withAlphaComponent(0.82).setFill()
-    NSBezierPath(ovalIn: NSRect(x: 91, y: 153, width: 5, height: 6)).fill()
-    NSBezierPath(ovalIn: NSRect(x: 161, y: 153, width: 5, height: 6)).fill()
-
-    let muzzle = NSBezierPath(ovalIn: NSRect(x: 88, y: 86, width: 80, height: 56))
-    NSColor(calibratedRed: 0.96, green: 0.91, blue: 0.84, alpha: 1).setFill()
-    muzzle.fill()
-
-    let nose = NSBezierPath(ovalIn: NSRect(x: 116, y: 116, width: 24, height: 18))
-    NSColor.black.withAlphaComponent(0.84).setFill()
-    nose.fill()
-
-    let mouth = NSBezierPath()
-    mouth.move(to: NSPoint(x: 128, y: 116))
-    mouth.line(to: NSPoint(x: 128, y: 106))
-    mouth.curve(to: NSPoint(x: 112, y: 103), controlPoint1: NSPoint(x: 124, y: 100), controlPoint2: NSPoint(x: 118, y: 98))
-    mouth.move(to: NSPoint(x: 128, y: 106))
-    mouth.curve(to: NSPoint(x: 144, y: 103), controlPoint1: NSPoint(x: 132, y: 100), controlPoint2: NSPoint(x: 138, y: 98))
-    mouth.lineWidth = 5
-    NSColor.black.withAlphaComponent(0.58).setStroke()
-    mouth.stroke()
-
-    fillRoundedRect(NSRect(x: 76, y: 44, width: 104, height: 16), radius: 8, color: item.accent.withAlphaComponent(0.92))
-
-    let tag = NSBezierPath(ovalIn: NSRect(x: 108, y: 30, width: 40, height: 40))
-    item.accent.blended(withFraction: 0.18, of: .black)?.setFill()
-    tag.fill()
-}
-
-private func drawTopicBadge(_ item: TabArt) {
-    let shadow = NSBezierPath(roundedRect: NSRect(x: 110, y: 124, width: 130, height: 108), xRadius: 30, yRadius: 30)
-    NSColor.black.withAlphaComponent(0.34).setFill()
-    shadow.fill()
-
-    let badgeRect = NSRect(x: 104, y: 132, width: 130, height: 104)
-    let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 30, yRadius: 30)
+    let badgeRect = NSRect(x: 28, y: 176, width: 76, height: 72)
+    let badge = NSBezierPath(ovalIn: badgeRect)
     (item.accent.blended(withFraction: 0.08, of: .white) ?? item.accent).setFill()
     badge.fill()
 
     NSColor.white.withAlphaComponent(0.34).setStroke()
-    badge.lineWidth = 4
+    badge.lineWidth = 3
     badge.stroke()
 
     drawSymbol(
         item.topicSymbol,
-        in: NSRect(x: 128, y: 151, width: 84, height: 70),
+        in: NSRect(x: 43, y: 190, width: 46, height: 44),
         color: NSColor.white.withAlphaComponent(0.98),
-        shadowColor: NSColor.black.withAlphaComponent(0.22)
+        shadowColor: NSColor.black.withAlphaComponent(0.18)
     )
+}
+
+private func drawButtonBackground(_ item: TabArt) {
+    let background = NSBezierPath(roundedRect: NSRect(x: 16, y: 16, width: 224, height: 224), xRadius: 38, yRadius: 38)
+    let fill = item.accent.blended(withFraction: 0.88, of: NSColor(calibratedWhite: 0.18, alpha: 1)) ?? item.accent
+    fill.withAlphaComponent(0.24).setFill()
+    background.fill()
+
+    item.accent.withAlphaComponent(0.20).setStroke()
+    background.lineWidth = 4
+    background.stroke()
 }
 
 private func fillRoundedRect(_ rect: NSRect, radius: CGFloat, color: NSColor) {
