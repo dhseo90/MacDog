@@ -12,6 +12,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
+    private let privilegedHelperInstaller = PrivilegedHelperInstaller()
     private let sleepPreventionController = SleepPreventionController()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
@@ -395,6 +396,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setSleepPreventionDisableScreenLock(let isEnabled):
             RunnerPreferences.setSleepPreventionDisableScreenLock(isEnabled)
             refreshUsage(allowLiveRefresh: false)
+        case .installPrivilegedHelper:
+            runPrivilegedHelperOperation(.install)
+        case .uninstallPrivilegedHelper:
+            runPrivilegedHelperOperation(.uninstall)
         case .openBatterySettings:
             _ = SystemSettingsDestination.openBatterySettings()
         case .showDesktopPet:
@@ -406,6 +411,69 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .quit:
             NSApp.terminate(nil)
         }
+    }
+
+    private enum PrivilegedHelperOperation: Sendable {
+        case install
+        case uninstall
+
+        var successTitle: String {
+            switch self {
+            case .install:
+                "권한 도우미 설치 완료"
+            case .uninstall:
+                "권한 도우미 제거 완료"
+            }
+        }
+
+        var successMessage: String {
+            switch self {
+            case .install:
+                "덮개 닫힘 보호 설정 변경은 권한 도우미 XPC 경로를 우선 사용합니다."
+            case .uninstall:
+                "덮개 닫힘 보호 설정 변경 시 다시 관리자 승인이 필요할 수 있습니다."
+            }
+        }
+    }
+
+    private func runPrivilegedHelperOperation(_ operation: PrivilegedHelperOperation) {
+        Task { [weak self] in
+            guard let self else { return }
+            let installer = privilegedHelperInstaller
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    switch operation {
+                    case .install:
+                        try installer.install()
+                    case .uninstall:
+                        try installer.uninstall()
+                    }
+                }.value
+
+                refreshUsage(allowLiveRefresh: false)
+                showPrivilegedHelperAlert(
+                    title: operation.successTitle,
+                    message: operation.successMessage,
+                    style: .informational
+                )
+            } catch {
+                refreshUsage(allowLiveRefresh: false)
+                showPrivilegedHelperAlert(
+                    title: "권한 도우미 작업 실패",
+                    message: error.localizedDescription,
+                    style: .warning
+                )
+            }
+        }
+    }
+
+    private func showPrivilegedHelperAlert(title: String, message: String, style: NSAlert.Style) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = style
+        alert.addButton(withTitle: "확인")
+        alert.runModal()
     }
 
     @objc

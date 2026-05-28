@@ -54,6 +54,42 @@ final class PrivilegedHelperInstallStateTests: XCTestCase {
         XCTAssertEqual(installed.guidanceTitle, "권한 도우미 준비됨")
         XCTAssertTrue(installed.guidanceDetail.contains("권한 도우미 XPC"))
     }
+
+    func testInstallScriptBuilderDocumentsHostRequirementAndAllowedCommands() {
+        let builder = PrivilegedHelperInstallScriptBuilder(logDirectory: "/Library/Logs/MacDog Test")
+
+        let plist = builder.launchDaemonPlist(
+            hostTeamIdentifier: "TEAM&ID",
+            allowAdHocHost: true
+        )
+
+        XCTAssertTrue(plist.contains("<key>MACDOG_HELPER_HOST_TEAM_ID</key>"))
+        XCTAssertTrue(plist.contains("<string>TEAM&amp;ID</string>"))
+        XCTAssertTrue(plist.contains("<key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>"))
+        XCTAssertTrue(plist.contains("<key>MachServices</key>"))
+        XCTAssertTrue(plist.contains("<key>RunAtLoad</key>"))
+        XCTAssertTrue(plist.contains("/Library/Logs/MacDog Test/helper.out.log"))
+    }
+
+    func testInstallAndUninstallRootScriptsKeepHelperScopeNarrow() {
+        let builder = PrivilegedHelperInstallScriptBuilder()
+
+        let installScript = builder.installRootScript(
+            helperSourcePath: "/tmp/MacDog Helper",
+            launchDaemonPlistSourcePath: "/tmp/helper.plist"
+        )
+        let uninstallScript = builder.uninstallRootScript()
+
+        XCTAssertTrue(installScript.contains("/usr/bin/install -o root -g wheel -m 755 '/tmp/MacDog Helper'"))
+        XCTAssertTrue(installScript.contains("/bin/launchctl bootstrap system '/Library/LaunchDaemons/com.dhseo.macdog.helper.plist'"))
+        XCTAssertTrue(installScript.contains("/usr/bin/codesign --verify --strict --verbose=2"))
+        XCTAssertFalse(installScript.contains("pmset"))
+
+        XCTAssertTrue(uninstallScript.contains("/bin/launchctl bootout system '/Library/LaunchDaemons/com.dhseo.macdog.helper.plist'"))
+        XCTAssertTrue(uninstallScript.contains("/bin/rm -f '/Library/PrivilegedHelperTools/com.dhseo.macdog.helper'"))
+        XCTAssertFalse(uninstallScript.contains("MacDog.app"))
+        XCTAssertFalse(uninstallScript.contains("codex-usage"))
+    }
 }
 
 private struct RecordingFileChecker: PrivilegedHelperFileChecking, Sendable {

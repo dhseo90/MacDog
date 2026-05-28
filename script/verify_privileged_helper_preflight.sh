@@ -12,6 +12,8 @@ HELPER_PLIST="$APP_BUNDLE/Contents/Library/LaunchDaemons/com.dhseo.macdog.helper
 HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
+HELPER_INSTALLER_SOURCE="$ROOT_DIR/Sources/MacDog/PrivilegedHelperInstaller.swift"
+POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 
 usage() {
   echo "usage: $0 [--build]"
@@ -49,6 +51,12 @@ fi
 
 echo "==> Checking helper-only install dry-run"
 ./script/install.sh --dry-run --helper-only >/dev/null
+
+echo "==> Checking app helper install UI path"
+/usr/bin/grep -Fq "installPrivilegedHelper" "$POPOVER_SOURCE" || die "popover helper install action missing"
+/usr/bin/grep -Fq "uninstallPrivilegedHelper" "$POPOVER_SOURCE" || die "popover helper uninstall action missing"
+/usr/bin/grep -Fq "with administrator privileges" "$HELPER_INSTALLER_SOURCE" || die "app helper installer administrator approval path missing"
+/usr/bin/grep -Fq "PrivilegedHelperInstallScriptBuilder" "$HELPER_INSTALLER_SOURCE" || die "app helper installer script builder missing"
 
 echo "==> Checking generated app bundle"
 [[ -d "$APP_BUNDLE" ]] || die "app bundle missing: $APP_BUNDLE"

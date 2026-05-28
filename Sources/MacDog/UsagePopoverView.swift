@@ -106,6 +106,7 @@ struct UsagePopoverView: View {
                 sleepPreventionStatus: state.sleepPreventionStatus,
                 sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
+                onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged
             )
         case .battery:
@@ -457,6 +458,7 @@ private struct SleepPreventionPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
+    let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionControlModeKey) private var sleepPreventionControlMode = RunnerPreferences.defaultSleepPreventionControlMode.rawValue
@@ -777,7 +779,46 @@ private struct SleepPreventionPanel: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            helperActionButtons
         }
+        .padding(.top, 1)
+    }
+
+    @ViewBuilder
+    private var helperActionButtons: some View {
+        switch privilegedHelperInstallSnapshot.status {
+        case .missing:
+            helperActionButton("도우미 설치", systemImage: "plus.circle") {
+                onAction(.installPrivilegedHelper)
+            }
+        case .partial:
+            HStack(spacing: 6) {
+                helperActionButton("제거", systemImage: "trash") {
+                    onAction(.uninstallPrivilegedHelper)
+                }
+                helperActionButton("다시 설치", systemImage: "arrow.clockwise") {
+                    onAction(.installPrivilegedHelper)
+                }
+            }
+        case .installed:
+            helperActionButton("도우미 제거", systemImage: "trash") {
+                onAction(.uninstallPrivilegedHelper)
+            }
+        }
+    }
+
+    private func helperActionButton(
+        _ title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.caption2.weight(.semibold))
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
         .padding(.top, 1)
     }
 

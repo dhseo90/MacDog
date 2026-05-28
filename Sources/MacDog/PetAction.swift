@@ -16,6 +16,8 @@ enum PetAction: Equatable {
     case setSleepPreventionPreventDisplaySleep(Bool)
     case setSleepPreventionPreventClosedLidSleep(Bool)
     case setSleepPreventionDisableScreenLock(Bool)
+    case installPrivilegedHelper
+    case uninstallPrivilegedHelper
     case openBatterySettings
     case showDesktopPet
     case returnToMenuBar
