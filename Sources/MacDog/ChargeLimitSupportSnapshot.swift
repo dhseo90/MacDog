@@ -86,6 +86,22 @@ struct ChargeLimitSupportSnapshot: Equatable {
         "macOS 26.4+ · Apple silicon"
     }
 
+    var guidanceSummary: String {
+        if isNativeChargeLimitAvailable {
+            return "목표보다 높으면 강제 방전하지 않고 충전을 멈춘 뒤 자연 하강합니다."
+        }
+
+        if !isAppleSilicon {
+            return "이 Mac은 앱 제어를 지원하지 않아 배터리 설정에서 확인해야 합니다."
+        }
+
+        if !supportsNativeChargeLimitOS {
+            return "macOS 26.4 이상에서 앱 제어가 가능하며, 현재는 배터리 설정에서 확인하세요."
+        }
+
+        return "앱에서 충전 한도를 확인하지 못했습니다. 배터리 설정에서 직접 확인하세요."
+    }
+
     private var supportsNativeChargeLimitOS: Bool {
         Self.supportsNativeChargeLimitOS(operatingSystemVersion)
     }

@@ -954,7 +954,7 @@ private struct BatteryPanel: View {
                     .disabled(!snapshot.chargeLimitSupport.isNativeChargeLimitAvailable)
                 }
 
-                Text("목표보다 높으면 강제 방전하지 않고 충전을 멈춘 뒤 자연 하강합니다.")
+                Text(snapshot.chargeLimitSupport.guidanceSummary)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
