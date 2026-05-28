@@ -11,16 +11,17 @@ struct SleepPreventionTriggerStatus: Equatable {
         externalVolumeTriggerEnabled: false,
         powerAdapterConnected: false,
         codexAppRunning: false,
+        appMatchText: RunnerPreferences.defaultSleepPreventionAppMatchText,
         chargingBelowThreshold: false,
         cpuAboveThreshold: false,
         networkActivityAboveThreshold: false,
         externalVolumeConnected: false,
         batteryPercent: nil,
-        batteryThresholdPercent: RunnerPreferences.sleepPreventionBatteryThresholdPercent,
+        batteryThresholdPercent: RunnerPreferences.defaultSleepPreventionBatteryThresholdPercent,
         cpuLoadPercent: nil,
-        cpuThresholdPercent: RunnerPreferences.sleepPreventionCPUThresholdPercent,
+        cpuThresholdPercent: RunnerPreferences.defaultSleepPreventionCPUThresholdPercent,
         networkActivityBytesPerSecond: nil,
-        networkActivityThresholdBytesPerSecond: RunnerPreferences.sleepPreventionNetworkActivityThresholdBytesPerSecond,
+        networkActivityThresholdBytesPerSecond: Double(RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond) * 1024,
         externalVolumeCount: 0
     )
 
@@ -32,6 +33,7 @@ struct SleepPreventionTriggerStatus: Equatable {
     let externalVolumeTriggerEnabled: Bool
     let powerAdapterConnected: Bool
     let codexAppRunning: Bool
+    let appMatchText: String
     let chargingBelowThreshold: Bool
     let cpuAboveThreshold: Bool
     let networkActivityAboveThreshold: Bool
@@ -48,7 +50,7 @@ struct SleepPreventionTriggerStatus: Equatable {
         evaluate(
             preferences: preferences,
             systemMetrics: systemMetrics,
-            codexAppRunning: Self.isCodexAppRunning(),
+            codexAppRunning: Self.isConfiguredAppRunning(matching: preferences.sleepPreventionAppMatchText),
             externalVolumeCount: Self.externalVolumeCount()
         )
     }
@@ -59,9 +61,9 @@ struct SleepPreventionTriggerStatus: Equatable {
         codexAppRunning: Bool,
         externalVolumeCount: Int
     ) -> SleepPreventionTriggerStatus {
-        let batteryThreshold = RunnerPreferences.sleepPreventionBatteryThresholdPercent
-        let cpuThreshold = RunnerPreferences.sleepPreventionCPUThresholdPercent
-        let networkThreshold = RunnerPreferences.sleepPreventionNetworkActivityThresholdBytesPerSecond
+        let batteryThreshold = preferences.sleepPreventionBatteryThresholdPercent
+        let cpuThreshold = preferences.sleepPreventionCPUThresholdPercent
+        let networkThreshold = Double(preferences.sleepPreventionNetworkThresholdKBPerSecond) * 1024
         let battery = systemMetrics.battery
         let networkActivityBytesPerSecond = Self.networkActivityBytesPerSecond(systemMetrics)
 
@@ -74,6 +76,7 @@ struct SleepPreventionTriggerStatus: Equatable {
             externalVolumeTriggerEnabled: preferences.sleepPreventionExternalVolumeTriggerEnabled,
             powerAdapterConnected: battery.isConnectedToPower == true,
             codexAppRunning: codexAppRunning,
+            appMatchText: preferences.sleepPreventionAppMatchText,
             chargingBelowThreshold: battery.isConnectedToPower == true && (battery.percent ?? 101) < batteryThreshold,
             cpuAboveThreshold: (systemMetrics.cpuLoadPercent ?? 0) >= Double(cpuThreshold),
             networkActivityAboveThreshold: (networkActivityBytesPerSecond ?? 0) >= networkThreshold,
@@ -124,7 +127,7 @@ struct SleepPreventionTriggerStatus: Equatable {
             labels.append("전원")
         }
         if codexAppTriggerEnabled && codexAppRunning {
-            labels.append("Codex")
+            labels.append("\(appMatchText) 앱")
         }
         if chargingBelowThresholdTriggerEnabled && chargingBelowThreshold {
             labels.append("충전 \(batteryThresholdPercent)% 미만")
@@ -154,11 +157,16 @@ struct SleepPreventionTriggerStatus: Equatable {
         }
     }
 
-    private static func isCodexAppRunning() -> Bool {
-        NSWorkspace.shared.runningApplications.contains { application in
+    private static func isConfiguredAppRunning(matching matchText: String) -> Bool {
+        let normalizedMatchText = matchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !normalizedMatchText.isEmpty else { return false }
+
+        return NSWorkspace.shared.runningApplications.contains { application in
             let bundleIdentifier = application.bundleIdentifier?.lowercased() ?? ""
             let name = application.localizedName?.lowercased() ?? ""
-            return bundleIdentifier.contains("codex") || name.contains("codex")
+            return bundleIdentifier.contains(normalizedMatchText) || name.contains(normalizedMatchText)
         }
     }
 

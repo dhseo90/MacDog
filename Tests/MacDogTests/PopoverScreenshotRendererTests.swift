@@ -30,6 +30,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.sleepPreventionCPUThresholdTriggerKey,
             RunnerPreferences.sleepPreventionNetworkActivityTriggerKey,
             RunnerPreferences.sleepPreventionExternalVolumeTriggerKey,
+            RunnerPreferences.sleepPreventionBatteryThresholdPercentKey,
+            RunnerPreferences.sleepPreventionCPUThresholdPercentKey,
+            RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey,
+            RunnerPreferences.sleepPreventionAppMatchTextKey,
             RunnerPreferences.chargeLimitTargetPercentKey
         ]
         var previousValues: [String: Any] = [:]
@@ -76,8 +80,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
         if module == .sleep {
-            defaults.set(SleepPreventionSessionPreset.oneHour.rawValue, forKey: RunnerPreferences.sleepPreventionSessionPresetKey)
-            RunnerPreferences.setSleepPreventionControlMode(.time, defaults: defaults)
+            RunnerPreferences.setSleepPreventionControlMode(.condition, defaults: defaults)
+            RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
+            RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+            RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
+            RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+            RunnerPreferences.setSleepPreventionBatteryThresholdPercent(90, defaults: defaults)
+            RunnerPreferences.setSleepPreventionCPUThresholdPercent(75, defaults: defaults)
+            RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
+            RunnerPreferences.setSleepPreventionAppMatchText("Codex", defaults: defaults)
         }
 
         if module == .battery {

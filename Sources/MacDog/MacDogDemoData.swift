@@ -162,16 +162,17 @@ enum MacDogDemoData {
             externalVolumeTriggerEnabled: preferences.sleepPreventionExternalVolumeTriggerEnabled,
             powerAdapterConnected: true,
             codexAppRunning: true,
+            appMatchText: preferences.sleepPreventionAppMatchText,
             chargingBelowThreshold: false,
             cpuAboveThreshold: false,
             networkActivityAboveThreshold: true,
             externalVolumeConnected: false,
             batteryPercent: 94,
-            batteryThresholdPercent: RunnerPreferences.sleepPreventionBatteryThresholdPercent,
+            batteryThresholdPercent: preferences.sleepPreventionBatteryThresholdPercent,
             cpuLoadPercent: 24.9,
-            cpuThresholdPercent: RunnerPreferences.sleepPreventionCPUThresholdPercent,
+            cpuThresholdPercent: preferences.sleepPreventionCPUThresholdPercent,
             networkActivityBytesPerSecond: 383_200,
-            networkActivityThresholdBytesPerSecond: RunnerPreferences.sleepPreventionNetworkActivityThresholdBytesPerSecond,
+            networkActivityThresholdBytesPerSecond: Double(preferences.sleepPreventionNetworkThresholdKBPerSecond) * 1024,
             externalVolumeCount: 0
         )
     }

@@ -162,6 +162,8 @@ Privileged helper를 opt-in으로 설치하면 추가로 아래 system 위치를
 
 MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용한다. 덮개 닫힘 보호는 현재 1차 구현으로, 사용자가 관리자 권한을 승인하면 `pmset disablesleep`을 켜고 MacDog가 켠 값만 끄기/시간 만료/조건 해제 시 원복한다.
 
+상태 기준 제어는 전원 연결, 지정 앱 실행, 충전 기준값 미만, CPU 기준값 이상, 네트워크 기준값 이상, 외장/네트워크 볼륨 조건을 지원한다. 앱 매칭 문자열과 충전/CPU/네트워크 기준값은 `잠들지 않기` 탭의 세부 기준에서 조정한다.
+
 Privileged helper contract, 설치/삭제 스크립트, helper 우선 제어 코드는 준비되어 있고, 2026-05-28 기준 helper-only 실제 설치, 실제 삭제/재설치, XPC 조회/변경/복구 검증, 최신 설치본 UI에서 `시간 제어`/`끔` 클릭 검증, 짧은 덮개 닫힘 실기 검증, Chrome Remote Desktop 상태의 약 10분 덮개 닫힘 재검증까지 완료했다. 대조군으로 `SleepDisabled=0`에서 덮개를 닫으면 즉시 잠금이 걸리고 검정 화면/비밀번호 화면으로 이어지는 것도 확인했다. 2026-05-28 23:50 KST부터 전원 연결 기준 슬립 방지와 `SleepDisabled=1` 상태로 장시간 에이징을 시작했고, 2026-05-29 사용자 실사용 확인에서 덮개 닫힘 상태가 슬립/락으로 떨어지지 않았다.
 
 주의: UI 검수 전에는 실행 중인 `/Users/dhseo/Applications/MacDog.app`이 최신 `dist/MacDog.app`와 같은 빌드인지 확인한다. 이전 설치본이 실행 중이면 helper 연동 이전 경로로 비밀번호 프롬프트가 발생할 수 있다.

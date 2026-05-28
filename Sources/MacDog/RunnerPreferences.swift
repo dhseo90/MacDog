@@ -17,6 +17,10 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionCPUThresholdTriggerKey = "sleepPreventionCPUThresholdTrigger"
     static let sleepPreventionNetworkActivityTriggerKey = "sleepPreventionNetworkActivityTrigger"
     static let sleepPreventionExternalVolumeTriggerKey = "sleepPreventionExternalVolumeTrigger"
+    static let sleepPreventionBatteryThresholdPercentKey = "sleepPreventionBatteryThresholdPercent"
+    static let sleepPreventionCPUThresholdPercentKey = "sleepPreventionCPUThresholdPercent"
+    static let sleepPreventionNetworkThresholdKBPerSecondKey = "sleepPreventionNetworkThresholdKBPerSecond"
+    static let sleepPreventionAppMatchTextKey = "sleepPreventionAppMatchText"
     static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
@@ -27,9 +31,16 @@ struct RunnerPreferences: Equatable {
     static let minimumChargeLimitTargetPercent = 80
     static let maximumChargeLimitTargetPercent = 100
     static let chargeLimitTargetStepPercent = 5
-    static let sleepPreventionBatteryThresholdPercent = 80
-    static let sleepPreventionCPUThresholdPercent = 80
-    static let sleepPreventionNetworkActivityThresholdBytesPerSecond: Double = 100 * 1024
+    static let defaultSleepPreventionBatteryThresholdPercent = 80
+    static let defaultSleepPreventionCPUThresholdPercent = 80
+    static let defaultSleepPreventionNetworkThresholdKBPerSecond = 100
+    static let defaultSleepPreventionAppMatchText = "codex"
+    static let minimumSleepPreventionBatteryThresholdPercent = 20
+    static let maximumSleepPreventionBatteryThresholdPercent = 95
+    static let minimumSleepPreventionCPUThresholdPercent = 10
+    static let maximumSleepPreventionCPUThresholdPercent = 100
+    static let minimumSleepPreventionNetworkThresholdKBPerSecond = 10
+    static let maximumSleepPreventionNetworkThresholdKBPerSecond = 1_024
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
@@ -46,6 +57,10 @@ struct RunnerPreferences: Equatable {
             sleepPreventionCPUThresholdTriggerKey: false,
             sleepPreventionNetworkActivityTriggerKey: false,
             sleepPreventionExternalVolumeTriggerKey: false,
+            sleepPreventionBatteryThresholdPercentKey: defaultSleepPreventionBatteryThresholdPercent,
+            sleepPreventionCPUThresholdPercentKey: defaultSleepPreventionCPUThresholdPercent,
+            sleepPreventionNetworkThresholdKBPerSecondKey: defaultSleepPreventionNetworkThresholdKBPerSecond,
+            sleepPreventionAppMatchTextKey: defaultSleepPreventionAppMatchText,
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent
         ])
     }
@@ -64,6 +79,10 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionCPUThresholdTriggerEnabled: Bool
     let sleepPreventionNetworkActivityTriggerEnabled: Bool
     let sleepPreventionExternalVolumeTriggerEnabled: Bool
+    let sleepPreventionBatteryThresholdPercent: Int
+    let sleepPreventionCPUThresholdPercent: Int
+    let sleepPreventionNetworkThresholdKBPerSecond: Int
+    let sleepPreventionAppMatchText: String
     let chargeLimitTargetPercent: Int
 
     var sleepPreventionMode: SleepPreventionMode {
@@ -101,6 +120,10 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionCPUThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCPUThresholdTriggerKey)
         self.sleepPreventionNetworkActivityTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionNetworkActivityTriggerKey)
         self.sleepPreventionExternalVolumeTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionExternalVolumeTriggerKey)
+        self.sleepPreventionBatteryThresholdPercent = Self.sleepPreventionBatteryThresholdPercent(defaults: defaults)
+        self.sleepPreventionCPUThresholdPercent = Self.sleepPreventionCPUThresholdPercent(defaults: defaults)
+        self.sleepPreventionNetworkThresholdKBPerSecond = Self.sleepPreventionNetworkThresholdKBPerSecond(defaults: defaults)
+        self.sleepPreventionAppMatchText = Self.sleepPreventionAppMatchText(defaults: defaults)
         self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
@@ -142,6 +165,79 @@ struct RunnerPreferences: Equatable {
         let offset = clamped - minimumChargeLimitTargetPercent
         let roundedSteps = Int((Double(offset) / Double(chargeLimitTargetStepPercent)).rounded())
         return minimumChargeLimitTargetPercent + roundedSteps * chargeLimitTargetStepPercent
+    }
+
+    static func sleepPreventionBatteryThresholdPercent(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: sleepPreventionBatteryThresholdPercentKey) != nil else {
+            return defaultSleepPreventionBatteryThresholdPercent
+        }
+        return normalizedSleepPreventionBatteryThresholdPercent(defaults.integer(forKey: sleepPreventionBatteryThresholdPercentKey))
+    }
+
+    static func setSleepPreventionBatteryThresholdPercent(_ percent: Int, defaults: UserDefaults = .standard) {
+        defaults.set(
+            normalizedSleepPreventionBatteryThresholdPercent(percent),
+            forKey: sleepPreventionBatteryThresholdPercentKey
+        )
+    }
+
+    static func normalizedSleepPreventionBatteryThresholdPercent(_ percent: Int) -> Int {
+        min(max(percent, minimumSleepPreventionBatteryThresholdPercent), maximumSleepPreventionBatteryThresholdPercent)
+    }
+
+    static func sleepPreventionCPUThresholdPercent(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: sleepPreventionCPUThresholdPercentKey) != nil else {
+            return defaultSleepPreventionCPUThresholdPercent
+        }
+        return normalizedSleepPreventionCPUThresholdPercent(defaults.integer(forKey: sleepPreventionCPUThresholdPercentKey))
+    }
+
+    static func setSleepPreventionCPUThresholdPercent(_ percent: Int, defaults: UserDefaults = .standard) {
+        defaults.set(
+            normalizedSleepPreventionCPUThresholdPercent(percent),
+            forKey: sleepPreventionCPUThresholdPercentKey
+        )
+    }
+
+    static func normalizedSleepPreventionCPUThresholdPercent(_ percent: Int) -> Int {
+        min(max(percent, minimumSleepPreventionCPUThresholdPercent), maximumSleepPreventionCPUThresholdPercent)
+    }
+
+    static func sleepPreventionNetworkThresholdKBPerSecond(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: sleepPreventionNetworkThresholdKBPerSecondKey) != nil else {
+            return defaultSleepPreventionNetworkThresholdKBPerSecond
+        }
+        return normalizedSleepPreventionNetworkThresholdKBPerSecond(
+            defaults.integer(forKey: sleepPreventionNetworkThresholdKBPerSecondKey)
+        )
+    }
+
+    static func setSleepPreventionNetworkThresholdKBPerSecond(_ kbPerSecond: Int, defaults: UserDefaults = .standard) {
+        defaults.set(
+            normalizedSleepPreventionNetworkThresholdKBPerSecond(kbPerSecond),
+            forKey: sleepPreventionNetworkThresholdKBPerSecondKey
+        )
+    }
+
+    static func normalizedSleepPreventionNetworkThresholdKBPerSecond(_ kbPerSecond: Int) -> Int {
+        min(
+            max(kbPerSecond, minimumSleepPreventionNetworkThresholdKBPerSecond),
+            maximumSleepPreventionNetworkThresholdKBPerSecond
+        )
+    }
+
+    static func sleepPreventionAppMatchText(defaults: UserDefaults = .standard) -> String {
+        let rawValue = defaults.string(forKey: sleepPreventionAppMatchTextKey) ?? defaultSleepPreventionAppMatchText
+        return normalizedSleepPreventionAppMatchText(rawValue)
+    }
+
+    static func setSleepPreventionAppMatchText(_ text: String, defaults: UserDefaults = .standard) {
+        defaults.set(text.trimmingCharacters(in: .whitespacesAndNewlines), forKey: sleepPreventionAppMatchTextKey)
+    }
+
+    static func normalizedSleepPreventionAppMatchText(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? defaultSleepPreventionAppMatchText : trimmed
     }
 
     static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {

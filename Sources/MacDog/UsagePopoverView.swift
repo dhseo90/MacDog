@@ -484,6 +484,10 @@ private struct SleepPreventionPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdTriggerKey) private var cpuThresholdTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionNetworkActivityTriggerKey) private var networkActivityTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionExternalVolumeTriggerKey) private var externalVolumeTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionBatteryThresholdPercentKey) private var batteryThresholdPercent = RunnerPreferences.defaultSleepPreventionBatteryThresholdPercent
+    @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdPercentKey) private var cpuThresholdPercent = RunnerPreferences.defaultSleepPreventionCPUThresholdPercent
+    @AppStorage(RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey) private var networkThresholdKBPerSecond = RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond
+    @AppStorage(RunnerPreferences.sleepPreventionAppMatchTextKey) private var appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -511,15 +515,6 @@ private struct SleepPreventionPanel: View {
                 .foregroundStyle(sleepPreventionStatus.errorMessage == nil ? Color.secondary : Color.red)
                 .fixedSize(horizontal: false, vertical: true)
 
-            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
-                helperStatusRow
-
-                Text(privilegedHelperInstallSnapshot.detailSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
             if currentControlMode == .condition {
                 PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
                     Text("체크한 조건 중 하나라도 맞으면 잠들지 않게 유지합니다.")
@@ -530,18 +525,63 @@ private struct SleepPreventionPanel: View {
                     Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
                         GridRow {
                             triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
-                            triggerToggle("Codex 앱", isOn: $codexAppTriggerEnabled)
+                            triggerToggle("\(effectiveAppMatchText) 앱", isOn: $codexAppTriggerEnabled)
                         }
                         GridRow {
-                            triggerToggle("충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
-                            triggerToggle("CPU 사용 \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
+                            triggerToggle("충전 \(effectiveBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
+                            triggerToggle("CPU \(effectiveCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
                         }
                         GridRow {
-                            triggerToggle("네트워크 100KB/s", isOn: $networkActivityTriggerEnabled)
+                            triggerToggle("네트워크 \(effectiveNetworkThresholdKBPerSecond)KB/s", isOn: $networkActivityTriggerEnabled)
                             triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
                         }
                     }
                 }
+
+                PopoverFormSection(title: "세부 기준", systemImage: "slider.horizontal.3") {
+                    VStack(alignment: .leading, spacing: 7) {
+                        thresholdSlider(
+                            title: "충전 기준",
+                            valueText: "\(effectiveBatteryThresholdPercent)%",
+                            value: batteryThresholdBinding,
+                            range: Double(RunnerPreferences.minimumSleepPreventionBatteryThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionBatteryThresholdPercent),
+                            step: 5
+                        )
+                        thresholdSlider(
+                            title: "CPU 기준",
+                            valueText: "\(effectiveCPUThresholdPercent)%",
+                            value: cpuThresholdBinding,
+                            range: Double(RunnerPreferences.minimumSleepPreventionCPUThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionCPUThresholdPercent),
+                            step: 5
+                        )
+                        thresholdSlider(
+                            title: "네트워크",
+                            valueText: "\(effectiveNetworkThresholdKBPerSecond)KB/s",
+                            value: networkThresholdBinding,
+                            range: Double(RunnerPreferences.minimumSleepPreventionNetworkThresholdKBPerSecond)...Double(RunnerPreferences.maximumSleepPreventionNetworkThresholdKBPerSecond),
+                            step: 10
+                        )
+
+                        HStack(spacing: 6) {
+                            Text("앱")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 54, alignment: .leading)
+                            TextField("앱 이름 또는 번들 ID", text: $appMatchText)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption)
+                        }
+                    }
+                }
+            }
+
+            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
+                helperStatusRow
+
+                Text(privilegedHelperInstallSnapshot.detailSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .onChange(of: powerAdapterTriggerEnabled) { _, enabled in
@@ -566,6 +606,10 @@ private struct SleepPreventionPanel: View {
         }
         .onChange(of: externalVolumeTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionExternalVolumeTrigger(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: appMatchText) { _, value in
+            RunnerPreferences.setSleepPreventionAppMatchText(value)
             deferredPreferencesChanged()
         }
     }
@@ -636,6 +680,22 @@ private struct SleepPreventionPanel: View {
 
     private var currentSessionPreset: SleepPreventionSessionPreset {
         SleepPreventionSessionPreset(rawValue: sleepPreventionSessionPreset) ?? RunnerPreferences.defaultSleepPreventionSessionPreset
+    }
+
+    private var effectiveBatteryThresholdPercent: Int {
+        RunnerPreferences.normalizedSleepPreventionBatteryThresholdPercent(batteryThresholdPercent)
+    }
+
+    private var effectiveCPUThresholdPercent: Int {
+        RunnerPreferences.normalizedSleepPreventionCPUThresholdPercent(cpuThresholdPercent)
+    }
+
+    private var effectiveNetworkThresholdKBPerSecond: Int {
+        RunnerPreferences.normalizedSleepPreventionNetworkThresholdKBPerSecond(networkThresholdKBPerSecond)
+    }
+
+    private var effectiveAppMatchText: String {
+        RunnerPreferences.normalizedSleepPreventionAppMatchText(appMatchText)
     }
 
     private var controlModeSummary: String {
@@ -710,12 +770,71 @@ private struct SleepPreventionPanel: View {
         }
     }
 
+    private var batteryThresholdBinding: Binding<Double> {
+        Binding(
+            get: { Double(effectiveBatteryThresholdPercent) },
+            set: { newValue in
+                let value = RunnerPreferences.normalizedSleepPreventionBatteryThresholdPercent(Int(newValue.rounded()))
+                RunnerPreferences.setSleepPreventionBatteryThresholdPercent(value)
+                batteryThresholdPercent = value
+                deferredPreferencesChanged()
+            }
+        )
+    }
+
+    private var cpuThresholdBinding: Binding<Double> {
+        Binding(
+            get: { Double(effectiveCPUThresholdPercent) },
+            set: { newValue in
+                let value = RunnerPreferences.normalizedSleepPreventionCPUThresholdPercent(Int(newValue.rounded()))
+                RunnerPreferences.setSleepPreventionCPUThresholdPercent(value)
+                cpuThresholdPercent = value
+                deferredPreferencesChanged()
+            }
+        )
+    }
+
+    private var networkThresholdBinding: Binding<Double> {
+        Binding(
+            get: { Double(effectiveNetworkThresholdKBPerSecond) },
+            set: { newValue in
+                let value = RunnerPreferences.normalizedSleepPreventionNetworkThresholdKBPerSecond(Int(newValue.rounded()))
+                RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(value)
+                networkThresholdKBPerSecond = value
+                deferredPreferencesChanged()
+            }
+        )
+    }
+
     private func triggerToggle(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(title, isOn: isOn)
             .toggleStyle(.checkbox)
             .font(.caption)
             .lineLimit(1)
             .minimumScaleFactor(0.82)
+    }
+
+    private func thresholdSlider(
+        title: String,
+        valueText: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double
+    ) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: 54, alignment: .leading)
+            Slider(value: value, in: range, step: step)
+                .controlSize(.mini)
+            Text(valueText)
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .lineLimit(1)
+                .frame(width: 48, alignment: .trailing)
+        }
+        .frame(height: 20)
     }
 }
 

@@ -520,22 +520,22 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             state: preferences.sleepPreventionPowerAdapterTriggerEnabled ? .on : .off
         ))
         submenu.addItem(menuItem(
-            "Codex 앱 실행 중",
+            "\(preferences.sleepPreventionAppMatchText) 앱 실행 중",
             action: #selector(menuToggleCodexAppTrigger),
             state: preferences.sleepPreventionCodexAppTriggerEnabled ? .on : .off
         ))
         submenu.addItem(menuItem(
-            "충전 \(RunnerPreferences.sleepPreventionBatteryThresholdPercent)% 미만",
+            "충전 \(preferences.sleepPreventionBatteryThresholdPercent)% 미만",
             action: #selector(menuToggleChargingBelowThresholdTrigger),
             state: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled ? .on : .off
         ))
         submenu.addItem(menuItem(
-            "CPU 사용 \(RunnerPreferences.sleepPreventionCPUThresholdPercent)% 이상",
+            "CPU 사용 \(preferences.sleepPreventionCPUThresholdPercent)% 이상",
             action: #selector(menuToggleCPUThresholdTrigger),
             state: preferences.sleepPreventionCPUThresholdTriggerEnabled ? .on : .off
         ))
         submenu.addItem(menuItem(
-            "네트워크 100KB/s 이상",
+            "네트워크 \(preferences.sleepPreventionNetworkThresholdKBPerSecond)KB/s 이상",
             action: #selector(menuToggleNetworkActivityTrigger),
             state: preferences.sleepPreventionNetworkActivityTriggerEnabled ? .on : .off
         ))

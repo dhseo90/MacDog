@@ -34,6 +34,21 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         XCTAssertEqual(status.summary, "활성 · CPU 사용")
     }
 
+    func testCPUThresholdTriggerUsesConfiguredThreshold() {
+        RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdPercent(65, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(cpuLoadPercent: 66),
+            codexAppRunning: false,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.cpuThresholdPercent, 65)
+    }
+
     func testNetworkActivityTriggerMatchesWhenTrafficIsHigh() {
         RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
 
@@ -48,6 +63,36 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         XCTAssertEqual(status.summary, "활성 · 네트워크")
     }
 
+    func testNetworkActivityTriggerUsesConfiguredThreshold() {
+        RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(networkReceivedRateBytesPerSecond: 260 * 1024),
+            codexAppRunning: false,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.networkActivityThresholdBytesPerSecond, 256 * 1024)
+    }
+
+    func testConfiguredAppTriggerUsesConfiguredAppNameInSummary() {
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(),
+            codexAppRunning: true,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.summary, "활성 · Xcode 앱")
+    }
+
     func testChargingBelowThresholdTriggerRequiresPowerAndLowBattery() {
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
 
@@ -60,6 +105,21 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
 
         XCTAssertTrue(status.isMatched)
         XCTAssertEqual(status.summary, "활성 · 충전 80% 미만")
+    }
+
+    func testChargingBelowThresholdTriggerUsesConfiguredThreshold() {
+        RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionBatteryThresholdPercent(70, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(battery: makeBattery(percent: 69, isConnectedToPower: true)),
+            codexAppRunning: false,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.summary, "활성 · 충전 70% 미만")
     }
 
     func testChargingBelowThresholdTriggerWaitsWithoutPower() {

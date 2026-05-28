@@ -112,6 +112,10 @@ final class SleepPreventionModeTests: XCTestCase {
         RunnerPreferences.setSleepPreventionMode(.charging, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionBatteryThresholdPercent(70, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdPercent(65, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
+        RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
 
         let firstRead = RunnerPreferences(defaults: defaults)
         let secondRead = RunnerPreferences(defaults: defaults)
@@ -121,6 +125,24 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertTrue(secondRead.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionCPUThresholdTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionNetworkActivityTriggerEnabled)
+        XCTAssertEqual(firstRead.sleepPreventionBatteryThresholdPercent, 70)
+        XCTAssertEqual(secondRead.sleepPreventionCPUThresholdPercent, 65)
+        XCTAssertEqual(secondRead.sleepPreventionNetworkThresholdKBPerSecond, 256)
+        XCTAssertEqual(secondRead.sleepPreventionAppMatchText, "Xcode")
+    }
+
+    func testAutomaticTriggerDetailSettingsClampAndNormalize() {
+        RunnerPreferences.setSleepPreventionBatteryThresholdPercent(10, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdPercent(105, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(2_000, defaults: defaults)
+        RunnerPreferences.setSleepPreventionAppMatchText("   ", defaults: defaults)
+
+        let preferences = RunnerPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.sleepPreventionBatteryThresholdPercent, 20)
+        XCTAssertEqual(preferences.sleepPreventionCPUThresholdPercent, 100)
+        XCTAssertEqual(preferences.sleepPreventionNetworkThresholdKBPerSecond, 1_024)
+        XCTAssertEqual(preferences.sleepPreventionAppMatchText, "codex")
     }
 
     func testTimeAndConditionModesAreMutuallyExclusive() {
