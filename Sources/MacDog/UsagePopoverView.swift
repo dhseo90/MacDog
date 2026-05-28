@@ -1274,9 +1274,7 @@ private struct UsageRow: View {
     }
 
     private var resetText: String {
-        guard let resetsAt = window?.resetsAt else { return "초기화 시각 알 수 없음" }
-        let date = Date(timeIntervalSince1970: TimeInterval(resetsAt))
-        return "초기화 \(date.formatted(date: .abbreviated, time: .shortened))"
+        UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt)
     }
 
     private var tint: Color {

@@ -43,6 +43,52 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
+    func testResetSummaryShowsRemainingTimeAndCompactSameDayTime() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let calendar = Self.utcCalendar
+
+        XCTAssertEqual(
+            UsageWindowStatus.resetSummary(
+                resetsAt: 1_800_007_200,
+                now: now,
+                calendar: calendar
+            ),
+            "초기화까지 2시간 남음 · 10:00"
+        )
+    }
+
+    func testResetSummaryShowsCompactFutureDayTime() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let calendar = Self.utcCalendar
+
+        XCTAssertEqual(
+            UsageWindowStatus.resetSummary(
+                resetsAt: 1_800_345_600,
+                now: now,
+                calendar: calendar
+            ),
+            "초기화까지 4일 남음 · 1/19 08:00"
+        )
+    }
+
+    func testResetSummaryHandlesMissingAndPastResetTime() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let calendar = Self.utcCalendar
+
+        XCTAssertEqual(
+            UsageWindowStatus.resetSummary(resetsAt: nil, now: now, calendar: calendar),
+            "초기화 시각 알 수 없음"
+        )
+        XCTAssertEqual(
+            UsageWindowStatus.resetSummary(
+                resetsAt: 1_799_999_940,
+                now: now,
+                calendar: calendar
+            ),
+            "초기화 확인 중 · 07:59"
+        )
+    }
+
     func testRefreshingPreservesPrivilegedHelperInstallSnapshot() {
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: false)
         let state = UsageMonitorState(
@@ -107,6 +153,12 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertGreaterThan(state.systemMetricsHistory.memoryUsedPercents.count, 1)
         XCTAssertEqual(state.systemMetricsHistory.cpuLoadPercents.last, state.systemMetrics.cpuLoadPercent)
         XCTAssertEqual(state.systemMetricsHistory.memoryUsedPercents.last, state.systemMetrics.memoryUsedPercent)
+    }
+
+    private static var utcCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
     }
 
     private static func report(fiveHourUsedPercent: Double, weeklyUsedPercent: Double) -> CodexUsageReport {

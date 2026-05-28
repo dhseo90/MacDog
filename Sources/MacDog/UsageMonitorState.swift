@@ -210,6 +210,66 @@ struct UsageWindowStatus: Equatable {
     var remainingSummary: String {
         "\(label) \(UsageMonitorState.percent(window.remainingPercent))% 남음"
     }
+
+    static func resetSummary(
+        resetsAt: Int?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        guard let resetsAt else { return "초기화 시각 알 수 없음" }
+        let resetDate = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        let time = compactResetTime(resetDate, now: now, calendar: calendar)
+        let remaining = resetRemainingSummary(until: resetDate, now: now)
+
+        if remaining == "초기화 확인 중" {
+            return "\(remaining) · \(time)"
+        }
+        return "초기화까지 \(remaining) · \(time)"
+    }
+
+    static func resetRemainingSummary(until resetDate: Date, now: Date = Date()) -> String {
+        let seconds = Int(ceil(resetDate.timeIntervalSince(now)))
+        guard seconds > 0 else { return "초기화 확인 중" }
+        guard seconds >= 60 else { return "1분 미만 남음" }
+
+        let minutes = Int(ceil(Double(seconds) / 60))
+        guard minutes >= 60 else { return "\(minutes)분 남음" }
+
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        guard hours >= 24 else {
+            if remainingMinutes == 0 {
+                return "\(hours)시간 남음"
+            }
+            return "\(hours)시간 \(remainingMinutes)분 남음"
+        }
+
+        let days = hours / 24
+        let remainingHours = hours % 24
+        if remainingHours == 0 {
+            return "\(days)일 남음"
+        }
+        return "\(days)일 \(remainingHours)시간 남음"
+    }
+
+    private static func compactResetTime(
+        _ resetDate: Date,
+        now: Date,
+        calendar inputCalendar: Calendar
+    ) -> String {
+        let calendar = inputCalendar
+        let components = calendar.dateComponents([.month, .day, .hour, .minute], from: resetDate)
+        let hour = components.hour ?? 0
+        let minute = components.minute ?? 0
+
+        if calendar.isDate(resetDate, inSameDayAs: now) {
+            return String(format: "%02d:%02d", hour, minute)
+        }
+
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        return String(format: "%d/%d %02d:%02d", month, day, hour, minute)
+    }
 }
 
 enum UsagePressurePhase: String, Equatable {
