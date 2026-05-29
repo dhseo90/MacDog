@@ -97,6 +97,27 @@ struct UsageMonitorState: Equatable {
         return UsagePressurePhase(usedPercent: selectedUsedPercent)
     }
 
+    var petReaction: PetStatusReaction {
+        if (systemMetrics.cpuLoadPercent ?? 0) >= PetStatusReaction.systemLoadThresholdPercent ||
+            (systemMetrics.memoryUsedPercent ?? 0) >= PetStatusReaction.systemLoadThresholdPercent {
+            return .systemLoad
+        }
+
+        let battery = systemMetrics.battery
+        if battery.isPresent,
+           let percent = battery.percent,
+           percent <= PetStatusReaction.lowBatteryThresholdPercent,
+           battery.isConnectedToPower != true {
+            return .lowBattery
+        }
+
+        if battery.isPresent, battery.isCharging == true {
+            return .charging
+        }
+
+        return .normal
+    }
+
     var selectedUsedPercent: Double {
         guard let limit = codexLimit else { return 0 }
 
@@ -190,6 +211,25 @@ struct UsageMonitorState: Equatable {
             return String(Int(value))
         }
         return String(format: "%.1f", value)
+    }
+}
+
+enum PetStatusReaction: Equatable {
+    static let systemLoadThresholdPercent: Double = 85
+    static let lowBatteryThresholdPercent = 20
+
+    case normal
+    case systemLoad
+    case lowBattery
+    case charging
+
+    var pausesRoaming: Bool {
+        switch self {
+        case .normal:
+            false
+        case .systemLoad, .lowBattery, .charging:
+            true
+        }
     }
 }
 

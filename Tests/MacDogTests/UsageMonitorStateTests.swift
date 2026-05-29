@@ -155,6 +155,68 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.systemMetricsHistory.memoryUsedPercents.last, state.systemMetrics.memoryUsedPercent)
     }
 
+    func testPetReactionPrioritizesSystemLoad() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            systemMetrics: Self.systemMetricsSnapshot(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                cpuLoadPercent: 88,
+                memoryUsedPercent: 40,
+                battery: Self.battery(percent: 12, isCharging: false, isConnectedToPower: false)
+            )
+        )
+
+        XCTAssertEqual(state.petReaction, .systemLoad)
+        XCTAssertTrue(state.petReaction.pausesRoaming)
+    }
+
+    func testPetReactionUsesLowBatteryOnlyWhenUnplugged() {
+        let unplugged = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            systemMetrics: Self.systemMetricsSnapshot(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                cpuLoadPercent: 20,
+                memoryUsedPercent: 40,
+                battery: Self.battery(percent: 18, isCharging: false, isConnectedToPower: false)
+            )
+        )
+        let plugged = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            systemMetrics: Self.systemMetricsSnapshot(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                cpuLoadPercent: 20,
+                memoryUsedPercent: 40,
+                battery: Self.battery(percent: 18, isCharging: false, isConnectedToPower: true)
+            )
+        )
+
+        XCTAssertEqual(unplugged.petReaction, .lowBattery)
+        XCTAssertEqual(plugged.petReaction, .normal)
+    }
+
+    func testPetReactionShowsChargingState() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            systemMetrics: Self.systemMetricsSnapshot(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                cpuLoadPercent: 20,
+                memoryUsedPercent: 40,
+                battery: Self.battery(percent: 62, isCharging: true, isConnectedToPower: true)
+            )
+        )
+
+        XCTAssertEqual(state.petReaction, .charging)
+        XCTAssertTrue(state.petReaction.pausesRoaming)
+    }
+
     private static var utcCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -198,7 +260,8 @@ final class UsageMonitorStateTests: XCTestCase {
     private static func systemMetricsSnapshot(
         capturedAt: Date,
         cpuLoadPercent: Double,
-        memoryUsedPercent: Double
+        memoryUsedPercent: Double,
+        battery: BatteryStatusSnapshot = .unavailable
     ) -> SystemMetricsSnapshot {
         SystemMetricsSnapshot(
             capturedAt: capturedAt,
@@ -215,8 +278,26 @@ final class UsageMonitorStateTests: XCTestCase {
             primaryNetworkInterfaceName: nil,
             localIPAddress: nil,
             cpuBreakdown: nil,
-            battery: .unavailable,
+            battery: battery,
             chargeLimitSupport: .unavailable
+        )
+    }
+
+    private static func battery(
+        percent: Int,
+        isCharging: Bool,
+        isConnectedToPower: Bool
+    ) -> BatteryStatusSnapshot {
+        BatteryStatusSnapshot(
+            isPresent: true,
+            percent: percent,
+            isCharging: isCharging,
+            isCharged: false,
+            isConnectedToPower: isConnectedToPower,
+            timeToFullChargeMinutes: nil,
+            timeToEmptyMinutes: nil,
+            cycleCount: nil,
+            temperatureCelsius: nil
         )
     }
 }

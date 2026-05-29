@@ -86,6 +86,7 @@ final class FloatingPetController: NSObject {
             }
             if previousState.reducedMotion != state.reducedMotion ||
                 previousState.animationPaused != state.animationPaused ||
+                previousState.petReaction != state.petReaction ||
                 previousState.phase != state.phase {
                 restartUpdateTimer()
             }
@@ -141,7 +142,7 @@ final class FloatingPetController: NSObject {
     }
 
     private var canMove: Bool {
-        !state.reducedMotion && !state.animationPaused && state.phase != .limit
+        !state.reducedMotion && !state.animationPaused && state.phase != .limit && !state.petReaction.pausesRoaming
     }
 
     private func updateOneTick() {
@@ -197,6 +198,17 @@ final class FloatingPetController: NSObject {
     private func currentPose() -> (pose: DesktopPetPose, flipped: Bool) {
         if state.isRefreshing || state.phase == .limit {
             return (.alert, false)
+        }
+
+        switch state.petReaction {
+        case .systemLoad:
+            return (.alert, false)
+        case .lowBattery:
+            return (.rest, false)
+        case .charging:
+            return (.idleFront, false)
+        case .normal:
+            break
         }
 
         if state.animationPaused {
