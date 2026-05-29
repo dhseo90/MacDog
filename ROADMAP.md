@@ -341,6 +341,7 @@ Popover 정보 구조:
 - `Apps/MacDogWidgetExtension`에 Widget Extension entrypoint, Info.plist, entitlement가 있다.
 - `script/verify_widget_packaging.sh`로 Xcode host/extension build와 embedded `.appex` 산출물을 검증한다.
 - `script/verify_widget_readiness.sh`로 shared cache 전용 경계, `macdog://open` deep link, empty/stale/error test coverage를 자동 검증한다.
+- `script/write_widget_cache_fixture.sh --self-test`로 live cache를 건드리지 않고 수동 위젯 검수용 updated/stale/error cache fixture 생성을 검증한다.
 - `MacDogWidgetPresentationTests`로 empty/stale/error/updated 위젯 상태 표현을 검증한다.
 - App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
 - 메뉴바 앱과 CLI cache writer는 legacy Application Support cache와 WidgetKit shared cache에 함께 기록하며, 메뉴바 앱은 shared cache를 우선 읽는다.

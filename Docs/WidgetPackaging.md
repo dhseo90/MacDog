@@ -11,6 +11,7 @@ This document records the packaging boundary for the MacDog WidgetKit work.
 - `Apps/MacDogWidgetExtension` contains the extension entrypoint, Info.plist, and entitlements for the WidgetKit extension target.
 - `script/verify_widget_packaging.sh` builds the Xcode host/extension target and verifies `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`.
 - `script/verify_widget_readiness.sh` verifies the widget stays on the shared cache path, the menu bar app and CLI mirror writes to the shared cache path, uses the `macdog://open` deep link, keeps empty/stale/error/reset/metadata presentation covered by tests, checks the WidgetKit extension Info.plist and App Group entitlements, and leaves widget gallery/click checks as manual verification.
+- `script/write_widget_cache_fixture.sh --self-test` verifies the manual widget cache fixture writer without touching the live cache. Manual UI checks can use the same script with `--shared-cache` to stage `updated`, `stale`, or `error` cache states.
 - `script/verify_manual_ui_prerequisites.sh` runs the read-only prerequisite gate before widget gallery/click manual verification and fails by default if the installed app is not the latest `dist/MacDog.app`.
 - The install script installs the CLI and `MacDog.app`; the app bundle includes `Contents/PlugIns/MacDogWidgetExtension.appex`.
 
@@ -83,7 +84,9 @@ Implemented status: the helper exists and falls back to the default Application 
 - Verify `dist/MacDog.app` contains `Contents/PlugIns/MacDogWidgetExtension.appex`
 - Verify the widget extension reads only the shared cache
 - Verify `script/verify_widget_readiness.sh`
+- Verify `script/write_widget_cache_fixture.sh --self-test`
 - Verify stale, empty, error, reset countdown, credits, and last-update states in small and medium widget families
+- For manual stale/error checks, stage a fixture with `script/write_widget_cache_fixture.sh --state stale --shared-cache` or `script/write_widget_cache_fixture.sh --state error --shared-cache`, then refresh the widget gallery/widget surface.
 - Manually add the widget from the macOS widget gallery after signed distribution packaging is prepared
 - Click the widget and confirm `macdog://open` opens the menu bar app popover
 

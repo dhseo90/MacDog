@@ -26,14 +26,15 @@ Checks:
   12. The generated app bundle contains the WidgetKit extension.
   13. WidgetKit host/extension packaging builds an embedded .appex.
   14. WidgetKit cache/deep-link readiness guards pass.
-  15. Shortcuts Charge Limit fallback parser is tested with a local fixture.
-  16. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  17. The current app/helper install state can be reported without changing the system.
-  18. Release packaging dry-run is stable.
-  19. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  20. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  21. Privileged helper reinstall test plan is safe to stage before actual approval.
-  22. Unless --no-run is passed, the app launches and its process is detected.
+  15. WidgetKit manual cache fixture writer is tested without touching live cache.
+  16. Shortcuts Charge Limit fallback parser is tested with a local fixture.
+  17. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  18. The current app/helper install state can be reported without changing the system.
+  19. Release packaging dry-run is stable.
+  20. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  21. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  22. Privileged helper reinstall test plan is safe to stage before actual approval.
+  23. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -119,6 +120,9 @@ echo "==> Verifying WidgetKit packaging"
 
 echo "==> Verifying WidgetKit readiness"
 ./script/verify_widget_readiness.sh
+
+echo "==> Verifying WidgetKit cache fixture writer"
+./script/write_widget_cache_fixture.sh --self-test
 
 echo "==> Verifying Shortcuts Charge Limit parser"
 ./script/verify_shortcuts_charge_limit.sh --self-test
