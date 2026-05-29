@@ -6,6 +6,7 @@ APP_BUNDLE="${1:-$ROOT_DIR/dist/MacDog.app}"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/MacDog"
 APP_CLI_BINARY="$APP_BUNDLE/Contents/MacOS/codex-usage"
 INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
+APP_ICON="$APP_BUNDLE/Contents/Resources/MacDog.icns"
 WIDGET_APPEX="$APP_BUNDLE/Contents/PlugIns/MacDogWidgetExtension.appex"
 WIDGET_BINARY="$WIDGET_APPEX/Contents/MacOS/MacDogWidgetExtension"
 WIDGET_INFO_PLIST="$WIDGET_APPEX/Contents/Info.plist"
@@ -28,8 +29,11 @@ plist_value() {
 
 [[ "$(plist_value ':CFBundleExecutable' "$INFO_PLIST")" == "MacDog" ]] || die "unexpected app executable"
 [[ "$(plist_value ':CFBundleIdentifier' "$INFO_PLIST")" == "com.dhseo.macdog.MacDog" ]] || die "unexpected app bundle id"
+[[ "$(plist_value ':CFBundleIconFile' "$INFO_PLIST")" == "MacDog" ]] || die "missing app icon declaration"
 [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:0' "$INFO_PLIST")" == "macdog" ]] || die "missing macdog URL scheme"
 [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:1' "$INFO_PLIST")" == "codexusage" ]] || die "missing codexusage compatibility URL scheme"
+[[ -f "$APP_ICON" ]] || die "app icon missing: $APP_ICON"
+[[ "$(/usr/bin/sips -g format "$APP_ICON" 2>/dev/null | /usr/bin/awk '/format:/{print $2; exit}')" == "icns" ]] || die "app icon must be an icns file"
 /usr/bin/codesign --verify --strict --verbose=2 "$APP_CLI_BINARY" >/dev/null
 
 [[ -d "$WIDGET_APPEX" ]] || die "widget extension not found: $WIDGET_APPEX"

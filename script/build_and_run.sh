@@ -109,6 +109,7 @@ build_bundle() {
   if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
     /usr/bin/ditto --norsrc --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
   fi
+  generate_app_icon
 
   cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -122,6 +123,8 @@ build_bundle() {
   <key>CFBundleName</key>
   <string>MacDog</string>
   <key>CFBundleDisplayName</key>
+  <string>MacDog</string>
+  <key>CFBundleIconFile</key>
   <string>MacDog</string>
   <key>CFBundleURLTypes</key>
   <array>
@@ -171,6 +174,42 @@ PLIST
   APP_BUNDLE="$final_app_bundle"
   configure_app_bundle_paths
   verify_bundle_signature "$APP_BUNDLE"
+}
+
+generate_app_icon() {
+  local icon_source="$APP_RESOURCES/DesktopPet/pup-idle-front-0.png"
+  local iconset="$APP_RESOURCES/MacDog.iconset"
+
+  [[ -f "$icon_source" ]] || die "app icon source missing: $icon_source"
+  rm -rf "$iconset"
+  mkdir -p "$iconset"
+
+  make_icon_entry() {
+    local size="$1"
+    local name="$2"
+    local inner
+    local scaled="$iconset/.scaled-$name"
+    inner=$(( size * 86 / 100 ))
+    (( inner < 1 )) && inner=1
+    /usr/bin/sips -Z "$inner" "$icon_source" --out "$scaled" >/dev/null
+    /usr/bin/sips -p "$size" "$size" "$scaled" --out "$iconset/$name" >/dev/null
+    rm -f "$scaled"
+  }
+
+  make_icon_entry 16 icon_16x16.png
+  make_icon_entry 32 icon_16x16@2x.png
+  make_icon_entry 32 icon_32x32.png
+  make_icon_entry 64 icon_32x32@2x.png
+  make_icon_entry 128 icon_128x128.png
+  make_icon_entry 256 icon_128x128@2x.png
+  make_icon_entry 256 icon_256x256.png
+  make_icon_entry 512 icon_256x256@2x.png
+  make_icon_entry 512 icon_512x512.png
+  make_icon_entry 1024 icon_512x512@2x.png
+
+  /usr/bin/iconutil -c icns "$iconset" -o "$APP_RESOURCES/MacDog.icns"
+  rm -rf "$iconset"
+  [[ -f "$APP_RESOURCES/MacDog.icns" ]] || die "failed to generate app icon"
 }
 
 verify_bundle_signature() {

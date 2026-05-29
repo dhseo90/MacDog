@@ -13,6 +13,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
     private let privilegedHelperInstaller = PrivilegedHelperInstaller()
+    private let userComponentInstaller = UserComponentInstaller()
     private let sleepPreventionController = SleepPreventionController()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
@@ -35,6 +36,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         startRefreshTimer()
         restartAnimationTimer()
         syncDesktopPetVisibility()
+        scheduleInstalledAppSetup()
     }
 
     private func configureStatusItem() {
@@ -230,6 +232,59 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         updatePopoverController()
         statusItem.button?.toolTip = state.toolTip
         renderCurrentFrame()
+    }
+
+    private func scheduleInstalledAppSetup() {
+        guard UserComponentInstaller.shouldManage() else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.finishInstalledAppSetup()
+        }
+    }
+
+    private func finishInstalledAppSetup() {
+        preferences = RunnerPreferences()
+        do {
+            try userComponentInstaller.installOrRepair(loginLaunchEnabled: preferences.loginLaunchEnabled)
+        } catch {
+            showPrivilegedHelperAlert(
+                title: "설치 마무리 일부 실패",
+                message: error.localizedDescription,
+                style: .warning
+            )
+        }
+
+        showFirstRunHelperPromptIfNeeded()
+    }
+
+    private func showFirstRunHelperPromptIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: UserComponentInstaller.firstRunHelperPromptDismissedKey) else { return }
+        guard privilegedHelperInstallSnapshot().status != .installed else {
+            defaults.set(true, forKey: UserComponentInstaller.firstRunHelperPromptDismissedKey)
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "MacDog 설치 마무리"
+        alert.informativeText = """
+        기본 설치는 완료되었습니다.
+
+        덮개 닫힘 보호를 사용하려면 권한 도우미가 필요합니다. 계속하면 macOS 관리자 승인창이 이어서 열리고, 아래 시스템 위치에 MacDog 전용 도우미가 설치됩니다.
+
+        /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
+        /Library/LaunchDaemons/com.dhseo.macdog.helper.plist
+
+        나중에 설정 탭에서도 설치하거나 제거할 수 있습니다.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "권한 도우미 설치")
+        alert.addButton(withTitle: "나중에")
+
+        defaults.set(true, forKey: UserComponentInstaller.firstRunHelperPromptDismissedKey)
+        if alert.runModal() == .alertFirstButtonReturn {
+            runPrivilegedHelperOperation(.install, requiresConfirmation: false)
+        }
     }
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
@@ -446,8 +501,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func runPrivilegedHelperOperation(_ operation: PrivilegedHelperOperation) {
-        guard showPrivilegedHelperApprovalAlert(for: operation) else { return }
+    private func runPrivilegedHelperOperation(_ operation: PrivilegedHelperOperation, requiresConfirmation: Bool = true) {
+        guard !requiresConfirmation || showPrivilegedHelperApprovalAlert(for: operation) else { return }
 
         Task { [weak self] in
             guard let self else { return }
