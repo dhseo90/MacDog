@@ -44,7 +44,7 @@ final class PrivilegedHelperInstallStateTests: XCTestCase {
 
         XCTAssertTrue(missing.requiresUserAction)
         XCTAssertEqual(missing.guidanceTitle, "권한 도우미 설치 필요")
-        XCTAssertTrue(missing.guidanceDetail.contains("Install Privileged Helper.command"))
+        XCTAssertTrue(missing.guidanceDetail.contains("도우미 설치 버튼"))
 
         XCTAssertTrue(partial.requiresUserAction)
         XCTAssertEqual(partial.guidanceTitle, "권한 도우미 복구 필요")
@@ -52,7 +52,7 @@ final class PrivilegedHelperInstallStateTests: XCTestCase {
 
         XCTAssertFalse(installed.requiresUserAction)
         XCTAssertEqual(installed.guidanceTitle, "권한 도우미 준비됨")
-        XCTAssertTrue(installed.guidanceDetail.contains("권한 도우미 XPC"))
+        XCTAssertTrue(installed.guidanceDetail.contains("권한 도우미가 대신 처리"))
     }
 
     func testInstallScriptBuilderDocumentsHostRequirementAndAllowedCommands() {

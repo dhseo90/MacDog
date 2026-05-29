@@ -432,8 +432,8 @@ It changes these system locations:
   - $HELPER_PLIST_DEST
   - $HELPER_LOG_DIR
 
-After this one administrator approval, MacDog can change SleepDisabled through XPC
-without asking for your password on every sleep-prevention setting change.
+After this one administrator approval, MacDog can change the closed-lid sleep
+protection setting through the helper without asking for your password every time.
 NOTICE
 
 if [[ -n "$host_team_id" ]]; then

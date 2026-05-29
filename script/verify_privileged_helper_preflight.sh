@@ -59,6 +59,12 @@ echo "==> Checking app helper install UI path"
 /usr/bin/grep -Fq "uninstallPrivilegedHelper" "$POPOVER_ACTION_SOURCE" || die "popover helper uninstall action missing"
 /usr/bin/grep -Fq "with administrator privileges" "$HELPER_INSTALLER_SOURCE" || die "app helper installer administrator approval path missing"
 /usr/bin/grep -Fq "PrivilegedHelperInstallScriptBuilder" "$HELPER_INSTALLER_SOURCE" || die "app helper installer script builder missing"
+/usr/bin/grep -Fq "showPrivilegedHelperApprovalAlert" "$ROOT_DIR/Sources/MacDog/MenuBarController.swift" || die "popover helper approval explanation missing"
+/usr/bin/grep -Fq "변경할 시스템 위치" "$ROOT_DIR/Sources/MacDog/MenuBarController.swift" || die "popover helper install location explanation missing"
+/usr/bin/grep -Fq "제거할 시스템 위치" "$ROOT_DIR/Sources/MacDog/MenuBarController.swift" || die "popover helper uninstall location explanation missing"
+if /usr/bin/grep -Fq '"/usr/bin/osascript"' "$HELPER_INSTALLER_SOURCE"; then
+  die "app helper installer must request administrator approval from MacDog, not the osascript helper process"
+fi
 
 echo "==> Checking generated app bundle"
 [[ -d "$APP_BUNDLE" ]] || die "app bundle missing: $APP_BUNDLE"

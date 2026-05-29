@@ -59,7 +59,7 @@ public enum PrivilegedHelperClientError: LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .proxyUnavailable:
-            "권한 도우미 XPC proxy를 만들 수 없습니다."
+            "권한 도우미 연결을 만들 수 없습니다."
         }
     }
 }

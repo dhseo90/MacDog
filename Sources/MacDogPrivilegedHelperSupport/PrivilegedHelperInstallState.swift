@@ -67,11 +67,11 @@ public struct PrivilegedHelperInstallSnapshot: Equatable, Sendable {
     public var guidanceDetail: String {
         switch status {
         case .missing:
-            "덮개 닫힘 보호에서 반복 비밀번호를 피하려면 release DMG의 Install Privileged Helper.command를 실행하세요."
+            "아래 도우미 설치 버튼으로 한 번 승인하면 반복 비밀번호 입력을 줄일 수 있습니다."
         case .partial:
-            "도우미 실행 파일과 LaunchDaemon 중 일부만 있어 제거 후 다시 설치해야 합니다."
+            "도우미 실행 파일과 자동 실행 설정 중 일부만 있어 제거 후 다시 설치해야 합니다."
         case .installed:
-            "덮개 닫힘 보호 변경은 권한 도우미 XPC 경로를 우선 사용합니다."
+            "덮개 닫힘 보호 변경은 권한 도우미가 대신 처리합니다."
         }
     }
 

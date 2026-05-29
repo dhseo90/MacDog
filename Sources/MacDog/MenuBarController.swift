@@ -322,14 +322,50 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         var successMessage: String {
             switch self {
             case .install:
-                "덮개 닫힘 보호 설정 변경은 권한 도우미 XPC 경로를 우선 사용합니다."
+                "덮개 닫힘 보호 설정 변경은 권한 도우미가 대신 처리합니다."
             case .uninstall:
                 "덮개 닫힘 보호 설정 변경 시 다시 관리자 승인이 필요할 수 있습니다."
+            }
+        }
+
+        var approvalTitle: String {
+            switch self {
+            case .install:
+                "권한 도우미 설치 확인"
+            case .uninstall:
+                "권한 도우미 제거 확인"
+            }
+        }
+
+        var approvalMessage: String {
+            switch self {
+            case .install:
+                """
+                MacDog가 덮개 닫힘 보호를 위해 권한 도우미를 설치합니다.
+
+                변경할 시스템 위치:
+                /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
+                /Library/LaunchDaemons/com.dhseo.macdog.helper.plist
+
+                설치 후에는 잠들지 않기 설정을 바꿀 때 관리자 암호를 반복 입력하지 않아도 됩니다.
+                """
+            case .uninstall:
+                """
+                MacDog가 설치된 권한 도우미를 제거합니다.
+
+                제거할 시스템 위치:
+                /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
+                /Library/LaunchDaemons/com.dhseo.macdog.helper.plist
+
+                제거 후에는 덮개 닫힘 보호 설정 변경 시 다시 관리자 승인이 필요할 수 있습니다.
+                """
             }
         }
     }
 
     private func runPrivilegedHelperOperation(_ operation: PrivilegedHelperOperation) {
+        guard showPrivilegedHelperApprovalAlert(for: operation) else { return }
+
         Task { [weak self] in
             guard let self else { return }
             let installer = privilegedHelperInstaller
@@ -358,6 +394,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 )
             }
         }
+    }
+
+    private func showPrivilegedHelperApprovalAlert(for operation: PrivilegedHelperOperation) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = operation.approvalTitle
+        alert.informativeText = operation.approvalMessage
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "계속")
+        alert.addButton(withTitle: "취소")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     private func showPrivilegedHelperAlert(title: String, message: String, style: NSAlert.Style) {

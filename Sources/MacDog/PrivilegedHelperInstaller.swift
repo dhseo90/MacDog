@@ -83,7 +83,14 @@ struct PrivilegedHelperInstaller: Sendable {
     private func runWithAdministratorApproval(_ scriptURL: URL) throws {
         let command = PrivilegedHelperInstallScriptBuilder.shellQuoted(scriptURL.path)
         let appleScript = "do shell script \(PrivilegedHelperInstallScriptBuilder.appleScriptLiteral(command)) with administrator privileges"
-        try runProcess("/usr/bin/osascript", arguments: ["-e", appleScript])
+        var errorInfo: NSDictionary?
+        let result = NSAppleScript(source: appleScript)?.executeAndReturnError(&errorInfo)
+        if result == nil, let errorInfo {
+            throw PrivilegedHelperInstallerError.appleScriptFailed(
+                message: errorInfo[NSAppleScript.errorMessage] as? String,
+                number: errorInfo[NSAppleScript.errorNumber] as? Int
+            )
+        }
     }
 
     private func writeTemporaryFile(prefix: String, contents: String) throws -> URL {
@@ -129,6 +136,7 @@ struct PrivilegedHelperInstaller: Sendable {
 enum PrivilegedHelperInstallerError: LocalizedError {
     case missingEmbeddedHelper(String)
     case commandFailed(String, Int32, String)
+    case appleScriptFailed(message: String?, number: Int?)
 
     var errorDescription: String? {
         switch self {
@@ -139,6 +147,14 @@ enum PrivilegedHelperInstallerError: LocalizedError {
                 return "권한 도우미 명령 실패: \(command) (\(status))"
             }
             return "권한 도우미 명령 실패: \(command) (\(status)) · \(detail)"
+        case .appleScriptFailed(let message, let number):
+            if let message, let number {
+                return "권한 도우미 관리자 승인 실패: \(message) (\(number))"
+            }
+            if let message {
+                return "권한 도우미 관리자 승인 실패: \(message)"
+            }
+            return "권한 도우미 관리자 승인 실패"
         }
     }
 }
