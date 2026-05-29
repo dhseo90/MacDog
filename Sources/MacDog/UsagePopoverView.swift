@@ -92,10 +92,7 @@ struct UsagePopoverView: View {
     private var tabContent: some View {
         switch selectedModule {
         case .codex:
-            VStack(alignment: .leading, spacing: 10) {
-                codexUsageContent
-                RunnerControls(onChange: onPreferencesChanged)
-            }
+            codexUsageContent
         case .mac:
             MacResourcesPanel(
                 snapshot: state.systemMetrics,
@@ -1205,38 +1202,6 @@ private struct PressureBanner: View {
         case .sprint, .limit:
             .red
         }
-    }
-}
-
-private struct RunnerControls: View {
-    let onChange: () -> Void
-
-    @AppStorage(RunnerPreferences.displayBasisKey) private var displayBasis = RunnerPreferences.defaultDisplayBasis.rawValue
-    @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
-    @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Divider()
-
-            Picker("러너 속도", selection: $displayBasis) {
-                ForEach(UsageDisplayBasis.allCases) { basis in
-                    Text(basis.label).tag(basis.rawValue)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .help("러너 속도를 조절할 사용량 기준을 선택합니다.")
-
-            HStack(spacing: 10) {
-                Toggle("움직임 줄이기", isOn: $reducedMotion)
-                Toggle("일시 정지", isOn: $animationPaused)
-            }
-            .font(.caption)
-        }
-        .onChange(of: displayBasis) { _, _ in onChange() }
-        .onChange(of: reducedMotion) { _, _ in onChange() }
-        .onChange(of: animationPaused) { _, _ in onChange() }
     }
 }
 
