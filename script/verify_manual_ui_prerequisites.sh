@@ -46,6 +46,9 @@ echo "==> Checking generated app bundle"
 echo "==> Checking character asset linkage"
 ./script/verify_character_profile.sh >/dev/null
 
+echo "==> Checking app privacy boundaries"
+./script/verify_app_privacy_boundaries.sh >/dev/null
+
 echo "==> Checking WidgetKit source readiness"
 ./script/verify_widget_readiness.sh >/dev/null
 
