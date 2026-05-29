@@ -57,7 +57,7 @@ require_match './script/check\.sh --no-run'
 require_match './script/package_release\.sh --skip-build'
 require_match 'hdiutil verify'
 require_match 'shasum -a 256 -c'
-require_match 'actions/upload-artifact@v4'
+require_match 'actions/upload-artifact@v7'
 require_match 'unsigned-release-candidate'
 require_match '\.dmg\.sha256'
 

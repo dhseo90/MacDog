@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Show Xcode
         run: xcodebuild -version
@@ -39,7 +39,7 @@ jobs:
         run: shasum -a 256 -c "dist/release/MacDog-${{ inputs.version }}.dmg.sha256"
 
       - name: Upload release candidate artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: "MacDog-${{ inputs.version }}-unsigned-release-candidate"
           path: |
