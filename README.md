@@ -142,6 +142,17 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만든다.
 
 세부 배포 경계는 [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md)에 정리한다.
 
+## GitHub Release Readiness
+
+레포에는 PR 기반 운영을 위한 기본 준비가 포함되어 있다.
+
+- PR/`main` push 검증 workflow: `.github/workflows/ci.yml`
+- 전체 파일 기본 reviewer: `.github/CODEOWNERS`
+- PR 검증 템플릿: `.github/pull_request_template.md`
+- branch protection 적용 스크립트: `script/configure_github_branch_protection.sh`
+
+`main` 직접 push 차단과 PR 필수 규칙은 GitHub repository 설정이다. GitHub Free private repository에서는 GitHub가 branch protection API를 거절할 수 있으므로, public 전환 또는 branch protection 가능 plan 조건을 먼저 충족한 뒤 적용한다.
+
 ## Sleep Prevention
 
 MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용한다. 덮개 닫힘 보호는 `pmset disablesleep` 기반이며 관리자 승인이 필요하다.

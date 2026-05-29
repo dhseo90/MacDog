@@ -11,6 +11,7 @@
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, cache 경로를 만든다. helper 설치 옵션은 관리자 권한이 필요하다. |
 | `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, cache 파일을 제거한다. 기본값은 UserDefaults와 optional helper를 유지한다. |
 | `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop DMG 후보와 checksum을 만든다. staging 폴더는 검증 후 남기지 않는다. signing/notarization은 별도 workflow gate다. |
+| `script/configure_github_branch_protection.sh` | GitHub `main` 보호 규칙 적용 | 기본은 dry-run이다. `--apply`는 GitHub repo 설정을 변경하며 public repo 또는 private branch protection 가능 plan이 필요하다. |
 
 ## 설치/삭제
 
@@ -82,6 +83,8 @@
 | `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만든다. |
 | `script/package_release.sh` | DMG와 checksum 생성 | `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만든다. |
 | `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, command syntax, helper command 제거, `osascript` 승인창 미사용을 확인한다. |
+| `script/configure_github_branch_protection.sh --dry-run` | PR 보호 규칙 payload 확인 | GitHub repo를 변경하지 않고 적용 대상과 branch protection payload를 출력한다. |
+| `script/configure_github_branch_protection.sh --apply` | PR 보호 규칙 적용 | GitHub `main`에 PR 필수, Code Owners review, `verify` status check, force push/delete 차단, 대화 해결 필수 규칙을 적용한다. |
 
 ## 주의가 필요한 스크립트
 
@@ -90,3 +93,4 @@
 - `/Library` helper를 바꿀 수 있음: `install.sh --with-helper`, `install.sh --helper-only`, `uninstall.sh --with-helper`, `uninstall.sh --helper-only`
 - 시스템 배터리 충전 한도를 바꿀 수 있음: `verify_charge_limit.sh`의 쓰기 옵션
 - widget live/shared cache를 바꿀 수 있음: `write_widget_cache_fixture.sh --shared-cache`
+- GitHub repo 설정을 바꿀 수 있음: `configure_github_branch_protection.sh --apply`

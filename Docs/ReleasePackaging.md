@@ -23,13 +23,14 @@
 - 설치/업데이트 중 MacDog가 `SleepDisabled=1`을 소유한 상태라면 app 종료 정리 루틴이 값을 0으로 되돌리지 않도록 강제 종료 경로를 사용한다.
 - 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않는다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만든다.
+- `.github/workflows/ci.yml`은 PR과 `main` push에서 `./script/check.sh --no-run`을 실행하는 기본 release readiness check다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관한다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
 - `.github/workflows/release-stable.yml`은 `SIGNED-STABLE` 확인 입력, GitHub Environment approval, Developer ID Application 인증서 secret, notarization secret이 모두 있어야 signed/notarized `.dmg`를 public GitHub Release로 올린다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, installer/uninstaller syntax, LaunchAgent plist heredoc 구조, usage cache cleanup, helper 별도 command 제거, command 파일의 `osascript` 승인창 미사용, 설치 후 상태 확인 command의 freshness smoke를 검증한다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인한다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증한다.
-- PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리한다.
+- PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리한다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용한다.
 
 ## 확인됨
 
@@ -38,6 +39,7 @@
 - `script/package_release.sh --skip-build`는 `dist/release/MacDog-<version>.dmg`와 checksum을 생성한다.
 - release workflow는 unsigned draft와 signed stable release gate를 분리한다.
 - optional helper 설치/제거는 앱 설정 탭으로 안내한다.
+- GitHub PR 보호 준비물은 repo 안에 포함되어 있다.
 
 ## 미확인
 
@@ -54,7 +56,7 @@
 - notarization 제출과 stapling 실제 수행
 - 깨끗한 사용자 계정/다른 Mac에서 Gatekeeper 검증
 - App Store 배포 준비
-- GitHub repository ruleset 실제 적용
+- GitHub repository ruleset 실제 적용. 현재 repo가 private이고 GitHub가 branch protection API를 거절하면 public 전환 또는 plan 변경 전에는 실제 적용할 수 없다.
 
 ## 배포 흐름 후보
 

@@ -5,6 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORKFLOW="$ROOT_DIR/.github/workflows/release-candidate.yml"
 DRAFT_WORKFLOW="$ROOT_DIR/.github/workflows/release-draft.yml"
 STABLE_WORKFLOW="$ROOT_DIR/.github/workflows/release-stable.yml"
+CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
+CODEOWNERS="$ROOT_DIR/.github/CODEOWNERS"
+BRANCH_PROTECTION_SCRIPT="$ROOT_DIR/script/configure_github_branch_protection.sh"
 
 die() {
   echo "error: $*" >&2
@@ -26,8 +29,27 @@ require_stable_match() {
   /usr/bin/grep -Eq -- "$pattern" "$STABLE_WORKFLOW" || die "missing expected stable release workflow pattern: $pattern"
 }
 
+require_ci_match() {
+  local pattern="$1"
+  /usr/bin/grep -Eq -- "$pattern" "$CI_WORKFLOW" || die "missing expected ci workflow pattern: $pattern"
+}
+
 [[ -f "$WORKFLOW" ]] || die "release candidate workflow missing: $WORKFLOW"
 [[ -f "$DRAFT_WORKFLOW" ]] || die "draft release workflow missing: $DRAFT_WORKFLOW"
+[[ -f "$CI_WORKFLOW" ]] || die "ci workflow missing: $CI_WORKFLOW"
+[[ -f "$CODEOWNERS" ]] || die "CODEOWNERS missing: $CODEOWNERS"
+[[ -x "$BRANCH_PROTECTION_SCRIPT" ]] || die "branch protection script missing or not executable: $BRANCH_PROTECTION_SCRIPT"
+
+require_ci_match 'pull_request'
+require_ci_match 'branches:'
+require_ci_match 'main'
+require_ci_match 'runs-on: macos-latest'
+require_ci_match './script/check\.sh --no-run'
+require_ci_match 'name: verify'
+/usr/bin/grep -Fq -- '@dhseo90' "$CODEOWNERS" || die "CODEOWNERS must include @dhseo90"
+/usr/bin/grep -Fq -- 'required_pull_request_reviews' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing PR review rule"
+/usr/bin/grep -Fq -- 'require_code_owner_reviews' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing code owner review rule"
+/usr/bin/grep -Fq -- 'required_status_checks' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing required status checks"
 
 require_match 'workflow_dispatch'
 require_match 'MACDOG_RELEASE_VERSION'
