@@ -11,26 +11,47 @@
     {
       "module": "codex",
       "resourceName": "codex-tab",
+      "sourcePose": "idleFront",
+      "resourcePrefix": "pup-idle-front",
+      "sourceFrameIndex": 0,
       "topicSymbol": "chevron.left.forwardslash.chevron.right",
       "accent": "systemBlue"
     },
     {
       "module": "mac",
       "resourceName": "mac-tab",
+      "sourcePose": "runRight",
+      "resourcePrefix": "pup-run-right",
+      "sourceFrameIndex": 2,
       "topicSymbol": "cpu",
       "accent": "systemMint"
     },
     {
       "module": "sleep",
       "resourceName": "sleep-tab",
+      "sourcePose": "rest",
+      "resourcePrefix": "pup-rest",
+      "sourceFrameIndex": 0,
       "topicSymbol": "moon.fill",
       "accent": "systemIndigo"
     },
     {
       "module": "battery",
       "resourceName": "battery-tab",
+      "sourcePose": "alert",
+      "resourcePrefix": "pup-alert",
+      "sourceFrameIndex": 1,
       "topicSymbol": "battery.100percent",
       "accent": "systemGreen"
+    },
+    {
+      "module": "settings",
+      "resourceName": "settings-tab",
+      "sourcePose": "idleSide",
+      "resourcePrefix": "pup-idle-side",
+      "sourceFrameIndex": 0,
+      "topicSymbol": "gearshape",
+      "accent": "systemGray"
     }
   ]
 }

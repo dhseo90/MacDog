@@ -320,7 +320,7 @@ struct DiskDetailsSnapshot: Equatable {
 
 struct SystemMetricsHistory: Equatable {
     static let empty = SystemMetricsHistory(samples: [])
-    static let defaultMaxSamples = 60
+    static let defaultMaxSamples = 180
 
     let samples: [SystemMetricsHistorySample]
 

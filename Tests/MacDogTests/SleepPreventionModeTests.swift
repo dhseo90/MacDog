@@ -33,6 +33,7 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
@@ -48,6 +49,7 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
@@ -65,6 +67,7 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
@@ -80,6 +83,7 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertTrue(preferences.sleepPreventionCodexAppTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
@@ -90,6 +94,7 @@ final class SleepPreventionModeTests: XCTestCase {
         RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionExternalVolumeTrigger(true, defaults: defaults)
 
@@ -104,6 +109,7 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertFalse(preferences.sleepPreventionCodexAppTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionChargingBelowThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertFalse(preferences.sleepPreventionExternalVolumeTriggerEnabled)
     }
@@ -111,9 +117,11 @@ final class SleepPreventionModeTests: XCTestCase {
     func testAutomaticTriggerSettingsPersistAcrossPreferenceReads() {
         RunnerPreferences.setSleepPreventionMode(.charging, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionBatteryThresholdPercent(70, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdPercent(65, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdPercent(72, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
         RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
         RunnerPreferences.setSleepPreventionPreventDisplaySleep(false, defaults: defaults)
@@ -127,9 +135,11 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertEqual(secondRead.sleepPreventionMode, .charging)
         XCTAssertTrue(secondRead.sleepPreventionPowerAdapterTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertTrue(secondRead.sleepPreventionMemoryThresholdTriggerEnabled)
         XCTAssertTrue(secondRead.sleepPreventionNetworkActivityTriggerEnabled)
         XCTAssertEqual(firstRead.sleepPreventionBatteryThresholdPercent, 70)
         XCTAssertEqual(secondRead.sleepPreventionCPUThresholdPercent, 65)
+        XCTAssertEqual(secondRead.sleepPreventionMemoryThresholdPercent, 72)
         XCTAssertEqual(secondRead.sleepPreventionNetworkThresholdKBPerSecond, 256)
         XCTAssertEqual(secondRead.sleepPreventionAppMatchText, "Xcode")
         XCTAssertFalse(secondRead.sleepPreventionPreventDisplaySleep)
@@ -145,16 +155,30 @@ final class SleepPreventionModeTests: XCTestCase {
         )
     }
 
+    func testLoginLaunchPreferenceDefaultsToEnabledAndPersists() {
+        var preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.loginLaunchEnabled)
+        XCTAssertTrue(RunnerPreferences.loginLaunchEnabled(defaults: defaults))
+
+        RunnerPreferences.setLoginLaunchEnabled(false, defaults: defaults)
+
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertFalse(preferences.loginLaunchEnabled)
+        XCTAssertFalse(RunnerPreferences.loginLaunchEnabled(defaults: defaults))
+    }
+
     func testAutomaticTriggerDetailSettingsClampAndNormalize() {
         RunnerPreferences.setSleepPreventionBatteryThresholdPercent(10, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdPercent(105, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdPercent(3, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(2_000, defaults: defaults)
         RunnerPreferences.setSleepPreventionAppMatchText("   ", defaults: defaults)
 
         let preferences = RunnerPreferences(defaults: defaults)
 
-        XCTAssertEqual(preferences.sleepPreventionBatteryThresholdPercent, 20)
+        XCTAssertEqual(preferences.sleepPreventionBatteryThresholdPercent, 10)
         XCTAssertEqual(preferences.sleepPreventionCPUThresholdPercent, 100)
+        XCTAssertEqual(preferences.sleepPreventionMemoryThresholdPercent, 10)
         XCTAssertEqual(preferences.sleepPreventionNetworkThresholdKBPerSecond, 1_024)
         XCTAssertEqual(preferences.sleepPreventionAppMatchText, "codex")
     }
@@ -175,5 +199,6 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertEqual(preferences.sleepPreventionControlMode, .time)
         XCTAssertTrue(preferences.sleepPreventionEnabled)
         XCTAssertFalse(preferences.sleepPreventionCPUThresholdTriggerEnabled)
+        XCTAssertFalse(preferences.sleepPreventionMemoryThresholdTriggerEnabled)
     }
 }

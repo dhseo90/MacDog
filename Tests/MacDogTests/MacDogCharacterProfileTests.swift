@@ -24,15 +24,23 @@ final class MacDogCharacterProfileTests: XCTestCase {
         }
     }
 
-    func testCodexPupDefinesEveryPopoverTabArtwork() {
+    func testCodexPupDefinesEveryPopoverTabArtwork() throws {
         let profile = MacDogCharacterProfile.codexPup
+        let expectedSources: [MacDogPopoverModule: (pose: DesktopPetPose, frame: Int)] = [
+            .codex: (.idleFront, 0),
+            .mac: (.runRight, 2),
+            .sleep: (.rest, 0),
+            .battery: (.alert, 1),
+            .settings: (.idleSide, 0)
+        ]
 
         for module in MacDogPopoverModule.allCases {
             let asset = profile.popoverTabs.artwork(for: module)
+            let expectedSource = try XCTUnwrap(expectedSources[module])
             XCTAssertEqual(asset.resourceName, module.artworkName)
             XCTAssertEqual(asset.systemImage, module.systemImage)
-            XCTAssertEqual(asset.sourcePose, .idleFront)
-            XCTAssertEqual(asset.sourceFrameIndex, 0)
+            XCTAssertEqual(asset.sourcePose, expectedSource.pose)
+            XCTAssertEqual(asset.sourceFrameIndex, expectedSource.frame)
             XCTAssertEqual(asset.badgeSystemImage, module.systemImage)
         }
     }
@@ -52,6 +60,9 @@ final class MacDogCharacterProfileTests: XCTestCase {
             let profileArtwork = profile.popoverTabs.artwork(for: module)
             let manifestArtwork = try XCTUnwrap(manifest.tabs.first { $0.module == module.rawValue })
             XCTAssertEqual(manifestArtwork.resourceName, profileArtwork.resourceName)
+            XCTAssertEqual(manifestArtwork.sourcePose, String(describing: profileArtwork.sourcePose))
+            XCTAssertEqual(manifestArtwork.resourcePrefix, profile.desktopPet.asset(for: profileArtwork.sourcePose).resourcePrefix)
+            XCTAssertEqual(manifestArtwork.sourceFrameIndex, profileArtwork.sourceFrameIndex)
             XCTAssertEqual(manifestArtwork.topicSymbol, profileArtwork.badgeSystemImage)
         }
     }
@@ -85,5 +96,8 @@ private struct TabArtworkDesktopSourceFixture: Decodable {
 private struct TabArtworkFixture: Decodable {
     let module: String
     let resourceName: String
+    let sourcePose: String
+    let resourcePrefix: String
+    let sourceFrameIndex: Int
     let topicSymbol: String
 }

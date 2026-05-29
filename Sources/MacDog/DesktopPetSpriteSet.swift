@@ -38,7 +38,9 @@ struct DesktopPetSpriteSet {
         if let url = Bundle.main.resourceURL?
             .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(name).png") {
-            return NSImage(contentsOf: url)
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
         }
 
         if let url = Bundle.module.url(
@@ -46,7 +48,9 @@ struct DesktopPetSpriteSet {
             withExtension: "png",
             subdirectory: resourceDirectory
         ) {
-            return NSImage(contentsOf: url)
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
         }
 
         return nil

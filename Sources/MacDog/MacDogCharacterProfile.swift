@@ -32,23 +32,30 @@ struct MacDogCharacterProfile: Equatable {
                 .mac: PopoverTabArtworkAsset(
                     resourceName: "mac-tab",
                     systemImage: "cpu",
-                    sourcePose: .idleFront,
-                    sourceFrameIndex: 0,
+                    sourcePose: .runRight,
+                    sourceFrameIndex: 2,
                     badgeSystemImage: "cpu"
                 ),
                 .sleep: PopoverTabArtworkAsset(
                     resourceName: "sleep-tab",
                     systemImage: "moon.fill",
-                    sourcePose: .idleFront,
+                    sourcePose: .rest,
                     sourceFrameIndex: 0,
                     badgeSystemImage: "moon.fill"
                 ),
                 .battery: PopoverTabArtworkAsset(
                     resourceName: "battery-tab",
                     systemImage: "battery.100percent",
-                    sourcePose: .idleFront,
-                    sourceFrameIndex: 0,
+                    sourcePose: .alert,
+                    sourceFrameIndex: 1,
                     badgeSystemImage: "battery.100percent"
+                ),
+                .settings: PopoverTabArtworkAsset(
+                    resourceName: "settings-tab",
+                    systemImage: "gearshape",
+                    sourcePose: .idleSide,
+                    sourceFrameIndex: 0,
+                    badgeSystemImage: "gearshape"
                 )
             ]
         )

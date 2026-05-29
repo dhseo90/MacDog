@@ -91,7 +91,7 @@ struct PetMenuModel: Equatable {
                     isSelected: preferences.sleepPreventionPreventClosedLidSleep
                 ),
                 PetMenuCommand(
-                    title: "잠금 요구 해제",
+                    title: "보호기 후 암호 요구 해제",
                     action: .setSleepPreventionDisableScreenLock(!preferences.sleepPreventionDisableScreenLock),
                     isSelected: preferences.sleepPreventionDisableScreenLock
                 )
@@ -109,27 +109,32 @@ struct PetMenuModel: Equatable {
                     isSelected: preferences.sleepPreventionPowerAdapterTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "\(preferences.sleepPreventionAppMatchText) 앱 실행 중",
+                    title: "Codex 실행 중",
                     action: .setSleepPreventionCodexAppTrigger(!preferences.sleepPreventionCodexAppTriggerEnabled),
                     isSelected: preferences.sleepPreventionCodexAppTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "충전 \(preferences.sleepPreventionBatteryThresholdPercent)% 미만",
+                    title: "배터리 \(preferences.sleepPreventionBatteryThresholdPercent)% 이상",
                     action: .setSleepPreventionChargingBelowThresholdTrigger(!preferences.sleepPreventionChargingBelowThresholdTriggerEnabled),
                     isSelected: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "CPU 사용 \(preferences.sleepPreventionCPUThresholdPercent)% 이상",
+                    title: "CPU 사용량 \(preferences.sleepPreventionCPUThresholdPercent)% 이상",
                     action: .setSleepPreventionCPUThresholdTrigger(!preferences.sleepPreventionCPUThresholdTriggerEnabled),
                     isSelected: preferences.sleepPreventionCPUThresholdTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "네트워크 \(preferences.sleepPreventionNetworkThresholdKBPerSecond)KB/s 이상",
+                    title: "메모리 사용량 \(preferences.sleepPreventionMemoryThresholdPercent)% 이상",
+                    action: .setSleepPreventionMemoryThresholdTrigger(!preferences.sleepPreventionMemoryThresholdTriggerEnabled),
+                    isSelected: preferences.sleepPreventionMemoryThresholdTriggerEnabled
+                ),
+                PetMenuCommand(
+                    title: "네트워크 전송 중",
                     action: .setSleepPreventionNetworkActivityTrigger(!preferences.sleepPreventionNetworkActivityTriggerEnabled),
                     isSelected: preferences.sleepPreventionNetworkActivityTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "외장/네트워크 볼륨 연결",
+                    title: "외장/공유 드라이브 연결",
                     action: .setSleepPreventionExternalVolumeTrigger(!preferences.sleepPreventionExternalVolumeTriggerEnabled),
                     isSelected: preferences.sleepPreventionExternalVolumeTriggerEnabled
                 )

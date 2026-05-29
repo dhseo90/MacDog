@@ -8,7 +8,7 @@ struct PopoverMetricsRefreshPolicy: Equatable {
         switch module {
         case .mac, .sleep, .battery:
             true
-        case .codex:
+        case .codex, .settings:
             false
         }
     }

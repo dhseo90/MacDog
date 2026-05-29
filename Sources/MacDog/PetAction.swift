@@ -11,6 +11,7 @@ enum PetAction: Equatable {
     case setSleepPreventionCodexAppTrigger(Bool)
     case setSleepPreventionChargingBelowThresholdTrigger(Bool)
     case setSleepPreventionCPUThresholdTrigger(Bool)
+    case setSleepPreventionMemoryThresholdTrigger(Bool)
     case setSleepPreventionNetworkActivityTrigger(Bool)
     case setSleepPreventionExternalVolumeTrigger(Bool)
     case setSleepPreventionPreventDisplaySleep(Bool)

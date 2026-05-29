@@ -110,12 +110,16 @@ struct UsagePopoverView: View {
             SleepPreventionPanel(
                 sleepPreventionStatus: state.sleepPreventionStatus,
                 sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
-                privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
-                onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged
             )
         case .battery:
             BatteryPanel(snapshot: state.systemMetrics)
+        case .settings:
+            SettingsPanel(
+                privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
+                onAction: onAction,
+                onPreferencesChanged: onPreferencesChanged
+            )
         }
     }
 
@@ -152,6 +156,8 @@ struct UsagePopoverView: View {
             return state.sleepPreventionStatus.summary
         case .battery:
             return state.systemMetrics.battery.summary
+        case .settings:
+            return "앱 설정"
         }
     }
 
@@ -172,6 +178,7 @@ struct UsagePopoverView: View {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                     metadataRow("플랜", limit.planType ?? "알 수 없음")
                     metadataRow("갱신", state.lastUpdatedSummary)
+                    resetMetadataRow(limit.weekly)
                 }
             } else if state.isRefreshing {
                 HStack(spacing: 8) {
@@ -207,6 +214,21 @@ struct UsagePopoverView: View {
         }
         .font(.caption)
     }
+
+    private func resetMetadataRow(_ window: UsageWindowReport?) -> some View {
+        metadataRow("초기화", resetMetadataValue(window))
+    }
+
+    private func resetMetadataValue(_ window: UsageWindowReport?) -> String {
+        let summary = UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt)
+        if summary.hasPrefix("초기화까지 ") {
+            return String(summary.dropFirst("초기화까지 ".count))
+        }
+        if summary.hasPrefix("초기화 ") {
+            return String(summary.dropFirst("초기화 ".count))
+        }
+        return summary
+    }
 }
 
 enum MacDogPopoverModule: String, CaseIterable, Identifiable {
@@ -214,6 +236,7 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
     case mac
     case sleep
     case battery
+    case settings
 
     var id: String { rawValue }
 
@@ -227,6 +250,8 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
             "잠들지 않기"
         case .battery:
             "배터리"
+        case .settings:
+            "설정"
         }
     }
 
@@ -240,6 +265,8 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
             "잠들지\n않기"
         case .battery:
             "배터리"
+        case .settings:
+            "설정"
         }
     }
 
@@ -253,9 +280,7 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
 
     var usesScrollableContent: Bool {
         switch self {
-        case .sleep:
-            true
-        case .codex, .mac, .battery:
+        case .codex, .mac, .sleep, .battery, .settings:
             false
         }
     }
@@ -454,6 +479,13 @@ private struct SparklineView: View {
                     .fill(Color.primary.opacity(0.045))
 
                 Path { path in
+                    let centerY = geometry.size.height / 2
+                    path.move(to: CGPoint(x: 0, y: centerY))
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: centerY))
+                }
+                .stroke(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
+
+                Path { path in
                     addLine(to: &path, in: geometry.size)
                 }
                 .stroke(tint, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
@@ -465,9 +497,10 @@ private struct SparklineView: View {
     private func addLine(to path: inout Path, in size: CGSize) {
         let clampedValues = values.map { min(max($0, 0), 100) }
         guard let first = clampedValues.first else { return }
+        let scale = SparklineScale(values: clampedValues)
 
         if clampedValues.count == 1 {
-            let y = yPosition(for: first, height: size.height)
+            let y = yPosition(for: first, height: size.height, scale: scale)
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: size.width, y: y))
             return
@@ -477,7 +510,7 @@ private struct SparklineView: View {
         for (index, value) in clampedValues.enumerated() {
             let point = CGPoint(
                 x: CGFloat(index) * stepX,
-                y: yPosition(for: value, height: size.height)
+                y: yPosition(for: value, height: size.height, scale: scale)
             )
             if index == 0 {
                 path.move(to: point)
@@ -487,17 +520,31 @@ private struct SparklineView: View {
         }
     }
 
-    private func yPosition(for value: Double, height: CGFloat) -> CGFloat {
-        let normalized = CGFloat(value / 100)
+    private func yPosition(for value: Double, height: CGFloat, scale: SparklineScale) -> CGFloat {
+        let normalized = CGFloat(scale.normalized(value))
         return height - (normalized * height)
+    }
+}
+
+struct SparklineScale: Equatable {
+    static let lowerBound: Double = 0
+    static let upperBound: Double = 100
+
+    init(values: [Double]) {
+        _ = values
+    }
+
+    func normalized(_ value: Double) -> Double {
+        let clampedValue = min(max(value, 0), 100)
+        let span = Self.upperBound - Self.lowerBound
+        guard span > 0 else { return 0.5 }
+        return min(max((clampedValue - Self.lowerBound) / span, 0), 1)
     }
 }
 
 private struct SleepPreventionPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
-    let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
-    let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionControlModeKey) private var sleepPreventionControlMode = RunnerPreferences.defaultSleepPreventionControlMode.rawValue
@@ -506,10 +553,12 @@ private struct SleepPreventionPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionCodexAppTriggerKey) private var codexAppTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionChargingBelowThresholdTriggerKey) private var chargingBelowThresholdTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdTriggerKey) private var cpuThresholdTriggerEnabled = false
+    @AppStorage(RunnerPreferences.sleepPreventionMemoryThresholdTriggerKey) private var memoryThresholdTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionNetworkActivityTriggerKey) private var networkActivityTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionExternalVolumeTriggerKey) private var externalVolumeTriggerEnabled = false
     @AppStorage(RunnerPreferences.sleepPreventionBatteryThresholdPercentKey) private var batteryThresholdPercent = RunnerPreferences.defaultSleepPreventionBatteryThresholdPercent
     @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdPercentKey) private var cpuThresholdPercent = RunnerPreferences.defaultSleepPreventionCPUThresholdPercent
+    @AppStorage(RunnerPreferences.sleepPreventionMemoryThresholdPercentKey) private var memoryThresholdPercent = RunnerPreferences.defaultSleepPreventionMemoryThresholdPercent
     @AppStorage(RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey) private var networkThresholdKBPerSecond = RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond
     @AppStorage(RunnerPreferences.sleepPreventionAppMatchTextKey) private var appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
     @AppStorage(RunnerPreferences.sleepPreventionPreventDisplaySleepKey) private var preventDisplaySleep = RunnerPreferences.defaultSleepPreventionPreventDisplaySleep
@@ -517,7 +566,7 @@ private struct SleepPreventionPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionDisableScreenLockKey) private var disableScreenLock = RunnerPreferences.defaultSleepPreventionDisableScreenLock
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 7) {
             PopoverFormSection(title: "제어 방식", systemImage: "power") {
                 controlModeButtons
 
@@ -531,7 +580,7 @@ private struct SleepPreventionPanel: View {
                 PopoverFormSection(title: "유지 시간", systemImage: "timer") {
                     sessionPresetButtons
 
-                    Text("선택한 시간 동안 덮개 닫힘 보호까지 유지하고, 만료되면 원복합니다.")
+                    Text("선택한 시간 동안 유지하고, 시간이 지나면 자동으로 꺼집니다.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -544,90 +593,72 @@ private struct SleepPreventionPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            PopoverFormSection(title: "세션 옵션", systemImage: "display") {
-                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                    GridRow {
-                        triggerToggle("화면 잠자기 방지", isOn: $preventDisplaySleep)
-                        triggerToggle("덮개 닫힘 보호", isOn: $preventClosedLidSleep)
-                    }
-                    GridRow {
-                        triggerToggle("잠금 요구 해제", isOn: $disableScreenLock)
-                        Text(screenLockPolicyNote)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                    }
-                }
-            }
-
-            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
-                helperStatusRow
-
-                Text(privilegedHelperInstallSnapshot.detailSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                helperGuidance
-            }
-
             if currentControlMode == .condition {
                 PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
-                    Text("체크한 조건 중 하나라도 맞으면 잠들지 않게 유지합니다.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
-                        GridRow {
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 14) {
                             triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
-                            triggerToggle("\(effectiveAppMatchText) 앱", isOn: $codexAppTriggerEnabled)
+                            triggerToggle("Codex 실행 중", isOn: $codexAppTriggerEnabled)
                         }
-                        GridRow {
-                            triggerToggle("충전 \(effectiveBatteryThresholdPercent)% 미만", isOn: $chargingBelowThresholdTriggerEnabled)
-                            triggerToggle("CPU \(effectiveCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
+                        HStack(spacing: 14) {
+                            triggerToggle("배터리 \(effectiveBatteryThresholdPercent)% 이상", isOn: $chargingBelowThresholdTriggerEnabled)
+                            triggerToggle("CPU 사용량 \(effectiveCPUThresholdPercent)% 이상", isOn: $cpuThresholdTriggerEnabled)
                         }
-                        GridRow {
-                            triggerToggle("네트워크 \(effectiveNetworkThresholdKBPerSecond)KB/s", isOn: $networkActivityTriggerEnabled)
-                            triggerToggle("외장/네트워크 볼륨", isOn: $externalVolumeTriggerEnabled)
+                        HStack(spacing: 14) {
+                            triggerToggle("메모리 사용량 \(effectiveMemoryThresholdPercent)% 이상", isOn: $memoryThresholdTriggerEnabled)
+                            triggerToggle("네트워크 전송 중", isOn: $networkActivityTriggerEnabled)
+                        }
+                        HStack(spacing: 14) {
+                            triggerToggle("외장/공유 드라이브 연결", isOn: $externalVolumeTriggerEnabled)
+                            Spacer(minLength: 0)
                         }
                     }
-                }
 
-                PopoverFormSection(title: "세부 기준", systemImage: "slider.horizontal.3") {
-                    VStack(alignment: .leading, spacing: 7) {
-                        thresholdSlider(
-                            title: "충전 기준",
-                            valueText: "\(effectiveBatteryThresholdPercent)%",
-                            value: batteryThresholdBinding,
-                            range: Double(RunnerPreferences.minimumSleepPreventionBatteryThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionBatteryThresholdPercent),
-                            step: 5
-                        )
-                        thresholdSlider(
-                            title: "CPU 기준",
-                            valueText: "\(effectiveCPUThresholdPercent)%",
-                            value: cpuThresholdBinding,
-                            range: Double(RunnerPreferences.minimumSleepPreventionCPUThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionCPUThresholdPercent),
-                            step: 5
-                        )
-                        thresholdSlider(
-                            title: "네트워크",
-                            valueText: "\(effectiveNetworkThresholdKBPerSecond)KB/s",
-                            value: networkThresholdBinding,
-                            range: Double(RunnerPreferences.minimumSleepPreventionNetworkThresholdKBPerSecond)...Double(RunnerPreferences.maximumSleepPreventionNetworkThresholdKBPerSecond),
-                            step: 10
-                        )
-
-                        HStack(spacing: 6) {
-                            Text("앱")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 54, alignment: .leading)
-                            TextField("앱 이름 또는 번들 ID", text: $appMatchText)
-                                .textFieldStyle(.roundedBorder)
-                                .font(.caption)
+                    if showsThresholdSettings {
+                        VStack(alignment: .leading, spacing: 5) {
+                            if chargingBelowThresholdTriggerEnabled {
+                                thresholdSlider(
+                                    title: "배터리",
+                                    valueText: "\(effectiveBatteryThresholdPercent)%",
+                                    value: batteryThresholdBinding,
+                                    range: Double(RunnerPreferences.minimumSleepPreventionBatteryThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionBatteryThresholdPercent),
+                                    step: 5
+                                )
+                            }
+                            if cpuThresholdTriggerEnabled {
+                                thresholdSlider(
+                                    title: "CPU",
+                                    valueText: "\(effectiveCPUThresholdPercent)%",
+                                    value: cpuThresholdBinding,
+                                    range: Double(RunnerPreferences.minimumSleepPreventionCPUThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionCPUThresholdPercent),
+                                    step: 5
+                                )
+                            }
+                            if memoryThresholdTriggerEnabled {
+                                thresholdSlider(
+                                    title: "메모리",
+                                    valueText: "\(effectiveMemoryThresholdPercent)%",
+                                    value: memoryThresholdBinding,
+                                    range: Double(RunnerPreferences.minimumSleepPreventionMemoryThresholdPercent)...Double(RunnerPreferences.maximumSleepPreventionMemoryThresholdPercent),
+                                    step: 5
+                                )
+                            }
                         }
+                        .padding(.top, 1)
+                    }
+                }
+            }
+
+            if currentControlMode != .off {
+                Divider()
+
+                PopoverFormSection(title: "보호 옵션", systemImage: "display") {
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(spacing: 14) {
+                            triggerToggle("화면 잠자기 방지", isOn: $preventDisplaySleep)
+                            triggerToggle("덮개 닫힘 보호", isOn: $preventClosedLidSleep)
+                        }
+                        triggerToggle("보호기 후 암호 요구 해제", isOn: $disableScreenLock)
                     }
                 }
             }
@@ -637,6 +668,10 @@ private struct SleepPreventionPanel: View {
             deferredPreferencesChanged()
         }
         .onChange(of: codexAppTriggerEnabled) { _, enabled in
+            if enabled {
+                RunnerPreferences.setSleepPreventionAppMatchText(RunnerPreferences.defaultSleepPreventionAppMatchText)
+                appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
+            }
             RunnerPreferences.setSleepPreventionCodexAppTrigger(enabled)
             deferredPreferencesChanged()
         }
@@ -648,16 +683,17 @@ private struct SleepPreventionPanel: View {
             RunnerPreferences.setSleepPreventionCPUThresholdTrigger(enabled)
             deferredPreferencesChanged()
         }
+        .onChange(of: memoryThresholdTriggerEnabled) { _, enabled in
+            RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(enabled)
+            deferredPreferencesChanged()
+        }
         .onChange(of: networkActivityTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionNetworkActivityTrigger(enabled)
+            networkThresholdKBPerSecond = RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond
             deferredPreferencesChanged()
         }
         .onChange(of: externalVolumeTriggerEnabled) { _, enabled in
             RunnerPreferences.setSleepPreventionExternalVolumeTrigger(enabled)
-            deferredPreferencesChanged()
-        }
-        .onChange(of: appMatchText) { _, value in
-            RunnerPreferences.setSleepPreventionAppMatchText(value)
             deferredPreferencesChanged()
         }
         .onChange(of: preventDisplaySleep) { _, enabled in
@@ -724,14 +760,16 @@ private struct SleepPreventionPanel: View {
                 .font(.caption.weight(isSelected ? .semibold : .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
-                .frame(maxWidth: .infinity, minHeight: 24)
+                .frame(maxWidth: .infinity, minHeight: 28)
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .background(
                     RoundedRectangle(cornerRadius: 5)
                         .fill(isSelected ? Color.accentColor : Color.clear)
                 )
+                .contentShape(RoundedRectangle(cornerRadius: 5))
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
     }
 
     private var currentControlMode: SleepPreventionControlMode {
@@ -750,12 +788,12 @@ private struct SleepPreventionPanel: View {
         RunnerPreferences.normalizedSleepPreventionCPUThresholdPercent(cpuThresholdPercent)
     }
 
-    private var effectiveNetworkThresholdKBPerSecond: Int {
-        RunnerPreferences.normalizedSleepPreventionNetworkThresholdKBPerSecond(networkThresholdKBPerSecond)
+    private var effectiveMemoryThresholdPercent: Int {
+        RunnerPreferences.normalizedSleepPreventionMemoryThresholdPercent(memoryThresholdPercent)
     }
 
-    private var effectiveAppMatchText: String {
-        RunnerPreferences.normalizedSleepPreventionAppMatchText(appMatchText)
+    private var showsThresholdSettings: Bool {
+        chargingBelowThresholdTriggerEnabled || cpuThresholdTriggerEnabled || memoryThresholdTriggerEnabled
     }
 
     private var controlModeSummary: String {
@@ -775,80 +813,6 @@ private struct SleepPreventionPanel: View {
     private var sleepPreventionErrorMessage: String? {
         guard let errorMessage = sleepPreventionStatus.errorMessage else { return nil }
         return "잠자기 방지 오류 · \(errorMessage)"
-    }
-
-    private var screenLockPolicyNote: String {
-        disableScreenLock ? "보호기 후 암호 요구 해제" : "잠금 설정 유지"
-    }
-
-    private var helperStatusRow: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(helperStatusColor)
-                .frame(width: 7, height: 7)
-            Text(privilegedHelperInstallSnapshot.summary)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var helperStatusColor: Color {
-        switch privilegedHelperInstallSnapshot.status {
-        case .missing:
-            Color.secondary
-        case .partial:
-            Color.orange
-        case .installed:
-            Color.green
-        }
-    }
-
-    private var helperGuidance: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(
-                privilegedHelperInstallSnapshot.guidanceTitle,
-                systemImage: privilegedHelperInstallSnapshot.requiresUserAction ? "exclamationmark.shield" : "checkmark.shield"
-            )
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(privilegedHelperInstallSnapshot.requiresUserAction ? Color.orange : Color.green)
-
-            Text(privilegedHelperInstallSnapshot.guidanceDetail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            helperActionButtons
-        }
-        .padding(.top, 1)
-    }
-
-    @ViewBuilder
-    private var helperActionButtons: some View {
-        let actions = PrivilegedHelperPopoverAction.actions(for: privilegedHelperInstallSnapshot)
-
-        if actions.count > 1 {
-            HStack(spacing: 6) {
-                ForEach(actions) { action in
-                    helperActionButton(action)
-                }
-            }
-        } else if let action = actions.first {
-            helperActionButton(action)
-        }
-    }
-
-    private func helperActionButton(_ action: PrivilegedHelperPopoverAction) -> some View {
-        Button {
-            onAction(action.action)
-        } label: {
-            Label(action.title, systemImage: action.systemImage)
-                .font(.caption2.weight(.semibold))
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.small)
-        .padding(.top, 1)
     }
 
     private func selectControlMode(_ mode: SleepPreventionControlMode) {
@@ -893,13 +857,13 @@ private struct SleepPreventionPanel: View {
         )
     }
 
-    private var networkThresholdBinding: Binding<Double> {
+    private var memoryThresholdBinding: Binding<Double> {
         Binding(
-            get: { Double(effectiveNetworkThresholdKBPerSecond) },
+            get: { Double(effectiveMemoryThresholdPercent) },
             set: { newValue in
-                let value = RunnerPreferences.normalizedSleepPreventionNetworkThresholdKBPerSecond(Int(newValue.rounded()))
-                RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(value)
-                networkThresholdKBPerSecond = value
+                let value = RunnerPreferences.normalizedSleepPreventionMemoryThresholdPercent(Int(newValue.rounded()))
+                RunnerPreferences.setSleepPreventionMemoryThresholdPercent(value)
+                memoryThresholdPercent = value
                 deferredPreferencesChanged()
             }
         )
@@ -908,9 +872,11 @@ private struct SleepPreventionPanel: View {
     private func triggerToggle(_ title: String, isOn: Binding<Bool>) -> some View {
         Toggle(title, isOn: isOn)
             .toggleStyle(.checkbox)
-            .font(.caption)
+            .controlSize(.small)
+            .font(.caption2.weight(.medium))
             .lineLimit(1)
             .minimumScaleFactor(0.82)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func thresholdSlider(
@@ -925,15 +891,362 @@ private struct SleepPreventionPanel: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .frame(width: 54, alignment: .leading)
+                .frame(width: 44, alignment: .leading)
             Slider(value: value, in: range, step: step)
                 .controlSize(.mini)
             Text(valueText)
                 .font(.caption2.monospacedDigit().weight(.semibold))
                 .lineLimit(1)
-                .frame(width: 48, alignment: .trailing)
+                .frame(width: 38, alignment: .trailing)
         }
-        .frame(height: 20)
+        .frame(height: 18)
+    }
+}
+
+private struct SettingsPanel: View {
+    let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
+    let onAction: (PetAction) -> Void
+    let onPreferencesChanged: () -> Void
+
+    @AppStorage(RunnerPreferences.desktopPetEnabledKey) private var desktopPetEnabled = false
+    @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
+    @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
+    @AppStorage(RunnerPreferences.loginLaunchEnabledKey) private var loginLaunchEnabled = RunnerPreferences.defaultLoginLaunchEnabled
+    @State private var loginLaunchErrorMessage: String?
+
+    private let loginLaunchController = LoginLaunchController()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PopoverFormSection(title: "앱 실행", systemImage: "power") {
+                VStack(alignment: .leading, spacing: 5) {
+                    settingsToggle("로그인 시 MacDog 실행", isOn: $loginLaunchEnabled)
+                    Text("끄면 재부팅 후 로그인해도 MacDog가 자동으로 실행되지 않습니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let loginLaunchErrorMessage {
+                        Text(loginLaunchErrorMessage)
+                            .font(.caption2)
+                            .foregroundStyle(Color.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            Divider()
+
+            PopoverFormSection(title: "권한 도우미", systemImage: "key.horizontal") {
+                PrivilegedHelperStatusContent(
+                    snapshot: privilegedHelperInstallSnapshot,
+                    onAction: onAction
+                )
+            }
+
+            Divider()
+
+            PopoverFormSection(title: "캐릭터 설정", systemImage: "pawprint") {
+                VStack(alignment: .leading, spacing: 8) {
+                    CharacterSelectionRow(profile: MacDogCharacterProfile.codexPup)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 14) {
+                        settingsToggle("데스크톱 펫 표시", isOn: $desktopPetEnabled)
+                        settingsToggle("움직임 줄이기", isOn: $reducedMotion)
+                        settingsToggle("러너 일시정지", isOn: $animationPaused)
+                    }
+                }
+            }
+        }
+        .onChange(of: desktopPetEnabled) { _, enabled in
+            RunnerPreferences.setDesktopPetEnabled(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: reducedMotion) { _, enabled in
+            RunnerPreferences.setReducedMotion(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: animationPaused) { _, enabled in
+            RunnerPreferences.setAnimationPaused(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: loginLaunchEnabled) { _, enabled in
+            RunnerPreferences.setLoginLaunchEnabled(enabled)
+            do {
+                try loginLaunchController.setEnabled(enabled)
+                loginLaunchErrorMessage = nil
+            } catch {
+                loginLaunchErrorMessage = error.localizedDescription
+            }
+            deferredPreferencesChanged()
+        }
+    }
+
+    private func settingsToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.checkbox)
+            .controlSize(.small)
+            .font(.caption2.weight(.medium))
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+    }
+
+    private func deferredPreferencesChanged() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            onPreferencesChanged()
+        }
+    }
+}
+
+private struct CharacterSelectionRow: View {
+    let profile: MacDogCharacterProfile
+
+    var body: some View {
+        HStack(spacing: 10) {
+            CharacterPreview(profile: profile)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(profile.displayName)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+
+                Text("기본 캐릭터")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Label("선택됨", systemImage: "checkmark.circle.fill")
+                .labelStyle(.titleAndIcon)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color.accentColor.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.accentColor.opacity(0.38), lineWidth: 1)
+        )
+    }
+}
+
+private struct CharacterPreview: View {
+    let profile: MacDogCharacterProfile
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+
+            if let previewImage {
+                Image(nsImage: previewImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 38, height: 38)
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 42, height: 42)
+        .accessibilityHidden(true)
+    }
+
+    private var previewImage: NSImage? {
+        let asset = profile.desktopPet.asset(for: .idleFront)
+        if let image = Self.image(
+            named: "\(asset.resourcePrefix)-0",
+            resourceDirectory: profile.desktopPet.resourceDirectory
+        ) {
+            return Self.croppedVisibleImage(image)
+        }
+
+        return Self.image(
+            named: MacDogPopoverModule.settings.artworkName,
+            resourceDirectory: profile.popoverTabs.resourceDirectory
+        )
+    }
+
+    private static func image(named resourceName: String, resourceDirectory: String) -> NSImage? {
+        if let url = Bundle.main.resourceURL?
+            .appendingPathComponent(resourceDirectory, isDirectory: true)
+            .appendingPathComponent("\(resourceName).png") {
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
+        }
+
+        if let url = Bundle.main.resourceURL?.appendingPathComponent("\(resourceName).png") {
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
+        }
+
+        if let url = Bundle.module.url(
+            forResource: resourceName,
+            withExtension: "png",
+            subdirectory: resourceDirectory
+        ) {
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
+        }
+
+        guard let url = Bundle.module.url(forResource: resourceName, withExtension: "png") else {
+            return nil
+        }
+
+        return NSImage(contentsOf: url)
+    }
+
+    private static func croppedVisibleImage(_ image: NSImage) -> NSImage {
+        guard
+            let tiff = image.tiffRepresentation,
+            let bitmap = NSBitmapImageRep(data: tiff)
+        else {
+            return image
+        }
+
+        var minX = bitmap.pixelsWide
+        var minY = bitmap.pixelsHigh
+        var maxX = 0
+        var maxY = 0
+
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let color = bitmap.colorAt(x: x, y: y), color.alphaComponent > 0.02 else {
+                    continue
+                }
+
+                minX = Swift.min(minX, x)
+                minY = Swift.min(minY, y)
+                maxX = Swift.max(maxX, x)
+                maxY = Swift.max(maxY, y)
+            }
+        }
+
+        guard minX <= maxX, minY <= maxY else {
+            return image
+        }
+
+        let padding = 2
+        let x = Swift.max(0, minX - padding)
+        let right = Swift.min(bitmap.pixelsWide, maxX + padding + 1)
+        let top = Swift.max(0, minY - padding)
+        let bottom = Swift.min(bitmap.pixelsHigh, maxY + padding + 1)
+        let y = bitmap.pixelsHigh - bottom
+        let cropRect = NSRect(x: x, y: y, width: right - x, height: bottom - top)
+        let cropped = NSImage(size: cropRect.size)
+
+        cropped.lockFocus()
+        image.draw(
+            in: NSRect(origin: .zero, size: cropRect.size),
+            from: cropRect,
+            operation: .sourceOver,
+            fraction: 1
+        )
+        cropped.unlockFocus()
+        return cropped
+    }
+}
+
+private struct SettingsCategoryHeader: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.primary)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct PrivilegedHelperStatusContent: View {
+    let snapshot: PrivilegedHelperInstallSnapshot
+    let onAction: (PetAction) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 7, height: 7)
+                Text(snapshot.summary)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                Spacer(minLength: 0)
+            }
+
+            Text(snapshot.detailSummary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Label(
+                snapshot.guidanceTitle,
+                systemImage: snapshot.requiresUserAction ? "exclamationmark.shield" : "checkmark.shield"
+            )
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(snapshot.requiresUserAction ? Color.orange : Color.green)
+
+            helperActionButtons
+        }
+    }
+
+    private var statusColor: Color {
+        switch snapshot.status {
+        case .missing:
+            Color.secondary
+        case .partial:
+            Color.orange
+        case .installed:
+            Color.green
+        }
+    }
+
+    @ViewBuilder
+    private var helperActionButtons: some View {
+        let actions = PrivilegedHelperPopoverAction.actions(for: snapshot)
+
+        if actions.count > 1 {
+            HStack(spacing: 6) {
+                ForEach(actions) { action in
+                    helperActionButton(action)
+                }
+            }
+        } else if let action = actions.first {
+            helperActionButton(action)
+        }
+    }
+
+    private func helperActionButton(_ action: PrivilegedHelperPopoverAction) -> some View {
+        Button {
+            onAction(action.action)
+        } label: {
+            Label(action.title, systemImage: action.systemImage)
+                .font(.caption2.weight(.semibold))
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(.top, 1)
     }
 }
 
@@ -947,31 +1260,44 @@ private struct BatteryPanel: View {
     private let chargeLimitController = NativeChargeLimitController()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             ResourceMetricBlock(
                 title: "배터리",
                 systemImage: "battery.100percent",
                 value: snapshot.battery.summary,
                 details: [
-                    snapshot.battery.powerSummary,
-                    snapshot.battery.detailSummary
+                    snapshot.battery.powerSummary
                 ],
                 progress: snapshot.battery.percent.map { Double($0) / 100 }
             )
 
+            Divider()
+
+            PopoverFormSection(title: "배터리 정보", systemImage: "info.circle") {
+                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
+                    GridRow {
+                        metricRow("사이클", snapshot.battery.cycleSummary)
+                    }
+                    GridRow {
+                        metricRow("온도", snapshot.battery.temperatureSummary)
+                    }
+                }
+            }
+
+            Divider()
+
             PopoverFormSection(title: "충전 제어", systemImage: "slider.horizontal.3") {
                 Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 4) {
                     GridRow {
-                        metricRow("상태", chargeLimitSummary)
+                        metricRow("현재 한도", chargeLimitSummary)
+                    }
+                    if !snapshot.chargeLimitSupport.isNativeChargeLimitAvailable {
+                        GridRow {
+                            metricRow("필요 조건", snapshot.chargeLimitSupport.requirementSummary)
+                        }
                     }
                     GridRow {
-                        metricRow("사양", snapshot.chargeLimitSupport.requirementSummary)
-                    }
-                    GridRow {
-                        metricRow("목표", "\(effectiveChargeLimitTargetPercent)%", emphasized: true)
-                    }
-                    GridRow {
-                        metricRow("동작", chargeLimitBehaviorSummary)
+                        metricRow("설정값", "\(effectiveChargeLimitTargetPercent)%", emphasized: true)
                     }
                 }
 
@@ -1013,25 +1339,12 @@ private struct BatteryPanel: View {
 
     private var chargeLimitSummary: String {
         if let appliedChargeLimitPercent {
-            return "macOS 적용됨 · \(appliedChargeLimitPercent)%"
+            return "\(appliedChargeLimitPercent)% 적용됨"
+        }
+        if let currentLimitPercent = snapshot.chargeLimitSupport.currentLimitPercent {
+            return "\(currentLimitPercent)% 적용됨"
         }
         return snapshot.chargeLimitSupport.summary
-    }
-
-    private var chargeLimitBehaviorSummary: String {
-        guard snapshot.chargeLimitSupport.isNativeChargeLimitAvailable else {
-            return "시스템 설정 확인 필요"
-        }
-        guard let percent = snapshot.battery.percent else {
-            return "배터리 상태 확인 중"
-        }
-        if percent > effectiveChargeLimitTargetPercent, snapshot.battery.isConnectedToPower == true {
-            return snapshot.battery.isCharging == true ? "목표 초과 · 충전 중" : "목표 초과 · 충전 안 함"
-        }
-        if snapshot.battery.isCharging == true {
-            return "목표까지 충전 중"
-        }
-        return "상한 유지"
     }
 
     private var effectiveChargeLimitTargetPercent: Int {
@@ -1135,7 +1448,7 @@ private struct PopoverFormSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 5) {
             Label(title, systemImage: systemImage)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -1173,11 +1486,15 @@ private struct PopoverTabArtwork: View {
         if let url = Bundle.main.resourceURL?
             .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(resourceName).png") {
-            return NSImage(contentsOf: url)
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
         }
 
         if let url = Bundle.main.resourceURL?.appendingPathComponent("\(resourceName).png") {
-            return NSImage(contentsOf: url)
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
         }
 
         if let url = Bundle.module.url(
@@ -1185,7 +1502,9 @@ private struct PopoverTabArtwork: View {
             withExtension: "png",
             subdirectory: resourceDirectory
         ) {
-            return NSImage(contentsOf: url)
+            if let image = NSImage(contentsOf: url) {
+                return image
+            }
         }
 
         guard let url = Bundle.module.url(forResource: resourceName, withExtension: "png") else {
@@ -1252,12 +1571,10 @@ private struct UsageRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            ProgressView(value: progressValue)
-                .tint(tint)
+            RemainingUsageBar(value: progressValue, tint: tint)
+                .accessibilityLabel("\(title) 남은 사용량")
+                .accessibilityValue(summary)
 
-            Text(resetText)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -1267,23 +1584,44 @@ private struct UsageRow: View {
     }
 
     private var progressValue: Double {
-        min(max((window?.usedPercent ?? 0) / 100, 0), 1)
-    }
-
-    private var resetText: String {
-        UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt)
+        min(max((window?.remainingPercent ?? 0) / 100, 0), 1)
     }
 
     private var tint: Color {
-        switch window?.usedPercent ?? 0 {
-        case 95...:
+        switch window?.remainingPercent ?? 0 {
+        case ..<10:
             .red
-        case 80..<95:
+        case 10..<30:
             .orange
-        case 50..<80:
-            .accentColor
+        case 30..<60:
+            .yellow
         default:
-            .secondary
+            .green
         }
+    }
+}
+
+private struct RemainingUsageBar: View {
+    let value: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.primary.opacity(0.12))
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(tint)
+                    .frame(width: fillWidth(in: proxy.size.width))
+                    .opacity(value > 0 ? 1 : 0)
+            }
+        }
+        .frame(height: 8)
+    }
+
+    private func fillWidth(in totalWidth: CGFloat) -> CGFloat {
+        let clamped = min(max(value, 0), 1)
+        guard clamped > 0 else { return 0 }
+        return max(4, totalWidth * clamped)
     }
 }

@@ -62,13 +62,19 @@ final class PetMenuModelTests: XCTestCase {
 
     func testMenuModelReflectsConditionTriggerToggleActions() {
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
         let preferences = RunnerPreferences(defaults: defaults)
 
         let model = PetMenuModel(preferences: preferences, surface: .menuBar)
 
         XCTAssertTrue(model.commands.contains(PetMenuCommand(
-            title: "CPU 사용 \(RunnerPreferences.defaultSleepPreventionCPUThresholdPercent)% 이상",
+            title: "CPU 사용량 \(RunnerPreferences.defaultSleepPreventionCPUThresholdPercent)% 이상",
             action: .setSleepPreventionCPUThresholdTrigger(false),
+            isSelected: true
+        )))
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(
+            title: "메모리 사용량 \(RunnerPreferences.defaultSleepPreventionMemoryThresholdPercent)% 이상",
+            action: .setSleepPreventionMemoryThresholdTrigger(false),
             isSelected: true
         )))
         XCTAssertEqual(submenu(in: model, titled: "시간 기준 길이")?.isEnabled, false)

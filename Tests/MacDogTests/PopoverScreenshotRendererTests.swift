@@ -10,11 +10,13 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             throw XCTSkip("README screenshot rendering is opt-in.")
         }
 
-        let outputDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent("Assets", isDirectory: true)
-            .appendingPathComponent("Generated", isDirectory: true)
-            .appendingPathComponent("Docs", isDirectory: true)
-            .appendingPathComponent("PopoverTabs", isDirectory: true)
+        let outputRoot = ProcessInfo.processInfo.environment["MACDOG_RENDER_README_SCREENSHOTS_OUTPUT_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("Assets", isDirectory: true)
+                .appendingPathComponent("Generated", isDirectory: true)
+                .appendingPathComponent("Docs", isDirectory: true)
+        let outputDirectory = outputRoot.appendingPathComponent("PopoverTabs", isDirectory: true)
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let defaults = UserDefaults.standard
@@ -28,16 +30,19 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.sleepPreventionCodexAppTriggerKey,
             RunnerPreferences.sleepPreventionChargingBelowThresholdTriggerKey,
             RunnerPreferences.sleepPreventionCPUThresholdTriggerKey,
+            RunnerPreferences.sleepPreventionMemoryThresholdTriggerKey,
             RunnerPreferences.sleepPreventionNetworkActivityTriggerKey,
             RunnerPreferences.sleepPreventionExternalVolumeTriggerKey,
             RunnerPreferences.sleepPreventionBatteryThresholdPercentKey,
             RunnerPreferences.sleepPreventionCPUThresholdPercentKey,
+            RunnerPreferences.sleepPreventionMemoryThresholdPercentKey,
             RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey,
             RunnerPreferences.sleepPreventionAppMatchTextKey,
             RunnerPreferences.sleepPreventionPreventDisplaySleepKey,
             RunnerPreferences.sleepPreventionPreventClosedLidSleepKey,
             RunnerPreferences.sleepPreventionDisableScreenLockKey,
-            RunnerPreferences.chargeLimitTargetPercentKey
+            RunnerPreferences.chargeLimitTargetPercentKey,
+            RunnerPreferences.loginLaunchEnabledKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -69,9 +74,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             .appendingPathComponent("Resources", isDirectory: true)
             .appendingPathComponent("DesktopPet", isDirectory: true)
             .appendingPathComponent("pup-idle-front-0.png")
-        let petDestination = outputDirectory
-            .deletingLastPathComponent()
-            .appendingPathComponent("macdog-desktop-pet-front.png")
+        let petDestination = outputRoot.appendingPathComponent("macdog-desktop-pet-front.png")
         if FileManager.default.fileExists(atPath: petDestination.path) {
             try FileManager.default.removeItem(at: petDestination)
         }
@@ -87,11 +90,29 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
             RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
             RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
+            RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
             RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
-            RunnerPreferences.setSleepPreventionBatteryThresholdPercent(90, defaults: defaults)
-            RunnerPreferences.setSleepPreventionCPUThresholdPercent(75, defaults: defaults)
+            RunnerPreferences.setSleepPreventionBatteryThresholdPercent(
+                RunnerPreferences.defaultSleepPreventionBatteryThresholdPercent,
+                defaults: defaults
+            )
+            RunnerPreferences.setSleepPreventionCPUThresholdPercent(
+                RunnerPreferences.defaultSleepPreventionCPUThresholdPercent,
+                defaults: defaults
+            )
+            RunnerPreferences.setSleepPreventionMemoryThresholdPercent(
+                RunnerPreferences.defaultSleepPreventionMemoryThresholdPercent,
+                defaults: defaults
+            )
             RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
             RunnerPreferences.setSleepPreventionAppMatchText("Codex", defaults: defaults)
+        }
+
+        if module == .settings {
+            RunnerPreferences.setDesktopPetEnabled(true, defaults: defaults)
+            RunnerPreferences.setReducedMotion(false, defaults: defaults)
+            RunnerPreferences.setAnimationPaused(false, defaults: defaults)
+            RunnerPreferences.setLoginLaunchEnabled(true, defaults: defaults)
         }
 
         if module == .battery {

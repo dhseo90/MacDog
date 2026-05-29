@@ -7,6 +7,7 @@ struct SleepPreventionTriggerStatus: Equatable {
         codexAppTriggerEnabled: false,
         chargingBelowThresholdTriggerEnabled: false,
         cpuThresholdTriggerEnabled: false,
+        memoryThresholdTriggerEnabled: false,
         networkActivityTriggerEnabled: false,
         externalVolumeTriggerEnabled: false,
         powerAdapterConnected: false,
@@ -14,12 +15,15 @@ struct SleepPreventionTriggerStatus: Equatable {
         appMatchText: RunnerPreferences.defaultSleepPreventionAppMatchText,
         chargingBelowThreshold: false,
         cpuAboveThreshold: false,
+        memoryAboveThreshold: false,
         networkActivityAboveThreshold: false,
         externalVolumeConnected: false,
         batteryPercent: nil,
         batteryThresholdPercent: RunnerPreferences.defaultSleepPreventionBatteryThresholdPercent,
         cpuLoadPercent: nil,
         cpuThresholdPercent: RunnerPreferences.defaultSleepPreventionCPUThresholdPercent,
+        memoryUsedPercent: nil,
+        memoryThresholdPercent: RunnerPreferences.defaultSleepPreventionMemoryThresholdPercent,
         networkActivityBytesPerSecond: nil,
         networkActivityThresholdBytesPerSecond: Double(RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond) * 1024,
         externalVolumeCount: 0
@@ -29,6 +33,7 @@ struct SleepPreventionTriggerStatus: Equatable {
     let codexAppTriggerEnabled: Bool
     let chargingBelowThresholdTriggerEnabled: Bool
     let cpuThresholdTriggerEnabled: Bool
+    let memoryThresholdTriggerEnabled: Bool
     let networkActivityTriggerEnabled: Bool
     let externalVolumeTriggerEnabled: Bool
     let powerAdapterConnected: Bool
@@ -36,12 +41,15 @@ struct SleepPreventionTriggerStatus: Equatable {
     let appMatchText: String
     let chargingBelowThreshold: Bool
     let cpuAboveThreshold: Bool
+    let memoryAboveThreshold: Bool
     let networkActivityAboveThreshold: Bool
     let externalVolumeConnected: Bool
     let batteryPercent: Int?
     let batteryThresholdPercent: Int
     let cpuLoadPercent: Double?
     let cpuThresholdPercent: Int
+    let memoryUsedPercent: Double?
+    let memoryThresholdPercent: Int
     let networkActivityBytesPerSecond: Double?
     let networkActivityThresholdBytesPerSecond: Double
     let externalVolumeCount: Int
@@ -75,7 +83,8 @@ struct SleepPreventionTriggerStatus: Equatable {
     ) -> SleepPreventionTriggerStatus {
         let batteryThreshold = preferences.sleepPreventionBatteryThresholdPercent
         let cpuThreshold = preferences.sleepPreventionCPUThresholdPercent
-        let networkThreshold = Double(preferences.sleepPreventionNetworkThresholdKBPerSecond) * 1024
+        let memoryThreshold = preferences.sleepPreventionMemoryThresholdPercent
+        let networkThreshold = Double(RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond) * 1024
         let battery = systemMetrics.battery
         let networkActivityBytesPerSecond = Self.networkActivityBytesPerSecond(systemMetrics)
 
@@ -84,19 +93,23 @@ struct SleepPreventionTriggerStatus: Equatable {
             codexAppTriggerEnabled: preferences.sleepPreventionCodexAppTriggerEnabled,
             chargingBelowThresholdTriggerEnabled: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled,
             cpuThresholdTriggerEnabled: preferences.sleepPreventionCPUThresholdTriggerEnabled,
+            memoryThresholdTriggerEnabled: preferences.sleepPreventionMemoryThresholdTriggerEnabled,
             networkActivityTriggerEnabled: preferences.sleepPreventionNetworkActivityTriggerEnabled,
             externalVolumeTriggerEnabled: preferences.sleepPreventionExternalVolumeTriggerEnabled,
             powerAdapterConnected: battery.isConnectedToPower == true,
             codexAppRunning: codexAppRunning,
             appMatchText: preferences.sleepPreventionAppMatchText,
-            chargingBelowThreshold: battery.isConnectedToPower == true && (battery.percent ?? 101) < batteryThreshold,
+            chargingBelowThreshold: (battery.percent ?? -1) >= batteryThreshold,
             cpuAboveThreshold: (systemMetrics.cpuLoadPercent ?? 0) >= Double(cpuThreshold),
+            memoryAboveThreshold: (systemMetrics.memoryUsedPercent ?? 0) >= Double(memoryThreshold),
             networkActivityAboveThreshold: (networkActivityBytesPerSecond ?? 0) >= networkThreshold,
             externalVolumeConnected: externalVolumeCount > 0,
             batteryPercent: battery.percent,
             batteryThresholdPercent: batteryThreshold,
             cpuLoadPercent: systemMetrics.cpuLoadPercent,
             cpuThresholdPercent: cpuThreshold,
+            memoryUsedPercent: systemMetrics.memoryUsedPercent,
+            memoryThresholdPercent: memoryThreshold,
             networkActivityBytesPerSecond: networkActivityBytesPerSecond,
             networkActivityThresholdBytesPerSecond: networkThreshold,
             externalVolumeCount: externalVolumeCount
@@ -108,6 +121,7 @@ struct SleepPreventionTriggerStatus: Equatable {
         (codexAppTriggerEnabled && codexAppRunning) ||
         (chargingBelowThresholdTriggerEnabled && chargingBelowThreshold) ||
         (cpuThresholdTriggerEnabled && cpuAboveThreshold) ||
+        (memoryThresholdTriggerEnabled && memoryAboveThreshold) ||
         (networkActivityTriggerEnabled && networkActivityAboveThreshold) ||
         (externalVolumeTriggerEnabled && externalVolumeConnected)
     }
@@ -129,6 +143,7 @@ struct SleepPreventionTriggerStatus: Equatable {
         codexAppTriggerEnabled ||
         chargingBelowThresholdTriggerEnabled ||
         cpuThresholdTriggerEnabled ||
+        memoryThresholdTriggerEnabled ||
         networkActivityTriggerEnabled ||
         externalVolumeTriggerEnabled
     }
@@ -139,19 +154,22 @@ struct SleepPreventionTriggerStatus: Equatable {
             labels.append("전원")
         }
         if codexAppTriggerEnabled && codexAppRunning {
-            labels.append("\(appMatchText) 앱")
+            labels.append("Codex 실행")
         }
         if chargingBelowThresholdTriggerEnabled && chargingBelowThreshold {
-            labels.append("충전 \(batteryThresholdPercent)% 미만")
+            labels.append("배터리 \(batteryThresholdPercent)% 이상")
         }
         if cpuThresholdTriggerEnabled && cpuAboveThreshold {
-            labels.append("CPU 사용")
+            labels.append("CPU 사용량")
+        }
+        if memoryThresholdTriggerEnabled && memoryAboveThreshold {
+            labels.append("메모리 사용량")
         }
         if networkActivityTriggerEnabled && networkActivityAboveThreshold {
-            labels.append("네트워크")
+            labels.append("네트워크 전송")
         }
         if externalVolumeTriggerEnabled && externalVolumeConnected {
-            labels.append("볼륨")
+            labels.append("드라이브")
         }
         return labels
     }

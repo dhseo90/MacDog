@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 import IOKit.ps
 
 struct BatteryStatusSnapshot: Equatable {
@@ -41,7 +42,10 @@ struct BatteryStatusSnapshot: Equatable {
                 continue
             }
 
-            return BatteryStatusSnapshot(description: description)
+            return BatteryStatusSnapshot(
+                description: description,
+                hardwareDetails: hardwareDetails()
+            )
         }
 
         return .unavailable
@@ -80,7 +84,7 @@ struct BatteryStatusSnapshot: Equatable {
         guard isPresent else { return "확인 불가" }
         var details: [String] = []
         if let cycleCount {
-            details.append("사이클 \(cycleCount)")
+            details.append("사이클 \(cycleCount)회")
         }
         if let temperatureCelsius {
             details.append("온도 \(String(format: "%.1f", temperatureCelsius))°C")
@@ -88,7 +92,17 @@ struct BatteryStatusSnapshot: Equatable {
         return details.isEmpty ? "세부 정보 없음" : details.joined(separator: " · ")
     }
 
-    private init(description: [String: Any]) {
+    var cycleSummary: String {
+        guard isPresent else { return "확인 불가" }
+        return cycleCount.map { "\($0)회" } ?? "확인 불가"
+    }
+
+    var temperatureSummary: String {
+        guard isPresent else { return "확인 불가" }
+        return temperatureCelsius.map { String(format: "%.1f°C", $0) } ?? "확인 불가"
+    }
+
+    private init(description: [String: Any], hardwareDetails: HardwareDetails) {
         let current = Self.intValue(description[kIOPSCurrentCapacityKey])
         let max = Self.intValue(description[kIOPSMaxCapacityKey])
         let percent = Self.percent(current: current, max: max)
@@ -101,8 +115,8 @@ struct BatteryStatusSnapshot: Equatable {
         self.isConnectedToPower = powerSourceState == kIOPSACPowerValue
         self.timeToFullChargeMinutes = Self.positiveMinutes(description[kIOPSTimeToFullChargeKey])
         self.timeToEmptyMinutes = Self.positiveMinutes(description[kIOPSTimeToEmptyKey])
-        self.cycleCount = Self.intValue(description["CycleCount"])
-        self.temperatureCelsius = Self.temperatureCelsius(description["Temperature"])
+        self.cycleCount = Self.intValue(description["CycleCount"]) ?? hardwareDetails.cycleCount
+        self.temperatureCelsius = Self.temperatureCelsius(description["Temperature"]) ?? hardwareDetails.temperatureCelsius
     }
 
     init(
@@ -203,6 +217,26 @@ struct BatteryStatusSnapshot: Equatable {
         return candidates.first { (-20...120).contains($0) }
     }
 
+    private static func hardwareDetails() -> HardwareDetails {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
+        guard service != IO_OBJECT_NULL else { return .unavailable }
+        defer { IOObjectRelease(service) }
+
+        var properties: Unmanaged<CFMutableDictionary>?
+        let result = IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0)
+        guard
+            result == KERN_SUCCESS,
+            let description = properties?.takeRetainedValue() as? [String: Any]
+        else {
+            return .unavailable
+        }
+
+        return HardwareDetails(
+            cycleCount: intValue(description["CycleCount"]),
+            temperatureCelsius: temperatureCelsius(description["Temperature"])
+        )
+    }
+
     private static func minutes(_ value: Int) -> String {
         if value >= 60 {
             let hours = value / 60
@@ -211,5 +245,12 @@ struct BatteryStatusSnapshot: Equatable {
         }
 
         return "\(value)분"
+    }
+
+    private struct HardwareDetails {
+        static let unavailable = HardwareDetails(cycleCount: nil, temperatureCelsius: nil)
+
+        let cycleCount: Int?
+        let temperatureCelsius: Double?
     }
 }

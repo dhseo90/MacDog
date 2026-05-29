@@ -31,7 +31,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · CPU 사용")
+        XCTAssertEqual(status.summary, "활성 · CPU 사용량")
     }
 
     func testCPUThresholdTriggerUsesConfiguredThreshold() {
@@ -60,10 +60,10 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · 네트워크")
+        XCTAssertEqual(status.summary, "활성 · 네트워크 전송")
     }
 
-    func testNetworkActivityTriggerUsesConfiguredThreshold() {
+    func testNetworkActivityTriggerUsesDefaultThreshold() {
         RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionNetworkThresholdKBPerSecond(256, defaults: defaults)
 
@@ -75,10 +75,29 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.networkActivityThresholdBytesPerSecond, 256 * 1024)
+        XCTAssertEqual(
+            status.networkActivityThresholdBytesPerSecond,
+            Double(RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond) * 1024
+        )
     }
 
-    func testConfiguredAppTriggerUsesConfiguredAppNameInSummary() {
+    func testMemoryThresholdTriggerMatchesWhenUsageIsHigh() {
+        RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdPercent(70, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(memoryUsedPercent: 71),
+            codexAppRunning: false,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.summary, "활성 · 메모리 사용량")
+        XCTAssertEqual(status.memoryThresholdPercent, 70)
+    }
+
+    func testConfiguredAppTriggerUsesCodexLabelInSummary() {
         RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
 
@@ -90,7 +109,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · Xcode 앱")
+        XCTAssertEqual(status.summary, "활성 · Codex 실행")
     }
 
     func testCaptureDoesNotReadRunningAppsWhenConfiguredAppTriggerIsDisabled() {
@@ -136,44 +155,44 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
 
         XCTAssertEqual(requestedMatchText, "Xcode")
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · Xcode 앱")
+        XCTAssertEqual(status.summary, "활성 · Codex 실행")
     }
 
-    func testChargingBelowThresholdTriggerRequiresPowerAndLowBattery() {
+    func testBatteryThresholdTriggerMatchesWhenBatteryHasEnoughCharge() {
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
 
         let status = SleepPreventionTriggerStatus.evaluate(
             preferences: RunnerPreferences(defaults: defaults),
-            systemMetrics: makeMetrics(battery: makeBattery(percent: 72, isConnectedToPower: true)),
+            systemMetrics: makeMetrics(battery: makeBattery(percent: 30, isConnectedToPower: false)),
             codexAppRunning: false,
             externalVolumeCount: 0
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · 충전 80% 미만")
+        XCTAssertEqual(status.summary, "활성 · 배터리 30% 이상")
     }
 
-    func testChargingBelowThresholdTriggerUsesConfiguredThreshold() {
+    func testBatteryThresholdTriggerUsesConfiguredThreshold() {
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionBatteryThresholdPercent(70, defaults: defaults)
 
         let status = SleepPreventionTriggerStatus.evaluate(
             preferences: RunnerPreferences(defaults: defaults),
-            systemMetrics: makeMetrics(battery: makeBattery(percent: 69, isConnectedToPower: true)),
+            systemMetrics: makeMetrics(battery: makeBattery(percent: 70, isConnectedToPower: true)),
             codexAppRunning: false,
             externalVolumeCount: 0
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · 충전 70% 미만")
+        XCTAssertEqual(status.summary, "활성 · 배터리 70% 이상")
     }
 
-    func testChargingBelowThresholdTriggerWaitsWithoutPower() {
+    func testBatteryThresholdTriggerWaitsWhenBatteryIsTooLow() {
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
 
         let status = SleepPreventionTriggerStatus.evaluate(
             preferences: RunnerPreferences(defaults: defaults),
-            systemMetrics: makeMetrics(battery: makeBattery(percent: 72, isConnectedToPower: false)),
+            systemMetrics: makeMetrics(battery: makeBattery(percent: 29, isConnectedToPower: true)),
             codexAppRunning: false,
             externalVolumeCount: 0
         )
@@ -193,11 +212,12 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         )
 
         XCTAssertTrue(status.isMatched)
-        XCTAssertEqual(status.summary, "활성 · 볼륨")
+        XCTAssertEqual(status.summary, "활성 · 드라이브")
     }
 
     private func makeMetrics(
         cpuLoadPercent: Double? = nil,
+        memoryUsedPercent: Double? = nil,
         networkReceivedRateBytesPerSecond: Double? = nil,
         networkSentRateBytesPerSecond: Double? = nil,
         battery: BatteryStatusSnapshot = .unavailable
@@ -205,7 +225,7 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         SystemMetricsSnapshot(
             capturedAt: Date(timeIntervalSince1970: 1_779_800_000),
             cpuLoadPercent: cpuLoadPercent,
-            memoryUsedPercent: nil,
+            memoryUsedPercent: memoryUsedPercent,
             memoryDetails: nil,
             diskUsedPercent: nil,
             diskDetails: nil,

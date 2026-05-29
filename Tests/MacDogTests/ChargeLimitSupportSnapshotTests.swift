@@ -99,6 +99,27 @@ final class ChargeLimitSupportSnapshotTests: XCTestCase {
 
         XCTAssertEqual(snapshot.summary, "95% · 충전 안 함")
         XCTAssertEqual(snapshot.powerSummary, "전원 연결 · 충전 안 함")
+        XCTAssertEqual(snapshot.detailSummary, "사이클 7회 · 온도 30.1°C")
+        XCTAssertEqual(snapshot.cycleSummary, "7회")
+        XCTAssertEqual(snapshot.temperatureSummary, "30.1°C")
+    }
+
+    func testBatteryInfoSummariesHandleMissingDetails() {
+        let snapshot = BatteryStatusSnapshot(
+            isPresent: true,
+            percent: 95,
+            isCharging: false,
+            isCharged: false,
+            isConnectedToPower: true,
+            timeToFullChargeMinutes: nil,
+            timeToEmptyMinutes: nil,
+            cycleCount: nil,
+            temperatureCelsius: nil
+        )
+
+        XCTAssertEqual(snapshot.detailSummary, "세부 정보 없음")
+        XCTAssertEqual(snapshot.cycleSummary, "확인 불가")
+        XCTAssertEqual(snapshot.temperatureSummary, "확인 불가")
     }
 
     func testFloatingPetMenuPlacementUsesRightSideInLeftHalfOfScreen() {

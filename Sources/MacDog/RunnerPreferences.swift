@@ -7,6 +7,7 @@ struct RunnerPreferences: Equatable {
     static let reducedMotionKey = "reducedMotion"
     static let animationPausedKey = "animationPaused"
     static let desktopPetEnabledKey = "desktopPetEnabled"
+    static let loginLaunchEnabledKey = "loginLaunchEnabled"
     static let sleepPreventionControlModeKey = "sleepPreventionControlMode"
     static let sleepPreventionEnabledKey = "sleepPreventionEnabled"
     static let sleepPreventionSessionPresetKey = "sleepPreventionSessionPreset"
@@ -15,10 +16,12 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionCodexAppTriggerKey = "sleepPreventionCodexAppTrigger"
     static let sleepPreventionChargingBelowThresholdTriggerKey = "sleepPreventionChargingBelowThresholdTrigger"
     static let sleepPreventionCPUThresholdTriggerKey = "sleepPreventionCPUThresholdTrigger"
+    static let sleepPreventionMemoryThresholdTriggerKey = "sleepPreventionMemoryThresholdTrigger"
     static let sleepPreventionNetworkActivityTriggerKey = "sleepPreventionNetworkActivityTrigger"
     static let sleepPreventionExternalVolumeTriggerKey = "sleepPreventionExternalVolumeTrigger"
     static let sleepPreventionBatteryThresholdPercentKey = "sleepPreventionBatteryThresholdPercent"
     static let sleepPreventionCPUThresholdPercentKey = "sleepPreventionCPUThresholdPercent"
+    static let sleepPreventionMemoryThresholdPercentKey = "sleepPreventionMemoryThresholdPercent"
     static let sleepPreventionNetworkThresholdKBPerSecondKey = "sleepPreventionNetworkThresholdKBPerSecond"
     static let sleepPreventionAppMatchTextKey = "sleepPreventionAppMatchText"
     static let sleepPreventionPreventDisplaySleepKey = "sleepPreventionPreventDisplaySleep"
@@ -34,17 +37,21 @@ struct RunnerPreferences: Equatable {
     static let minimumChargeLimitTargetPercent = 80
     static let maximumChargeLimitTargetPercent = 100
     static let chargeLimitTargetStepPercent = 5
-    static let defaultSleepPreventionBatteryThresholdPercent = 80
-    static let defaultSleepPreventionCPUThresholdPercent = 80
+    static let defaultSleepPreventionBatteryThresholdPercent = 30
+    static let defaultSleepPreventionCPUThresholdPercent = 20
+    static let defaultSleepPreventionMemoryThresholdPercent = 20
     static let defaultSleepPreventionNetworkThresholdKBPerSecond = 100
     static let defaultSleepPreventionAppMatchText = "codex"
     static let defaultSleepPreventionPreventDisplaySleep = true
     static let defaultSleepPreventionPreventClosedLidSleep = true
     static let defaultSleepPreventionDisableScreenLock = true
-    static let minimumSleepPreventionBatteryThresholdPercent = 20
+    static let defaultLoginLaunchEnabled = true
+    static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
     static let maximumSleepPreventionCPUThresholdPercent = 100
+    static let minimumSleepPreventionMemoryThresholdPercent = 10
+    static let maximumSleepPreventionMemoryThresholdPercent = 100
     static let minimumSleepPreventionNetworkThresholdKBPerSecond = 10
     static let maximumSleepPreventionNetworkThresholdKBPerSecond = 1_024
 
@@ -54,6 +61,7 @@ struct RunnerPreferences: Equatable {
             reducedMotionKey: false,
             animationPausedKey: false,
             desktopPetEnabledKey: false,
+            loginLaunchEnabledKey: defaultLoginLaunchEnabled,
             sleepPreventionControlModeKey: defaultSleepPreventionControlMode.rawValue,
             sleepPreventionEnabledKey: false,
             sleepPreventionSessionPresetKey: defaultSleepPreventionSessionPreset.rawValue,
@@ -61,10 +69,12 @@ struct RunnerPreferences: Equatable {
             sleepPreventionCodexAppTriggerKey: false,
             sleepPreventionChargingBelowThresholdTriggerKey: false,
             sleepPreventionCPUThresholdTriggerKey: false,
+            sleepPreventionMemoryThresholdTriggerKey: false,
             sleepPreventionNetworkActivityTriggerKey: false,
             sleepPreventionExternalVolumeTriggerKey: false,
             sleepPreventionBatteryThresholdPercentKey: defaultSleepPreventionBatteryThresholdPercent,
             sleepPreventionCPUThresholdPercentKey: defaultSleepPreventionCPUThresholdPercent,
+            sleepPreventionMemoryThresholdPercentKey: defaultSleepPreventionMemoryThresholdPercent,
             sleepPreventionNetworkThresholdKBPerSecondKey: defaultSleepPreventionNetworkThresholdKBPerSecond,
             sleepPreventionAppMatchTextKey: defaultSleepPreventionAppMatchText,
             sleepPreventionPreventDisplaySleepKey: defaultSleepPreventionPreventDisplaySleep,
@@ -78,6 +88,7 @@ struct RunnerPreferences: Equatable {
     let reducedMotion: Bool
     let animationPaused: Bool
     let desktopPetEnabled: Bool
+    let loginLaunchEnabled: Bool
     let sleepPreventionControlMode: SleepPreventionControlMode
     let sleepPreventionEnabled: Bool
     let sleepPreventionSessionPreset: SleepPreventionSessionPreset
@@ -86,10 +97,12 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionCodexAppTriggerEnabled: Bool
     let sleepPreventionChargingBelowThresholdTriggerEnabled: Bool
     let sleepPreventionCPUThresholdTriggerEnabled: Bool
+    let sleepPreventionMemoryThresholdTriggerEnabled: Bool
     let sleepPreventionNetworkActivityTriggerEnabled: Bool
     let sleepPreventionExternalVolumeTriggerEnabled: Bool
     let sleepPreventionBatteryThresholdPercent: Int
     let sleepPreventionCPUThresholdPercent: Int
+    let sleepPreventionMemoryThresholdPercent: Int
     let sleepPreventionNetworkThresholdKBPerSecond: Int
     let sleepPreventionAppMatchText: String
     let sleepPreventionPreventDisplaySleep: Bool
@@ -127,6 +140,7 @@ struct RunnerPreferences: Equatable {
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)
         self.animationPaused = defaults.bool(forKey: Self.animationPausedKey)
         self.desktopPetEnabled = defaults.bool(forKey: Self.desktopPetEnabledKey)
+        self.loginLaunchEnabled = Self.loginLaunchEnabled(defaults: defaults)
         self.sleepPreventionEnabled = defaults.bool(forKey: Self.sleepPreventionEnabledKey)
         self.sleepPreventionSessionPreset = SleepPreventionSessionPreset(rawValue: defaults.string(forKey: Self.sleepPreventionSessionPresetKey) ?? "") ?? Self.defaultSleepPreventionSessionPreset
         if defaults.object(forKey: Self.sleepPreventionEndsAtKey) != nil {
@@ -138,10 +152,12 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionCodexAppTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCodexAppTriggerKey)
         self.sleepPreventionChargingBelowThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionChargingBelowThresholdTriggerKey)
         self.sleepPreventionCPUThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionCPUThresholdTriggerKey)
+        self.sleepPreventionMemoryThresholdTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionMemoryThresholdTriggerKey)
         self.sleepPreventionNetworkActivityTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionNetworkActivityTriggerKey)
         self.sleepPreventionExternalVolumeTriggerEnabled = defaults.bool(forKey: Self.sleepPreventionExternalVolumeTriggerKey)
         self.sleepPreventionBatteryThresholdPercent = Self.sleepPreventionBatteryThresholdPercent(defaults: defaults)
         self.sleepPreventionCPUThresholdPercent = Self.sleepPreventionCPUThresholdPercent(defaults: defaults)
+        self.sleepPreventionMemoryThresholdPercent = Self.sleepPreventionMemoryThresholdPercent(defaults: defaults)
         self.sleepPreventionNetworkThresholdKBPerSecond = Self.sleepPreventionNetworkThresholdKBPerSecond(defaults: defaults)
         self.sleepPreventionAppMatchText = Self.sleepPreventionAppMatchText(defaults: defaults)
         self.sleepPreventionPreventDisplaySleep = Self.sleepPreventionPreventDisplaySleep(defaults: defaults)
@@ -226,6 +242,27 @@ struct RunnerPreferences: Equatable {
         min(max(percent, minimumSleepPreventionCPUThresholdPercent), maximumSleepPreventionCPUThresholdPercent)
     }
 
+    static func sleepPreventionMemoryThresholdPercent(defaults: UserDefaults = .standard) -> Int {
+        guard defaults.object(forKey: sleepPreventionMemoryThresholdPercentKey) != nil else {
+            return defaultSleepPreventionMemoryThresholdPercent
+        }
+        return normalizedSleepPreventionMemoryThresholdPercent(defaults.integer(forKey: sleepPreventionMemoryThresholdPercentKey))
+    }
+
+    static func setSleepPreventionMemoryThresholdPercent(_ percent: Int, defaults: UserDefaults = .standard) {
+        defaults.set(
+            normalizedSleepPreventionMemoryThresholdPercent(percent),
+            forKey: sleepPreventionMemoryThresholdPercentKey
+        )
+    }
+
+    static func normalizedSleepPreventionMemoryThresholdPercent(_ percent: Int) -> Int {
+        min(
+            max(percent, minimumSleepPreventionMemoryThresholdPercent),
+            maximumSleepPreventionMemoryThresholdPercent
+        )
+    }
+
     static func sleepPreventionNetworkThresholdKBPerSecond(defaults: UserDefaults = .standard) -> Int {
         guard defaults.object(forKey: sleepPreventionNetworkThresholdKBPerSecondKey) != nil else {
             return defaultSleepPreventionNetworkThresholdKBPerSecond
@@ -298,6 +335,17 @@ struct RunnerPreferences: Equatable {
 
     static func setDesktopPetEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: desktopPetEnabledKey)
+    }
+
+    static func loginLaunchEnabled(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: loginLaunchEnabledKey) != nil else {
+            return defaultLoginLaunchEnabled
+        }
+        return defaults.bool(forKey: loginLaunchEnabledKey)
+    }
+
+    static func setLoginLaunchEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: loginLaunchEnabledKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
@@ -387,6 +435,9 @@ struct RunnerPreferences: Equatable {
 
     static func setSleepPreventionCodexAppTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         setConditionControlMode(defaults: defaults)
+        if isEnabled {
+            defaults.set(defaultSleepPreventionAppMatchText, forKey: sleepPreventionAppMatchTextKey)
+        }
         defaults.set(isEnabled, forKey: sleepPreventionCodexAppTriggerKey)
     }
 
@@ -400,8 +451,14 @@ struct RunnerPreferences: Equatable {
         defaults.set(isEnabled, forKey: sleepPreventionCPUThresholdTriggerKey)
     }
 
+    static func setSleepPreventionMemoryThresholdTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        setConditionControlMode(defaults: defaults)
+        defaults.set(isEnabled, forKey: sleepPreventionMemoryThresholdTriggerKey)
+    }
+
     static func setSleepPreventionNetworkActivityTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         setConditionControlMode(defaults: defaults)
+        defaults.set(defaultSleepPreventionNetworkThresholdKBPerSecond, forKey: sleepPreventionNetworkThresholdKBPerSecondKey)
         defaults.set(isEnabled, forKey: sleepPreventionNetworkActivityTriggerKey)
     }
 
@@ -421,6 +478,7 @@ struct RunnerPreferences: Equatable {
         defaults.set(false, forKey: sleepPreventionCodexAppTriggerKey)
         defaults.set(false, forKey: sleepPreventionChargingBelowThresholdTriggerKey)
         defaults.set(false, forKey: sleepPreventionCPUThresholdTriggerKey)
+        defaults.set(false, forKey: sleepPreventionMemoryThresholdTriggerKey)
         defaults.set(false, forKey: sleepPreventionNetworkActivityTriggerKey)
         defaults.set(false, forKey: sleepPreventionExternalVolumeTriggerKey)
     }
@@ -430,6 +488,7 @@ struct RunnerPreferences: Equatable {
             || defaults.bool(forKey: sleepPreventionCodexAppTriggerKey)
             || defaults.bool(forKey: sleepPreventionChargingBelowThresholdTriggerKey)
             || defaults.bool(forKey: sleepPreventionCPUThresholdTriggerKey)
+            || defaults.bool(forKey: sleepPreventionMemoryThresholdTriggerKey)
             || defaults.bool(forKey: sleepPreventionNetworkActivityTriggerKey)
             || defaults.bool(forKey: sleepPreventionExternalVolumeTriggerKey)
     }

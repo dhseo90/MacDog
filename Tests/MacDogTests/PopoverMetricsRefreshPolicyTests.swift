@@ -12,6 +12,7 @@ final class PopoverMetricsRefreshPolicyTests: XCTestCase {
         XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(for: .mac))
         XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(for: .sleep))
         XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(for: .battery))
+        XCTAssertFalse(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(for: .settings))
     }
 
     func testUnknownRawValueDoesNotTriggerFastRefresh() {

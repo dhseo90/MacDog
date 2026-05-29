@@ -274,6 +274,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .setSleepPreventionCPUThresholdTrigger(let isEnabled):
             RunnerPreferences.setSleepPreventionCPUThresholdTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)
+        case .setSleepPreventionMemoryThresholdTrigger(let isEnabled):
+            RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(isEnabled)
+            refreshUsage(allowLiveRefresh: false)
         case .setSleepPreventionNetworkActivityTrigger(let isEnabled):
             RunnerPreferences.setSleepPreventionNetworkActivityTrigger(isEnabled)
             refreshUsage(allowLiveRefresh: false)

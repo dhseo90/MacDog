@@ -122,7 +122,8 @@ final class UsageMonitorStateTests: XCTestCase {
 
     func testSystemMetricsHistoryKeepsMostRecentSamples() {
         let start = Date(timeIntervalSince1970: 100)
-        let history = (0..<65).reduce(SystemMetricsHistory.empty) { history, index in
+        let totalSamples = SystemMetricsHistory.defaultMaxSamples + 5
+        let history = (0..<totalSamples).reduce(SystemMetricsHistory.empty) { history, index in
             history.appending(
                 Self.systemMetricsSnapshot(
                     capturedAt: start.addingTimeInterval(Double(index)),
@@ -134,16 +135,38 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(history.samples.count, SystemMetricsHistory.defaultMaxSamples)
         XCTAssertEqual(history.cpuLoadPercents.first, 5)
-        XCTAssertEqual(history.cpuLoadPercents.last, 64)
+        XCTAssertEqual(history.cpuLoadPercents.last, Double(totalSamples - 1))
         XCTAssertEqual(history.memoryUsedPercents.first, 15)
-        XCTAssertEqual(history.memoryUsedPercents.last, 74)
+        XCTAssertEqual(history.memoryUsedPercents.last, Double(totalSamples + 9))
+    }
+
+    func testSystemMetricsHistoryKeepsThreeMinuteTrendAtOneSecondCadence() {
+        XCTAssertEqual(SystemMetricsHistory.defaultMaxSamples, 180)
+    }
+
+    func testSparklineScaleUsesAbsolutePercentScale() {
+        let scale = SparklineScale(values: [49.0, 49.6])
+
+        XCTAssertEqual(SparklineScale.lowerBound, 0, accuracy: 0.001)
+        XCTAssertEqual(SparklineScale.upperBound, 100, accuracy: 0.001)
+        XCTAssertEqual(scale.normalized(49.0), 0.49, accuracy: 0.001)
+        XCTAssertEqual(scale.normalized(49.6), 0.496, accuracy: 0.001)
+    }
+
+    func testSparklineScaleKeepsWidePercentRangesStable() {
+        let scale = SparklineScale(values: [0, 45, 100])
+
+        XCTAssertEqual(SparklineScale.lowerBound, 0, accuracy: 0.001)
+        XCTAssertEqual(SparklineScale.upperBound, 100, accuracy: 0.001)
+        XCTAssertEqual(scale.normalized(45), 0.45, accuracy: 0.001)
     }
 
     func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {
         XCTAssertFalse(MacDogPopoverModule.codex.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
-        XCTAssertTrue(MacDogPopoverModule.sleep.usesScrollableContent)
+        XCTAssertFalse(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
+        XCTAssertFalse(MacDogPopoverModule.settings.usesScrollableContent)
         XCTAssertGreaterThan(MacResourcesPanelLayout.sparklineHeight, 0)
         XCTAssertLessThanOrEqual(
             MacResourcesPanelLayout.estimatedContentHeight,

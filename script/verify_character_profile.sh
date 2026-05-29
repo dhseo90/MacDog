@@ -12,6 +12,9 @@ RESOURCE_ROOT="$ROOT_DIR/Sources/MacDog/Resources"
 RUNNER_DIR="$RESOURCE_ROOT/Runner"
 DESKTOP_DIR="$RESOURCE_ROOT/DesktopPet"
 TAB_DIR="$RESOURCE_ROOT/PopoverTabs"
+EXPECTED_PNGS="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-expected-pngs.XXXXXX")"
+ACTUAL_PNGS="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-actual-pngs.XXXXXX")"
+trap 'rm -f "$EXPECTED_PNGS" "$ACTUAL_PNGS"' EXIT
 
 die() {
   echo "error: $*" >&2
@@ -20,6 +23,11 @@ die() {
 
 require_file() {
   [[ -f "$1" ]] || die "missing required file: $1"
+}
+
+require_png() {
+  require_file "$1"
+  printf '%s\n' "$1" >>"$EXPECTED_PNGS"
 }
 
 require_text_match() {
@@ -40,7 +48,7 @@ require_png_series() {
   local count="$3"
 
   for index in $(seq 0 $((count - 1))); do
-    require_file "$dir/$prefix-$index.png"
+    require_png "$dir/$prefix-$index.png"
   done
 }
 
@@ -63,9 +71,16 @@ require_text_match 'MacDogCharacterProfile\.codexPup\.popoverTabs\.artwork\(for:
 require_text_match 'codex-pup-tab-art\.json' "$TAB_RENDERER" "tab artwork renderer reads the character tab manifest"
 require_text_match 'manifest\.desktopSource\.resourceDirectory' "$TAB_RENDERER" "tab artwork renderer reads the desktop pet directory from the manifest"
 require_text_match 'manifest\.desktopSource\.resourcePrefix' "$TAB_RENDERER" "tab artwork renderer reads the desktop pet sprite prefix from the manifest"
+require_text_match 'item\.resourcePrefix' "$TAB_RENDERER" "tab artwork renderer reads per-tab desktop pet sprite prefix"
+require_text_match 'item\.sourceFrameIndex' "$TAB_RENDERER" "tab artwork renderer reads per-tab desktop pet frame"
 require_text_match '"characterId"[[:space:]]*:[[:space:]]*"codex-pup"' "$TAB_MANIFEST" "tab artwork manifest belongs to Codex Pup"
 require_text_match '"sourcePose"[[:space:]]*:[[:space:]]*"idleFront"' "$TAB_MANIFEST" "tab artwork manifest records the source pose"
+require_text_match '"sourcePose"[[:space:]]*:[[:space:]]*"runRight"' "$TAB_MANIFEST" "tab artwork manifest records the active resources pose"
+require_text_match '"sourcePose"[[:space:]]*:[[:space:]]*"rest"' "$TAB_MANIFEST" "tab artwork manifest records the sleep pose"
+require_text_match '"sourcePose"[[:space:]]*:[[:space:]]*"alert"' "$TAB_MANIFEST" "tab artwork manifest records the battery pose"
+require_text_match '"sourcePose"[[:space:]]*:[[:space:]]*"idleSide"' "$TAB_MANIFEST" "tab artwork manifest records the settings pose"
 require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*0' "$TAB_MANIFEST" "tab artwork manifest records the source frame"
+require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*2' "$TAB_MANIFEST" "tab artwork manifest records an active resources frame"
 require_text_match '"outputDirectory"[[:space:]]*:[[:space:]]*"PopoverTabs"' "$TAB_MANIFEST" "tab artwork manifest records the tab output directory"
 
 require_png_series "$RUNNER_DIR" "pup-runner" 8
@@ -77,11 +92,18 @@ require_png_series "$DESKTOP_DIR" "pup-idle-side" 4
 require_png_series "$DESKTOP_DIR" "pup-rest" 4
 require_png_series "$DESKTOP_DIR" "pup-alert" 4
 
-for tab in codex mac sleep battery; do
-  require_file "$TAB_DIR/$tab-tab.png"
+for tab in codex mac sleep battery settings; do
+  require_png "$TAB_DIR/$tab-tab.png"
   width="$(sips -g pixelWidth "$TAB_DIR/$tab-tab.png" 2>/dev/null | awk '/pixelWidth/ { print $2 }')"
   height="$(sips -g pixelHeight "$TAB_DIR/$tab-tab.png" 2>/dev/null | awk '/pixelHeight/ { print $2 }')"
   [[ "$width" == "256" && "$height" == "256" ]] || die "unexpected tab artwork size for $tab-tab.png: ${width}x${height}"
 done
+
+find "$RESOURCE_ROOT" -type f -name '*.png' -print | sort >"$ACTUAL_PNGS"
+sort -o "$EXPECTED_PNGS" "$EXPECTED_PNGS"
+if ! diff -u "$EXPECTED_PNGS" "$ACTUAL_PNGS" >/dev/null; then
+  diff -u "$EXPECTED_PNGS" "$ACTUAL_PNGS" >&2 || true
+  die "unexpected PNG resource detected; remove unused images or register them in MacDogCharacterProfile"
+fi
 
 echo "Character profile ok: Codex Pup links runner, desktop pet, and popover tab assets"
