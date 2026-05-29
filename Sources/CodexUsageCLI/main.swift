@@ -94,7 +94,7 @@ struct CLI {
             if writeCache {
                 try? cacheStore.writeFailure(message: error.localizedDescription)
             }
-            errorOutput("codex-usage status failed: \(error.localizedDescription)")
+            errorOutput(CodexUsageFailureGuide().message(for: error, context: .status))
             return .failure
         }
     }
@@ -116,7 +116,7 @@ struct CLI {
             output("Weekly window: \(codex?.weekly == nil ? "missing" : "ok")")
             return .success
         } catch {
-            errorOutput("Doctor failed: \(error.localizedDescription)")
+            errorOutput(CodexUsageFailureGuide().message(for: error, context: .doctor))
             return .failure
         }
     }

@@ -26,9 +26,8 @@ public enum CodexAppServerError: Error, LocalizedError, Equatable {
             "Codex app-server response id \(id) returned an error: \(message)"
         case .stdinClosed:
             "Codex app-server stdin is closed."
-        case .invalidJSONLine(let line):
-            "Codex app-server returned invalid JSON: \(line)"
+        case .invalidJSONLine:
+            "Codex app-server returned invalid JSON."
         }
     }
 }
-
