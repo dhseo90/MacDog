@@ -2,8 +2,14 @@ import Foundation
 import MacDogPrivilegedHelperSupport
 
 protocol ClosedLidSleepDisabling {
+    var canRetryWithoutUserApproval: Bool { get }
+
     @discardableResult
     func setClosedLidSleepDisabled(_ isDisabled: Bool) throws -> Bool
+}
+
+extension ClosedLidSleepDisabling {
+    var canRetryWithoutUserApproval: Bool { false }
 }
 
 struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
@@ -25,6 +31,10 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
         self.commandRunner = commandRunner
         self.administratorApprovalRunner = administratorApprovalRunner
         self.helperController = helperController
+    }
+
+    var canRetryWithoutUserApproval: Bool {
+        helperController?.isInstalled == true
     }
 
     @discardableResult

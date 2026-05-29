@@ -115,7 +115,8 @@ struct UserComponentInstaller {
         )
         let existingData = try? Data(contentsOf: cachePlistURL)
         guard existingData != plistData else {
-            _ = try? launchctl(arguments: ["bootstrap", guiTarget, cachePlistURL.path])
+            _ = try? launchctl(arguments: ["bootout", guiTarget, cachePlistURL.path])
+            try launchctl(arguments: ["bootstrap", guiTarget, cachePlistURL.path])
             return
         }
 

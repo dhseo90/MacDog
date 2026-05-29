@@ -19,6 +19,7 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertTrue(controller.status.isClosedLidSleepDisabled)
         XCTAssertTrue(controller.status.isScreenLockDisabled)
         XCTAssertNil(controller.status.errorMessage)
+        XCTAssertNil(controller.status.screenLockWarningMessage)
         XCTAssertEqual(assertionManager.createdAssertionTypes, [
             "PreventUserIdleDisplaySleep",
             "PreventUserIdleSystemSleep",
@@ -154,6 +155,24 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertEqual(screenLockDisabler.requests, [true, false])
     }
 
+    func testDeinitReleasesAssertionsWithoutRestoringGlobalSettings() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let closedLidSleepDisabler = RecordingClosedLidSleepDisabler()
+        let screenLockDisabler = RecordingScreenLockDisabler()
+        var controller: SleepPreventionController? = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: closedLidSleepDisabler,
+            screenLockDisabler: screenLockDisabler
+        )
+
+        controller?.setEnabled(true, endsAt: nil)
+        controller = nil
+
+        XCTAssertEqual(assertionManager.releasedAssertionIDs.sorted(), [1, 2, 3])
+        XCTAssertEqual(closedLidSleepDisabler.requests, [true])
+        XCTAssertEqual(screenLockDisabler.requests, [true])
+    }
+
     func testPartialAcquireFailureReleasesAlreadyCreatedAssertions() {
         let assertionManager = RecordingPowerAssertionManager(
             failingAssertionType: "PreventUserIdleSystemSleep"
@@ -188,6 +207,7 @@ final class SleepPreventionControllerTests: XCTestCase {
         )
 
         controller.setEnabled(true, endsAt: nil)
+        controller.setEnabled(true, endsAt: nil)
 
         XCTAssertTrue(controller.status.isActive)
         XCTAssertFalse(controller.status.isClosedLidSleepDisabled)
@@ -195,7 +215,29 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertEqual(closedLidSleepDisabler.requests, [true])
     }
 
-    func testScreenLockDisableFailureKeepsPowerAssertionsAndReportsError() {
+    func testClosedLidDisableRetriesAfterHelperInstallMakesRetrySafe() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let closedLidSleepDisabler = RecordingClosedLidSleepDisabler(
+            enableError: TestClosedLidError.denied,
+            enableFailuresBeforeSuccess: 1,
+            canRetryWithoutUserApproval: true
+        )
+        let controller = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: closedLidSleepDisabler,
+            screenLockDisabler: RecordingScreenLockDisabler()
+        )
+
+        controller.setEnabled(true, endsAt: nil)
+        controller.setEnabled(true, endsAt: nil)
+
+        XCTAssertTrue(controller.status.isActive)
+        XCTAssertTrue(controller.status.isClosedLidSleepDisabled)
+        XCTAssertNil(controller.status.errorMessage)
+        XCTAssertEqual(closedLidSleepDisabler.requests, [true, true])
+    }
+
+    func testScreenLockDisableFailureKeepsPowerAssertionsAndReportsWarning() {
         let assertionManager = RecordingPowerAssertionManager()
         let controller = SleepPreventionController(
             assertionManager: assertionManager,
@@ -208,7 +250,8 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertTrue(controller.status.isActive)
         XCTAssertTrue(controller.status.isClosedLidSleepDisabled)
         XCTAssertFalse(controller.status.isScreenLockDisabled)
-        XCTAssertEqual(controller.status.errorMessage, "관리자 권한이 거부되었습니다.")
+        XCTAssertNil(controller.status.errorMessage)
+        XCTAssertEqual(controller.status.screenLockWarningMessage, "관리자 권한이 거부되었습니다.")
     }
 }
 
@@ -243,15 +286,24 @@ private final class RecordingPowerAssertionManager: PowerAssertionManaging {
 
 private final class RecordingClosedLidSleepDisabler: ClosedLidSleepDisabling {
     private let enableError: Error?
+    private var enableFailuresBeforeSuccess: Int
+    let canRetryWithoutUserApproval: Bool
     private(set) var requests: [Bool] = []
 
-    init(enableError: Error? = nil) {
+    init(
+        enableError: Error? = nil,
+        enableFailuresBeforeSuccess: Int? = nil,
+        canRetryWithoutUserApproval: Bool = false
+    ) {
         self.enableError = enableError
+        self.enableFailuresBeforeSuccess = enableFailuresBeforeSuccess ?? (enableError == nil ? 0 : Int.max)
+        self.canRetryWithoutUserApproval = canRetryWithoutUserApproval
     }
 
     func setClosedLidSleepDisabled(_ isDisabled: Bool) throws -> Bool {
         requests.append(isDisabled)
-        if isDisabled, let enableError {
+        if isDisabled, let enableError, enableFailuresBeforeSuccess > 0 {
+            enableFailuresBeforeSuccess -= 1
             throw enableError
         }
         return isDisabled

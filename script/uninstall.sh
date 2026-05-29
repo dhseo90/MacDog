@@ -4,6 +4,7 @@ set -euo pipefail
 MODE="uninstall"
 APP_NAME="MacDog"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
+SYSTEM_APP_DEST="/Applications/$APP_NAME.app"
 CLI_DEST="$HOME/bin/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
@@ -20,9 +21,10 @@ HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
 UID_VALUE="$(id -u)"
 WITH_HELPER=0
 HELPER_ONLY=0
+RESET_PREFERENCES=0
 
 usage() {
-  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only]"
+  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only] [--reset-preferences]"
 }
 
 die() {
@@ -78,6 +80,31 @@ stop_running_app_for_update() {
   fi
 }
 
+disable_login_item_if_possible() {
+  local app_binary
+  for app_binary in "$SYSTEM_APP_DEST/Contents/MacOS/$APP_NAME" "$APP_DEST/Contents/MacOS/$APP_NAME"; do
+    if [[ -x "$app_binary" ]]; then
+      "$app_binary" --set-login-item --enabled 0 >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+reset_preferences_if_requested() {
+  [[ "$RESET_PREFERENCES" == "1" ]] || return 0
+  /usr/bin/defaults delete com.dhseo.macdog.MacDog >/dev/null 2>&1 || true
+  /usr/bin/defaults delete com.dhseo.MacDog >/dev/null 2>&1 || true
+}
+
+restore_sleep_disabled_if_requested() {
+  [[ "$RESET_PREFERENCES" == "1" ]] || return 0
+  local app_binary
+  for app_binary in "$SYSTEM_APP_DEST/Contents/MacOS/$APP_NAME" "$APP_DEST/Contents/MacOS/$APP_NAME"; do
+    if [[ -x "$app_binary" ]]; then
+      "$app_binary" --verify-privileged-helper-xpc-set --value 0 >/dev/null 2>&1 && return 0
+    fi
+  done
+}
+
 uninstall_privileged_helper() {
   local temp_script
   temp_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-uninstall.XXXXXX")"
@@ -100,6 +127,7 @@ while [[ $# -gt 0 ]]; do
     uninstall) MODE="uninstall" ;;
     --dry-run|dry-run) MODE="dry-run" ;;
     --with-helper) WITH_HELPER=1 ;;
+    --reset-preferences) RESET_PREFERENCES=1 ;;
     --helper-only)
       WITH_HELPER=1
       HELPER_ONLY=1
@@ -136,15 +164,22 @@ case "$MODE" in
     echo "MacDog uninstall dry run"
     echo "Would bootout: gui/$UID_VALUE $CACHE_PLIST"
     echo "Would bootout: gui/$UID_VALUE $MONITOR_PLIST"
+    echo "Would unregister macOS login item if app binary is present"
     echo "Would stop process: $APP_NAME"
     echo "Would remove: $CACHE_PLIST"
     echo "Would remove: $MONITOR_PLIST"
     echo "Would remove: $CLI_DEST"
     echo "Would remove: $APP_DEST"
+    echo "Would remove: $SYSTEM_APP_DEST if present"
     echo "Would remove cache file: $APP_CACHE_FILE"
     echo "Would remove shared cache file: $SHARED_CACHE_FILE"
     echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
-    echo "Would preserve: MacDog UserDefaults preferences"
+    if [[ "$RESET_PREFERENCES" == "1" ]]; then
+      echo "Would reset: MacDog UserDefaults preferences"
+      echo "Would restore: SleepDisabled to 0 through helper if available"
+    else
+      echo "Would preserve: MacDog UserDefaults preferences"
+    fi
     echo "Widget extension: removed with $APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
     if [[ "$WITH_HELPER" == "1" ]]; then
       echo "Privileged helper: opt-in cleanup enabled"
@@ -177,11 +212,14 @@ fi
 
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
+disable_login_item_if_possible
+restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
 rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$SHARED_CACHE_FILE"
-rm -rf "$APP_DEST"
+rm -rf "$APP_DEST" "$SYSTEM_APP_DEST"
 rmdir "$APP_CACHE_DIR" "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
+reset_preferences_if_requested
 
 echo "Uninstalled MacDog"
 if [[ "$WITH_HELPER" == "1" ]]; then

@@ -8,7 +8,8 @@ struct SleepPreventionStatus: Equatable {
         endsAt: nil,
         isClosedLidSleepDisabled: false,
         isScreenLockDisabled: false,
-        errorMessage: nil
+        errorMessage: nil,
+        screenLockWarningMessage: nil
     )
 
     let isEnabled: Bool
@@ -17,6 +18,7 @@ struct SleepPreventionStatus: Equatable {
     let isClosedLidSleepDisabled: Bool
     let isScreenLockDisabled: Bool
     let errorMessage: String?
+    let screenLockWarningMessage: String?
 
     var summary: String {
         if isActive {
@@ -69,6 +71,7 @@ final class SleepPreventionController {
     private var isScreenLockDisabled = false
     private var endsAt: Date?
     private var lastErrorMessage: String?
+    private var lastScreenLockWarningMessage: String?
 
     init(
         assertionManager: PowerAssertionManaging = IOKitPowerAssertionManager(),
@@ -81,8 +84,6 @@ final class SleepPreventionController {
     }
 
     deinit {
-        restoreScreenLockIfNeeded(force: true)
-        restoreClosedLidSleepIfNeeded(force: true)
         releaseAssertions()
     }
 
@@ -93,7 +94,8 @@ final class SleepPreventionController {
             endsAt: endsAt,
             isClosedLidSleepDisabled: isClosedLidSleepDisabled,
             isScreenLockDisabled: isScreenLockDisabled,
-            errorMessage: lastErrorMessage
+            errorMessage: lastErrorMessage,
+            screenLockWarningMessage: lastScreenLockWarningMessage
         )
     }
 
@@ -105,15 +107,16 @@ final class SleepPreventionController {
         if isEnabled {
             acquireAssertionsIfNeeded()
             guard hasRequiredAssertions else { return }
-            lastErrorMessage = nil
             syncClosedLidSleepPolicy()
             syncScreenLockPolicy()
+            clearErrorIfPolicyIsSatisfied()
         } else {
             restoreScreenLockIfNeeded(force: true)
             restoreClosedLidSleepIfNeeded(force: true)
             releaseAssertions()
             self.endsAt = nil
             lastErrorMessage = nil
+            lastScreenLockWarningMessage = nil
             closedLidDisableAttempted = false
             screenLockDisableAttempted = false
         }
@@ -127,7 +130,6 @@ final class SleepPreventionController {
         releaseAssertionsNoLongerRequired()
 
         guard !hasRequiredAssertions else {
-            lastErrorMessage = nil
             return
         }
 
@@ -168,7 +170,10 @@ final class SleepPreventionController {
     }
 
     private func disableClosedLidSleepIfNeeded() {
-        guard !closedLidDisableAttempted else { return }
+        guard !isClosedLidSleepDisabled else { return }
+        guard !closedLidDisableAttempted || closedLidSleepDisabler.canRetryWithoutUserApproval else {
+            return
+        }
         closedLidDisableAttempted = true
 
         do {
@@ -189,15 +194,22 @@ final class SleepPreventionController {
     }
 
     private func disableScreenLockIfNeeded() {
-        guard !screenLockDisableAttempted else { return }
+        guard !isScreenLockDisabled else { return }
         screenLockDisableAttempted = true
 
         do {
             isScreenLockDisabled = try screenLockDisabler.setScreenLockDisabled(true)
+            lastScreenLockWarningMessage = nil
         } catch {
             isScreenLockDisabled = false
-            lastErrorMessage = error.localizedDescription
+            lastScreenLockWarningMessage = error.localizedDescription
         }
+    }
+
+    private func clearErrorIfPolicyIsSatisfied() {
+        guard hasRequiredAssertions else { return }
+        guard !policy.preventClosedLidSleep || isClosedLidSleepDisabled else { return }
+        lastErrorMessage = nil
     }
 
     private func restoreClosedLidSleepIfNeeded(force: Bool = false) {
@@ -215,7 +227,7 @@ final class SleepPreventionController {
         do {
             _ = try screenLockDisabler.setScreenLockDisabled(false)
         } catch {
-            lastErrorMessage = error.localizedDescription
+            lastScreenLockWarningMessage = error.localizedDescription
         }
         isScreenLockDisabled = false
     }

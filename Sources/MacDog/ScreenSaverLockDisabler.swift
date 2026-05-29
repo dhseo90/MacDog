@@ -12,6 +12,7 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
     private static let originalAskForPasswordDelayExistsKey = "screenLockOriginalAskForPasswordDelayExists"
     private static let originalAskForPasswordDelayKey = "screenLockOriginalAskForPasswordDelay"
     private static let domain = "com.apple.screensaver"
+    private static let systemScreenLockCommand = "/usr/sbin/sysadminctl"
 
     private let defaults: UserDefaults
     private let commandRunner: CommandRunning
@@ -38,6 +39,12 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
 
         try writeCurrentHostInt(key: "askForPassword", value: 0)
         try writeCurrentHostInt(key: "askForPasswordDelay", value: 0)
+
+        if let systemDelay = try? readSystemScreenLockDelay(),
+           systemDelay.requiresPassword {
+            throw ScreenSaverLockDisablerError.systemLockStillEnabled(systemDelay.displayLabel)
+        }
+
         return true
     }
 
@@ -99,6 +106,21 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
         }
     }
 
+    private func readSystemScreenLockDelay() throws -> SystemScreenLockDelay {
+        let result = try commandRunner.run(
+            executablePath: Self.systemScreenLockCommand,
+            arguments: ["-screenLock", "status"]
+        )
+        guard result.exitCode == 0 else {
+            throw ScreenSaverLockDisablerError.commandFailed(detail: result.failureSummary)
+        }
+
+        let output = [result.stdout, result.stderr]
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return SystemScreenLockDelay.parse(output)
+    }
+
     private func clearStoredState() {
         defaults.removeObject(forKey: Self.changedByMacDogKey)
         defaults.removeObject(forKey: Self.originalAskForPasswordExistsKey)
@@ -108,9 +130,65 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
     }
 }
 
+private enum SystemScreenLockDelay: Equatable {
+    case off
+    case immediate
+    case seconds(Int)
+    case unknown(String)
+
+    var requiresPassword: Bool {
+        switch self {
+        case .off:
+            false
+        case .immediate, .seconds, .unknown:
+            true
+        }
+    }
+
+    var displayLabel: String {
+        switch self {
+        case .off:
+            "안 함"
+        case .immediate:
+            "즉시"
+        case .seconds(let seconds):
+            "\(seconds)초 후"
+        case .unknown(let rawValue):
+            rawValue.isEmpty ? "알 수 없음" : rawValue
+        }
+    }
+
+    static func parse(_ output: String) -> SystemScreenLockDelay {
+        let normalized = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = normalized.lowercased()
+
+        if lowercased.contains("off") {
+            return .off
+        }
+        if lowercased.contains("immediate") {
+            return .immediate
+        }
+
+        let pattern = #"screenlock delay is ([0-9]+)"#
+        if let match = lowercased.range(of: pattern, options: .regularExpression) {
+            let matched = String(lowercased[match])
+            let secondsText = matched
+                .split(separator: " ")
+                .last
+                .map(String.init)
+            if let secondsText, let seconds = Int(secondsText) {
+                return .seconds(seconds)
+            }
+        }
+
+        return .unknown(normalized)
+    }
+}
+
 enum ScreenSaverLockDisablerError: LocalizedError, Equatable {
     case readFailed(key: String)
     case commandFailed(detail: String)
+    case systemLockStillEnabled(String)
 
     var errorDescription: String? {
         switch self {
@@ -118,6 +196,8 @@ enum ScreenSaverLockDisablerError: LocalizedError, Equatable {
             "\(key) 잠금 설정을 읽을 수 없습니다."
         case .commandFailed(let detail):
             "화면 잠금 설정 변경 실패: \(detail)"
+        case .systemLockStillEnabled(let status):
+            "macOS 잠금 화면 설정이 \(status)입니다. 시스템 설정 > 잠금 화면에서 '화면 보호기 또는 디스플레이가 꺼진 후 암호 요구'를 '안 함'으로 바꿔야 로그인창을 막을 수 있습니다."
         }
     }
 }

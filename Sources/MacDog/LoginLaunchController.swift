@@ -1,5 +1,46 @@
 import Darwin
 import Foundation
+import ServiceManagement
+
+enum LoginLaunchStatus: Equatable {
+    case notRegistered
+    case enabled
+    case requiresApproval
+    case notFound
+    case unknown
+}
+
+protocol LoginLaunchServicing {
+    var status: LoginLaunchStatus { get }
+
+    func register() throws
+    func unregister() throws
+}
+
+struct MainAppLoginLaunchService: LoginLaunchServicing {
+    var status: LoginLaunchStatus {
+        switch SMAppService.mainApp.status {
+        case .notRegistered:
+            return .notRegistered
+        case .enabled:
+            return .enabled
+        case .requiresApproval:
+            return .requiresApproval
+        case .notFound:
+            return .notFound
+        @unknown default:
+            return .unknown
+        }
+    }
+
+    func register() throws {
+        try SMAppService.mainApp.register()
+    }
+
+    func unregister() throws {
+        try SMAppService.mainApp.unregister()
+    }
+}
 
 struct LoginLaunchController {
     static let label = "com.dhseo.macdog.monitor"
@@ -7,15 +48,21 @@ struct LoginLaunchController {
     private let appBundleURL: URL
     private let homeDirectory: URL
     private let fileManager: FileManager
+    private let service: any LoginLaunchServicing
+    private let launchctlRunner: ([String]) throws -> Void
 
     init(
         appBundleURL: URL = Bundle.main.bundleURL,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        service: any LoginLaunchServicing = MainAppLoginLaunchService(),
+        launchctlRunner: @escaping ([String]) throws -> Void = LoginLaunchController.runLaunchctl(arguments:)
     ) {
         self.appBundleURL = appBundleURL
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
+        self.service = service
+        self.launchctlRunner = launchctlRunner
     }
 
     var plistURL: URL {
@@ -34,17 +81,19 @@ struct LoginLaunchController {
     }
 
     private func install() throws {
-        let launchAgentDirectory = plistURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: launchAgentDirectory, withIntermediateDirectories: true)
-        try Self.plistData(appBundlePath: appBundleURL.path).write(to: plistURL, options: .atomic)
-        _ = try? launchctl(arguments: ["bootout", guiTarget, plistURL.path])
-        try launchctl(arguments: ["bootstrap", guiTarget, plistURL.path])
+        try removeLegacyLaunchAgent()
+        if service.status != .enabled {
+            try service.register()
+        }
     }
 
     private func remove() throws {
-        _ = try? launchctl(arguments: ["bootout", guiTarget, plistURL.path])
-        if fileManager.fileExists(atPath: plistURL.path) {
-            try fileManager.removeItem(at: plistURL)
+        try removeLegacyLaunchAgent()
+        switch service.status {
+        case .notRegistered, .notFound:
+            return
+        case .enabled, .requiresApproval, .unknown:
+            try service.unregister()
         }
     }
 
@@ -52,7 +101,18 @@ struct LoginLaunchController {
         "gui/\(getuid())"
     }
 
+    private func removeLegacyLaunchAgent() throws {
+        _ = try? launchctl(arguments: ["bootout", guiTarget, plistURL.path])
+        if fileManager.fileExists(atPath: plistURL.path) {
+            try fileManager.removeItem(at: plistURL)
+        }
+    }
+
     private func launchctl(arguments: [String]) throws {
+        try launchctlRunner(arguments)
+    }
+
+    private static func runLaunchctl(arguments: [String]) throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         process.arguments = arguments
@@ -63,24 +123,6 @@ struct LoginLaunchController {
         }
     }
 
-    static func plistData(appBundlePath: String) throws -> Data {
-        let logDirectory = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library", isDirectory: true)
-            .appendingPathComponent("Logs", isDirectory: true)
-            .appendingPathComponent("MacDog", isDirectory: true)
-            .path
-        let plist: [String: Any] = [
-            "Label": label,
-            "ProgramArguments": [
-                "/usr/bin/open",
-                appBundlePath
-            ],
-            "RunAtLoad": true,
-            "StandardOutPath": "\(logDirectory)/monitor.out.log",
-            "StandardErrorPath": "\(logDirectory)/monitor.err.log"
-        ]
-        return try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-    }
 }
 
 enum LoginLaunchControllerError: LocalizedError {

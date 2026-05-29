@@ -43,6 +43,12 @@ die() {
   exit 1
 }
 
+clean_bundle_xattrs() {
+  local bundle="$1"
+  /usr/bin/xattr -cr "$bundle" >/dev/null 2>&1 || true
+  /usr/bin/find "$bundle" -exec /usr/bin/xattr -d com.apple.FinderInfo {} \; >/dev/null 2>&1 || true
+}
+
 run_as_root() {
   if [[ "$(id -u)" == "0" ]]; then
     "$@"
@@ -198,30 +204,6 @@ PLIST
 PLIST
 }
 
-write_monitor_launch_agent_plist() {
-  cat >"$MONITOR_PLIST" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>$MONITOR_LABEL</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/bin/open</string>
-    <string>$APP_DEST</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>$LOG_DIR/monitor.out.log</string>
-  <key>StandardErrorPath</key>
-  <string>$LOG_DIR/monitor.err.log</string>
-</dict>
-</plist>
-PLIST
-}
-
 install_privileged_helper() {
   local host_bundle_path="${1:-$APP_DEST}"
 
@@ -329,16 +311,16 @@ case "$MODE" in
     echo "Cache agent executable: $APP_CLI_DEST"
     echo "Log directory: $LOG_DIR"
     echo "LaunchAgent cache plist: $CACHE_PLIST"
-    echo "LaunchAgent monitor plist: $MONITOR_PLIST"
+    echo "Legacy monitor LaunchAgent cleanup: $MONITOR_PLIST"
+    echo "Login item: managed by MacDog through macOS Login Items"
     echo "Cache agent interval: 60 seconds"
     echo "Cache request timeout: $CACHE_REQUEST_TIMEOUT_SECONDS seconds"
     echo "Cache prime timeout: $CACHE_PRIME_TIMEOUT_SECONDS seconds"
-    echo "Monitor agent RunAtLoad: true"
-    echo "Monitor agent preference key: $LOGIN_LAUNCH_KEY"
+    echo "Login item preference key: $LOGIN_LAUNCH_KEY"
     if login_launch_enabled; then
-      echo "Monitor agent enabled by preference: true"
+      echo "Login item enabled by preference: true"
     else
-      echo "Monitor agent enabled by preference: false"
+      echo "Login item enabled by preference: false"
     fi
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
@@ -373,7 +355,7 @@ stop_running_app_for_update
 
 rm -rf "$APP_DEST"
 /usr/bin/ditto --norsrc --noextattr "$APP_SOURCE" "$APP_DEST"
-/usr/bin/xattr -cr "$APP_DEST" >/dev/null 2>&1 || true
+clean_bundle_xattrs "$APP_DEST"
 /usr/bin/codesign --force --sign - "$APP_DEST" >/dev/null
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DEST" >/dev/null
 [[ -x "$APP_CLI_DEST" ]] || die "bundled CLI missing: $APP_CLI_DEST"
@@ -413,22 +395,14 @@ cat >"$CACHE_PLIST" <<PLIST
 </plist>
 PLIST
 
-if login_launch_enabled; then
-  write_monitor_launch_agent_plist
-else
-  rm -f "$MONITOR_PLIST"
-fi
+rm -f "$MONITOR_PLIST"
 
 if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
   echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
 fi
 
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$CACHE_PLIST"
-if login_launch_enabled; then
-  /bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
-else
-  /usr/bin/open "$APP_DEST"
-fi
+/usr/bin/open "$APP_DEST"
 
 sleep 2
 pgrep -x "$APP_NAME" >/dev/null
@@ -436,10 +410,11 @@ pgrep -x "$APP_NAME" >/dev/null
 echo "Installed MacDog"
 echo "App: $APP_DEST"
 echo "CLI: $CLI_DEST -> $APP_CLI_DEST"
+echo "LaunchAgents: $CACHE_PLIST"
 if login_launch_enabled; then
-  echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+  echo "Login item: managed by MacDog through macOS Login Items"
 else
-  echo "LaunchAgents: $CACHE_PLIST (monitor disabled by preference)"
+  echo "Login item: disabled by preference"
 fi
 if [[ "$WITH_HELPER" == "1" ]]; then
   echo "Privileged helper: $HELPER_TOOL_DEST"

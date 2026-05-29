@@ -16,6 +16,12 @@ enum MacDogMain {
         if CommandLine.arguments.dropFirst().first == "--verify-charge-limit-set" {
             exit(verifyChargeLimitSet(arguments: Array(CommandLine.arguments.dropFirst())))
         }
+        if CommandLine.arguments.dropFirst().first == "--set-login-item" {
+            exit(setLoginItem(arguments: Array(CommandLine.arguments.dropFirst())))
+        }
+        if CommandLine.arguments.dropFirst().first == "--verify-login-item-status" {
+            exit(verifyLoginItemStatus(arguments: Array(CommandLine.arguments.dropFirst())))
+        }
 
         RunnerPreferences.registerDefaults()
         if SingleInstanceGuard.shouldTerminateCurrentInstance() {
@@ -26,6 +32,8 @@ enum MacDogMain {
         let delegate = AppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
+        ProcessInfo.processInfo.disableAutomaticTermination("MacDog sleep prevention must stay active while enabled.")
+        ProcessInfo.processInfo.disableSuddenTermination()
         app.run()
     }
 
@@ -121,6 +129,46 @@ enum MacDogMain {
         let valueIndex = arguments.index(after: index)
         guard valueIndex < arguments.endIndex else { return nil }
         return arguments[valueIndex]
+    }
+
+    private static func setLoginItem(arguments: [String]) -> Int32 {
+        let resultFile = optionValue(for: "--result-file", in: arguments)
+        guard let rawEnabled = optionValue(for: "--enabled", in: arguments),
+              let isEnabled = boolValue(rawEnabled) else {
+            writeDiagnostic("login-item:error missing enabled value", resultFile: resultFile)
+            return 2
+        }
+
+        do {
+            try LoginLaunchController().setEnabled(isEnabled)
+            writeDiagnostic("login-item:set enabled=\(isEnabled ? 1 : 0)", resultFile: resultFile)
+            return 0
+        } catch {
+            writeDiagnostic("login-item:error \(error.localizedDescription)", resultFile: resultFile)
+            return 1
+        }
+    }
+
+    private static func verifyLoginItemStatus(arguments: [String]) -> Int32 {
+        let resultFile = optionValue(for: "--result-file", in: arguments)
+        let status = MainAppLoginLaunchService().status
+        writeDiagnostic("login-item:status \(loginItemStatusLabel(status))", resultFile: resultFile)
+        return status == .enabled ? 0 : 1
+    }
+
+    private static func loginItemStatusLabel(_ status: LoginLaunchStatus) -> String {
+        switch status {
+        case .notRegistered:
+            return "notRegistered"
+        case .enabled:
+            return "enabled"
+        case .requiresApproval:
+            return "requiresApproval"
+        case .notFound:
+            return "notFound"
+        case .unknown:
+            return "unknown"
+        }
     }
 
     private static func sleepDisabledValue(in arguments: [String]) -> Bool? {

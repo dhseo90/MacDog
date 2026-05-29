@@ -31,6 +31,14 @@ struct UsagePopoverView: View {
             height: MacDogPopoverLayout.outerSize.height,
             alignment: .topLeading
         )
+        .background(
+            RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
+                .fill(MacDogPopoverLayout.shellBackgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        )
     }
 
     private var selectedModule: MacDogPopoverModule {
@@ -294,6 +302,8 @@ enum MacDogPopoverLayout {
     static let contentStackSpacing: CGFloat = 8
     static let headerHeight: CGFloat = 34
     static let dividerHeight: CGFloat = 1
+    static let shellCornerRadius: CGFloat = 12
+    static let shellBackgroundColor = Color(red: 0.12, green: 0.12, blue: 0.14).opacity(0.96)
 
     static var nonScrollableContentHeight: CGFloat {
         contentSurfaceSize.height
@@ -659,6 +669,13 @@ private struct SleepPreventionPanel: View {
                             triggerToggle("덮개 닫힘 보호", isOn: $preventClosedLidSleep)
                         }
                         triggerToggle("보호기 후 암호 요구 해제", isOn: $disableScreenLock)
+
+                        if disableScreenLock, let warning = sleepPreventionStatus.screenLockWarningMessage {
+                            Text("잠금 화면 옵션 확인 필요 · \(warning)")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }
