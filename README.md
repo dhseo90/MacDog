@@ -194,7 +194,7 @@ Shortcuts 보조 경로는 `script/verify_shortcuts_charge_limit.sh`로 read-onl
 - 공식 사용량 기준은 로컬 Codex app-server의 `account/rateLimits/read` 응답이다.
 - `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석한다.
 - auth token, refresh token, cookie, session material은 읽거나 저장하지 않는다.
-- shared cache에는 plan, 사용률, reset 시각, credits, stale/error 상태만 저장한다.
+- shared cache에는 plan, 사용률, reset 시각, credits, stale/error 상태만 저장하고 오류 메시지는 token/session 패턴을 제거한 뒤 기록한다.
 
 ## 프로젝트 구조
 

@@ -116,7 +116,7 @@ public struct CodexUsageCacheStore {
             cachedAt: now,
             staleAfterSeconds: staleAfterSeconds,
             report: existingReport,
-            error: CodexUsageCacheError(message: message, recordedAt: now)
+            error: CodexUsageCacheError(message: Self.redactedErrorMessage(message), recordedAt: now)
         )
         try write(snapshot)
     }
@@ -126,5 +126,30 @@ public struct CodexUsageCacheStore {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try encoder.encode(snapshot)
         try data.write(to: fileURL, options: [.atomic])
+    }
+
+    private static func redactedErrorMessage(_ message: String) -> String {
+        let patterns: [(pattern: String, replacement: String)] = [
+            (
+                #"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"#,
+                #"Bearer <redacted>"#
+            ),
+            (
+                #"(?i)(access[_-]?token|refresh[_-]?token|session[_-]?id|authorization|cookie)(["']?\s*[:=]\s*["']?)[^"',;\s}]+"#,
+                #"$1$2<redacted>"#
+            )
+        ]
+
+        return patterns.reduce(message) { current, rule in
+            guard let regex = try? NSRegularExpression(pattern: rule.pattern) else {
+                return current
+            }
+            let range = NSRange(current.startIndex..<current.endIndex, in: current)
+            return regex.stringByReplacingMatches(
+                in: current,
+                range: range,
+                withTemplate: rule.replacement
+            )
+        }
     }
 }

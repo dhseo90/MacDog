@@ -47,6 +47,26 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertTrue(snapshot.isStale(now: Date(timeIntervalSince1970: 1_779_800_061)))
     }
 
+    func testSuccessSnapshotUsesStableTopLevelSchemaKeys() throws {
+        let fileURL = temporaryFileURL()
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: 1_779_800_000)
+        })
+
+        try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60)
+        let data = try Data(contentsOf: fileURL)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(Set(object.keys), [
+            "cachedAt",
+            "report",
+            "schemaVersion",
+            "staleAfterSeconds"
+        ])
+        XCTAssertEqual(object["schemaVersion"] as? Int, CodexUsageCacheSnapshot.currentSchemaVersion)
+        XCTAssertNoSensitiveCacheMaterial(in: object)
+    }
+
     func testFailureSnapshotPreservesLastSuccessReport() throws {
         let fileURL = temporaryFileURL()
         var now = 1_779_800_000
@@ -65,6 +85,33 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertTrue(snapshot.isStale(now: Date(timeIntervalSince1970: 1_779_800_011)))
     }
 
+    func testFailureSnapshotRedactsSensitiveSessionMaterial() throws {
+        let fileURL = temporaryFileURL()
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: 1_779_800_000)
+        })
+
+        try store.writeFailure(
+            message: "request failed access_token=abc123 refresh_token:'def456' Authorization: Bearer secret789 cookie=session987",
+            staleAfterSeconds: 60
+        )
+
+        let snapshot = try store.read()
+        let message = try XCTUnwrap(snapshot.error?.message)
+        XCTAssertTrue(message.contains("<redacted>"))
+        XCTAssertFalse(message.contains("abc123"))
+        XCTAssertFalse(message.contains("def456"))
+        XCTAssertFalse(message.contains("secret789"))
+        XCTAssertFalse(message.contains("session987"))
+
+        let data = try Data(contentsOf: fileURL)
+        let text = String(decoding: data, as: UTF8.self)
+        XCTAssertFalse(text.contains("abc123"))
+        XCTAssertFalse(text.contains("def456"))
+        XCTAssertFalse(text.contains("secret789"))
+        XCTAssertFalse(text.contains("session987"))
+    }
+
     private func makeReport() throws -> CodexUsageReport {
         let url = try XCTUnwrap(Bundle.module.url(
             forResource: "rate_limits_response",
@@ -81,5 +128,37 @@ final class CodexUsageCacheTests: XCTestCase {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent("usage.json")
+    }
+
+    private func XCTAssertNoSensitiveCacheMaterial(
+        in value: Any,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let sensitivePattern = "access[_-]?token|refresh[_-]?token|session[_-]?id|authorization|cookie"
+
+        switch value {
+        case let dictionary as [String: Any]:
+            for (key, nestedValue) in dictionary {
+                XCTAssertNil(
+                    key.range(of: sensitivePattern, options: [.regularExpression, .caseInsensitive]),
+                    file: file,
+                    line: line
+                )
+                XCTAssertNoSensitiveCacheMaterial(in: nestedValue, file: file, line: line)
+            }
+        case let array as [Any]:
+            for nestedValue in array {
+                XCTAssertNoSensitiveCacheMaterial(in: nestedValue, file: file, line: line)
+            }
+        case let string as String:
+            XCTAssertNil(
+                string.range(of: sensitivePattern, options: [.regularExpression, .caseInsensitive]),
+                file: file,
+                line: line
+            )
+        default:
+            break
+        }
     }
 }
