@@ -1,38 +1,73 @@
 import AppKit
 import Foundation
 
-struct TabArt {
-    let filename: String
+struct TabArt: Decodable {
+    let module: String
+    let resourceName: String
     let topicSymbol: String
-    let accent: NSColor
+    let accent: String
+
+    var filename: String {
+        "\(resourceName).png"
+    }
+
+    var accentColor: NSColor {
+        switch accent {
+        case "systemBlue":
+            .systemBlue
+        case "systemMint":
+            .systemMint
+        case "systemIndigo":
+            .systemIndigo
+        case "systemGreen":
+            .systemGreen
+        default:
+            .controlAccentColor
+        }
+    }
+}
+
+struct TabArtManifest: Decodable {
+    let characterId: String
+    let desktopSource: DesktopSource
+    let outputDirectory: String
+    let tabs: [TabArt]
+}
+
+struct DesktopSource: Decodable {
+    let resourceDirectory: String
+    let sourcePose: String
+    let resourcePrefix: String
+    let sourceFrameIndex: Int
 }
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+let manifestURL = root
+    .appendingPathComponent("Sources", isDirectory: true)
+    .appendingPathComponent("MacDog", isDirectory: true)
+    .appendingPathComponent("Resources", isDirectory: true)
+    .appendingPathComponent("CharacterProfiles", isDirectory: true)
+    .appendingPathComponent("codex-pup-tab-art.json")
+let manifestData = try Data(contentsOf: manifestURL)
+let manifest = try JSONDecoder().decode(TabArtManifest.self, from: manifestData)
 let outputDirectory = root
     .appendingPathComponent("Sources", isDirectory: true)
     .appendingPathComponent("MacDog", isDirectory: true)
     .appendingPathComponent("Resources", isDirectory: true)
-    .appendingPathComponent("PopoverTabs", isDirectory: true)
+    .appendingPathComponent(manifest.outputDirectory, isDirectory: true)
 let dogSourceURL = root
     .appendingPathComponent("Sources", isDirectory: true)
     .appendingPathComponent("MacDog", isDirectory: true)
     .appendingPathComponent("Resources", isDirectory: true)
-    .appendingPathComponent("DesktopPet", isDirectory: true)
-    .appendingPathComponent("pup-idle-front-0.png")
+    .appendingPathComponent(manifest.desktopSource.resourceDirectory, isDirectory: true)
+    .appendingPathComponent("\(manifest.desktopSource.resourcePrefix)-\(manifest.desktopSource.sourceFrameIndex).png")
 
 try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 guard let dogSprite = NSImage(contentsOf: dogSourceURL) else {
     fatalError("Missing Codex Pup desktop sprite: \(dogSourceURL.path)")
 }
 
-let artwork = [
-    TabArt(filename: "codex-tab.png", topicSymbol: "chevron.left.forwardslash.chevron.right", accent: NSColor.systemBlue),
-    TabArt(filename: "mac-tab.png", topicSymbol: "cpu", accent: NSColor.systemMint),
-    TabArt(filename: "sleep-tab.png", topicSymbol: "moon.fill", accent: NSColor.systemIndigo),
-    TabArt(filename: "battery-tab.png", topicSymbol: "battery.100percent", accent: NSColor.systemGreen)
-]
-
-for item in artwork {
+for item in manifest.tabs {
     let bitmap = render(item)
     guard let png = bitmap.representation(using: .png, properties: [:]) else {
         fatalError("Failed to encode \(item.filename)")
@@ -91,7 +126,7 @@ private func drawTopicBadge(_ item: TabArt) {
 
     let badgeRect = NSRect(x: 25, y: 183, width: 62, height: 59)
     let badge = NSBezierPath(ovalIn: badgeRect)
-    (item.accent.blended(withFraction: 0.08, of: .white) ?? item.accent).setFill()
+    (item.accentColor.blended(withFraction: 0.08, of: .white) ?? item.accentColor).setFill()
     badge.fill()
 
     NSColor.white.withAlphaComponent(0.30).setStroke()
@@ -108,7 +143,7 @@ private func drawTopicBadge(_ item: TabArt) {
 
 private func drawButtonBackground(_ item: TabArt) {
     let glow = NSBezierPath(ovalIn: NSRect(x: 54, y: 32, width: 156, height: 34))
-    item.accent.withAlphaComponent(0.20).setFill()
+    item.accentColor.withAlphaComponent(0.20).setFill()
     glow.fill()
 }
 

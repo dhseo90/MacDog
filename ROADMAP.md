@@ -85,7 +85,7 @@ usage = max(fiveHour.usedPercent, weekly.usedPercent)
 러너 변경은 "메뉴바 16-22pt 크기에서도 한눈에 읽히는가"를 기준으로 한다.
 Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가 약하므로 기본 UI 옵션으로 노출하지 않는다.
 현재 앱은 Codex Pup 하나만 유지해 설정이 장난감처럼 느껴지지 않게 한다.
-현재 우측 탭 버튼, 플로팅 펫, 메뉴바 러너 프레임은 `MacDogCharacterProfile.codexPup`이 소유하는 하나의 캐릭터 프로필로 연결되어 있다. 우측 탭 버튼은 실제 데스크톱 펫 sprite에 탭별 주제 배지를 합성해 생성한다. 후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 asset set으로 교체한다.
+현재 우측 탭 버튼, 플로팅 펫, 메뉴바 러너 프레임은 `MacDogCharacterProfile.codexPup`이 소유하는 하나의 캐릭터 프로필로 연결되어 있다. 우측 탭 버튼은 실제 데스크톱 펫 sprite에 탭별 주제 배지를 합성해 생성하며, 생성 원본/배지/출력 이름은 `codex-pup-tab-art.json` manifest와 Swift 프로필 테스트가 함께 고정한다. 후속 캐릭터를 추가할 때는 탭 버튼 이미지, 플로팅 펫, 메뉴바 러너 프레임을 각각 따로 고르지 않고 하나의 asset set으로 교체한다.
 
 ### 1차 캐릭터: Codex Pup
 
@@ -95,8 +95,9 @@ Spark/Pulse처럼 작은 이펙트만 다른 테마는 메뉴바에서 차이가
 2. 8프레임 달리기 루프: 다리 stride, 꼬리 흔들림, 작은 bounce
 3. 사용량 단계별 accent: calm template, active accent, fast orange, sprint/limit red
 4. `Docs/RunnerBaseline.md`와 `script/verify_runner_baseline.sh`로 frame count, frame size, 상태 단계를 기준선으로 고정
-5. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
-6. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
+5. `codex-pup-tab-art.json` manifest로 탭 버튼 이미지가 Codex Pup 데스크톱 sprite에서 생성되는 계약을 고정
+6. 후속 asset polish: retina PNG 또는 SF Symbols fallback 검토
+7. 메뉴바에서 차이가 약한 Spark/Pulse 효과 테마는 기본 옵션에서 제외
 
 ### 후속 후보
 

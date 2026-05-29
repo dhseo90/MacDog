@@ -1,0 +1,36 @@
+{
+  "characterId": "codex-pup",
+  "desktopSource": {
+    "resourceDirectory": "DesktopPet",
+    "sourcePose": "idleFront",
+    "resourcePrefix": "pup-idle-front",
+    "sourceFrameIndex": 0
+  },
+  "outputDirectory": "PopoverTabs",
+  "tabs": [
+    {
+      "module": "codex",
+      "resourceName": "codex-tab",
+      "topicSymbol": "chevron.left.forwardslash.chevron.right",
+      "accent": "systemBlue"
+    },
+    {
+      "module": "mac",
+      "resourceName": "mac-tab",
+      "topicSymbol": "cpu",
+      "accent": "systemMint"
+    },
+    {
+      "module": "sleep",
+      "resourceName": "sleep-tab",
+      "topicSymbol": "moon.fill",
+      "accent": "systemIndigo"
+    },
+    {
+      "module": "battery",
+      "resourceName": "battery-tab",
+      "topicSymbol": "battery.100percent",
+      "accent": "systemGreen"
+    }
+  ]
+}

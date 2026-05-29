@@ -22,10 +22,34 @@ struct MacDogCharacterProfile: Equatable {
         popoverTabs: PopoverTabAssetCatalog(
             resourceDirectory: "PopoverTabs",
             artwork: [
-                .codex: PopoverTabArtworkAsset(resourceName: "codex-tab", systemImage: "pawprint"),
-                .mac: PopoverTabArtworkAsset(resourceName: "mac-tab", systemImage: "waveform.path.ecg"),
-                .sleep: PopoverTabArtworkAsset(resourceName: "sleep-tab", systemImage: "moon.zzz"),
-                .battery: PopoverTabArtworkAsset(resourceName: "battery-tab", systemImage: "battery.100percent")
+                .codex: PopoverTabArtworkAsset(
+                    resourceName: "codex-tab",
+                    systemImage: "chevron.left.forwardslash.chevron.right",
+                    sourcePose: .idleFront,
+                    sourceFrameIndex: 0,
+                    badgeSystemImage: "chevron.left.forwardslash.chevron.right"
+                ),
+                .mac: PopoverTabArtworkAsset(
+                    resourceName: "mac-tab",
+                    systemImage: "cpu",
+                    sourcePose: .idleFront,
+                    sourceFrameIndex: 0,
+                    badgeSystemImage: "cpu"
+                ),
+                .sleep: PopoverTabArtworkAsset(
+                    resourceName: "sleep-tab",
+                    systemImage: "moon.fill",
+                    sourcePose: .idleFront,
+                    sourceFrameIndex: 0,
+                    badgeSystemImage: "moon.fill"
+                ),
+                .battery: PopoverTabArtworkAsset(
+                    resourceName: "battery-tab",
+                    systemImage: "battery.100percent",
+                    sourcePose: .idleFront,
+                    sourceFrameIndex: 0,
+                    badgeSystemImage: "battery.100percent"
+                )
             ]
         )
     )
@@ -75,4 +99,7 @@ struct PopoverTabAssetCatalog: Equatable {
 struct PopoverTabArtworkAsset: Equatable {
     let resourceName: String
     let systemImage: String
+    let sourcePose: DesktopPetPose
+    let sourceFrameIndex: Int
+    let badgeSystemImage: String
 }

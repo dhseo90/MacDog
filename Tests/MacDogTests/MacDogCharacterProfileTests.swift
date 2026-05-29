@@ -31,6 +31,59 @@ final class MacDogCharacterProfileTests: XCTestCase {
             let asset = profile.popoverTabs.artwork(for: module)
             XCTAssertEqual(asset.resourceName, module.artworkName)
             XCTAssertEqual(asset.systemImage, module.systemImage)
+            XCTAssertEqual(asset.sourcePose, .idleFront)
+            XCTAssertEqual(asset.sourceFrameIndex, 0)
+            XCTAssertEqual(asset.badgeSystemImage, module.systemImage)
         }
     }
+
+    func testCodexPupTabArtworkManifestMatchesProfile() throws {
+        let profile = MacDogCharacterProfile.codexPup
+        let manifest = try loadCodexPupTabArtworkManifest()
+
+        XCTAssertEqual(manifest.characterId, profile.id)
+        XCTAssertEqual(manifest.desktopSource.resourceDirectory, profile.desktopPet.resourceDirectory)
+        XCTAssertEqual(manifest.desktopSource.sourcePose, "idleFront")
+        XCTAssertEqual(manifest.desktopSource.resourcePrefix, profile.desktopPet.asset(for: .idleFront).resourcePrefix)
+        XCTAssertEqual(manifest.desktopSource.sourceFrameIndex, 0)
+        XCTAssertEqual(manifest.outputDirectory, profile.popoverTabs.resourceDirectory)
+
+        for module in MacDogPopoverModule.allCases {
+            let profileArtwork = profile.popoverTabs.artwork(for: module)
+            let manifestArtwork = try XCTUnwrap(manifest.tabs.first { $0.module == module.rawValue })
+            XCTAssertEqual(manifestArtwork.resourceName, profileArtwork.resourceName)
+            XCTAssertEqual(manifestArtwork.topicSymbol, profileArtwork.badgeSystemImage)
+        }
+    }
+
+    private func loadCodexPupTabArtworkManifest() throws -> TabArtworkManifestFixture {
+        let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Sources", isDirectory: true)
+            .appendingPathComponent("MacDog", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("CharacterProfiles", isDirectory: true)
+            .appendingPathComponent("codex-pup-tab-art.json")
+        let data = try Data(contentsOf: url)
+        return try JSONDecoder().decode(TabArtworkManifestFixture.self, from: data)
+    }
+}
+
+private struct TabArtworkManifestFixture: Decodable {
+    let characterId: String
+    let desktopSource: TabArtworkDesktopSourceFixture
+    let outputDirectory: String
+    let tabs: [TabArtworkFixture]
+}
+
+private struct TabArtworkDesktopSourceFixture: Decodable {
+    let resourceDirectory: String
+    let sourcePose: String
+    let resourcePrefix: String
+    let sourceFrameIndex: Int
+}
+
+private struct TabArtworkFixture: Decodable {
+    let module: String
+    let resourceName: String
+    let topicSymbol: String
 }

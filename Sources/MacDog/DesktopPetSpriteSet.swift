@@ -116,7 +116,7 @@ struct DesktopPetSpriteSet {
     }
 }
 
-enum DesktopPetPose: CaseIterable {
+enum DesktopPetPose: CaseIterable, Equatable {
     case runRight
     case runUp
     case runDown
