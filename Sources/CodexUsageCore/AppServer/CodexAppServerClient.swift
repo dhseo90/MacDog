@@ -3,6 +3,7 @@ import Foundation
 public final class CodexAppServerClient {
     private let codexURL: URL
     private let timeout: TimeInterval
+    private let requestFactory = CodexAppServerRequestFactory()
     private let decoder = JSONDecoder()
 
     public init(codexURL: URL, timeout: TimeInterval = 15) {
@@ -43,50 +44,34 @@ public final class CodexAppServerClient {
         }
 
         try sendInitialize(to: stdin.fileHandleForWriting)
-        let initializeData = try reader.waitForResponse(id: 1, timeout: timeout)
-        _ = try decodeResponse(InitializeResponse.self, from: initializeData, id: 1)
+        let initializeData = try reader.waitForResponse(
+            id: CodexAppServerRequestFactory.initializeRequestID,
+            timeout: timeout
+        )
+        _ = try decodeResponse(
+            InitializeResponse.self,
+            from: initializeData,
+            id: CodexAppServerRequestFactory.initializeRequestID
+        )
 
         try sendRateLimitRead(to: stdin.fileHandleForWriting)
-        let rateLimitData = try reader.waitForResponse(id: 2, timeout: timeout)
-        return try decodeResponse(RateLimitsResponse.self, from: rateLimitData, id: 2)
-    }
-
-    private func sendInitialize(to handle: FileHandle) throws {
-        try send(
-            id: 1,
-            method: "initialize",
-            params: [
-                "clientInfo": [
-                    "name": "codex-usage",
-                    "title": "Codex Usage",
-                    "version": "0.1.0"
-                ],
-                "capabilities": [
-                    "experimentalApi": true,
-                    "requestAttestation": false
-                ]
-            ],
-            to: handle
+        let rateLimitData = try reader.waitForResponse(
+            id: CodexAppServerRequestFactory.rateLimitReadRequestID,
+            timeout: timeout
+        )
+        return try decodeResponse(
+            RateLimitsResponse.self,
+            from: rateLimitData,
+            id: CodexAppServerRequestFactory.rateLimitReadRequestID
         )
     }
 
-    private func sendRateLimitRead(to handle: FileHandle) throws {
-        try send(id: 2, method: "account/rateLimits/read", params: nil, to: handle)
+    private func sendInitialize(to handle: FileHandle) throws {
+        handle.write(try requestFactory.initializeRequest())
     }
 
-    private func send(id: Int, method: String, params: Any?, to handle: FileHandle) throws {
-        var payload: [String: Any] = [
-            "id": id,
-            "method": method
-        ]
-        if let params {
-            payload["params"] = params
-        }
-
-        let data = try JSONSerialization.data(withJSONObject: payload)
-        var line = Data(data)
-        line.append(0x0A)
-        handle.write(line)
+    private func sendRateLimitRead(to handle: FileHandle) throws {
+        handle.write(try requestFactory.rateLimitReadRequest())
     }
 
     private func decodeResponse<Result: Decodable>(
@@ -104,4 +89,3 @@ public final class CodexAppServerClient {
         return result
     }
 }
-
