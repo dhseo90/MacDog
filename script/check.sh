@@ -16,22 +16,23 @@ Checks:
   2. Runner PNG assets have the expected count and size.
   3. Character profile links runner, desktop pet, and tab artwork assets.
   4. README screenshots exist, are referenced, and keep their expected dimensions.
-  5. Swift tests pass.
-  6. Cache schema and privacy contract checks pass.
-  7. Install/uninstall dry-run output is stable.
-  8. Restart/login autostart contract preserves app preferences.
-  9. The privileged helper product builds without installing it.
-  10. The menu bar app builds.
-  11. The generated app bundle contains the WidgetKit extension.
-  12. WidgetKit host/extension packaging builds an embedded .appex.
-  13. WidgetKit cache/deep-link readiness guards pass.
-  14. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  15. The current app/helper install state can be reported without changing the system.
-  16. Release packaging dry-run is stable.
-  17. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  18. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  19. Privileged helper reinstall test plan is safe to stage before actual approval.
-  20. Unless --no-run is passed, the app launches and its process is detected.
+  5. Runtime CPU/RSS sampling commands and documentation stay wired.
+  6. Swift tests pass.
+  7. Cache schema and privacy contract checks pass.
+  8. Install/uninstall dry-run output is stable.
+  9. Restart/login autostart contract preserves app preferences.
+  10. The privileged helper product builds without installing it.
+  11. The menu bar app builds.
+  12. The generated app bundle contains the WidgetKit extension.
+  13. WidgetKit host/extension packaging builds an embedded .appex.
+  14. WidgetKit cache/deep-link readiness guards pass.
+  15. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  16. The current app/helper install state can be reported without changing the system.
+  17. Release packaging dry-run is stable.
+  18. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  19. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  20. Privileged helper reinstall test plan is safe to stage before actual approval.
+  21. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -79,6 +80,9 @@ echo "==> Verifying character profile"
 
 echo "==> Verifying README screenshots"
 ./script/verify_readme_screenshots.sh
+
+echo "==> Verifying runtime sampling contract"
+./script/verify_runtime_contract.sh
 
 echo "==> Running Swift tests"
 "$XCRUN" swift test --no-parallel
