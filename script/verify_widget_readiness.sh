@@ -5,9 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WIDGET_SOURCE="$ROOT_DIR/Sources/MacDogWidget/MacDogWidget.swift"
 WIDGET_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/MacDogWidgetPresentationTests.swift"
 APP_MAIN="$ROOT_DIR/Sources/MacDog/MacDogMain.swift"
+WIDGET_EXTENSION_INFO="$ROOT_DIR/Apps/MacDogWidgetExtension/Info.plist"
+WIDGET_EXTENSION_ENTITLEMENTS="$ROOT_DIR/Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
+WIDGET_HOST_ENTITLEMENTS="$ROOT_DIR/Apps/MacDogWidgetHost/MacDogWidgetHost.entitlements"
 APP_BUNDLE="$ROOT_DIR/dist/MacDog.app"
 APP_INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
 WIDGET_APPEX="$APP_BUNDLE/Contents/PlugIns/MacDogWidgetExtension.appex"
+WIDGET_APPEX_INFO_PLIST="$WIDGET_APPEX/Contents/Info.plist"
 VERIFY_APP_BUNDLE="$ROOT_DIR/script/verify_app_bundle.sh"
 WIDGET_PACKAGING_DOC="$ROOT_DIR/Docs/WidgetPackaging.md"
 
@@ -50,9 +54,22 @@ plist_value() {
   /usr/libexec/PlistBuddy -c "Print $1" "$2"
 }
 
+require_plist_value() {
+  local key="$1"
+  local file="$2"
+  local expected="$3"
+  local description="$4"
+  local actual
+  actual="$(plist_value "$key" "$file")" || die "missing WidgetKit plist key: $description"
+  [[ "$actual" == "$expected" ]] || die "unexpected WidgetKit plist value for $description: expected $expected, got $actual"
+}
+
 require_file "$WIDGET_SOURCE"
 require_file "$WIDGET_TESTS"
 require_file "$APP_MAIN"
+require_file "$WIDGET_EXTENSION_INFO"
+require_file "$WIDGET_EXTENSION_ENTITLEMENTS"
+require_file "$WIDGET_HOST_ENTITLEMENTS"
 require_file "$VERIFY_APP_BUNDLE"
 require_file "$WIDGET_PACKAGING_DOC"
 
@@ -89,14 +106,25 @@ require_text_match '"macdog", "codexusage"' "$APP_MAIN" "menu bar app accepts ma
 require_text_match ':CFBundleURLTypes:0:CFBundleURLSchemes:0' "$VERIFY_APP_BUNDLE" "app bundle verifier checks macdog URL scheme"
 require_text_match 'MacDogWidgetExtension\.appex' "$VERIFY_APP_BUNDLE" "app bundle verifier checks embedded widget extension"
 
+require_plist_value ':CFBundleIdentifier' "$WIDGET_EXTENSION_INFO" 'com.dhseo.macdog.MacDog.WidgetExtension' "widget extension bundle id"
+require_plist_value ':CFBundlePackageType' "$WIDGET_EXTENSION_INFO" 'XPC!' "widget extension package type"
+require_plist_value ':NSExtension:NSExtensionPointIdentifier' "$WIDGET_EXTENSION_INFO" 'com.apple.widgetkit-extension' "WidgetKit extension point"
+require_plist_value ':com.apple.security.app-sandbox' "$WIDGET_EXTENSION_ENTITLEMENTS" 'true' "widget extension sandbox entitlement"
+require_plist_value ':com.apple.security.application-groups:0' "$WIDGET_EXTENSION_ENTITLEMENTS" 'group.com.dhseo.macdog.MacDog' "widget extension app group"
+require_plist_value ':com.apple.security.app-sandbox' "$WIDGET_HOST_ENTITLEMENTS" 'true' "widget host sandbox entitlement"
+require_plist_value ':com.apple.security.application-groups:0' "$WIDGET_HOST_ENTITLEMENTS" 'group.com.dhseo.macdog.MacDog' "widget host app group"
+
 require_text_match 'Manually add the widget' "$WIDGET_PACKAGING_DOC" "manual widget gallery verification remains documented"
 require_text_match 'Click the widget' "$WIDGET_PACKAGING_DOC" "manual deep-link verification remains documented"
 
 if [[ -d "$APP_BUNDLE" ]]; then
   [[ -f "$APP_INFO_PLIST" ]] || die "dist app Info.plist missing: $APP_INFO_PLIST"
   [[ -d "$WIDGET_APPEX" ]] || die "dist app widget extension missing: $WIDGET_APPEX"
+  [[ -f "$WIDGET_APPEX_INFO_PLIST" ]] || die "dist widget Info.plist missing: $WIDGET_APPEX_INFO_PLIST"
   [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:0' "$APP_INFO_PLIST")" == "macdog" ]] || die "dist app missing macdog URL scheme"
   [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:1' "$APP_INFO_PLIST")" == "codexusage" ]] || die "dist app missing codexusage URL scheme"
+  require_plist_value ':NSExtension:NSExtensionPointIdentifier' "$WIDGET_APPEX_INFO_PLIST" 'com.apple.widgetkit-extension' "dist WidgetKit extension point"
+  require_plist_value ':CFBundlePackageType' "$WIDGET_APPEX_INFO_PLIST" 'XPC!' "dist widget extension package type"
 else
   echo "dist/MacDog.app not present; source-level WidgetKit readiness checks only"
 fi
