@@ -17,24 +17,25 @@ Checks:
   3. Character profile links runner, desktop pet, and tab artwork assets.
   4. README screenshots exist, are referenced, and keep their expected dimensions.
   5. Runtime CPU/RSS sampling commands and documentation stay wired.
-  6. Swift tests pass.
-  7. Cache schema and privacy contract checks pass.
-  8. Install/uninstall dry-run output is stable.
-  9. Restart/login autostart contract preserves app preferences.
-  10. The privileged helper product builds without installing it.
-  11. The menu bar app builds.
-  12. The generated app bundle contains the WidgetKit extension.
-  13. WidgetKit host/extension packaging builds an embedded .appex.
-  14. WidgetKit cache/deep-link readiness guards pass.
-  15. WidgetKit manual cache fixture writer is tested without touching live cache.
-  16. Shortcuts Charge Limit fallback parser is tested with a local fixture.
-  17. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  18. The current app/helper install state can be reported without changing the system.
-  19. Release packaging dry-run is stable.
-  20. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  21. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  22. Privileged helper reinstall test plan is safe to stage before actual approval.
-  23. Unless --no-run is passed, the app launches and its process is detected.
+  6. The menu bar app keeps live Codex app-server access out of the UI process.
+  7. Swift tests pass.
+  8. Cache schema and privacy contract checks pass.
+  9. Install/uninstall dry-run output is stable.
+  10. Restart/login autostart contract preserves app preferences.
+  11. The privileged helper product builds without installing it.
+  12. The menu bar app builds.
+  13. The generated app bundle contains the WidgetKit extension.
+  14. WidgetKit host/extension packaging builds an embedded .appex.
+  15. WidgetKit cache/deep-link readiness guards pass.
+  16. WidgetKit manual cache fixture writer is tested without touching live cache.
+  17. Shortcuts Charge Limit fallback parser is tested with a local fixture.
+  18. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  19. The current app/helper install state can be reported without changing the system.
+  20. Release packaging dry-run is stable.
+  21. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  22. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  23. Privileged helper reinstall test plan is safe to stage before actual approval.
+  24. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -85,6 +86,9 @@ echo "==> Verifying README screenshots"
 
 echo "==> Verifying runtime sampling contract"
 ./script/verify_runtime_contract.sh
+
+echo "==> Verifying app privacy boundaries"
+./script/verify_app_privacy_boundaries.sh
 
 echo "==> Running Swift tests"
 "$XCRUN" swift test --no-parallel

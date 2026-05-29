@@ -8,7 +8,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
-    private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultSharedFileURL())
+    private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
@@ -19,7 +19,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
     private var popoverMetricsTimer: Timer?
-    private var liveRefreshTask: Task<Void, Never>?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
     private var floatingPetController: FloatingPetController?
@@ -136,7 +135,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         statusItem.button?.image = image
     }
 
-    private func refreshUsage(allowLiveRefresh: Bool) {
+    private func refreshUsage(allowLiveRefresh _: Bool) {
         let previousPhase = state.phase
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
@@ -160,10 +159,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         syncDesktopPetVisibility()
-
-        if allowLiveRefresh {
-            requestLiveRefresh()
-        }
     }
 
     private func applyState(_ newState: UsageMonitorState) {
@@ -203,111 +198,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
         )
-    }
-
-    private func requestLiveRefresh() {
-        guard !MacDogDemoData.isEnabled else {
-            applyState(MacDogDemoData.state(preferences: preferences))
-            return
-        }
-
-        liveRefreshTask?.cancel()
-        applyState(state.withRefreshing(true))
-        liveRefreshTask = Task { [weak self] in
-            let result = await Self.fetchLiveUsage()
-            guard !Task.isCancelled, let self else { return }
-            let previousPhase = self.state.phase
-            let previousPreferences = self.preferences
-            self.preferences = RunnerPreferences()
-            let systemMetrics = self.captureSystemMetrics()
-            self.syncSleepPrevention(systemMetrics: systemMetrics)
-            self.applyState(self.state(from: result, systemMetrics: systemMetrics))
-            self.liveRefreshTask = nil
-
-            if previousPhase != self.state.phase || previousPreferences != self.preferences {
-                self.restartAnimationTimer()
-            }
-
-            self.syncDesktopPetVisibility()
-        }
-    }
-
-    private func cancelLiveRefresh() {
-        liveRefreshTask?.cancel()
-        liveRefreshTask = nil
-
-        if state.isRefreshing {
-            applyState(loadCachedState(systemMetrics: captureSystemMetrics()))
-        }
-    }
-
-    nonisolated private static func fetchLiveUsage() async -> LiveUsageRefreshResult {
-        await Task.detached(priority: .userInitiated) {
-            let cacheStores = CodexUsageCacheStore.defaultMirroredFileURLs().map {
-                CodexUsageCacheStore(fileURL: $0)
-            }
-            let primaryCacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultSharedFileURL())
-
-            do {
-                let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
-                cacheStores.forEach { try? $0.writeSuccess(report: report) }
-                return .success(report)
-            } catch {
-                return .failure(
-                    message: error.localizedDescription,
-                    cachedSnapshot: try? primaryCacheStore.read()
-                )
-            }
-        }.value
-    }
-
-    private func state(from result: LiveUsageRefreshResult, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
-        switch result {
-        case .success(let report):
-            UsageMonitorState(
-                report: report,
-                cacheSnapshot: nil,
-                errorMessage: nil,
-                displayBasis: preferences.displayBasis,
-                reducedMotion: preferences.reducedMotion,
-                animationPaused: preferences.animationPaused,
-                systemMetrics: systemMetrics,
-                systemMetricsHistory: systemMetricsHistory,
-                sleepPreventionStatus: sleepPreventionController.status,
-                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
-            )
-        case .failure(let message, let snapshot):
-            if let snapshot, let report = snapshot.report {
-                UsageMonitorState(
-                    report: report,
-                    cacheSnapshot: snapshot,
-                    errorMessage: message,
-                    displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion,
-                    animationPaused: preferences.animationPaused,
-                    systemMetrics: systemMetrics,
-                    systemMetricsHistory: systemMetricsHistory,
-                    sleepPreventionStatus: sleepPreventionController.status,
-                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
-                )
-            } else {
-                UsageMonitorState(
-                    report: nil,
-                    cacheSnapshot: nil,
-                    errorMessage: message,
-                    displayBasis: preferences.displayBasis,
-                    reducedMotion: preferences.reducedMotion,
-                    animationPaused: preferences.animationPaused,
-                    systemMetrics: systemMetrics,
-                    systemMetricsHistory: systemMetricsHistory,
-                    sleepPreventionStatus: sleepPreventionController.status,
-                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
-                )
-            }
-        }
     }
 
     private func privilegedHelperInstallSnapshot() -> PrivilegedHelperInstallSnapshot {
@@ -353,7 +243,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .showUsageDetails:
             showUsagePopover()
         case .refreshNow:
-            refreshUsage(allowLiveRefresh: true)
+            refreshUsage(allowLiveRefresh: false)
         case .setDisplayBasis(let basis):
             RunnerPreferences.setDisplayBasis(basis)
             refreshUsage(allowLiveRefresh: false)
@@ -598,7 +488,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         if popover.isShown {
-            requestLiveRefresh()
+            refreshUsage(allowLiveRefresh: false)
             return
         }
 
@@ -619,12 +509,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
         positionPopoverWindow(relativeTo: sourceView, placement: placement)
         refreshPopoverMetricsIfNeeded()
-        requestLiveRefresh()
     }
 
     nonisolated func popoverDidClose(_ notification: Notification) {
         Task { @MainActor in
-            self.cancelLiveRefresh()
             self.stopPopoverMetricsTimer()
             self.removeOutsideClickMonitors()
         }
@@ -764,9 +652,4 @@ private enum UsagePopoverPlacement {
             return .maxX
         }
     }
-}
-
-private enum LiveUsageRefreshResult: Sendable {
-    case success(CodexUsageReport)
-    case failure(message: String, cachedSnapshot: CodexUsageCacheSnapshot?)
 }

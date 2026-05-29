@@ -70,7 +70,7 @@ run_with_timeout() {
   local watchdog_pid="$!"
 
   local status=0
-  wait "$command_pid" || status="$?"
+  wait "$command_pid" 2>/dev/null || status="$?"
   kill "$watchdog_pid" >/dev/null 2>&1 || true
   wait "$watchdog_pid" >/dev/null 2>&1 || true
   return "$status"

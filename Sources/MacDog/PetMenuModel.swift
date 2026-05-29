@@ -6,7 +6,7 @@ struct PetMenuModel: Equatable {
         self.title = "코덱스 펫"
         self.entries = [
             .command(PetMenuCommand(title: "사용량 상세 보기", action: .showUsageDetails)),
-            .command(PetMenuCommand(title: "지금 새로고침", action: .refreshNow)),
+            .command(PetMenuCommand(title: "캐시 다시 읽기", action: .refreshNow)),
             .separator,
             .submenu(Self.speedSubmenu(preferences: preferences)),
             .command(PetMenuCommand(

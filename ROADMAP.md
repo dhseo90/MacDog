@@ -192,7 +192,7 @@ codex-usage doctor
 - usage 단계별 frame interval 매핑
 - popover UI 구현
 - cache reader 구현
-- cache가 없으면 직접 app-server 조회
+- menu bar app은 앱 소유 Application Support cache를 읽고, live app-server 조회와 shared cache mirror는 CLI/cache writer 경로에 둔다
 - stale/error/limit 상태 UI 구현
 
 Popover 정보 구조:
@@ -252,7 +252,7 @@ Popover 정보 구조:
 | 동작 | 메뉴바 진입점 | 플로팅 펫 진입점 | 결과 |
 | --- | --- | --- | --- |
 | 사용량 상세 보기 | 좌클릭, 우클릭 메뉴 | 좌클릭, 우클릭 메뉴 | 같은 사용량 상세 패널 표시 |
-| 지금 새로고침 | 우클릭 메뉴, 상세 패널 | 우클릭 메뉴, 상세 패널 | 실시간 새로고침 요청 |
+| 캐시 다시 읽기 | 우클릭 메뉴, 상세 패널 | 우클릭 메뉴, 상세 패널 | shared cache 재읽기 |
 | 러너 속도 기준 | 우클릭 하위 메뉴 | 우클릭 하위 메뉴 | `RunnerPreferences.displayBasis` 변경 |
 | 움직임 줄이기 | 우클릭 메뉴 | 우클릭 메뉴 | `RunnerPreferences.reducedMotion` 변경 |
 | 펫 애니메이션 일시 정지 | 우클릭 메뉴 | 우클릭 메뉴 | 애니메이션만 멈추고 polling은 유지 |
@@ -345,7 +345,7 @@ Popover 정보 구조:
 - `script/write_widget_cache_fixture.sh --self-test`로 live cache를 건드리지 않고 수동 위젯 검수용 updated/stale/error cache fixture 생성을 검증한다.
 - `MacDogWidgetPresentationTests`로 empty/stale/error/updated 위젯 상태 표현을 검증한다.
 - App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
-- 메뉴바 앱과 CLI cache writer는 legacy Application Support cache와 WidgetKit shared cache에 함께 기록하며, 메뉴바 앱은 shared cache를 우선 읽는다.
+- CLI cache writer는 legacy Application Support cache와 WidgetKit shared cache에 함께 기록하며, 메뉴바 앱은 앱 소유 Application Support cache를 읽고 Widget extension은 shared cache를 읽는다.
 - 실제 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 UI 검수는 아직 수동 검증 항목으로 남긴다.
 - 설치 스크립트는 `MacDog.app`과 CLI를 설치하며, 앱 번들 안에 WidgetKit extension을 포함한다.
 - monitor LaunchAgent는 `RunAtLoad`로 앱을 로그인/재시작 후 자동 실행하고, 앱은 `UserDefaults`의 기존 설정을 다시 읽어 잠자기 방지 모드와 자동 조건을 복원한다.
@@ -448,7 +448,7 @@ GitHub 배포 후속 목표:
 - Popover 오른쪽 세로 탭에서 `Codex`, `Mac`, `잠들지 않기`, `배터리`를 선택해 탐색한다.
 - Codex 탭은 5시간/주간 reset 절대 시각과 함께 reset까지 남은 시간을 한 줄로 표시한다.
 - Mac 활성 자원 탭에 CPU 사용률과 system/user/idle 세부 비율, 메모리 세부값, 저장 용량 사용/전체, 네트워크 누적 I/O와 현재 속도, 로컬 IP를 표시한다.
-- popover가 열린 동안 `Mac`, `잠들지 않기`, `배터리` 탭은 로컬 상태를 1초 단위로 갱신하고, Codex 사용량 조회는 cache/60초 주기/수동 새로고침 경로로 분리한다.
+- popover가 열린 동안 `Mac`, `잠들지 않기`, `배터리` 탭은 로컬 상태를 1초 단위로 갱신하고, Codex 사용량 표시는 앱 소유 cache/60초 주기/수동 캐시 재읽기 경로로 분리한다.
 - 배터리 읽기 전용 상태로 배터리 비율, 충전 여부, 전원 연결 여부, 완충/방전 예상 시간, cycle count, 온도를 표시한다.
 - 일반 잠자기 방지는 IOKit power assertion으로 시스템/디스플레이 idle sleep 방지 토글을 제공한다.
 - 잠자기 방지 UI는 끔, 시간 제어, 상태 기준 제어를 상호 배타적으로 제공한다.
