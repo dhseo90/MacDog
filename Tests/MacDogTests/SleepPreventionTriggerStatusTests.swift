@@ -93,6 +93,52 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         XCTAssertEqual(status.summary, "활성 · Xcode 앱")
     }
 
+    func testCaptureDoesNotReadRunningAppsWhenConfiguredAppTriggerIsDisabled() {
+        RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(false, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.capture(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(battery: makeBattery(percent: 90, isConnectedToPower: true)),
+            configuredAppRunningProvider: { _ in
+                XCTFail("Configured app lookup should not run while its trigger is disabled")
+                return true
+            },
+            externalVolumeCountProvider: {
+                XCTFail("External volume lookup should not run while its trigger is disabled")
+                return 1
+            }
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertFalse(status.codexAppRunning)
+        XCTAssertEqual(status.externalVolumeCount, 0)
+        XCTAssertEqual(status.summary, "활성 · 전원")
+    }
+
+    func testCaptureReadsRunningAppsOnlyWhenConfiguredAppTriggerIsEnabled() {
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionAppMatchText("Xcode", defaults: defaults)
+
+        var requestedMatchText: String?
+        let status = SleepPreventionTriggerStatus.capture(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(),
+            configuredAppRunningProvider: { matchText in
+                requestedMatchText = matchText
+                return true
+            },
+            externalVolumeCountProvider: {
+                XCTFail("External volume lookup should not run while its trigger is disabled")
+                return 1
+            }
+        )
+
+        XCTAssertEqual(requestedMatchText, "Xcode")
+        XCTAssertTrue(status.isMatched)
+        XCTAssertEqual(status.summary, "활성 · Xcode 앱")
+    }
+
     func testChargingBelowThresholdTriggerRequiresPowerAndLowBattery() {
         RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
 

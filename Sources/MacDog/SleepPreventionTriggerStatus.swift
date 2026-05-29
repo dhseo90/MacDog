@@ -46,12 +46,24 @@ struct SleepPreventionTriggerStatus: Equatable {
     let networkActivityThresholdBytesPerSecond: Double
     let externalVolumeCount: Int
 
-    static func capture(preferences: RunnerPreferences, systemMetrics: SystemMetricsSnapshot = .capture()) -> SleepPreventionTriggerStatus {
-        evaluate(
+    static func capture(
+        preferences: RunnerPreferences,
+        systemMetrics: SystemMetricsSnapshot = .capture(),
+        configuredAppRunningProvider: (String) -> Bool = Self.isConfiguredAppRunning,
+        externalVolumeCountProvider: () -> Int = Self.externalVolumeCount
+    ) -> SleepPreventionTriggerStatus {
+        let codexAppRunning = preferences.sleepPreventionCodexAppTriggerEnabled
+            ? configuredAppRunningProvider(preferences.sleepPreventionAppMatchText)
+            : false
+        let externalVolumeCount = preferences.sleepPreventionExternalVolumeTriggerEnabled
+            ? externalVolumeCountProvider()
+            : 0
+
+        return evaluate(
             preferences: preferences,
             systemMetrics: systemMetrics,
-            codexAppRunning: Self.isConfiguredAppRunning(matching: preferences.sleepPreventionAppMatchText),
-            externalVolumeCount: Self.externalVolumeCount()
+            codexAppRunning: codexAppRunning,
+            externalVolumeCount: externalVolumeCount
         )
     }
 
