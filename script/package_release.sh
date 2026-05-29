@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
-VERSION="${MACDOG_RELEASE_VERSION:-0.1.0}"
+VERSION="${MACDOG_RELEASE_VERSION:-1.0.0}"
 APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 RELEASE_ROOT="$ROOT_DIR/dist/release"
 STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"

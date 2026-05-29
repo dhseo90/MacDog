@@ -12,7 +12,7 @@ struct CodexAppServerRequestFactory {
                 "clientInfo": [
                     "name": "codex-usage",
                     "title": "Codex Usage",
-                    "version": "0.1.0"
+                    "version": "1.0.0"
                 ],
                 "capabilities": [
                     "experimentalApi": true,
