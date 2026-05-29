@@ -29,6 +29,7 @@ For now, report privately to the repository owner. Include:
 Before making the repository public:
 
 - run `./script/verify_public_repo_guardrails.sh`
+- review `./script/configure_github_public_repo_settings.sh --check`
 - enable vulnerability alerts
 - enable Dependabot security updates
 - apply `main` branch protection with required checks `static-gates` and `guardrails`

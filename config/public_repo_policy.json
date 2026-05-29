@@ -14,7 +14,8 @@
     ".github/workflows/ci.yml",
     ".github/workflows/public-repo-guardrails.yml",
     "Docs/GitHubReleaseChecklist.md",
-    "Docs/ReleasePackaging.md"
+    "Docs/ReleasePackaging.md",
+    "script/configure_github_public_repo_settings.sh"
   ],
   "requiredStatusChecks": [
     "static-gates",
