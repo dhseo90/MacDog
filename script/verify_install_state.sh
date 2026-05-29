@@ -91,12 +91,49 @@ print_process_state() {
   status="${status:-0}"
 
   if [[ "$status" == "0" ]]; then
-    echo "process:running $APP_NAME"
+    local count
+    count="$(printf '%s\n' "$output" | /usr/bin/grep -Ec '^[0-9]+$' || true)"
+    echo "process:running $APP_NAME count:$count"
+    while IFS= read -r pid; do
+      [[ "$pid" =~ ^[0-9]+$ ]] || continue
+      local command_path
+      command_path="$(/bin/ps -p "$pid" -o comm= 2>/dev/null | /usr/bin/sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      if [[ -z "$command_path" ]]; then
+        echo "process-path:$pid unknown"
+      else
+        echo "process-path:$pid $command_path"
+        if [[ "$command_path" == "$APP_BINARY" ]]; then
+          echo "process-freshness:$pid installed-app-binary"
+        else
+          echo "process-freshness:$pid different-binary expected:$APP_BINARY actual:$command_path"
+        fi
+      fi
+    done <<<"$output"
   elif [[ "$status" == "1" ]]; then
     echo "process:not-running $APP_NAME"
   else
     echo "process:unknown $APP_NAME ($output)"
   fi
+}
+
+expect_running_process_current_if_known() {
+  local output
+  local status
+  output="$(pgrep -x "$APP_NAME" 2>&1)" || status=$?
+  status="${status:-0}"
+
+  [[ "$status" == "0" ]] || return 0
+
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    local command_path
+    command_path="$(/bin/ps -p "$pid" -o comm= 2>/dev/null | /usr/bin/sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -n "$command_path" ]] || continue
+    [[ "$command_path" == "$APP_BINARY" ]] || {
+      echo "running MacDog process uses a different binary: pid=$pid expected:$APP_BINARY actual:$command_path" >&2
+      return 1
+    }
+  done <<<"$output"
 }
 
 print_state() {
@@ -141,6 +178,7 @@ expect_uninstalled() {
 expect_current_dist() {
   expect_installed
   compare_app_bundles "$DIST_APP" "$APP_DEST" "app-freshness"
+  expect_running_process_current_if_known
 }
 
 print_state

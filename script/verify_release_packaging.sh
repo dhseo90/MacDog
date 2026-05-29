@@ -107,6 +107,8 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq 'privileged helper is optional' "$stage/Check Install Status.command" || die "status checker optional helper copy missing"
   /usr/bin/grep -Fq 'installed app matches bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness success copy missing"
   /usr/bin/grep -Fq 'installed app differs from bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness failure copy missing"
+  /usr/bin/grep -Fq 'running MacDog process count' "$stage/Check Install Status.command" || die "status checker running process count missing"
+  /usr/bin/grep -Fq 'running MacDog uses a different binary' "$stage/Check Install Status.command" || die "status checker running process freshness warning missing"
   /usr/bin/grep -Fq 'bundle_manifest' "$stage/Check Install Status.command" || die "status checker app payload comparison missing"
   require_line_count "$stage/Install MacDog.command" '^<plist version="1\.0">$' 2
   require_line_count "$stage/Uninstall Privileged Helper.command" '^#!/usr/bin/env bash$' 2

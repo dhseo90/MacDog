@@ -643,6 +643,35 @@ app_payload_matches_source() {
   return 1
 }
 
+print_running_app_state() {
+  local output
+  local status
+  output="$(pgrep -x "$APP_NAME" 2>&1)" || status=$?
+  status="${status:-0}"
+
+  if [[ "$status" == "0" ]]; then
+    local count
+    count="$(printf '%s\n' "$output" | /usr/bin/grep -Ec '^[0-9]+$' || true)"
+    ok "running MacDog process count: $count"
+    while IFS= read -r pid; do
+      [[ "$pid" =~ ^[0-9]+$ ]] || continue
+      local command_path
+      command_path="$(/bin/ps -p "$pid" -o comm= 2>/dev/null | /usr/bin/sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      if [[ -z "$command_path" ]]; then
+        warn "running MacDog process path unknown: pid $pid"
+      elif [[ "$command_path" == "$APP_DEST/Contents/MacOS/$APP_NAME" ]]; then
+        ok "running MacDog uses installed app binary: pid $pid"
+      else
+        warn "running MacDog uses a different binary: pid $pid actual $command_path"
+      fi
+    done <<<"$output"
+  elif [[ "$status" == "1" ]]; then
+    warn "MacDog is not currently running"
+  else
+    warn "MacDog process state unknown: $output"
+  fi
+}
+
 echo "MacDog install status"
 echo
 
@@ -661,6 +690,8 @@ if [[ -d "$APP_SOURCE" && -d "$APP_DEST" ]]; then
 else
   warn "release payload app is not available for freshness check: $APP_SOURCE"
 fi
+
+print_running_app_state
 
 if [[ -x "$CLI_DEST" ]]; then
   ok "CLI installed: $CLI_DEST"

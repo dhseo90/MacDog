@@ -17,7 +17,7 @@
 - `Install Privileged Helper.command`는 system 변경 위치와 helper 용도를 안내한 뒤 별도 더블클릭/관리자 승인으로 bundled helper를 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons`에 설치한다.
 - `Uninstall MacDog.command`는 사용자 영역의 앱, CLI, LaunchAgent를 제거하며 optional helper는 건드리지 않는다.
 - `Uninstall Privileged Helper.command`는 system 변경 위치를 안내한 뒤 별도 더블클릭/관리자 승인으로 optional helper를 `/Library` 위치에서 제거한다.
-- `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치/로드 상태와 설치된 앱이 DMG payload와 같은 빌드인지 터미널에서 요약한다.
+- `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치/로드 상태, 설치된 앱이 DMG payload와 같은 빌드인지, 실행 중인 MacDog가 다른 binary인지 터미널에서 요약한다.
 - 설치/업데이트 중 MacDog가 `SleepDisabled=1`을 소유한 상태라면 app 종료 정리 루틴이 값을 0으로 되돌리지 않도록 강제 종료 경로를 사용한다.
 - 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않는다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만든다.
@@ -68,7 +68,7 @@
 3. 생성된 `dist/release/MacDog-<version>.dmg`를 열어 payload 확인
 4. 더블클릭 `Install MacDog.command`로 앱/CLI/LaunchAgent 설치 검증
 5. helper가 필요한 덮개 닫힘 보호는 `Install Privileged Helper.command` 또는 앱 내부 설치 UX에서 명확히 승인받는다.
-6. `Check Install Status.command`로 app/CLI/LaunchAgent/helper 상태를 확인한다.
+6. `Check Install Status.command`로 app/CLI/LaunchAgent/helper 상태와 실행 중인 MacDog binary 경로를 확인한다.
    - 이 command가 `installed app differs from bundled release payload`를 표시하면 이전 설치본이 남아 있는 상태이므로 UI 검수 전에 다시 설치한다.
 7. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인한다.
 8. 제거 검증이 필요하면 `Uninstall MacDog.command`와 `Uninstall Privileged Helper.command`를 각각 실행하고 `Check Install Status.command`로 확인한다.
