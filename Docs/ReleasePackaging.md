@@ -22,7 +22,7 @@
 - 첫 실행 마무리 이후 `Downloads`/`Desktop`의 `MacDog-*.dmg`, checksum, release note 후보와 마운트된 MacDog 설치 디스크를 정리할지 묻습니다.
 - optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻습니다. 사용자가 동의하면 앱 UI가 helper 설치 흐름을 열고, macOS 관리자 승인은 MacDog 주체로 표시됩니다.
 - 예전 monitor LaunchAgent가 남아 있으면 첫 실행 마무리에서 제거하고, 메뉴바 앱 자동 실행은 `SMAppService.mainApp`으로 등록합니다.
-- 생성된 `.dmg`는 로컬 검증용 후보이며, 아직 Developer ID signing/notarization을 수행하지 않습니다.
+- 생성된 `.dmg`는 GitHub Release에 올릴 수 있는 ad-hoc signed 빌드이며, 아직 Developer ID signing/notarization을 수행하지 않습니다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만듭니다.
 - `.github/workflows/ci.yml`은 PR과 `main` push에서 `./script/check.sh --no-run`을 실행하는 기본 release readiness check입니다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관합니다.
@@ -30,7 +30,7 @@
 - `.github/workflows/release-stable.yml`은 `SIGNED-STABLE` 확인 입력, GitHub Environment approval, Developer ID Application 인증서 secret, notarization secret이 모두 있어야 signed/notarized `.dmg`를 public GitHub Release로 올립니다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
-- `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증합니다.
+- `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증합니다.
 - PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리합니다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용합니다.
 
 ## 확인됨
@@ -38,8 +38,8 @@
 - `script/package_release.sh --dry-run` 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build --no-dmg` staging 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build`는 `dist/release/MacDog-<version>.dmg`와 checksum을 생성합니다.
-- `MacDog-1.0.0.dmg` 로컬 후보는 `~/Downloads`에서 Finder로 열었을 때 drag-and-drop 배경, `MacDog.app`, `Applications` symlink가 보이는 것을 확인했습니다.
-- `MacDog-1.0.0.dmg` 로컬 후보는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
+- `MacDog-1.0.0.dmg`는 `~/Downloads`에서 Finder로 열었을 때 drag-and-drop 배경, `MacDog.app`, `Applications` symlink가 보이는 것을 확인했습니다.
+- `MacDog-1.0.0.dmg`는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
 - mounted DMG의 `MacDog.app`을 `/Applications/MacDog.app`으로 복사한 뒤 설치본 실행, popover 열기, app-owned `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 상태를 확인했습니다.
 - 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일이 제거되는 것을 확인했습니다.
 - release workflow는 unsigned draft와 signed stable release gate를 분리합니다.
@@ -84,7 +84,7 @@
 - `.dmg.sha256` checksum을 함께 제공하고 검증합니다.
 - DMG에는 drag-and-drop 설치를 위한 `Applications` symlink가 포함됩니다.
 - DMG 안에는 앱 설치에 필요 없는 command 파일이나 임시 안내 파일이 없습니다.
-- public stable release는 Developer ID Application으로 app과 DMG를 서명하고, notarytool 제출, stapler, spctl Gatekeeper 확인을 통과합니다.
+- notarized public stable release는 Developer ID Application으로 app과 DMG를 서명하고, notarytool 제출, stapler, spctl Gatekeeper 확인을 통과합니다.
 - Release note에 지원 OS, unsigned/notarized 여부, helper 권한 이유, uninstall 경로를 적습니다.
 - `.dmg`를 내려받아 Finder로 설치하는 흐름을 새 사용자 환경에서 검증합니다.
 - helper 설치가 포함되는 경우 앱 UI가 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons` 변경을 명확히 안내하고 uninstall 복구를 검증합니다.

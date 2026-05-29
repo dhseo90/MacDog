@@ -50,7 +50,7 @@ require_file_contains "$RELEASE_DOC" "stapling"
 
 dry_run_output="$("$PACKAGE_SCRIPT" --dry-run)"
 require_output_contains "$dry_run_output" "Signing: local ad-hoc build only; Developer ID signing and notarization are not performed."
-require_output_contains "$dry_run_output" "Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases."
+require_output_contains "$dry_run_output" "Gatekeeper: GitHub Release notes must clearly say this DMG is not notarized and may show a macOS warning."
 require_output_contains "$dry_run_output" "GitHub Release:"
 
 require_file_contains "$DRAFT_WORKFLOW" "UNSIGNED-DRAFT"
