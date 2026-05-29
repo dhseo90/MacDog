@@ -12,15 +12,18 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
 
     private let defaults: UserDefaults
     private let commandRunner: CommandRunning
+    private let administratorApprovalRunner: AdministratorApprovalRunning
     private let helperController: ClosedLidSleepHelperControlling?
 
     init(
         defaults: UserDefaults = .standard,
         commandRunner: CommandRunning = ProcessCommandRunner(),
+        administratorApprovalRunner: AdministratorApprovalRunning = AppleScriptAdministratorApprovalRunner(),
         helperController: ClosedLidSleepHelperControlling? = XPCClosedLidSleepHelperController()
     ) {
         self.defaults = defaults
         self.commandRunner = commandRunner
+        self.administratorApprovalRunner = administratorApprovalRunner
         self.helperController = helperController
     }
 
@@ -107,32 +110,38 @@ struct PMSetClosedLidSleepDisabler: ClosedLidSleepDisabling {
 
         let invocation = PrivilegedHelperCommandPlanner.pmsetInvocation(for: .setSleepDisabled(isDisabled))
         if let helperController, helperController.isInstalled {
-            do {
-                try helperController.setSleepDisabled(isDisabled)
-                return
-            } catch {
-                // Preserve the previous AppleScript behavior when the helper is missing, stale, or unhealthy.
-            }
+            try helperController.setSleepDisabled(isDisabled)
+            return
         }
 
-        let command = invocation.displayCommand
-        let script = "do shell script \(Self.appleScriptLiteral(command)) with administrator privileges"
-        let result = try commandRunner.run(
-            executablePath: "/usr/bin/osascript",
-            arguments: ["-e", script]
-        )
-
-        guard result.exitCode == 0 else {
-            throw ClosedLidSleepDisablerError.commandFailed(
-                command: command,
-                detail: result.failureSummary
-            )
-        }
+        try administratorApprovalRunner.runShellCommandWithAdministratorApproval(invocation.displayCommand)
     }
 
     private func clearStoredState() {
         defaults.removeObject(forKey: Self.changedByMacDogKey)
         defaults.removeObject(forKey: Self.originalSleepDisabledKey)
+    }
+
+}
+
+protocol AdministratorApprovalRunning {
+    func runShellCommandWithAdministratorApproval(_ command: String) throws
+}
+
+struct AppleScriptAdministratorApprovalRunner: AdministratorApprovalRunning {
+    func runShellCommandWithAdministratorApproval(_ command: String) throws {
+        let script = "do shell script \(Self.appleScriptLiteral(command)) with administrator privileges"
+        var errorInfo: NSDictionary?
+        let result = NSAppleScript(source: script)?.executeAndReturnError(&errorInfo)
+        if result == nil {
+            let message = errorInfo?[NSAppleScript.errorMessage] as? String
+            let number = errorInfo?[NSAppleScript.errorNumber] as? Int
+            throw ClosedLidSleepDisablerError.administratorApprovalFailed(
+                command: command,
+                message: message,
+                number: number
+            )
+        }
     }
 
     private static func appleScriptLiteral(_ value: String) -> String {
@@ -240,13 +249,22 @@ enum ClosedLidSleepHelperError: LocalizedError, Equatable {
 enum ClosedLidSleepDisablerError: LocalizedError, Equatable {
     case unsupported
     case commandFailed(command: String, detail: String)
+    case administratorApprovalFailed(command: String, message: String?, number: Int?)
 
     var errorDescription: String? {
         switch self {
         case .unsupported:
-            "덮개 닫힘 방지 설정을 확인할 수 없습니다."
+            return "덮개 닫힘 방지 설정을 확인할 수 없습니다."
         case .commandFailed(let command, let detail):
-            "\(command) 실패: \(detail)"
+            return "\(command) 실패: \(detail)"
+        case .administratorApprovalFailed(let command, let message, let number):
+            if let message, let number {
+                return "\(command) 관리자 승인 실패: \(message) (\(number))"
+            }
+            if let message {
+                return "\(command) 관리자 승인 실패: \(message)"
+            }
+            return "\(command) 관리자 승인 실패"
         }
     }
 }

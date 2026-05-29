@@ -24,32 +24,36 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         let commandRunner = RecordingCommandRunner(
             sleepDisabledValues: [false, true]
         )
+        let administratorApprovalRunner = RecordingAdministratorApprovalRunner()
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: administratorApprovalRunner,
             helperController: nil
         )
 
         XCTAssertTrue(try disabler.setClosedLidSleepDisabled(true))
         XCTAssertFalse(try disabler.setClosedLidSleepDisabled(false))
 
-        XCTAssertEqual(commandRunner.pmsetSetValues, [true, false])
+        XCTAssertEqual(administratorApprovalRunner.pmsetSetValues, [true, false])
     }
 
     func testEnableDoesNotOwnAlreadyDisabledSleepState() throws {
         let commandRunner = RecordingCommandRunner(
             sleepDisabledValues: [true, true]
         )
+        let administratorApprovalRunner = RecordingAdministratorApprovalRunner()
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: administratorApprovalRunner,
             helperController: nil
         )
 
         XCTAssertTrue(try disabler.setClosedLidSleepDisabled(true))
         XCTAssertTrue(try disabler.setClosedLidSleepDisabled(false))
 
-        XCTAssertTrue(commandRunner.pmsetSetValues.isEmpty)
+        XCTAssertTrue(administratorApprovalRunner.pmsetSetValues.isEmpty)
     }
 
     func testUnsupportedOutputThrowsClearError() {
@@ -59,6 +63,7 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: RecordingAdministratorApprovalRunner(),
             helperController: nil
         )
 
@@ -67,8 +72,9 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         }
     }
 
-    func testInstalledHelperHandlesReadAndSetBeforeAppleScriptFallback() throws {
+    func testInstalledHelperHandlesReadAndSetBeforeAdministratorApprovalFallback() throws {
         let commandRunner = RecordingCommandRunner()
+        let administratorApprovalRunner = RecordingAdministratorApprovalRunner()
         let helperController = RecordingClosedLidSleepHelperController(
             isInstalled: true,
             readValues: [false, true]
@@ -76,6 +82,7 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: administratorApprovalRunner,
             helperController: helperController
         )
 
@@ -84,12 +91,13 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
 
         XCTAssertEqual(helperController.readRequests, 2)
         XCTAssertEqual(helperController.setRequests, [true, false])
-        XCTAssertTrue(commandRunner.pmsetSetValues.isEmpty)
+        XCTAssertTrue(administratorApprovalRunner.pmsetSetValues.isEmpty)
         XCTAssertTrue(commandRunner.pmsetReadCount == 0)
     }
 
-    func testHelperSetFailureFallsBackToAppleScriptPath() throws {
+    func testHelperSetFailureDoesNotFallBackToAdministratorApprovalPath() throws {
         let commandRunner = RecordingCommandRunner()
+        let administratorApprovalRunner = RecordingAdministratorApprovalRunner()
         let helperController = RecordingClosedLidSleepHelperController(
             isInstalled: true,
             readValues: [false],
@@ -98,13 +106,16 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: administratorApprovalRunner,
             helperController: helperController
         )
 
-        XCTAssertTrue(try disabler.setClosedLidSleepDisabled(true))
+        XCTAssertThrowsError(try disabler.setClosedLidSleepDisabled(true)) { error in
+            XCTAssertEqual(error as? TestHelperError, .failed)
+        }
 
         XCTAssertEqual(helperController.setRequests, [true])
-        XCTAssertEqual(commandRunner.pmsetSetValues, [true])
+        XCTAssertTrue(administratorApprovalRunner.pmsetSetValues.isEmpty)
     }
 
     func testHelperReadFailureFallsBackToDirectPmsetRead() throws {
@@ -118,6 +129,7 @@ final class ClosedLidSleepDisablerTests: XCTestCase {
         let disabler = PMSetClosedLidSleepDisabler(
             defaults: defaults,
             commandRunner: commandRunner,
+            administratorApprovalRunner: RecordingAdministratorApprovalRunner(),
             helperController: helperController
         )
 
@@ -195,7 +207,6 @@ private final class RecordingCommandRunner: CommandRunning {
     private var sleepDisabledValues: [Bool]
     private let customLiveOutput: String?
     private(set) var pmsetReadCount = 0
-    private(set) var pmsetSetValues: [Bool] = []
 
     init(
         sleepDisabledValues: [Bool] = [],
@@ -220,22 +231,22 @@ private final class RecordingCommandRunner: CommandRunning {
             )
         }
 
-        if executablePath == "/usr/bin/osascript",
-           let script = arguments.last,
-           script.contains("disablesleep 1") {
-            pmsetSetValues.append(true)
-            return CommandResult(exitCode: 0, stdout: "", stderr: "")
-        }
-
-        if executablePath == "/usr/bin/osascript",
-           let script = arguments.last,
-           script.contains("disablesleep 0") {
-            pmsetSetValues.append(false)
-            return CommandResult(exitCode: 0, stdout: "", stderr: "")
-        }
-
         XCTFail("Unexpected command: \(executablePath) \(arguments)")
         return CommandResult(exitCode: 1, stdout: "", stderr: "unexpected command")
+    }
+}
+
+private final class RecordingAdministratorApprovalRunner: AdministratorApprovalRunning {
+    private(set) var pmsetSetValues: [Bool] = []
+
+    func runShellCommandWithAdministratorApproval(_ command: String) throws {
+        if command.contains("disablesleep 1") {
+            pmsetSetValues.append(true)
+        } else if command.contains("disablesleep 0") {
+            pmsetSetValues.append(false)
+        } else {
+            XCTFail("Unexpected administrator approval command: \(command)")
+        }
     }
 }
 
@@ -275,7 +286,7 @@ private final class RecordingClosedLidSleepHelperController: ClosedLidSleepHelpe
     }
 }
 
-private enum TestHelperError: LocalizedError {
+private enum TestHelperError: LocalizedError, Equatable {
     case failed
 
     var errorDescription: String? {

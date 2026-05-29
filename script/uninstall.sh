@@ -25,12 +25,20 @@ usage() {
   echo "usage: $0 [--dry-run] [--with-helper] [--helper-only]"
 }
 
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
 run_as_root() {
   if [[ "$(id -u)" == "0" ]]; then
     "$@"
   elif [[ -t 0 ]]; then
     /usr/bin/sudo "$@"
   else
+    if [[ "${MACDOG_ALLOW_OSASCRIPT_ADMIN:-0}" != "1" ]]; then
+      die "administrator approval requires Terminal sudo or the MacDog Settings helper button; refusing osascript approval fallback"
+    fi
     local command=""
     local arg
     for arg in "$@"; do

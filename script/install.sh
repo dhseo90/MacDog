@@ -49,6 +49,9 @@ run_as_root() {
   elif [[ -t 0 ]]; then
     /usr/bin/sudo "$@"
   else
+    if [[ "${MACDOG_ALLOW_OSASCRIPT_ADMIN:-0}" != "1" ]]; then
+      die "administrator approval requires Terminal sudo or the MacDog Settings helper button; refusing osascript approval fallback"
+    fi
     local command=""
     local arg
     for arg in "$@"; do
@@ -273,7 +276,7 @@ print_helper_install_dry_run() {
   echo "Helper mach service: $HELPER_MACH_SERVICE"
   echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
   echo "Helper install status: implemented; actual run requires administrator approval"
-  echo "Helper approval UX: terminal sudo when interactive, macOS administrator dialog when launched non-interactively"
+  echo "Helper approval UX: terminal sudo when interactive, or MacDog Settings helper button; non-interactive osascript fallback is disabled unless MACDOG_ALLOW_OSASCRIPT_ADMIN=1"
   echo "Helper host requirement: team id when signed, local ad-hoc allowance for unsigned development builds"
   temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-dry-run.XXXXXX")"
   write_helper_launch_daemon_plist "$temp_plist" "" "1"
