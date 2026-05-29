@@ -4,10 +4,11 @@ set -euo pipefail
 ALLOW_UNAVAILABLE=0
 TIMEOUT_SECONDS=8
 LIST_FILE=""
+SELF_TEST=0
 
 usage() {
   cat <<USAGE
-usage: $0 [--allow-unavailable] [--list-file PATH]
+usage: $0 [--allow-unavailable] [--list-file PATH] [--self-test]
 
 Read-only probe for the macOS Shortcuts CLI. This does not create, run, or
 modify shortcuts and does not change Charge Limit settings.
@@ -16,6 +17,7 @@ Options:
   --allow-unavailable  Report Shortcuts CLI/helper failures without failing.
   --list-file PATH     Parse a captured 'shortcuts list' output instead of
                        calling the Shortcuts CLI. This is parser-only.
+  --self-test          Verify candidate parsing with a local fixture only.
 USAGE
 }
 
@@ -27,6 +29,7 @@ die() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --allow-unavailable) ALLOW_UNAVAILABLE=1 ;;
+    --self-test) SELF_TEST=1 ;;
     --list-file)
       shift
       [[ $# -gt 0 ]] || die "--list-file requires a path"
@@ -62,6 +65,30 @@ emit_candidate_summary() {
   rm -f "$candidate_file"
 }
 
+run_self_test() {
+  local fixture_file
+  local output_file
+  fixture_file="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-shortcuts-fixture.XXXXXX")"
+  output_file="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-shortcuts-self-test.XXXXXX")"
+  trap 'rm -f "$fixture_file" "$output_file"' RETURN
+
+  cat >"$fixture_file" <<'FIXTURE'
+Open Notes
+Charge Limit 90
+배터리 충전 한도
+Focus Timer
+FIXTURE
+
+  "$0" --list-file "$fixture_file" >"$output_file"
+  /usr/bin/grep -Fq 'shortcuts:available count=4' "$output_file" || die "self-test shortcut count mismatch"
+  /usr/bin/grep -Fq 'charge-limit-shortcuts:candidates count=2' "$output_file" || die "self-test candidate count mismatch"
+  /usr/bin/grep -Fq 'charge-limit-shortcuts:candidate Charge Limit 90' "$output_file" || die "self-test English candidate missing"
+  /usr/bin/grep -Fq 'charge-limit-shortcuts:candidate 배터리 충전 한도' "$output_file" || die "self-test Korean candidate missing"
+  /usr/bin/grep -Fq 'charge-limit-shortcuts:read-only-probe-ok no shortcuts were created, run, or modified' "$output_file" || die "self-test read-only guarantee missing"
+
+  echo "Shortcuts Charge Limit parser self-test ok"
+}
+
 finish_unavailable() {
   local message="$1"
   echo "shortcuts:unavailable $message"
@@ -90,6 +117,11 @@ run_shortcuts_list() {
   wait "$pid" >/dev/null 2>&1 || true
   return 124
 }
+
+if [[ "$SELF_TEST" == "1" ]]; then
+  run_self_test
+  exit 0
+fi
 
 if [[ -z "$LIST_FILE" && ! -x /usr/bin/shortcuts ]]; then
   finish_unavailable "cli-missing"
