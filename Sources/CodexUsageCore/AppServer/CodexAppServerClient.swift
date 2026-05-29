@@ -1,14 +1,22 @@
 import Foundation
 
 public final class CodexAppServerClient {
+    public static let defaultWorkingDirectoryURL = URL(fileURLWithPath: "/tmp", isDirectory: true)
+
     private let codexURL: URL
     private let timeout: TimeInterval
+    private let workingDirectoryURL: URL
     private let requestFactory = CodexAppServerRequestFactory()
     private let decoder = JSONDecoder()
 
-    public init(codexURL: URL, timeout: TimeInterval = 15) {
+    public init(
+        codexURL: URL,
+        timeout: TimeInterval = 15,
+        workingDirectoryURL: URL = CodexAppServerClient.defaultWorkingDirectoryURL
+    ) {
         self.codexURL = codexURL
         self.timeout = timeout
+        self.workingDirectoryURL = workingDirectoryURL
     }
 
     public convenience init(resolver: CodexCLIResolver = CodexCLIResolver(), timeout: TimeInterval = 15) throws {
@@ -19,6 +27,7 @@ public final class CodexAppServerClient {
         let process = Process()
         process.executableURL = codexURL
         process.arguments = ["app-server"]
+        process.currentDirectoryURL = workingDirectoryURL
 
         let stdin = Pipe()
         let stdout = Pipe()

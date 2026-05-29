@@ -31,4 +31,9 @@ reject_text_match \
   "$APP_SOURCE" \
   "menu bar app must read its app-owned cache instead of touching Group Containers directly"
 
+reject_text_match \
+  'FileManager\.default\.currentDirectoryPath' \
+  "$APP_SOURCE" \
+  "menu bar app must not probe the launch working directory for resources"
+
 echo "App privacy boundary verification ok"

@@ -1170,16 +1170,6 @@ private struct PopoverTabArtwork: View {
     }
 
     private static func image(named resourceName: String, resourceDirectory: String) -> NSImage? {
-        let localResourceURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent("Sources", isDirectory: true)
-            .appendingPathComponent("MacDog", isDirectory: true)
-            .appendingPathComponent("Resources", isDirectory: true)
-            .appendingPathComponent(resourceDirectory, isDirectory: true)
-            .appendingPathComponent("\(resourceName).png")
-        if FileManager.default.fileExists(atPath: localResourceURL.path) {
-            return NSImage(contentsOf: localResourceURL)
-        }
-
         if let url = Bundle.main.resourceURL?
             .appendingPathComponent(resourceDirectory, isDirectory: true)
             .appendingPathComponent("\(resourceName).png") {
