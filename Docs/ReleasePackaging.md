@@ -15,6 +15,7 @@
 - `script/package_release.sh --dry-run`은 release artifact 계획을 출력한다.
 - `script/package_release.sh`는 앱 번들 내부 CLI가 포함된 `dist/MacDog.app`을 `dist/release/MacDog-<version>`에 staging한다.
 - staging 폴더에는 `MacDog.app`, `Applications` symlink, `Install MacDog.command`, `Uninstall MacDog.command`, `Check Install Status.command`, `README_FIRST.txt`, `RELEASE_NOTES_DRAFT.md`가 포함된다.
+- drag 설치 후 앱을 처음 열면 MacDog가 번들 내부 `codex-usage`를 짧은 cache writer로 실행해 app-owned usage cache를 채울 수 있다.
 - `Install MacDog.command`는 로컬 검증용 full install 경로다. 더블클릭하면 사용자 영역에 앱, 앱 번들 내부 CLI를 가리키는 터미널용 symlink, user LaunchAgent를 설치하고 앱을 연다.
 - 메뉴바 앱 자동 실행 monitor LaunchAgent는 `loginLaunchEnabled` 설정이 켜져 있을 때만 등록한다.
 - `Uninstall MacDog.command`는 사용자 영역의 앱, 터미널용 CLI symlink, LaunchAgent, cache 파일을 제거하며 optional 권한 도우미는 건드리지 않는다.
@@ -61,7 +62,7 @@
 2. `./script/package_release.sh`
 3. 생성된 `dist/release/MacDog-<version>.dmg`를 열어 `MacDog.app`과 `Applications` symlink를 확인한다.
 4. Finder에서 `MacDog.app`을 `Applications`로 드래그해 설치한다.
-5. MacDog를 실행하고 설정 탭에서 로그인 자동 실행, 데스크톱 펫, 권한 도우미 상태를 확인한다.
+5. MacDog를 실행하고 Codex 사용량 cache가 채워지는지, 설정 탭에서 로그인 자동 실행, 데스크톱 펫, 권한 도우미 상태가 보이는지 확인한다.
 6. 터미널용 CLI symlink와 user LaunchAgent까지 검증해야 하면 `Install MacDog.command`를 실행한다.
 7. `Check Install Status.command`로 app/번들 내부 CLI/터미널 symlink/LaunchAgent/helper 상태와 실행 중인 MacDog binary 경로를 확인한다.
 8. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인한다.

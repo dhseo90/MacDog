@@ -10,7 +10,7 @@
 | `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행한다. |
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, cache 경로를 만든다. helper 설치 옵션은 관리자 권한이 필요하다. |
 | `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, cache 파일을 제거한다. 기본값은 UserDefaults와 optional helper를 유지한다. |
-| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop DMG 후보와 checksum을 만든다. signing/notarization은 별도 workflow gate다. |
+| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop DMG 후보와 checksum을 만든다. staging 폴더는 검증 후 남기지 않는다. signing/notarization은 별도 workflow gate다. |
 
 ## 설치/삭제
 

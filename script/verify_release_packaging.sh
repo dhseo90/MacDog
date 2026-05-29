@@ -91,6 +91,7 @@ require_contains "$output" "Cache prime timeout: 12 seconds"
 if [[ -d "$APP_BUNDLE" ]]; then
   version="verify"
   stage="$ROOT_DIR/dist/release/MacDog-$version"
+  trap 'rm -rf "$stage"' EXIT
   stage_output="$(MACDOG_RELEASE_VERSION="$version" "$ROOT_DIR/script/package_release.sh" --skip-build --no-dmg)"
 
   require_contains "$stage_output" "$stage"

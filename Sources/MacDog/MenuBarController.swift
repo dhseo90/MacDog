@@ -19,6 +19,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
     private var popoverMetricsTimer: Timer?
+    private var usageCacheRefreshTask: Task<Void, Never>?
+    private var lastUsageCacheRefreshAttempt: Date?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
     private var floatingPetController: FloatingPetController?
@@ -135,7 +137,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         statusItem.button?.image = image
     }
 
-    private func refreshUsage(allowLiveRefresh _: Bool) {
+    private func refreshUsage(allowLiveRefresh: Bool) {
         let previousPhase = state.phase
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
@@ -152,13 +154,75 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         let systemMetrics = captureSystemMetrics()
         syncSleepPrevention(systemMetrics: systemMetrics)
-        applyState(loadCachedState(systemMetrics: systemMetrics))
+        let loadedState = loadCachedState(systemMetrics: systemMetrics)
+        let shouldRefreshCache = allowLiveRefresh || loadedState.report == nil
+        if shouldRefreshCache {
+            requestUsageCacheRefresh(force: allowLiveRefresh)
+        }
+        applyState(loadedState.withRefreshing(usageCacheRefreshTask != nil))
 
         if previousPhase != state.phase || previousPreferences != preferences {
             restartAnimationTimer()
         }
 
         syncDesktopPetVisibility()
+    }
+
+    private func requestUsageCacheRefresh(force: Bool) {
+        guard usageCacheRefreshTask == nil else { return }
+        guard force || shouldAttemptUsageCacheRefresh() else { return }
+        guard let codexUsageURL = bundledCodexUsageURL() else { return }
+
+        lastUsageCacheRefreshAttempt = Date()
+        usageCacheRefreshTask = Task { [weak self] in
+            await Self.runUsageCacheRefresh(codexUsageURL: codexUsageURL)
+            await MainActor.run {
+                guard let self else { return }
+                self.usageCacheRefreshTask = nil
+                self.refreshUsage(allowLiveRefresh: false)
+            }
+        }
+    }
+
+    private func shouldAttemptUsageCacheRefresh(now: Date = Date()) -> Bool {
+        guard let lastUsageCacheRefreshAttempt else { return true }
+        return now.timeIntervalSince(lastUsageCacheRefreshAttempt) >= CodexUsageCacheRefreshPolicy.minimumRetryInterval
+    }
+
+    private func bundledCodexUsageURL() -> URL? {
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("MacOS", isDirectory: true)
+            .appendingPathComponent("codex-usage")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
+
+    private nonisolated static func runUsageCacheRefresh(codexUsageURL: URL) async {
+        await Task.detached(priority: .utility) {
+            let process = Process()
+            process.executableURL = codexUsageURL
+            process.arguments = [
+                "status",
+                "--write-cache",
+                "--timeout",
+                String(Int(CodexUsageCacheRefreshPolicy.requestTimeout))
+            ]
+            process.standardOutput = Pipe()
+            process.standardError = Pipe()
+
+            do {
+                try process.run()
+                let deadline = Date().addingTimeInterval(CodexUsageCacheRefreshPolicy.processTimeout)
+                while process.isRunning && Date() < deadline {
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+                if process.isRunning {
+                    process.terminate()
+                }
+            } catch {
+                return
+            }
+        }.value
     }
 
     private func applyState(_ newState: UsageMonitorState) {
@@ -169,11 +233,27 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
-        if let snapshot = try? cacheStore.read(), let report = snapshot.report {
+        if let snapshot = try? cacheStore.read() {
+            if let report = snapshot.report {
+                return UsageMonitorState(
+                    report: report,
+                    cacheSnapshot: snapshot,
+                    errorMessage: errorMessage ?? snapshot.error?.message,
+                    displayBasis: preferences.displayBasis,
+                    reducedMotion: preferences.reducedMotion,
+                    animationPaused: preferences.animationPaused,
+                    systemMetrics: systemMetrics,
+                    systemMetricsHistory: systemMetricsHistory,
+                    sleepPreventionStatus: sleepPreventionController.status,
+                    sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                )
+            }
+
             return UsageMonitorState(
-                report: report,
+                report: nil,
                 cacheSnapshot: snapshot,
-                errorMessage: errorMessage ?? snapshot.error?.message,
+                errorMessage: errorMessage ?? snapshot.error?.message ?? "사용량 캐시가 아직 없습니다.",
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
                 animationPaused: preferences.animationPaused,
@@ -243,7 +323,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         case .showUsageDetails:
             showUsagePopover()
         case .refreshNow:
-            refreshUsage(allowLiveRefresh: false)
+            refreshUsage(allowLiveRefresh: true)
         case .setDisplayBasis(let basis):
             RunnerPreferences.setDisplayBasis(basis)
             refreshUsage(allowLiveRefresh: false)

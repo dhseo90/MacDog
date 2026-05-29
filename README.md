@@ -129,7 +129,7 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만든다.
 ./script/package_release.sh
 ```
 
-릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식이다. 앱 실행 후 설정 탭에서 로그인 자동 실행, 데스크톱 펫, 권한 도우미를 관리한다.
+릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식이다. 앱 실행 후에는 번들 내부 `codex-usage`가 짧게 cache를 갱신해 Codex 사용량을 채우고, 설정 탭에서 로그인 자동 실행, 데스크톱 펫, 권한 도우미를 관리한다.
 
 현재 공개 배포 전 gate:
 
@@ -166,7 +166,7 @@ macOS 26.4 이상 Apple silicon Mac에서는 native Charge Limit 값을 80~100% 
 - `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석한다.
 - auth token, refresh token, cookie, session material은 읽거나 저장하지 않는다.
 - cache에는 plan, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장한다.
-- 메뉴바 앱 UI process는 live Codex app-server나 Widget shared cache fallback을 직접 열지 않는다.
+- 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않는다. Codex 사용량이 비어 있으면 번들 내부 `codex-usage`를 짧은 cache writer로 실행한 뒤 app-owned cache를 다시 읽는다.
 
 ## Project Layout
 

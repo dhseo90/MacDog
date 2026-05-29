@@ -23,4 +23,20 @@ if (( ${#stale_apps[@]} > 0 )); then
   exit 1
 fi
 
+release_dir="$DIST_DIR/release"
+if [[ -d "$release_dir" ]]; then
+  stale_release_payloads=()
+  while IFS= read -r payload_dir; do
+    stale_release_payloads+=("$payload_dir")
+  done < <(/usr/bin/find "$release_dir" -maxdepth 1 -type d -name "MacDog-*" -print | /usr/bin/sort)
+
+  if (( ${#stale_release_payloads[@]} > 0 )); then
+    echo "error: stale release staging payloads found in dist/release; keep only .dmg and .sha256 artifacts" >&2
+    for payload_dir in "${stale_release_payloads[@]}"; do
+      echo "  - ${payload_dir#$ROOT_DIR/}" >&2
+    done
+    exit 1
+  fi
+fi
+
 echo "Dist hygiene ok"

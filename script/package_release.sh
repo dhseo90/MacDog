@@ -100,6 +100,12 @@ fi
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
+if [[ "$CREATE_DMG" == "1" ]]; then
+  cleanup_release_stage() {
+    rm -rf "$STAGE_DIR"
+  }
+  trap cleanup_release_stage EXIT
+fi
 /usr/bin/ditto --norsrc --noextattr "$APP_BUNDLE" "$STAGE_DIR/$APP_NAME.app"
 /usr/bin/xattr -cr "$STAGE_DIR/$APP_NAME.app" >/dev/null 2>&1 || true
 ln -s /Applications "$STAGE_DIR/Applications"
