@@ -110,44 +110,41 @@ private func render(_ item: TabArt) -> NSBitmapImageRep {
 
 private func drawDog(_ item: TabArt, sprite: NSImage) {
     NSGraphicsContext.saveGraphicsState()
-    let glow = NSBezierPath(ovalIn: NSRect(x: 42, y: 29, width: 176, height: 34))
-    item.accentColor.withAlphaComponent(0.18).setFill()
-    glow.fill()
 
-    let shadow = NSBezierPath(ovalIn: NSRect(x: 50, y: 34, width: 160, height: 24))
-    NSColor.black.withAlphaComponent(0.22).setFill()
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 54, y: 35, width: 148, height: 22))
+    NSColor.black.withAlphaComponent(0.18).setFill()
     shadow.fill()
 
-    let dogRect = NSRect(x: 39, y: 42, width: 178, height: 189)
+    let dogRect = NSRect(x: 50, y: 47, width: 154, height: 164)
     sprite.draw(in: dogRect, from: .zero, operation: .sourceOver, fraction: 1)
     NSGraphicsContext.restoreGraphicsState()
 }
 
 private func drawTopicBadge(_ item: TabArt) {
-    let shadow = NSBezierPath(ovalIn: NSRect(x: 164, y: 169, width: 62, height: 60))
-    NSColor.black.withAlphaComponent(0.22).setFill()
+    let shadow = NSBezierPath(ovalIn: NSRect(x: 158, y: 158, width: 78, height: 74))
+    NSColor.black.withAlphaComponent(0.20).setFill()
     shadow.fill()
 
-    let badgeRect = NSRect(x: 160, y: 174, width: 64, height: 60)
+    let badgeRect = NSRect(x: 154, y: 164, width: 80, height: 74)
     let badge = NSBezierPath(ovalIn: badgeRect)
-    (item.accentColor.blended(withFraction: 0.08, of: .white) ?? item.accentColor).setFill()
+    (item.accentColor.blended(withFraction: 0.05, of: .white) ?? item.accentColor).setFill()
     badge.fill()
 
-    NSColor.white.withAlphaComponent(0.30).setStroke()
-    badge.lineWidth = 2
+    NSColor.white.withAlphaComponent(0.34).setStroke()
+    badge.lineWidth = 2.5
     badge.stroke()
 
     drawSymbol(
         item.topicSymbol,
-        in: NSRect(x: 175, y: 188, width: 34, height: 32),
+        in: NSRect(x: 172, y: 181, width: 44, height: 42),
         color: NSColor.white.withAlphaComponent(0.98),
         shadowColor: NSColor.black.withAlphaComponent(0.18)
     )
 }
 
 private func drawButtonBackground(_ item: TabArt) {
-    let glow = NSBezierPath(ovalIn: NSRect(x: 36, y: 28, width: 184, height: 36))
-    item.accentColor.withAlphaComponent(0.12).setFill()
+    let glow = NSBezierPath(ovalIn: NSRect(x: 62, y: 29, width: 132, height: 20))
+    item.accentColor.withAlphaComponent(0.10).setFill()
     glow.fill()
 }
 
