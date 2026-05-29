@@ -9,12 +9,14 @@ APP_SOURCE="$ROOT_DIR/dist/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 BIN_DIR="$HOME/bin"
 CLI_DEST="$BIN_DIR/codex-usage"
+APP_CLI_DEST="$APP_DEST/Contents/MacOS/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 LOG_DIR="$HOME/Library/Logs/MacDog"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
+LOGIN_LAUNCH_KEY="loginLaunchEnabled"
 HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_EXECUTABLE="MacDogPrivilegedHelper"
 HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
@@ -54,6 +56,11 @@ run_as_root() {
     done
     /usr/bin/osascript -e "do shell script $(apple_script_literal "${command# }") with administrator privileges"
   fi
+}
+
+run_script_as_root() {
+  local script_path="$1"
+  run_as_root /bin/bash "$script_path"
 }
 
 run_with_timeout() {
@@ -111,6 +118,12 @@ stop_running_app_for_update() {
   else
     /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
   fi
+}
+
+login_launch_enabled() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
+  [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
 }
 
 detect_host_team_identifier() {
@@ -182,6 +195,30 @@ PLIST
 PLIST
 }
 
+write_monitor_launch_agent_plist() {
+  cat >"$MONITOR_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$MONITOR_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>$APP_DEST</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$LOG_DIR/monitor.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>$LOG_DIR/monitor.err.log</string>
+</dict>
+</plist>
+PLIST
+}
+
 install_privileged_helper() {
   local host_bundle_path="${1:-$APP_DEST}"
 
@@ -203,15 +240,25 @@ install_privileged_helper() {
   write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$allow_adhoc_host"
   /usr/bin/plutil -lint "$temp_plist" >/dev/null
 
-  run_as_root /usr/bin/true
-  run_as_root /bin/launchctl bootout system "$HELPER_PLIST_DEST" >/dev/null 2>&1 || true
-  run_as_root /bin/mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons "$HELPER_LOG_DIR"
-  run_as_root /usr/bin/install -o root -g wheel -m 755 "$HELPER_SOURCE" "$HELPER_TOOL_DEST"
-  run_as_root /usr/bin/install -o root -g wheel -m 644 "$temp_plist" "$HELPER_PLIST_DEST"
-  rm -f "$temp_plist"
+  local temp_script
+  temp_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-install.XXXXXX")"
+  cat >"$temp_script" <<SCRIPT
+#!/bin/bash
+set -euo pipefail
 
-  run_as_root /bin/launchctl bootstrap system "$HELPER_PLIST_DEST"
-  run_as_root /bin/launchctl print "system/$HELPER_LABEL" >/dev/null
+/bin/launchctl bootout system $(shell_quote "$HELPER_PLIST_DEST") >/dev/null 2>&1 || true
+/bin/mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons $(shell_quote "$HELPER_LOG_DIR")
+/usr/bin/install -o root -g wheel -m 755 $(shell_quote "$HELPER_SOURCE") $(shell_quote "$HELPER_TOOL_DEST")
+/usr/bin/install -o root -g wheel -m 644 $(shell_quote "$temp_plist") $(shell_quote "$HELPER_PLIST_DEST")
+/bin/launchctl bootstrap system $(shell_quote "$HELPER_PLIST_DEST")
+/bin/launchctl print $(shell_quote "system/$HELPER_LABEL") >/dev/null
+SCRIPT
+  chmod 700 "$temp_script"
+  local status=0
+  run_script_as_root "$temp_script" || status="$?"
+  rm -f "$temp_plist" "$temp_script"
+  [[ "$status" == "0" ]] || return "$status"
+
   /usr/bin/codesign --verify --strict --verbose=2 "$HELPER_TOOL_DEST" >/dev/null
 }
 
@@ -275,7 +322,8 @@ case "$MODE" in
     echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
     echo "App source: $APP_SOURCE"
     echo "App destination: $APP_DEST"
-    echo "CLI destination: $CLI_DEST"
+    echo "CLI destination: $CLI_DEST -> $APP_CLI_DEST"
+    echo "Cache agent executable: $APP_CLI_DEST"
     echo "Log directory: $LOG_DIR"
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
@@ -283,6 +331,12 @@ case "$MODE" in
     echo "Cache request timeout: $CACHE_REQUEST_TIMEOUT_SECONDS seconds"
     echo "Cache prime timeout: $CACHE_PRIME_TIMEOUT_SECONDS seconds"
     echo "Monitor agent RunAtLoad: true"
+    echo "Monitor agent preference key: $LOGIN_LAUNCH_KEY"
+    if login_launch_enabled; then
+      echo "Monitor agent enabled by preference: true"
+    else
+      echo "Monitor agent enabled by preference: false"
+    fi
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
     if [[ "$WITH_HELPER" == "1" ]]; then
@@ -308,7 +362,6 @@ if [[ "$HELPER_ONLY" == "1" ]]; then
 fi
 
 "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
-build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 
 mkdir -p "$HOME/Applications" "$BIN_DIR" "$LAUNCH_AGENT_DIR" "$LOG_DIR"
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
@@ -320,8 +373,9 @@ rm -rf "$APP_DEST"
 /usr/bin/xattr -cr "$APP_DEST" >/dev/null 2>&1 || true
 /usr/bin/codesign --force --sign - "$APP_DEST" >/dev/null
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DEST" >/dev/null
-cp "$build_bin/codex-usage" "$CLI_DEST"
-chmod +x "$CLI_DEST"
+[[ -x "$APP_CLI_DEST" ]] || die "bundled CLI missing: $APP_CLI_DEST"
+rm -f "$CLI_DEST"
+ln -s "$APP_CLI_DEST" "$CLI_DEST"
 
 if [[ "$WITH_HELPER" == "1" ]]; then
   install_privileged_helper "$APP_DEST"
@@ -336,7 +390,7 @@ cat >"$CACHE_PLIST" <<PLIST
   <string>$CACHE_LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$CLI_DEST</string>
+    <string>$APP_CLI_DEST</string>
     <string>status</string>
     <string>--write-cache</string>
     <string>--timeout</string>
@@ -356,42 +410,34 @@ cat >"$CACHE_PLIST" <<PLIST
 </plist>
 PLIST
 
-cat >"$MONITOR_PLIST" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>$MONITOR_LABEL</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/bin/open</string>
-    <string>$APP_DEST</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>$LOG_DIR/monitor.out.log</string>
-  <key>StandardErrorPath</key>
-  <string>$LOG_DIR/monitor.err.log</string>
-</dict>
-</plist>
-PLIST
+if login_launch_enabled; then
+  write_monitor_launch_agent_plist
+else
+  rm -f "$MONITOR_PLIST"
+fi
 
-if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
+if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
   echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
 fi
 
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$CACHE_PLIST"
-/bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
+if login_launch_enabled; then
+  /bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
+else
+  /usr/bin/open "$APP_DEST"
+fi
 
 sleep 2
 pgrep -x "$APP_NAME" >/dev/null
 
 echo "Installed MacDog"
 echo "App: $APP_DEST"
-echo "CLI: $CLI_DEST"
-echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+echo "CLI: $CLI_DEST -> $APP_CLI_DEST"
+if login_launch_enabled; then
+  echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+else
+  echo "LaunchAgents: $CACHE_PLIST (monitor disabled by preference)"
+fi
 if [[ "$WITH_HELPER" == "1" ]]; then
   echo "Privileged helper: $HELPER_TOOL_DEST"
   echo "LaunchDaemon: $HELPER_PLIST_DEST"

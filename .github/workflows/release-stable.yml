@@ -82,13 +82,16 @@ jobs:
           appex="$app/Contents/PlugIns/MacDogWidgetExtension.appex"
           widget_entitlements="Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
           helper="$app/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
+          cli="$app/Contents/MacOS/codex-usage"
 
           find "$appex" -type f \( -name '*.dylib' -o -perm +111 \) -print0 | while IFS= read -r -d '' file; do
             codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
           done
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$widget_entitlements" "$appex"
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$cli"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$helper"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$app"
+          codesign --verify --strict --verbose=2 "$cli"
           codesign --verify --deep --strict --verbose=2 "$app"
 
       - name: Stage release payload
@@ -97,7 +100,7 @@ jobs:
           MACDOG_REQUIRE_SIGNED_HELPER_HOST: "1"
         run: ./script/package_release.sh --skip-build --no-dmg
 
-      - name: Sign CLI and create signed DMG
+      - name: Create signed DMG
         env:
           MACDOG_VERSION: ${{ inputs.version }}
           DEVELOPER_ID_APPLICATION: ${{ secrets.MACDOG_DEVELOPER_ID_APPLICATION }}
@@ -106,8 +109,7 @@ jobs:
           dmg_path="dist/release/MacDog-$MACDOG_VERSION.dmg"
           checksum_path="$dmg_path.sha256"
 
-          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$stage/bin/codex-usage"
-          codesign --verify --strict --verbose=2 "$stage/bin/codex-usage"
+          codesign --verify --strict --verbose=2 "$stage/MacDog.app/Contents/MacOS/codex-usage"
           codesign --verify --deep --strict --verbose=2 "$stage/MacDog.app"
 
           rm -f "$dmg_path" "$checksum_path"

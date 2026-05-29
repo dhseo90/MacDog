@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_BUNDLE="${1:-$ROOT_DIR/dist/MacDog.app}"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/MacDog"
+APP_CLI_BINARY="$APP_BUNDLE/Contents/MacOS/codex-usage"
 INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
 WIDGET_APPEX="$APP_BUNDLE/Contents/PlugIns/MacDogWidgetExtension.appex"
 WIDGET_BINARY="$WIDGET_APPEX/Contents/MacOS/MacDogWidgetExtension"
@@ -22,12 +23,14 @@ plist_value() {
 
 [[ -d "$APP_BUNDLE" ]] || die "app bundle not found: $APP_BUNDLE"
 [[ -x "$APP_BINARY" ]] || die "app binary missing or not executable: $APP_BINARY"
+[[ -x "$APP_CLI_BINARY" ]] || die "bundled CLI missing or not executable: $APP_CLI_BINARY"
 [[ -f "$INFO_PLIST" ]] || die "Info.plist missing: $INFO_PLIST"
 
 [[ "$(plist_value ':CFBundleExecutable' "$INFO_PLIST")" == "MacDog" ]] || die "unexpected app executable"
 [[ "$(plist_value ':CFBundleIdentifier' "$INFO_PLIST")" == "com.dhseo.macdog.MacDog" ]] || die "unexpected app bundle id"
 [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:0' "$INFO_PLIST")" == "macdog" ]] || die "missing macdog URL scheme"
 [[ "$(plist_value ':CFBundleURLTypes:0:CFBundleURLSchemes:1' "$INFO_PLIST")" == "codexusage" ]] || die "missing codexusage compatibility URL scheme"
+/usr/bin/codesign --verify --strict --verbose=2 "$APP_CLI_BINARY" >/dev/null
 
 [[ -d "$WIDGET_APPEX" ]] || die "widget extension not found: $WIDGET_APPEX"
 [[ -x "$WIDGET_BINARY" ]] || die "widget binary missing or not executable: $WIDGET_BINARY"

@@ -4,14 +4,17 @@ set -euo pipefail
 MODE="${1:-report}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
 DIST_APP="$ROOT_DIR/dist/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 APP_BINARY="$APP_DEST/Contents/MacOS/$APP_NAME"
+APP_CLI_BINARY="$APP_DEST/Contents/MacOS/codex-usage"
 WIDGET_APPEX="$APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
 WIDGET_BINARY="$WIDGET_APPEX/Contents/MacOS/MacDogWidgetExtension"
 CLI_DEST="$HOME/bin/codex-usage"
 CACHE_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
+LOGIN_LAUNCH_KEY="loginLaunchEnabled"
 
 case "$MODE" in
   report|--report) ;;
@@ -34,6 +37,16 @@ present() {
 
 executable() {
   [[ -x "$1" ]]
+}
+
+plist_value() {
+  /usr/libexec/PlistBuddy -c "Print $1" "$2"
+}
+
+login_launch_enabled() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
+  [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
 }
 
 bundle_manifest() {
@@ -139,10 +152,14 @@ expect_running_process_current_if_known() {
 print_state() {
   if present "$APP_DEST"; then echo "app:present $APP_DEST"; else echo "app:absent $APP_DEST"; fi
   if executable "$APP_BINARY"; then echo "app-binary:executable $APP_BINARY"; else echo "app-binary:missing-or-not-executable $APP_BINARY"; fi
+  if executable "$APP_CLI_BINARY"; then echo "app-cli:executable $APP_CLI_BINARY"; else echo "app-cli:missing-or-not-executable $APP_CLI_BINARY"; fi
   if present "$WIDGET_APPEX"; then echo "widget-appex:present $WIDGET_APPEX"; else echo "widget-appex:absent $WIDGET_APPEX"; fi
   if executable "$WIDGET_BINARY"; then echo "widget-binary:executable $WIDGET_BINARY"; else echo "widget-binary:missing-or-not-executable $WIDGET_BINARY"; fi
   if executable "$CLI_DEST"; then echo "cli:executable $CLI_DEST"; else echo "cli:missing-or-not-executable $CLI_DEST"; fi
+  if [[ -L "$CLI_DEST" ]]; then echo "cli-link:$(/bin/ls -l "$CLI_DEST" | /usr/bin/sed 's/^.* -> //')"; fi
   if present "$CACHE_PLIST"; then echo "cache-plist:present $CACHE_PLIST"; else echo "cache-plist:absent $CACHE_PLIST"; fi
+  if present "$CACHE_PLIST"; then echo "cache-executable:$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")"; fi
+  if login_launch_enabled; then echo "login-launch-enabled:true"; else echo "login-launch-enabled:false"; fi
   if present "$MONITOR_PLIST"; then echo "monitor-plist:present $MONITOR_PLIST"; else echo "monitor-plist:absent $MONITOR_PLIST"; fi
   if [[ -d "$DIST_APP" && -d "$APP_DEST" ]]; then
     if compare_app_bundles "$DIST_APP" "$APP_DEST" "app-freshness" quiet; then
@@ -160,11 +177,25 @@ print_state() {
 
 expect_installed() {
   executable "$APP_BINARY" || { echo "expected installed app binary: $APP_BINARY" >&2; return 1; }
+  executable "$APP_CLI_BINARY" || { echo "expected bundled CLI: $APP_CLI_BINARY" >&2; return 1; }
   executable "$CLI_DEST" || { echo "expected installed CLI: $CLI_DEST" >&2; return 1; }
+  [[ -L "$CLI_DEST" ]] || { echo "expected installed CLI to be a symlink: $CLI_DEST" >&2; return 1; }
+  [[ "$(readlink "$CLI_DEST")" == "$APP_CLI_BINARY" ]] || {
+    echo "expected CLI symlink to target bundled CLI: $CLI_DEST -> $APP_CLI_BINARY" >&2
+    return 1
+  }
   present "$WIDGET_APPEX" || { echo "expected installed widget extension: $WIDGET_APPEX" >&2; return 1; }
   executable "$WIDGET_BINARY" || { echo "expected installed widget binary: $WIDGET_BINARY" >&2; return 1; }
   present "$CACHE_PLIST" || { echo "expected cache LaunchAgent plist: $CACHE_PLIST" >&2; return 1; }
-  present "$MONITOR_PLIST" || { echo "expected monitor LaunchAgent plist: $MONITOR_PLIST" >&2; return 1; }
+  [[ "$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")" == "$APP_CLI_BINARY" ]] || {
+    echo "expected cache LaunchAgent to run bundled CLI: $APP_CLI_BINARY" >&2
+    return 1
+  }
+  if login_launch_enabled; then
+    present "$MONITOR_PLIST" || { echo "expected monitor LaunchAgent plist: $MONITOR_PLIST" >&2; return 1; }
+  else
+    ! present "$MONITOR_PLIST" || { echo "expected monitor plist to be absent when login launch is disabled: $MONITOR_PLIST" >&2; return 1; }
+  fi
 }
 
 expect_uninstalled() {

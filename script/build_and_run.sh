@@ -29,6 +29,7 @@ configure_app_bundle_paths() {
   APP_LAUNCH_SERVICES="$APP_LIBRARY/LaunchServices"
   APP_LAUNCH_DAEMONS="$APP_LIBRARY/LaunchDaemons"
   APP_BINARY="$APP_MACOS/$APP_NAME"
+  APP_CLI_BINARY="$APP_MACOS/codex-usage"
   INFO_PLIST="$APP_CONTENTS/Info.plist"
   APP_HELPER_BINARY="$APP_LAUNCH_SERVICES/$HELPER_NAME"
   APP_HELPER_PLIST="$APP_LAUNCH_DAEMONS/$HELPER_LABEL.plist"
@@ -100,8 +101,10 @@ build_bundle() {
   rm -rf "$APP_BUNDLE"
   mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS" "$APP_LAUNCH_SERVICES" "$APP_LAUNCH_DAEMONS"
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
+  cp "$build_bin/codex-usage" "$APP_CLI_BINARY"
   cp "$build_bin/$HELPER_NAME" "$APP_HELPER_BINARY"
   chmod +x "$APP_BINARY"
+  chmod +x "$APP_CLI_BINARY"
   chmod +x "$APP_HELPER_BINARY"
   if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
     /usr/bin/ditto --norsrc --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
@@ -153,6 +156,7 @@ PLIST
   embed_widget_extension
   embed_privileged_helper_launch_daemon
 
+  /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" "$APP_CLI_BINARY" >/dev/null
   /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
   /usr/bin/xattr -cr "$APP_BUNDLE" >/dev/null 2>&1 || true

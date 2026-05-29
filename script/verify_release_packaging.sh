@@ -17,6 +17,14 @@ require_contains() {
   fi
 }
 
+require_not_contains() {
+  local output="$1"
+  local unexpected="$2"
+  if [[ "$output" == *"$unexpected"* ]]; then
+    die "unexpected release packaging text: $unexpected"
+  fi
+}
+
 require_line_count() {
   local file="$1"
   local pattern="$2"
@@ -32,11 +40,23 @@ with_temp_home() {
   trap 'rm -rf "$temp_home"' RETURN
   mkdir -p "$temp_home/Applications" "$temp_home/bin" "$temp_home/Library/LaunchAgents"
   /usr/bin/ditto --norsrc --noextattr "$stage/MacDog.app" "$temp_home/Applications/MacDog.app"
-  /usr/bin/touch "$temp_home/bin/codex-usage"
-  chmod +x "$temp_home/bin/codex-usage"
-  /usr/bin/touch \
-    "$temp_home/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist" \
-    "$temp_home/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
+  ln -s "$temp_home/Applications/MacDog.app/Contents/MacOS/codex-usage" "$temp_home/bin/codex-usage"
+  cat >"$temp_home/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dhseo.macdog.usage-cache</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$temp_home/Applications/MacDog.app/Contents/MacOS/codex-usage</string>
+    <string>status</string>
+  </array>
+</dict>
+</plist>
+PLIST
+  /usr/bin/touch "$temp_home/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
   HOME="$temp_home" "$stage/Check Install Status.command" >/dev/null
   rm -rf "$temp_home"
   trap - RETURN
@@ -46,7 +66,8 @@ output="$("$ROOT_DIR/script/package_release.sh" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
 require_contains "$output" "Payload:"
 require_contains "$output" "MacDog.app"
-require_contains "$output" "bin/codex-usage"
+require_contains "$output" "MacDog.app (includes bundled codex-usage)"
+require_not_contains "$output" "  - bin/codex-usage"
 require_contains "$output" "Install MacDog.command"
 require_contains "$output" "Install Privileged Helper.command"
 require_contains "$output" "Uninstall MacDog.command"
@@ -56,7 +77,7 @@ require_contains "$output" "RELEASE_NOTES_DRAFT.md"
 require_contains "$output" "SHA-256 path:"
 require_contains "$output" "Double-click install:"
 require_contains "$output" "Privileged helper: Install Privileged Helper.command"
-require_contains "$output" "Double-click uninstall: Uninstall MacDog.command removes the app, CLI, user LaunchAgents, and cache files."
+require_contains "$output" "Double-click uninstall: Uninstall MacDog.command removes the app, CLI symlink, user LaunchAgents, and cache files."
 require_contains "$output" "Privileged helper cleanup: Uninstall Privileged Helper.command"
 require_contains "$output" "Post-install check: Check Install Status.command"
 require_contains "$output" "Developer ID signing and notarization are not performed"
@@ -72,7 +93,8 @@ if [[ -d "$APP_BUNDLE" ]]; then
 
   require_contains "$stage_output" "$stage"
   [[ -d "$stage/MacDog.app" ]] || die "staged app bundle missing: $stage/MacDog.app"
-  [[ -x "$stage/bin/codex-usage" ]] || die "staged CLI missing or not executable: $stage/bin/codex-usage"
+  [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable: $stage/MacDog.app/Contents/MacOS/codex-usage"
+  [[ ! -e "$stage/bin/codex-usage" ]] || die "staged standalone CLI must not exist: $stage/bin/codex-usage"
   [[ -x "$stage/Install MacDog.command" ]] || die "staged installer command missing or not executable"
   [[ -x "$stage/Install Privileged Helper.command" ]] || die "staged helper installer command missing or not executable"
   [[ -x "$stage/Uninstall MacDog.command" ]] || die "staged uninstall command missing or not executable"
@@ -94,10 +116,14 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq "Uninstall Privileged Helper.command" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes helper uninstall command missing"
   /usr/bin/grep -Fq "Install Privileged Helper.command" "$stage/Install MacDog.command" || die "installer helper handoff missing"
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/Install MacDog.command" || die "installer status handoff missing"
+  /usr/bin/grep -Fq 'LOGIN_LAUNCH_KEY="loginLaunchEnabled"' "$stage/Install MacDog.command" || die "installer login launch preference key missing"
+  /usr/bin/grep -Fq 'login_launch_enabled()' "$stage/Install MacDog.command" || die "installer login launch preference reader missing"
   /usr/bin/grep -Fq 'launchctl bootstrap "gui/$UID_VALUE"' "$stage/Install MacDog.command" || die "installer LaunchAgent bootstrap missing"
   /usr/bin/grep -Fq 'pkill -9 -x "$APP_NAME"' "$stage/Install MacDog.command" || die "installer sleep-safe app restart step missing"
   /usr/bin/grep -Fq '<string>--timeout</string>' "$stage/Install MacDog.command" || die "installer cache agent timeout argument missing"
-  /usr/bin/grep -Fq 'run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS"' "$stage/Install MacDog.command" || die "installer cache prime timeout wrapper missing"
+  /usr/bin/grep -Fq 'ln -s "$APP_CLI_DEST" "$CLI_DEST"' "$stage/Install MacDog.command" || die "installer CLI symlink step missing"
+  /usr/bin/grep -Fq '<string>$APP_CLI_DEST</string>' "$stage/Install MacDog.command" || die "installer cache agent bundled CLI path missing"
+  /usr/bin/grep -Fq 'run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS"' "$stage/Install MacDog.command" || die "installer cache prime timeout wrapper missing"
   /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="0"' "$stage/Install Privileged Helper.command" || die "helper installer local signed-host flag missing"
   /usr/bin/grep -Fq 'detect_host_team_identifier' "$stage/Install Privileged Helper.command" || die "helper installer TeamIdentifier detection missing"
   /usr/bin/grep -Fq 'MACDOG_HELPER_HOST_TEAM_ID' "$stage/Install Privileged Helper.command" || die "helper installer signed host environment missing"
@@ -113,6 +139,9 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq 'with administrator privileges' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller administrator approval missing"
   /usr/bin/grep -Fq 'LaunchDaemons' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller system location warning missing"
   /usr/bin/grep -Fq 'MacDog install status' "$stage/Check Install Status.command" || die "status checker title missing"
+  /usr/bin/grep -Fq 'bundled CLI installed' "$stage/Check Install Status.command" || die "status checker bundled CLI check missing"
+  /usr/bin/grep -Fq 'terminal CLI points to bundled CLI' "$stage/Check Install Status.command" || die "status checker CLI symlink check missing"
+  /usr/bin/grep -Fq 'cache LaunchAgent runs bundled CLI' "$stage/Check Install Status.command" || die "status checker cache executable check missing"
   /usr/bin/grep -Fq 'privileged helper is optional' "$stage/Check Install Status.command" || die "status checker optional helper copy missing"
   /usr/bin/grep -Fq 'installed app matches bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness success copy missing"
   /usr/bin/grep -Fq 'installed app differs from bundled release payload' "$stage/Check Install Status.command" || die "status checker freshness failure copy missing"

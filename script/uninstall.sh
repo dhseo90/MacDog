@@ -40,6 +40,11 @@ run_as_root() {
   fi
 }
 
+run_script_as_root() {
+  local script_path="$1"
+  run_as_root /bin/bash "$script_path"
+}
+
 shell_quote() {
   local value="$1"
   printf "'%s'" "${value//\'/\'\\\'\'}"
@@ -66,9 +71,20 @@ stop_running_app_for_update() {
 }
 
 uninstall_privileged_helper() {
-  run_as_root /usr/bin/true
-  run_as_root /bin/launchctl bootout system "$HELPER_PLIST_DEST" >/dev/null 2>&1 || true
-  run_as_root /bin/rm -f "$HELPER_TOOL_DEST" "$HELPER_PLIST_DEST"
+  local temp_script
+  temp_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-uninstall.XXXXXX")"
+  cat >"$temp_script" <<SCRIPT
+#!/bin/bash
+set -euo pipefail
+
+/bin/launchctl bootout system $(shell_quote "$HELPER_PLIST_DEST") >/dev/null 2>&1 || true
+/bin/rm -f $(shell_quote "$HELPER_TOOL_DEST") $(shell_quote "$HELPER_PLIST_DEST")
+SCRIPT
+  chmod 700 "$temp_script"
+  local status=0
+  run_script_as_root "$temp_script" || status="$?"
+  rm -f "$temp_script"
+  [[ "$status" == "0" ]] || return "$status"
 }
 
 while [[ $# -gt 0 ]]; do

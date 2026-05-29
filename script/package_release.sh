@@ -17,7 +17,6 @@ CACHE_REQUEST_TIMEOUT_SECONDS=5
 CACHE_PRIME_TIMEOUT_SECONDS=12
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
-XCRUN="/usr/bin/xcrun"
 
 usage() {
   cat <<USAGE
@@ -70,8 +69,7 @@ Stage directory: $STAGE_DIR
 DMG path: $DMG_PATH
 SHA-256 path: $CHECKSUM_PATH
 Payload:
-  - MacDog.app
-  - bin/codex-usage
+  - MacDog.app (includes bundled codex-usage)
   - Install MacDog.command
   - Install Privileged Helper.command
   - Uninstall MacDog.command
@@ -79,12 +77,12 @@ Payload:
   - Check Install Status.command
   - README_FIRST.txt
   - RELEASE_NOTES_DRAFT.md
-Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
+Double-click install: Install MacDog.command copies the app, creates a terminal CLI symlink, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
 Helper host requirement: $([[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]] && echo "Developer ID signed host required" || echo "signed host preferred; local ad-hoc host allowed for validation")
-Double-click uninstall: Uninstall MacDog.command removes the app, CLI, user LaunchAgents, and cache files.
+Double-click uninstall: Uninstall MacDog.command removes the app, CLI symlink, user LaunchAgents, and cache files.
 Privileged helper cleanup: Uninstall Privileged Helper.command removes the optional helper after administrator approval.
-Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
+Post-install check: Check Install Status.command verifies app, bundled CLI, terminal symlink, user LaunchAgents, and optional helper state.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
 Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases.
 GitHub Release: upload DMG only after signing/notarization gate is satisfied for public distribution.
@@ -102,26 +100,20 @@ fi
 
 ./script/verify_app_bundle.sh "$APP_BUNDLE" >/dev/null
 
-build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
-CLI_BINARY="$build_bin/codex-usage"
-[[ -x "$CLI_BINARY" ]] || die "codex-usage release binary missing: $CLI_BINARY"
-
 rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR/bin"
+mkdir -p "$STAGE_DIR"
 /usr/bin/ditto --norsrc --noextattr "$APP_BUNDLE" "$STAGE_DIR/$APP_NAME.app"
 /usr/bin/xattr -cr "$STAGE_DIR/$APP_NAME.app" >/dev/null 2>&1 || true
-cp "$CLI_BINARY" "$STAGE_DIR/bin/codex-usage"
-chmod +x "$STAGE_DIR/bin/codex-usage"
 
 cat >"$STAGE_DIR/README_FIRST.txt" <<README
 MacDog $VERSION
 
-1. Double-click "Install MacDog.command" to install MacDog.app, codex-usage, and user LaunchAgents.
+1. Double-click "Install MacDog.command" to install MacDog.app, create a terminal codex-usage symlink, and user LaunchAgents.
 2. This local release candidate is unsigned and not notarized. macOS Gatekeeper may block first launch.
 3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
 4. The helper installer explains the system locations it changes before asking for administrator approval.
-5. Double-click "Check Install Status.command" after installation to verify app, CLI, LaunchAgents, and optional helper state.
-6. Double-click "Uninstall MacDog.command" to remove the app, CLI, user LaunchAgents, and cache files.
+5. Double-click "Check Install Status.command" after installation to verify app, bundled CLI, terminal symlink, LaunchAgents, and optional helper state.
+6. Double-click "Uninstall MacDog.command" to remove the app, CLI symlink, user LaunchAgents, and cache files.
 7. Double-click "Uninstall Privileged Helper.command" only if you installed the optional helper and want to remove it.
 8. This local release candidate is intended for local unsigned validation.
 README
@@ -134,7 +126,7 @@ Status: unsigned local release candidate.
 ## Install
 
 - Open the DMG.
-- Double-click \`Install MacDog.command\` to install the app, CLI, and user LaunchAgents.
+- Double-click \`Install MacDog.command\` to install the app, create a terminal CLI symlink, and user LaunchAgents.
 - Double-click \`Install Privileged Helper.command\` only if you need closed-lid sleep prevention without repeated password prompts.
 - Double-click \`Check Install Status.command\` after installation.
 
@@ -152,7 +144,7 @@ Status: unsigned local release candidate.
 
 ## Uninstall
 
-- Double-click \`Uninstall MacDog.command\` to remove the app, CLI, user LaunchAgents, and cache files.
+- Double-click \`Uninstall MacDog.command\` to remove the app, CLI symlink, user LaunchAgents, and cache files.
 - Double-click \`Uninstall Privileged Helper.command\` to remove the optional helper after administrator approval.
 - Source checkout uninstall path remains available: \`./script/uninstall.sh --with-helper\`
 NOTES
@@ -165,16 +157,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 APP_SOURCE="$SCRIPT_DIR/$APP_NAME.app"
-CLI_SOURCE="$SCRIPT_DIR/bin/codex-usage"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
 BIN_DIR="$HOME/bin"
 CLI_DEST="$BIN_DIR/codex-usage"
+APP_CLI_DEST="$APP_DEST/Contents/MacOS/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 LOG_DIR="$HOME/Library/Logs/MacDog"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
+LOGIN_LAUNCH_KEY="loginLaunchEnabled"
 UID_VALUE="$(id -u)"
 CACHE_REQUEST_TIMEOUT_SECONDS=5
 CACHE_PRIME_TIMEOUT_SECONDS=12
@@ -219,8 +212,13 @@ stop_running_app_for_update() {
   fi
 }
 
+login_launch_enabled() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
+  [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
+}
+
 [[ -d "$APP_SOURCE" ]] || die "missing app bundle: $APP_SOURCE"
-[[ -x "$CLI_SOURCE" ]] || die "missing CLI binary: $CLI_SOURCE"
 
 mkdir -p "$HOME/Applications" "$BIN_DIR" "$LAUNCH_AGENT_DIR" "$LOG_DIR"
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
@@ -232,8 +230,9 @@ rm -rf "$APP_DEST"
 /usr/bin/xattr -cr "$APP_DEST" >/dev/null 2>&1 || true
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DEST" >/dev/null
 
-cp "$CLI_SOURCE" "$CLI_DEST"
-chmod +x "$CLI_DEST"
+[[ -x "$APP_CLI_DEST" ]] || die "missing bundled CLI binary: $APP_CLI_DEST"
+rm -f "$CLI_DEST"
+ln -s "$APP_CLI_DEST" "$CLI_DEST"
 
 cat >"$CACHE_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -244,7 +243,7 @@ cat >"$CACHE_PLIST" <<PLIST
   <string>$CACHE_LABEL</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$CLI_DEST</string>
+    <string>$APP_CLI_DEST</string>
     <string>status</string>
     <string>--write-cache</string>
     <string>--timeout</string>
@@ -264,7 +263,8 @@ cat >"$CACHE_PLIST" <<PLIST
 </plist>
 PLIST
 
-cat >"$MONITOR_PLIST" <<PLIST
+if login_launch_enabled; then
+  cat >"$MONITOR_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -285,16 +285,25 @@ cat >"$MONITOR_PLIST" <<PLIST
 </dict>
 </plist>
 PLIST
+else
+  rm -f "$MONITOR_PLIST"
+fi
 
-run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null || true
+run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null || true
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$CACHE_PLIST"
-/bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
+if login_launch_enabled; then
+  /bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
+fi
 /usr/bin/open "$APP_DEST"
 
 echo "Installed MacDog"
 echo "App: $APP_DEST"
-echo "CLI: $CLI_DEST"
-echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+echo "CLI: $CLI_DEST -> $APP_CLI_DEST"
+if login_launch_enabled; then
+  echo "LaunchAgents: $CACHE_PLIST, $MONITOR_PLIST"
+else
+  echo "LaunchAgents: $CACHE_PLIST (monitor disabled by preference)"
+fi
 echo "For full closed-lid sleep prevention, run Install Privileged Helper.command."
 echo "Then run Check Install Status.command to verify the install."
 INSTALL
@@ -579,7 +588,7 @@ This removes the optional helper from these system locations:
   - $HELPER_TOOL_DEST
   - $HELPER_PLIST_DEST
 
-Administrator approval is required. The MacDog app, CLI, and user LaunchAgents
+Administrator approval is required. The MacDog app, terminal CLI symlink, and user LaunchAgents
 are not removed by this command.
 NOTICE
 
@@ -618,15 +627,18 @@ cat >"$STAGE_DIR/Check Install Status.command" <<'STATUS'
 set -u
 
 APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_SOURCE="$SCRIPT_DIR/$APP_NAME.app"
 APP_DEST="$HOME/Applications/$APP_NAME.app"
+APP_CLI_DEST="$APP_DEST/Contents/MacOS/codex-usage"
 CLI_DEST="$HOME/bin/codex-usage"
 UID_VALUE="$(id -u)"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$HOME/Library/LaunchAgents/$CACHE_LABEL.plist"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/$MONITOR_LABEL.plist"
+LOGIN_LAUNCH_KEY="loginLaunchEnabled"
 HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
@@ -643,6 +655,16 @@ warn() {
 missing_required() {
   printf "MISSING %s\n" "$1"
   required_failures=$((required_failures + 1))
+}
+
+plist_value() {
+  /usr/libexec/PlistBuddy -c "Print $1" "$2" 2>/dev/null
+}
+
+login_launch_enabled() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
+  [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
 }
 
 bundle_manifest() {
@@ -718,6 +740,12 @@ else
   missing_required "app executable: $APP_DEST/Contents/MacOS/$APP_NAME"
 fi
 
+if [[ -x "$APP_CLI_DEST" ]]; then
+  ok "bundled CLI installed: $APP_CLI_DEST"
+else
+  missing_required "bundled CLI executable: $APP_CLI_DEST"
+fi
+
 if [[ -d "$APP_SOURCE" && -d "$APP_DEST" ]]; then
   if app_payload_matches_source; then
     ok "installed app matches bundled release payload"
@@ -731,21 +759,45 @@ fi
 print_running_app_state
 
 if [[ -x "$CLI_DEST" ]]; then
-  ok "CLI installed: $CLI_DEST"
+  ok "terminal CLI available: $CLI_DEST"
 else
   missing_required "CLI executable: $CLI_DEST"
+fi
+if [[ -L "$CLI_DEST" ]]; then
+  cli_target="$(readlink "$CLI_DEST")"
+  if [[ "$cli_target" == "$APP_CLI_DEST" ]]; then
+    ok "terminal CLI points to bundled CLI"
+  else
+    missing_required "terminal CLI symlink target: expected $APP_CLI_DEST, got $cli_target"
+  fi
+else
+  missing_required "terminal CLI symlink: $CLI_DEST"
 fi
 
 if [[ -f "$CACHE_PLIST" ]]; then
   ok "cache LaunchAgent plist: $CACHE_PLIST"
+  cache_executable="$(plist_value ':ProgramArguments:0' "$CACHE_PLIST" || true)"
+  if [[ "$cache_executable" == "$APP_CLI_DEST" ]]; then
+    ok "cache LaunchAgent runs bundled CLI"
+  else
+    missing_required "cache LaunchAgent executable: expected $APP_CLI_DEST, got $cache_executable"
+  fi
 else
   missing_required "cache LaunchAgent plist: $CACHE_PLIST"
 fi
 
-if [[ -f "$MONITOR_PLIST" ]]; then
-  ok "monitor LaunchAgent plist: $MONITOR_PLIST"
+if login_launch_enabled; then
+  if [[ -f "$MONITOR_PLIST" ]]; then
+    ok "monitor LaunchAgent plist: $MONITOR_PLIST"
+  else
+    missing_required "monitor LaunchAgent plist: $MONITOR_PLIST"
+  fi
 else
-  missing_required "monitor LaunchAgent plist: $MONITOR_PLIST"
+  if [[ -f "$MONITOR_PLIST" ]]; then
+    warn "monitor LaunchAgent exists while login launch is disabled: $MONITOR_PLIST"
+  else
+    ok "monitor LaunchAgent disabled by preference"
+  fi
 fi
 
 if /bin/launchctl print "gui/$UID_VALUE/$CACHE_LABEL" >/dev/null 2>&1; then
@@ -754,10 +806,14 @@ else
   warn "cache LaunchAgent is not loaded"
 fi
 
-if /bin/launchctl print "gui/$UID_VALUE/$MONITOR_LABEL" >/dev/null 2>&1; then
-  ok "monitor LaunchAgent loaded"
+if login_launch_enabled; then
+  if /bin/launchctl print "gui/$UID_VALUE/$MONITOR_LABEL" >/dev/null 2>&1; then
+    ok "monitor LaunchAgent loaded"
+  else
+    warn "monitor LaunchAgent is not loaded"
+  fi
 else
-  warn "monitor LaunchAgent is not loaded"
+  ok "monitor LaunchAgent load skipped by preference"
 fi
 
 if [[ -x "$HELPER_TOOL_DEST" && -f "$HELPER_PLIST_DEST" ]]; then
