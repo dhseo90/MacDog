@@ -8,17 +8,32 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 아래 이미지는 현재 SwiftUI popover를 README용 demo snapshot으로 렌더링한 화면이다. 실제 사용량 값은 사용자 환경에 따라 달라진다.
 
-| Codex 사용량 | 활성 자원 |
-| --- | --- |
-| ![MacDog Codex usage tab](Docs/Images/README/PopoverTabs/macdog-popover-codex.png) | ![MacDog active resources tab](Docs/Images/README/PopoverTabs/macdog-popover-mac.png) |
-
-| 잠들지 않기 | 배터리 |
-| --- | --- |
-| ![MacDog sleep prevention tab](Docs/Images/README/PopoverTabs/macdog-popover-sleep.png) | ![MacDog battery tab](Docs/Images/README/PopoverTabs/macdog-popover-battery.png) |
-
-| 설정 | 데스크톱 펫 |
-| --- | --- |
-| ![MacDog settings tab](Docs/Images/README/PopoverTabs/macdog-popover-settings.png) | ![MacDog desktop pet front sprite](Docs/Images/README/macdog-desktop-pet-front.png) |
+<table>
+  <tr>
+    <th>Codex 사용량</th>
+    <th>활성 자원</th>
+  </tr>
+  <tr>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-codex.png" alt="MacDog Codex usage tab" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-mac.png" alt="MacDog active resources tab" width="360"></td>
+  </tr>
+  <tr>
+    <th>잠들지 않기</th>
+    <th>배터리</th>
+  </tr>
+  <tr>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-sleep.png" alt="MacDog sleep prevention tab" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-battery.png" alt="MacDog battery tab" width="360"></td>
+  </tr>
+  <tr>
+    <th>설정</th>
+    <th>데스크톱 펫</th>
+  </tr>
+  <tr>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab" width="360"></td>
+    <td align="center"><img src="Docs/Images/README/macdog-desktop-pet-front.png" alt="MacDog desktop pet front sprite" width="160"></td>
+  </tr>
+</table>
 
 ## Features
 
@@ -30,6 +45,13 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공한다.
 - 설정: 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리한다.
 - WidgetKit: shared cache 기반 small/medium 위젯 코드를 포함한다. 실제 위젯 갤러리 추가와 클릭 검수는 수동 검증 항목이다.
+
+## Update Cadence
+
+- 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽는다.
+- 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채운다. 실패 후 자동 재시도는 최소 60초 간격으로 제한한다.
+- 개발용 설치와 DMG 안의 `Install MacDog.command`로 설치한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행한다.
+- WidgetKit timeline도 60초 뒤 갱신을 요청한다. macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있다.
 
 ## Quick Start
 

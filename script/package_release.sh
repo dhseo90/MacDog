@@ -255,7 +255,7 @@ cat >"$CACHE_PLIST" <<PLIST
     <string>--timeout</string>
     <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
     <string>--watch</string>
-    <string>300</string>
+    <string>60</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

@@ -205,7 +205,7 @@ public struct CodexUsageTimelineProvider: TimelineProvider {
     public func getTimeline(in context: Context, completion: @escaping (Timeline<CodexUsageEntry>) -> Void) {
         let now = Date()
         let entry = loadEntry(date: now)
-        let refresh = Calendar.current.date(byAdding: .minute, value: 5, to: now) ?? now.addingTimeInterval(300)
+        let refresh = Calendar.current.date(byAdding: .minute, value: 1, to: now) ?? now.addingTimeInterval(60)
         completion(Timeline(entries: [entry], policy: .after(refresh)))
     }
 

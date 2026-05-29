@@ -330,7 +330,7 @@ case "$MODE" in
     echo "Log directory: $LOG_DIR"
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
-    echo "Cache agent interval: 300 seconds"
+    echo "Cache agent interval: 60 seconds"
     echo "Cache request timeout: $CACHE_REQUEST_TIMEOUT_SECONDS seconds"
     echo "Cache prime timeout: $CACHE_PRIME_TIMEOUT_SECONDS seconds"
     echo "Monitor agent RunAtLoad: true"
@@ -399,7 +399,7 @@ cat >"$CACHE_PLIST" <<PLIST
     <string>--timeout</string>
     <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
     <string>--watch</string>
-    <string>300</string>
+    <string>60</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

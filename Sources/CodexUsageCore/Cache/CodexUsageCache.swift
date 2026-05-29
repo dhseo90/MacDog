@@ -42,7 +42,7 @@ public struct CodexUsageCacheError: Codable, Equatable, Sendable {
 
 public struct CodexUsageCacheStore {
     public static let defaultAppGroupIdentifier = "group.com.dhseo.macdog.MacDog"
-    public static let cacheAgentRefreshIntervalSeconds = 300
+    public static let cacheAgentRefreshIntervalSeconds = 60
     public static let defaultStaleAfterSeconds = cacheAgentRefreshIntervalSeconds + 60
 
     private let fileURL: URL
