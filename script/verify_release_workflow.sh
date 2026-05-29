@@ -86,6 +86,7 @@ require_draft_match 'shasum -a 256 -c'
 require_draft_match 'gh "\$\{args\[@\]\}"'
 require_draft_match '--draft'
 require_draft_match '--notes-file'
+require_draft_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
 require_draft_match '\.dmg\.sha256'
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then
@@ -102,6 +103,7 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_stable_match 'spctl --assess'
   require_stable_match 'shasum -a 256 -c'
   require_stable_match 'gh release create'
+  require_stable_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
   require_stable_match '--latest'
 fi
 

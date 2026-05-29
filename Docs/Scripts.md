@@ -84,7 +84,7 @@
 | `script/package_release.sh --dry-run` | release packaging 계획 출력 | 파일을 만들지 않고 DMG 구성과 gate를 보여줍니다. |
 | `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만듭니다. |
 | `script/package_release.sh` | DMG와 checksum 생성 | `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. |
-| `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, command syntax, helper command 제거, `osascript` 승인창 미사용을 확인합니다. |
+| `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, legacy command payload 미포함, release note, checksum, DMG 무결성을 확인합니다. |
 | `script/configure_github_public_repo_settings.sh --dry-run` | GitHub public release 서버 설정 계획 출력 | GitHub repo를 변경하지 않고 Actions/security/public/branch protection 적용 순서를 출력합니다. |
 | `script/configure_github_public_repo_settings.sh --check` | GitHub 서버 설정 조회 | Actions 권한, workflow token 권한, vulnerability alerts, Dependabot security updates, public fork PR approval 상태를 읽습니다. |
 | `script/configure_github_public_repo_settings.sh --apply` | GitHub 서버 설정 적용 | Actions/security 설정을 변경합니다. repo가 public이면 fork PR approval과 branch protection도 적용합니다. |

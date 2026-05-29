@@ -50,7 +50,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- 개발용 설치와 DMG 안의 `Install MacDog.command`로 설치한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행합니다.
+- 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행합니다.
 - WidgetKit timeline도 60초 뒤 갱신을 요청합니다. macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있습니다.
 
 ## Quick Start
@@ -151,7 +151,7 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 ./script/package_release.sh
 ```
 
-릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. 앱 실행 후에는 번들 내부 `codex-usage`가 짧게 cache를 갱신해 Codex 사용량을 채우고, 설정 탭에서 로그인 자동 실행, 데스크톱 펫, 권한 도우미를 관리합니다.
+릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. 앱을 `Applications`에서 처음 실행하면 MacDog가 터미널용 `~/bin/codex-usage` symlink, usage cache LaunchAgent, 로그인 자동 실행 LaunchAgent를 사용자 영역에 마무리 설치합니다. optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻고, 사용자가 동의하면 MacDog 이름의 관리자 승인창을 엽니다.
 
 현재 공개 배포 전 gate:
 

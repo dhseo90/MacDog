@@ -73,7 +73,7 @@ jobs:
             --draft
             --target "$GITHUB_SHA"
             --title "MacDog $MACDOG_VERSION"
-            --notes-file "dist/release/MacDog-$MACDOG_VERSION/RELEASE_NOTES_DRAFT.md"
+            --notes-file "dist/release/MacDog-$MACDOG_VERSION-release-notes.md"
           )
 
           if [[ "$MACDOG_PRERELEASE" == "true" ]]; then
