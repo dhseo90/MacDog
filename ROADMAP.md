@@ -343,6 +343,7 @@ Popover 정보 구조:
 - `script/verify_widget_readiness.sh`로 shared cache 전용 경계, `macdog://open` deep link, empty/stale/error test coverage를 자동 검증한다.
 - `MacDogWidgetPresentationTests`로 empty/stale/error/updated 위젯 상태 표현을 검증한다.
 - App Group cache URL helper는 구현했고, extension target은 `group.com.dhseo.macdog.MacDog`를 사용한다.
+- 메뉴바 앱과 CLI cache writer는 legacy Application Support cache와 WidgetKit shared cache에 함께 기록하며, 메뉴바 앱은 shared cache를 우선 읽는다.
 - 실제 데스크톱/알림 센터 위젯 갤러리 추가와 클릭 UI 검수는 아직 수동 검증 항목으로 남긴다.
 - 설치 스크립트는 `MacDog.app`과 CLI를 설치하며, 앱 번들 안에 WidgetKit extension을 포함한다.
 - monitor LaunchAgent는 `RunAtLoad`로 앱을 로그인/재시작 후 자동 실행하고, 앱은 `UserDefaults`의 기존 설정을 다시 읽어 잠자기 방지 모드와 자동 조건을 복원한다.

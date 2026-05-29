@@ -10,7 +10,7 @@ This document records the packaging boundary for the MacDog WidgetKit work.
 - `MacDog.xcodeproj` contains a `MacDogWidgetHost` macOS app target and a `MacDogWidgetExtension` app-extension target.
 - `Apps/MacDogWidgetExtension` contains the extension entrypoint, Info.plist, and entitlements for the WidgetKit extension target.
 - `script/verify_widget_packaging.sh` builds the Xcode host/extension target and verifies `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`.
-- `script/verify_widget_readiness.sh` verifies the widget stays on the shared cache path, uses the `macdog://open` deep link, keeps empty/stale/error/reset/metadata presentation covered by tests, checks the WidgetKit extension Info.plist and App Group entitlements, and leaves widget gallery/click checks as manual verification.
+- `script/verify_widget_readiness.sh` verifies the widget stays on the shared cache path, the menu bar app and CLI mirror writes to the shared cache path, uses the `macdog://open` deep link, keeps empty/stale/error/reset/metadata presentation covered by tests, checks the WidgetKit extension Info.plist and App Group entitlements, and leaves widget gallery/click checks as manual verification.
 - `script/verify_manual_ui_prerequisites.sh` runs the read-only prerequisite gate before widget gallery/click manual verification and fails by default if the installed app is not the latest `dist/MacDog.app`.
 - The install script installs the CLI and `MacDog.app`; the app bundle includes `Contents/PlugIns/MacDogWidgetExtension.appex`.
 
@@ -50,6 +50,11 @@ For the current CLI and menu bar app, the cache path remains:
 ```
 
 For an embedded Widget Extension, the intended production path is an App Group container so the app, cache writer, and extension can share the same `usage.json` across sandbox boundaries.
+The menu bar app now reads the shared cache first and mirrors successful CLI/app cache writes to both the legacy Application Support path and the shared WidgetKit path. If the App Group API is unavailable in a local unsigned build, MacDog uses the stable fallback path:
+
+```text
+~/Library/Group Containers/group.com.dhseo.macdog.MacDog/usage.json
+```
 
 Shared cache URL hook:
 

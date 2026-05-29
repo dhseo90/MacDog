@@ -8,7 +8,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
-    private let cacheStore = CodexUsageCacheStore()
+    private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultSharedFileURL())
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
@@ -243,16 +243,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     nonisolated private static func fetchLiveUsage() async -> LiveUsageRefreshResult {
         await Task.detached(priority: .userInitiated) {
-            let cacheStore = CodexUsageCacheStore()
+            let cacheStores = CodexUsageCacheStore.defaultMirroredFileURLs().map {
+                CodexUsageCacheStore(fileURL: $0)
+            }
+            let primaryCacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultSharedFileURL())
 
             do {
                 let report = try CodexUsageService(client: CodexAppServerClient()).readReport()
-                try? cacheStore.writeSuccess(report: report)
+                cacheStores.forEach { try? $0.writeSuccess(report: report) }
                 return .success(report)
             } catch {
                 return .failure(
                     message: error.localizedDescription,
-                    cachedSnapshot: try? cacheStore.read()
+                    cachedSnapshot: try? primaryCacheStore.read()
                 )
             }
         }.value

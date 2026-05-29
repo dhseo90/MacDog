@@ -21,8 +21,12 @@ require_match() {
 
 require_match 'currentSchemaVersion = 1' "$CACHE_SOURCE"
 require_match 'defaultAppGroupIdentifier = "group\.com\.dhseo\.macdog\.MacDog"' "$CACHE_SOURCE"
+require_match 'defaultSharedFileURL' "$CACHE_SOURCE"
+require_match 'defaultMirroredFileURLs' "$CACHE_SOURCE"
 require_match 'cacheAgentRefreshIntervalSeconds = 300' "$CACHE_SOURCE"
 require_match 'schemaVersion' "$CACHE_TESTS"
+require_match 'DefaultSharedFileURLUsesStableAppGroupFallback' "$CACHE_TESTS"
+require_match 'DefaultMirroredFileURLsIncludeDefaultAndSharedCachePaths' "$CACHE_TESTS"
 require_match 'writeFailure' "$CACHE_TESTS"
 require_match 'redactedErrorMessage' "$CACHE_SOURCE"
 require_match 'RedactsSensitiveSessionMaterial' "$CACHE_TESTS"

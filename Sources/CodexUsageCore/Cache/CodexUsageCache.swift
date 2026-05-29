@@ -76,7 +76,22 @@ public struct CodexUsageCacheStore {
             return containerURL.appendingPathComponent("usage.json")
         }
 
+        if appGroupIdentifier == defaultAppGroupIdentifier {
+            return defaultAppGroupContainerFallbackFileURL()
+        }
+
         return defaultApplicationSupportFileURL()
+    }
+
+    public static func defaultSharedFileURL() -> URL {
+        defaultFileURL(appGroupIdentifier: defaultAppGroupIdentifier)
+    }
+
+    public static func defaultMirroredFileURLs() -> [URL] {
+        uniqueFileURLs([
+            defaultApplicationSupportFileURL(),
+            defaultSharedFileURL()
+        ])
     }
 
     public static func defaultApplicationSupportFileURL() -> URL {
@@ -85,6 +100,28 @@ public struct CodexUsageCacheStore {
             in: .userDomainMask
         )[0].appendingPathComponent("MacDog", isDirectory: true)
         return directory.appendingPathComponent("usage.json")
+    }
+
+    private static func defaultAppGroupContainerFallbackFileURL() -> URL {
+        let directory = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Group Containers", isDirectory: true)
+            .appendingPathComponent(defaultAppGroupIdentifier, isDirectory: true)
+        return directory.appendingPathComponent("usage.json")
+    }
+
+    private static func uniqueFileURLs(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        var result: [URL] = []
+
+        for url in urls {
+            let key = url.standardizedFileURL.path
+            if seen.insert(key).inserted {
+                result.append(url)
+            }
+        }
+
+        return result
     }
 
     public func read() throws -> CodexUsageCacheSnapshot {

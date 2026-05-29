@@ -73,14 +73,14 @@ struct CLI {
     }
 
     private func printStatus(json: Bool, writeCache: Bool, cachePath: String?) -> ExitCode {
-        let cacheStore = makeCacheStore(path: cachePath)
+        let cacheStores = makeCacheStores(path: cachePath)
 
         do {
             let formatter = CodexUsageFormatter()
             let report = try makeService().readReport()
 
             if writeCache {
-                try cacheStore.writeSuccess(report: report)
+                try cacheStores.forEach { try $0.writeSuccess(report: report) }
             }
 
             if json {
@@ -92,7 +92,7 @@ struct CLI {
             return .success
         } catch {
             if writeCache {
-                try? cacheStore.writeFailure(message: error.localizedDescription)
+                cacheStores.forEach { try? $0.writeFailure(message: error.localizedDescription) }
             }
             errorOutput(CodexUsageFailureGuide().message(for: error, context: .status))
             return .failure
@@ -126,11 +126,13 @@ struct CLI {
         return CodexUsageService(client: client)
     }
 
-    private func makeCacheStore(path: String?) -> CodexUsageCacheStore {
+    private func makeCacheStores(path: String?) -> [CodexUsageCacheStore] {
         if let path {
-            return CodexUsageCacheStore(fileURL: URL(fileURLWithPath: path))
+            return [CodexUsageCacheStore(fileURL: URL(fileURLWithPath: path))]
         }
-        return CodexUsageCacheStore()
+        return CodexUsageCacheStore.defaultMirroredFileURLs().map {
+            CodexUsageCacheStore(fileURL: $0)
+        }
     }
 
     static let help = """

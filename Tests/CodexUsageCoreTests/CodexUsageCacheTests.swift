@@ -28,6 +28,29 @@ final class CodexUsageCacheTests: XCTestCase {
         }
     }
 
+    func testDefaultSharedFileURLUsesStableAppGroupFallback() {
+        let url = CodexUsageCacheStore.defaultSharedFileURL()
+        let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: CodexUsageCacheStore.defaultAppGroupIdentifier
+        )
+
+        XCTAssertEqual(url.lastPathComponent, "usage.json")
+        if let containerURL {
+            XCTAssertEqual(url, containerURL.appendingPathComponent("usage.json"))
+        } else {
+            XCTAssertTrue(url.path.contains("/Library/Group Containers/group.com.dhseo.macdog.MacDog/usage.json"))
+        }
+    }
+
+    func testDefaultMirroredFileURLsIncludeDefaultAndSharedCachePaths() {
+        let urls = CodexUsageCacheStore.defaultMirroredFileURLs()
+        let paths = Set(urls.map { $0.standardizedFileURL.path })
+
+        XCTAssertEqual(urls.count, paths.count)
+        XCTAssertTrue(paths.contains(CodexUsageCacheStore.defaultFileURL().standardizedFileURL.path))
+        XCTAssertTrue(paths.contains(CodexUsageCacheStore.defaultSharedFileURL().standardizedFileURL.path))
+    }
+
     func testWritesAndReadsSuccessSnapshot() throws {
         let fileURL = temporaryFileURL()
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
