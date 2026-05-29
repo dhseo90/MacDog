@@ -62,7 +62,6 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_file_contains "$STABLE_WORKFLOW" "public-stable-release"
   require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION_CERT_BASE64"
   require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_REQUIRE_SIGNED_HELPER_HOST"
   require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APPLE_ID"
   require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_TEAM_ID"
   require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APP_SPECIFIC_PASSWORD"

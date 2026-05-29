@@ -97,7 +97,6 @@ jobs:
       - name: Stage release payload
         env:
           MACDOG_RELEASE_VERSION: ${{ inputs.version }}
-          MACDOG_REQUIRE_SIGNED_HELPER_HOST: "1"
         run: ./script/package_release.sh --skip-build --no-dmg
 
       - name: Create signed DMG

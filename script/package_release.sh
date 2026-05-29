@@ -12,7 +12,6 @@ CHECKSUM_PATH="$DMG_PATH.sha256"
 DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
-REQUIRE_SIGNED_HELPER_HOST="${MACDOG_REQUIRE_SIGNED_HELPER_HOST:-0}"
 CACHE_REQUEST_TIMEOUT_SECONDS=5
 CACHE_PRIME_TIMEOUT_SECONDS=12
 
@@ -24,8 +23,8 @@ usage: $0 [--dry-run] [--skip-build] [--no-dmg] [--version VERSION]
 
 Build a local GitHub Release candidate payload.
 The generated DMG is not notarized and is intended for local validation.
-Set MACDOG_REQUIRE_SIGNED_HELPER_HOST=1 for public stable payloads so the
-privileged helper installer refuses unsigned/ad-hoc host apps.
+The DMG is staged as a drag-and-drop app installer. Optional helper management
+is handled inside MacDog Settings so macOS approval prompts are owned by MacDog.
 USAGE
 }
 
@@ -70,19 +69,18 @@ DMG path: $DMG_PATH
 SHA-256 path: $CHECKSUM_PATH
 Payload:
   - MacDog.app (includes bundled codex-usage)
+  - Applications symlink
   - Install MacDog.command
-  - Install Privileged Helper.command
   - Uninstall MacDog.command
-  - Uninstall Privileged Helper.command
   - Check Install Status.command
   - README_FIRST.txt
   - RELEASE_NOTES_DRAFT.md
-Double-click install: Install MacDog.command copies the app, creates a terminal CLI symlink, writes user LaunchAgents, and opens MacDog.
-Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
-Helper host requirement: $([[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]] && echo "Developer ID signed host required" || echo "signed host preferred; local ad-hoc host allowed for validation")
-Double-click uninstall: Uninstall MacDog.command removes the app, CLI symlink, user LaunchAgents, and cache files.
-Privileged helper cleanup: Uninstall Privileged Helper.command removes the optional helper after administrator approval.
-Post-install check: Check Install Status.command verifies app, bundled CLI, terminal symlink, user LaunchAgents, and optional helper state.
+Drag install: drag MacDog.app to Applications, then launch MacDog.
+Optional full local install: Install MacDog.command copies the app to ~/Applications, creates a terminal CLI symlink, writes user LaunchAgents, and opens MacDog.
+Privileged helper: install or remove from the MacDog Settings tab after launching the app.
+Double-click uninstall: Uninstall MacDog.command removes the local command-installed app, CLI symlink, user LaunchAgents, and cache files.
+Privileged helper cleanup: remove the optional helper from the MacDog Settings tab before uninstalling the app.
+Post-install check: Check Install Status.command verifies app, bundled CLI, terminal symlink, user LaunchAgents, optional helper state, and app freshness.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
 Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases.
 GitHub Release: upload DMG only after signing/notarization gate is satisfied for public distribution.
@@ -104,17 +102,18 @@ rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 /usr/bin/ditto --norsrc --noextattr "$APP_BUNDLE" "$STAGE_DIR/$APP_NAME.app"
 /usr/bin/xattr -cr "$STAGE_DIR/$APP_NAME.app" >/dev/null 2>&1 || true
+ln -s /Applications "$STAGE_DIR/Applications"
 
 cat >"$STAGE_DIR/README_FIRST.txt" <<README
 MacDog $VERSION
 
-1. Double-click "Install MacDog.command" to install MacDog.app, create a terminal codex-usage symlink, and user LaunchAgents.
+1. Drag "MacDog.app" to "Applications", then open MacDog.
 2. This local release candidate is unsigned and not notarized. macOS Gatekeeper may block first launch.
-3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
-4. The helper installer explains the system locations it changes before asking for administrator approval.
+3. If you want the terminal codex-usage symlink and user LaunchAgents for local validation, double-click "Install MacDog.command" instead.
+4. Install or remove the optional privileged helper from MacDog Settings after launching the app.
 5. Double-click "Check Install Status.command" after installation to verify app, bundled CLI, terminal symlink, LaunchAgents, and optional helper state.
 6. Double-click "Uninstall MacDog.command" to remove the app, CLI symlink, user LaunchAgents, and cache files.
-7. Double-click "Uninstall Privileged Helper.command" only if you installed the optional helper and want to remove it.
+7. Remove the optional privileged helper from MacDog Settings before uninstalling the app if you installed it.
 8. This local release candidate is intended for local unsigned validation.
 README
 
@@ -126,15 +125,16 @@ Status: unsigned local release candidate.
 ## Install
 
 - Open the DMG.
-- Double-click \`Install MacDog.command\` to install the app, create a terminal CLI symlink, and user LaunchAgents.
-- Double-click \`Install Privileged Helper.command\` only if you need closed-lid sleep prevention without repeated password prompts.
+- Drag \`MacDog.app\` to \`Applications\`, then launch MacDog.
+- For local validation with terminal CLI symlink and user LaunchAgents, double-click \`Install MacDog.command\`.
+- Install or remove the optional privileged helper from the MacDog Settings tab.
 - Double-click \`Check Install Status.command\` after installation.
 
 ## Security And Gatekeeper
 
 - This candidate is ad-hoc signed for local validation and is not notarized.
 - Do not publish it as a public stable release until Developer ID signing, hardened runtime, notarization, stapling, and Gatekeeper checks pass.
-- The privileged helper installer changes \`/Library/PrivilegedHelperTools/com.dhseo.macdog.helper\` and \`/Library/LaunchDaemons/com.dhseo.macdog.helper.plist\` after administrator approval.
+- The optional privileged helper changes \`/Library/PrivilegedHelperTools/com.dhseo.macdog.helper\` and \`/Library/LaunchDaemons/com.dhseo.macdog.helper.plist\` only after explicit approval from the MacDog app.
 
 ## Supported Scope
 
@@ -145,7 +145,7 @@ Status: unsigned local release candidate.
 ## Uninstall
 
 - Double-click \`Uninstall MacDog.command\` to remove the app, CLI symlink, user LaunchAgents, and cache files.
-- Double-click \`Uninstall Privileged Helper.command\` to remove the optional helper after administrator approval.
+- Remove the optional helper from MacDog Settings before uninstalling the app if you installed it.
 - Source checkout uninstall path remains available: \`./script/uninstall.sh --with-helper\`
 NOTES
 
@@ -304,192 +304,10 @@ if login_launch_enabled; then
 else
   echo "LaunchAgents: $CACHE_PLIST (monitor disabled by preference)"
 fi
-echo "For full closed-lid sleep prevention, run Install Privileged Helper.command."
+echo "For full closed-lid sleep prevention, open MacDog Settings and install the 권한 도우미."
 echo "Then run Check Install Status.command to verify the install."
 INSTALL
 chmod +x "$STAGE_DIR/Install MacDog.command"
-
-cat >"$STAGE_DIR/Install Privileged Helper.command" <<'HELPER'
-#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_SOURCE="$SCRIPT_DIR/MacDog.app"
-HELPER_LABEL="com.dhseo.macdog.helper"
-HELPER_EXECUTABLE="MacDogPrivilegedHelper"
-HELPER_MACH_SERVICE="$HELPER_LABEL.xpc"
-HELPER_SOURCE="$APP_SOURCE/Contents/Library/LaunchServices/$HELPER_EXECUTABLE"
-HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
-HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
-HELPER_LOG_DIR="/Library/Logs/MacDog"
-REQUIRE_SIGNED_HELPER_HOST="__MACDOG_REQUIRE_SIGNED_HELPER_HOST__"
-
-die() {
-  echo "error: $*" >&2
-  exit 1
-}
-
-bash_quote() {
-  printf '%q' "$1"
-}
-
-apple_script_literal() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  printf '"%s"' "$value"
-}
-
-xml_escape() {
-  local value="$1"
-  value="${value//&/&amp;}"
-  value="${value//\"/&quot;}"
-  value="${value//\'/&apos;}"
-  value="${value//</&lt;}"
-  value="${value//>/&gt;}"
-  printf '%s' "$value"
-}
-
-detect_host_team_identifier() {
-  local bundle_path="$1"
-  local output
-  output="$(/usr/bin/codesign -dv "$bundle_path" 2>&1 || true)"
-  local team_id
-  team_id="$(printf '%s\n' "$output" | awk -F= '/^TeamIdentifier=/{print $2; exit}')"
-  if [[ -n "$team_id" && "$team_id" != "not set" ]]; then
-    printf '%s' "$team_id"
-  fi
-}
-
-write_helper_launch_daemon_plist() {
-  local target="$1"
-  local host_team_id="$2"
-  local allow_adhoc_host="$3"
-
-  cat >"$target" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>$HELPER_LABEL</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>$HELPER_TOOL_DEST</string>
-    <string>--run-xpc-service</string>
-  </array>
-  <key>MachServices</key>
-  <dict>
-    <key>$HELPER_MACH_SERVICE</key>
-    <true/>
-  </dict>
-PLIST
-
-  if [[ -n "$host_team_id" || "$allow_adhoc_host" == "1" ]]; then
-    cat >>"$target" <<PLIST
-  <key>EnvironmentVariables</key>
-  <dict>
-PLIST
-    if [[ -n "$host_team_id" ]]; then
-      cat >>"$target" <<PLIST
-    <key>MACDOG_HELPER_HOST_TEAM_ID</key>
-    <string>$(xml_escape "$host_team_id")</string>
-PLIST
-    fi
-    if [[ "$allow_adhoc_host" == "1" ]]; then
-      cat >>"$target" <<PLIST
-    <key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>
-    <string>1</string>
-PLIST
-    fi
-    cat >>"$target" <<PLIST
-  </dict>
-PLIST
-  fi
-
-  cat >>"$target" <<PLIST
-  <key>RunAtLoad</key>
-  <true/>
-  <key>StandardOutPath</key>
-  <string>$HELPER_LOG_DIR/helper.out.log</string>
-  <key>StandardErrorPath</key>
-  <string>$HELPER_LOG_DIR/helper.err.log</string>
-</dict>
-</plist>
-PLIST
-}
-
-[[ -d "$APP_SOURCE" ]] || die "missing app bundle: $APP_SOURCE"
-[[ -x "$HELPER_SOURCE" ]] || die "missing helper executable: $HELPER_SOURCE"
-/usr/bin/codesign --verify --strict --verbose=2 "$HELPER_SOURCE" >/dev/null
-
-host_team_id="${MACDOG_HELPER_HOST_TEAM_ID:-$(detect_host_team_identifier "$APP_SOURCE")}"
-allow_adhoc_host=0
-if [[ -z "$host_team_id" ]]; then
-  if [[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]]; then
-    die "public stable helper install requires a Developer ID signed MacDog.app with TeamIdentifier"
-  fi
-  allow_adhoc_host=1
-fi
-
-cat <<NOTICE
-MacDog privileged helper installer
-
-This installs an opt-in LaunchDaemon used only for closed-lid sleep prevention.
-It changes these system locations:
-  - $HELPER_TOOL_DEST
-  - $HELPER_PLIST_DEST
-  - $HELPER_LOG_DIR
-
-After this one administrator approval, MacDog can change the closed-lid sleep
-protection setting through the helper without asking for your password every time.
-NOTICE
-
-if [[ -n "$host_team_id" ]]; then
-  echo "Helper host requirement: TeamIdentifier $host_team_id"
-else
-  echo "Helper host requirement: local unsigned/ad-hoc MacDog.app"
-fi
-
-printf "Continue with privileged helper install? [y/N] "
-read -r confirm
-case "$confirm" in
-  y|Y|yes|YES) ;;
-  *)
-    echo "Cancelled privileged helper install."
-    exit 0
-    ;;
-esac
-
-temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
-root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-install.XXXXXX")"
-trap 'rm -f "$temp_plist" "$root_script"' EXIT
-
-write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$allow_adhoc_host"
-/usr/bin/plutil -lint "$temp_plist" >/dev/null
-
-cat >"$root_script" <<ROOT
-#!/usr/bin/env bash
-set -euo pipefail
-/bin/launchctl bootout system $(bash_quote "$HELPER_PLIST_DEST") >/dev/null 2>&1 || true
-/bin/mkdir -p /Library/PrivilegedHelperTools /Library/LaunchDaemons $(bash_quote "$HELPER_LOG_DIR")
-/usr/bin/install -o root -g wheel -m 755 $(bash_quote "$HELPER_SOURCE") $(bash_quote "$HELPER_TOOL_DEST")
-/usr/bin/install -o root -g wheel -m 644 $(bash_quote "$temp_plist") $(bash_quote "$HELPER_PLIST_DEST")
-/bin/launchctl bootstrap system $(bash_quote "$HELPER_PLIST_DEST")
-/bin/launchctl print system/$HELPER_LABEL >/dev/null
-/usr/bin/codesign --verify --strict --verbose=2 $(bash_quote "$HELPER_TOOL_DEST") >/dev/null
-ROOT
-chmod +x "$root_script"
-
-/usr/bin/osascript -e "do shell script $(apple_script_literal "$root_script") with administrator privileges"
-
-echo "Installed MacDog privileged helper"
-echo "Privileged helper: $HELPER_TOOL_DEST"
-echo "LaunchDaemon: $HELPER_PLIST_DEST"
-echo "Run Check Install Status.command to verify the helper state."
-HELPER
-/usr/bin/perl -0pi -e "s/__MACDOG_REQUIRE_SIGNED_HELPER_HOST__/$REQUIRE_SIGNED_HELPER_HOST/g" "$STAGE_DIR/Install Privileged Helper.command"
-chmod +x "$STAGE_DIR/Install Privileged Helper.command"
 
 cat >"$STAGE_DIR/Uninstall MacDog.command" <<'UNINSTALL'
 #!/usr/bin/env bash
@@ -535,7 +353,7 @@ This removes:
   - $SHARED_CACHE_FILE
 
 It preserves MacDog UserDefaults preferences and does not remove the optional
-privileged helper. Run Uninstall Privileged Helper.command separately if needed.
+privileged helper. Remove the helper from MacDog Settings before uninstalling if needed.
 NOTICE
 
 printf "Continue with MacDog uninstall? [y/N] "
@@ -562,66 +380,6 @@ echo "Run Check Install Status.command to verify the remaining state."
 UNINSTALL
 chmod +x "$STAGE_DIR/Uninstall MacDog.command"
 
-cat >"$STAGE_DIR/Uninstall Privileged Helper.command" <<'UNHELPER'
-#!/usr/bin/env bash
-set -euo pipefail
-
-HELPER_LABEL="com.dhseo.macdog.helper"
-HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
-HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
-
-apple_script_literal() {
-  local value="$1"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  printf '"%s"' "$value"
-}
-
-bash_quote() {
-  printf '%q' "$1"
-}
-
-cat <<NOTICE
-MacDog privileged helper uninstall
-
-This removes the optional helper from these system locations:
-  - $HELPER_TOOL_DEST
-  - $HELPER_PLIST_DEST
-
-Administrator approval is required. The MacDog app, terminal CLI symlink, and user LaunchAgents
-are not removed by this command.
-NOTICE
-
-printf "Continue with privileged helper uninstall? [y/N] "
-read -r confirm
-case "$confirm" in
-  y|Y|yes|YES) ;;
-  *)
-    echo "Cancelled privileged helper uninstall."
-    exit 0
-    ;;
-esac
-
-root_script="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper-uninstall.XXXXXX")"
-trap 'rm -f "$root_script"' EXIT
-
-cat >"$root_script" <<ROOT
-#!/usr/bin/env bash
-set -euo pipefail
-/bin/launchctl bootout system $(bash_quote "$HELPER_PLIST_DEST") >/dev/null 2>&1 || true
-/bin/rm -f $(bash_quote "$HELPER_TOOL_DEST") $(bash_quote "$HELPER_PLIST_DEST")
-ROOT
-chmod +x "$root_script"
-
-/usr/bin/osascript -e "do shell script $(apple_script_literal "$root_script") with administrator privileges"
-
-echo "Removed MacDog privileged helper"
-echo "Privileged helper: $HELPER_TOOL_DEST"
-echo "LaunchDaemon: $HELPER_PLIST_DEST"
-echo "Run Check Install Status.command to verify the remaining state."
-UNHELPER
-chmod +x "$STAGE_DIR/Uninstall Privileged Helper.command"
-
 cat >"$STAGE_DIR/Check Install Status.command" <<'STATUS'
 #!/usr/bin/env bash
 set -u
@@ -630,7 +388,16 @@ APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_SOURCE="$SCRIPT_DIR/$APP_NAME.app"
-APP_DEST="$HOME/Applications/$APP_NAME.app"
+COMMAND_APP_DEST="$HOME/Applications/$APP_NAME.app"
+DRAG_APP_DEST="/Applications/$APP_NAME.app"
+APP_DEST="${MACDOG_STATUS_APP_DEST:-}"
+if [[ -z "$APP_DEST" ]]; then
+  if [[ -x "$DRAG_APP_DEST/Contents/MacOS/$APP_NAME" ]]; then
+    APP_DEST="$DRAG_APP_DEST"
+  else
+    APP_DEST="$COMMAND_APP_DEST"
+  fi
+fi
 APP_CLI_DEST="$APP_DEST/Contents/MacOS/codex-usage"
 CLI_DEST="$HOME/bin/codex-usage"
 UID_VALUE="$(id -u)"
@@ -643,6 +410,10 @@ HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
 required_failures=0
+command_install=0
+if [[ "$APP_DEST" == "$COMMAND_APP_DEST" ]]; then
+  command_install=1
+fi
 
 ok() {
   printf "OK      %s\n" "$1"
@@ -761,17 +532,29 @@ print_running_app_state
 if [[ -x "$CLI_DEST" ]]; then
   ok "terminal CLI available: $CLI_DEST"
 else
-  missing_required "CLI executable: $CLI_DEST"
+  if [[ "$command_install" == "1" ]]; then
+    missing_required "CLI executable: $CLI_DEST"
+  else
+    warn "terminal CLI symlink is optional for drag install: $CLI_DEST"
+  fi
 fi
 if [[ -L "$CLI_DEST" ]]; then
   cli_target="$(readlink "$CLI_DEST")"
   if [[ "$cli_target" == "$APP_CLI_DEST" ]]; then
     ok "terminal CLI points to bundled CLI"
   else
-    missing_required "terminal CLI symlink target: expected $APP_CLI_DEST, got $cli_target"
+    if [[ "$command_install" == "1" ]]; then
+      missing_required "terminal CLI symlink target: expected $APP_CLI_DEST, got $cli_target"
+    else
+      warn "terminal CLI points to another app path: expected $APP_CLI_DEST, got $cli_target"
+    fi
   fi
 else
-  missing_required "terminal CLI symlink: $CLI_DEST"
+  if [[ "$command_install" == "1" ]]; then
+    missing_required "terminal CLI symlink: $CLI_DEST"
+  else
+    warn "terminal CLI symlink not installed for drag install: $CLI_DEST"
+  fi
 fi
 
 if [[ -f "$CACHE_PLIST" ]]; then
@@ -780,17 +563,29 @@ if [[ -f "$CACHE_PLIST" ]]; then
   if [[ "$cache_executable" == "$APP_CLI_DEST" ]]; then
     ok "cache LaunchAgent runs bundled CLI"
   else
-    missing_required "cache LaunchAgent executable: expected $APP_CLI_DEST, got $cache_executable"
+    if [[ "$command_install" == "1" ]]; then
+      missing_required "cache LaunchAgent executable: expected $APP_CLI_DEST, got $cache_executable"
+    else
+      warn "cache LaunchAgent points to another app path: expected $APP_CLI_DEST, got $cache_executable"
+    fi
   fi
 else
-  missing_required "cache LaunchAgent plist: $CACHE_PLIST"
+  if [[ "$command_install" == "1" ]]; then
+    missing_required "cache LaunchAgent plist: $CACHE_PLIST"
+  else
+    warn "cache LaunchAgent not installed for drag install: $CACHE_PLIST"
+  fi
 fi
 
 if login_launch_enabled; then
   if [[ -f "$MONITOR_PLIST" ]]; then
     ok "monitor LaunchAgent plist: $MONITOR_PLIST"
   else
-    missing_required "monitor LaunchAgent plist: $MONITOR_PLIST"
+    if [[ "$command_install" == "1" ]]; then
+      missing_required "monitor LaunchAgent plist: $MONITOR_PLIST"
+    else
+      warn "monitor LaunchAgent not installed for drag install: $MONITOR_PLIST"
+    fi
   fi
 else
   if [[ -f "$MONITOR_PLIST" ]]; then

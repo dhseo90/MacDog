@@ -57,7 +57,7 @@ with_temp_home() {
 </plist>
 PLIST
   /usr/bin/touch "$temp_home/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
-  HOME="$temp_home" "$stage/Check Install Status.command" >/dev/null
+  MACDOG_STATUS_APP_DEST="$temp_home/Applications/MacDog.app" HOME="$temp_home" "$stage/Check Install Status.command" >/dev/null
   rm -rf "$temp_home"
   trap - RETURN
 }
@@ -67,19 +67,21 @@ require_contains "$output" "MacDog release package dry run"
 require_contains "$output" "Payload:"
 require_contains "$output" "MacDog.app"
 require_contains "$output" "MacDog.app (includes bundled codex-usage)"
+require_contains "$output" "Applications symlink"
 require_not_contains "$output" "  - bin/codex-usage"
 require_contains "$output" "Install MacDog.command"
-require_contains "$output" "Install Privileged Helper.command"
 require_contains "$output" "Uninstall MacDog.command"
-require_contains "$output" "Uninstall Privileged Helper.command"
 require_contains "$output" "Check Install Status.command"
 require_contains "$output" "RELEASE_NOTES_DRAFT.md"
 require_contains "$output" "SHA-256 path:"
-require_contains "$output" "Double-click install:"
-require_contains "$output" "Privileged helper: Install Privileged Helper.command"
-require_contains "$output" "Double-click uninstall: Uninstall MacDog.command removes the app, CLI symlink, user LaunchAgents, and cache files."
-require_contains "$output" "Privileged helper cleanup: Uninstall Privileged Helper.command"
+require_contains "$output" "Drag install:"
+require_contains "$output" "Optional full local install:"
+require_contains "$output" "Privileged helper: install or remove from the MacDog Settings tab"
+require_contains "$output" "Double-click uninstall: Uninstall MacDog.command removes the local command-installed app, CLI symlink, user LaunchAgents, and cache files."
+require_contains "$output" "Privileged helper cleanup: remove the optional helper from the MacDog Settings tab"
 require_contains "$output" "Post-install check: Check Install Status.command"
+require_not_contains "$output" "Install Privileged Helper.command"
+require_not_contains "$output" "Uninstall Privileged Helper.command"
 require_contains "$output" "Developer ID signing and notarization are not performed"
 require_contains "$output" "Gatekeeper: unsigned candidates are local validation artifacts"
 require_contains "$output" "GitHub Release:"
@@ -93,28 +95,37 @@ if [[ -d "$APP_BUNDLE" ]]; then
 
   require_contains "$stage_output" "$stage"
   [[ -d "$stage/MacDog.app" ]] || die "staged app bundle missing: $stage/MacDog.app"
+  [[ -L "$stage/Applications" ]] || die "staged Applications symlink missing"
+  [[ "$(readlink "$stage/Applications")" == "/Applications" ]] || die "staged Applications symlink must point to /Applications"
   [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable: $stage/MacDog.app/Contents/MacOS/codex-usage"
   [[ ! -e "$stage/bin/codex-usage" ]] || die "staged standalone CLI must not exist: $stage/bin/codex-usage"
   [[ -x "$stage/Install MacDog.command" ]] || die "staged installer command missing or not executable"
-  [[ -x "$stage/Install Privileged Helper.command" ]] || die "staged helper installer command missing or not executable"
   [[ -x "$stage/Uninstall MacDog.command" ]] || die "staged uninstall command missing or not executable"
-  [[ -x "$stage/Uninstall Privileged Helper.command" ]] || die "staged helper uninstall command missing or not executable"
   [[ -x "$stage/Check Install Status.command" ]] || die "staged install status command missing or not executable"
+  [[ ! -e "$stage/Install Privileged Helper.command" ]] || die "staged helper installer command must not exist"
+  [[ ! -e "$stage/Uninstall Privileged Helper.command" ]] || die "staged helper uninstaller command must not exist"
   [[ -f "$stage/README_FIRST.txt" ]] || die "staged README missing"
   [[ -f "$stage/RELEASE_NOTES_DRAFT.md" ]] || die "staged release notes draft missing"
 
-  /usr/bin/grep -Fq "Install Privileged Helper.command" "$stage/README_FIRST.txt" || die "staged README helper installer missing"
+  /usr/bin/grep -Fq "Drag \"MacDog.app\" to \"Applications\"" "$stage/README_FIRST.txt" || die "staged README drag install copy missing"
+  /usr/bin/grep -Fq "MacDog Settings" "$stage/README_FIRST.txt" || die "staged README helper settings copy missing"
   /usr/bin/grep -Fq "Uninstall MacDog.command" "$stage/README_FIRST.txt" || die "staged README uninstall command missing"
   /usr/bin/grep -Fq "cache files" "$stage/README_FIRST.txt" || die "staged README cache cleanup copy missing"
-  /usr/bin/grep -Fq "Uninstall Privileged Helper.command" "$stage/README_FIRST.txt" || die "staged README helper uninstall command missing"
+  if /usr/bin/grep -Fq "Privileged Helper.command" "$stage/README_FIRST.txt"; then
+    die "staged README must not reference helper command files"
+  fi
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/README_FIRST.txt" || die "staged README status checker missing"
   /usr/bin/grep -Fq "Gatekeeper may block first launch" "$stage/README_FIRST.txt" || die "staged README Gatekeeper warning missing"
   /usr/bin/grep -Fq "notarization" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes notarization gate missing"
+  /usr/bin/grep -Fq "Drag \`MacDog.app\` to \`Applications\`" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes drag install copy missing"
+  /usr/bin/grep -Fq "MacDog Settings" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes helper settings copy missing"
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes status checker missing"
   /usr/bin/grep -Fq "Uninstall MacDog.command" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes uninstall command missing"
   /usr/bin/grep -Fq "cache files" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes cache cleanup copy missing"
-  /usr/bin/grep -Fq "Uninstall Privileged Helper.command" "$stage/RELEASE_NOTES_DRAFT.md" || die "release notes helper uninstall command missing"
-  /usr/bin/grep -Fq "Install Privileged Helper.command" "$stage/Install MacDog.command" || die "installer helper handoff missing"
+  if /usr/bin/grep -Fq "Privileged Helper.command" "$stage/RELEASE_NOTES_DRAFT.md"; then
+    die "release notes must not reference helper command files"
+  fi
+  /usr/bin/grep -Fq "MacDog Settings" "$stage/Install MacDog.command" || die "installer helper settings handoff missing"
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/Install MacDog.command" || die "installer status handoff missing"
   /usr/bin/grep -Fq 'LOGIN_LAUNCH_KEY="loginLaunchEnabled"' "$stage/Install MacDog.command" || die "installer login launch preference key missing"
   /usr/bin/grep -Fq 'login_launch_enabled()' "$stage/Install MacDog.command" || die "installer login launch preference reader missing"
@@ -124,20 +135,11 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq 'ln -s "$APP_CLI_DEST" "$CLI_DEST"' "$stage/Install MacDog.command" || die "installer CLI symlink step missing"
   /usr/bin/grep -Fq '<string>$APP_CLI_DEST</string>' "$stage/Install MacDog.command" || die "installer cache agent bundled CLI path missing"
   /usr/bin/grep -Fq 'run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS"' "$stage/Install MacDog.command" || die "installer cache prime timeout wrapper missing"
-  /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="0"' "$stage/Install Privileged Helper.command" || die "helper installer local signed-host flag missing"
-  /usr/bin/grep -Fq 'detect_host_team_identifier' "$stage/Install Privileged Helper.command" || die "helper installer TeamIdentifier detection missing"
-  /usr/bin/grep -Fq 'MACDOG_HELPER_HOST_TEAM_ID' "$stage/Install Privileged Helper.command" || die "helper installer signed host environment missing"
-  /usr/bin/grep -Fq 'MACDOG_HELPER_ALLOW_ADHOC_HOST' "$stage/Install Privileged Helper.command" || die "helper installer local ad-hoc host gate missing"
-  /usr/bin/grep -Fq 'with administrator privileges' "$stage/Install Privileged Helper.command" || die "helper installer administrator approval missing"
-  /usr/bin/grep -Fq 'Continue with privileged helper install?' "$stage/Install Privileged Helper.command" || die "helper installer confirmation prompt missing"
   /usr/bin/grep -Fq 'Continue with MacDog uninstall?' "$stage/Uninstall MacDog.command" || die "uninstaller confirmation prompt missing"
   /usr/bin/grep -Fq 'Application Support/MacDog' "$stage/Uninstall MacDog.command" || die "uninstaller Application Support cache cleanup missing"
   /usr/bin/grep -Fq 'Group Containers/group.com.dhseo.macdog.MacDog' "$stage/Uninstall MacDog.command" || die "uninstaller shared cache cleanup missing"
   /usr/bin/grep -Fq 'rmdir "$APP_CACHE_DIR" "$SHARED_CACHE_DIR"' "$stage/Uninstall MacDog.command" || die "uninstaller empty cache directory cleanup missing"
   /usr/bin/grep -Fq 'Optional helper was not changed.' "$stage/Uninstall MacDog.command" || die "user uninstaller helper boundary missing"
-  /usr/bin/grep -Fq 'Continue with privileged helper uninstall?' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller confirmation prompt missing"
-  /usr/bin/grep -Fq 'with administrator privileges' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller administrator approval missing"
-  /usr/bin/grep -Fq 'LaunchDaemons' "$stage/Uninstall Privileged Helper.command" || die "helper uninstaller system location warning missing"
   /usr/bin/grep -Fq 'MacDog install status' "$stage/Check Install Status.command" || die "status checker title missing"
   /usr/bin/grep -Fq 'bundled CLI installed' "$stage/Check Install Status.command" || die "status checker bundled CLI check missing"
   /usr/bin/grep -Fq 'terminal CLI points to bundled CLI' "$stage/Check Install Status.command" || die "status checker CLI symlink check missing"
@@ -149,11 +151,8 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq 'running MacDog uses a different binary' "$stage/Check Install Status.command" || die "status checker running process freshness warning missing"
   /usr/bin/grep -Fq 'bundle_manifest' "$stage/Check Install Status.command" || die "status checker app payload comparison missing"
   require_line_count "$stage/Install MacDog.command" '^<plist version="1\.0">$' 2
-  require_line_count "$stage/Uninstall Privileged Helper.command" '^#!/usr/bin/env bash$' 2
   bash -n "$stage/Install MacDog.command"
-  bash -n "$stage/Install Privileged Helper.command"
   bash -n "$stage/Uninstall MacDog.command"
-  bash -n "$stage/Uninstall Privileged Helper.command"
   bash -n "$stage/Check Install Status.command"
   with_temp_home
 
@@ -163,14 +162,9 @@ if [[ -d "$APP_BUNDLE" ]]; then
   if /usr/bin/grep -Eq 'PrivilegedHelperTools|LaunchDaemons|SMJobBless|sudo ' "$stage/Uninstall MacDog.command"; then
     die "uninstaller command unexpectedly contains privileged helper cleanup material"
   fi
-
-  strict_version="verify-strict"
-  strict_stage="$ROOT_DIR/dist/release/MacDog-$strict_version"
-  MACDOG_RELEASE_VERSION="$strict_version" MACDOG_REQUIRE_SIGNED_HELPER_HOST=1 "$ROOT_DIR/script/package_release.sh" --skip-build --no-dmg >/dev/null
-  [[ -x "$strict_stage/Install Privileged Helper.command" ]] || die "strict helper installer command missing or not executable"
-  /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="1"' "$strict_stage/Install Privileged Helper.command" || die "strict helper installer signed-host flag missing"
-  /usr/bin/grep -Fq 'public stable helper install requires a Developer ID signed MacDog.app with TeamIdentifier' "$strict_stage/Install Privileged Helper.command" || die "strict helper installer refusal copy missing"
-  bash -n "$strict_stage/Install Privileged Helper.command"
+  if find "$stage" -maxdepth 1 -type f -name '*.command' -print0 | xargs -0 /usr/bin/grep -Fq '/usr/bin/osascript'; then
+    die "release command files must not launch osascript approval prompts"
+  fi
 else
   echo "Release packaging stage verification skipped: dist/MacDog.app missing"
 fi
