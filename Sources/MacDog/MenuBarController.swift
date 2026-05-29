@@ -500,283 +500,45 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func makePetMenu(surface: PetSurface) -> NSMenu {
-        let menu = NSMenu(title: "코덱스 펫")
-        menu.addItem(menuItem("사용량 상세 보기", action: #selector(menuShowUsageDetails)))
-        menu.addItem(menuItem("지금 새로고침", action: #selector(menuRefreshNow)))
-        menu.addItem(.separator())
-        menu.addItem(speedSubmenuItem())
-        menu.addItem(menuItem(
-            "움직임 줄이기",
-            action: #selector(menuToggleReduceMotion),
-            state: preferences.reducedMotion ? .on : .off
-        ))
-        menu.addItem(menuItem(
-            "애니메이션 일시 정지",
-            action: #selector(menuToggleAnimationPaused),
-            state: preferences.animationPaused ? .on : .off
-        ))
-        menu.addItem(sleepModeSubmenuItem())
-        menu.addItem(sleepDurationSubmenuItem())
-        menu.addItem(sleepPolicySubmenuItem())
-        menu.addItem(sleepTriggerSubmenuItem())
-        menu.addItem(menuItem("배터리 설정 열기", action: #selector(menuOpenBatterySettings)))
-        menu.addItem(.separator())
-        menu.addItem(desktopSurfaceMenuItem(surface: surface))
-        menu.addItem(.separator())
-        menu.addItem(menuItem("코덱스 사용량 종료", action: #selector(menuQuit)))
+        let model = PetMenuModel(preferences: preferences, surface: surface)
+        let menu = NSMenu(title: model.title)
+        for entry in model.entries {
+            switch entry {
+            case .command(let command):
+                menu.addItem(menuItem(for: command))
+            case .submenu(let submenu):
+                menu.addItem(submenuItem(for: submenu))
+            case .separator:
+                menu.addItem(.separator())
+            }
+        }
         return menu
     }
 
-    private func speedSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "러너 속도", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "러너 속도")
-
-        for basis in UsageDisplayBasis.allCases {
-            let item = menuItem(
-                basis.label,
-                action: #selector(menuSetDisplayBasis),
-                state: preferences.displayBasis == basis ? .on : .off,
-                representedObject: basis.rawValue
-            )
-            submenu.addItem(item)
+    private func submenuItem(for submenuModel: PetMenuSubmenu) -> NSMenuItem {
+        let parent = NSMenuItem(title: submenuModel.title, action: nil, keyEquivalent: "")
+        let submenu = NSMenu(title: submenuModel.title)
+        for command in submenuModel.commands {
+            submenu.addItem(menuItem(for: command))
         }
-
         parent.submenu = submenu
+        parent.isEnabled = submenuModel.isEnabled
         return parent
     }
 
-    private func desktopSurfaceMenuItem(surface: PetSurface) -> NSMenuItem {
-        if preferences.desktopPetEnabled || surface == .desktop {
-            return menuItem("메뉴바로 돌아가기", action: #selector(menuReturnToMenuBar))
-        }
-
-        return menuItem("데스크톱 펫 보기", action: #selector(menuShowDesktopPet))
-    }
-
-    private func sleepModeSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "잠자기 방지 모드", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "잠자기 방지 모드")
-
-        for mode in SleepPreventionMode.allCases {
-            submenu.addItem(menuItem(
-                mode.label,
-                action: #selector(menuSetSleepPreventionMode),
-                state: preferences.sleepPreventionMode == mode ? .on : .off,
-                representedObject: mode.rawValue
-            ))
-        }
-
-        parent.submenu = submenu
-        return parent
-    }
-
-    private func sleepDurationSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "시간 기준 길이", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "시간 기준 길이")
-
-        for preset in SleepPreventionSessionPreset.allCases {
-            guard preset.durationMinutes != nil else { continue }
-            submenu.addItem(menuItem(
-                preset.label,
-                action: #selector(menuSetSleepPreventionSessionPreset),
-                state: preferences.sleepPreventionSessionPreset == preset ? .on : .off,
-                representedObject: preset.rawValue
-            ))
-        }
-
-        parent.submenu = submenu
-        parent.isEnabled = preferences.sleepPreventionMode == .timed
-        return parent
-    }
-
-    private func sleepTriggerSubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "자동 잠자기 방지", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "자동 잠자기 방지")
-        submenu.addItem(menuItem(
-            "전원 연결 중",
-            action: #selector(menuTogglePowerAdapterTrigger),
-            state: preferences.sleepPreventionPowerAdapterTriggerEnabled ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "\(preferences.sleepPreventionAppMatchText) 앱 실행 중",
-            action: #selector(menuToggleCodexAppTrigger),
-            state: preferences.sleepPreventionCodexAppTriggerEnabled ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "충전 \(preferences.sleepPreventionBatteryThresholdPercent)% 미만",
-            action: #selector(menuToggleChargingBelowThresholdTrigger),
-            state: preferences.sleepPreventionChargingBelowThresholdTriggerEnabled ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "CPU 사용 \(preferences.sleepPreventionCPUThresholdPercent)% 이상",
-            action: #selector(menuToggleCPUThresholdTrigger),
-            state: preferences.sleepPreventionCPUThresholdTriggerEnabled ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "네트워크 \(preferences.sleepPreventionNetworkThresholdKBPerSecond)KB/s 이상",
-            action: #selector(menuToggleNetworkActivityTrigger),
-            state: preferences.sleepPreventionNetworkActivityTriggerEnabled ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "외장/네트워크 볼륨 연결",
-            action: #selector(menuToggleExternalVolumeTrigger),
-            state: preferences.sleepPreventionExternalVolumeTriggerEnabled ? .on : .off
-        ))
-        parent.submenu = submenu
-        return parent
-    }
-
-    private func sleepPolicySubmenuItem() -> NSMenuItem {
-        let parent = NSMenuItem(title: "잠자기 방지 옵션", action: nil, keyEquivalent: "")
-        let submenu = NSMenu(title: "잠자기 방지 옵션")
-        submenu.addItem(menuItem(
-            "화면 잠자기 방지",
-            action: #selector(menuTogglePreventDisplaySleep),
-            state: preferences.sleepPreventionPreventDisplaySleep ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "덮개 닫힘 보호",
-            action: #selector(menuTogglePreventClosedLidSleep),
-            state: preferences.sleepPreventionPreventClosedLidSleep ? .on : .off
-        ))
-        submenu.addItem(menuItem(
-            "잠금 요구 해제",
-            action: #selector(menuToggleDisableScreenLock),
-            state: preferences.sleepPreventionDisableScreenLock ? .on : .off
-        ))
-        parent.submenu = submenu
-        return parent
-    }
-
-    private func menuItem(
-        _ title: String,
-        action: Selector,
-        state: NSControl.StateValue = .off,
-        representedObject: Any? = nil
-    ) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+    private func menuItem(for command: PetMenuCommand) -> NSMenuItem {
+        let item = NSMenuItem(title: command.title, action: #selector(menuPerformAction(_:)), keyEquivalent: "")
         item.target = self
-        item.state = state
-        item.representedObject = representedObject
+        item.state = command.isSelected ? .on : .off
+        item.isEnabled = command.isEnabled
+        item.representedObject = PetMenuActionBox(command.action)
         return item
     }
 
     @objc
-    private func menuShowUsageDetails() {
-        perform(.showUsageDetails)
-    }
-
-    @objc
-    private func menuRefreshNow() {
-        perform(.refreshNow)
-    }
-
-    @objc
-    private func menuSetDisplayBasis(_ sender: NSMenuItem) {
-        guard
-            let rawValue = sender.representedObject as? String,
-            let basis = UsageDisplayBasis(rawValue: rawValue)
-        else { return }
-
-        perform(.setDisplayBasis(basis))
-    }
-
-    @objc
-    private func menuToggleReduceMotion() {
-        perform(.setReducedMotion(!preferences.reducedMotion))
-    }
-
-    @objc
-    private func menuToggleAnimationPaused() {
-        perform(.setAnimationPaused(!preferences.animationPaused))
-    }
-
-    @objc
-    private func menuSetSleepPreventionMode(_ sender: NSMenuItem) {
-        guard
-            let rawValue = sender.representedObject as? String,
-            let mode = SleepPreventionMode(rawValue: rawValue)
-        else { return }
-
-        perform(.setSleepPreventionMode(mode))
-    }
-
-    @objc
-    private func menuSetSleepPreventionSessionPreset(_ sender: NSMenuItem) {
-        guard
-            let rawValue = sender.representedObject as? String,
-            let preset = SleepPreventionSessionPreset(rawValue: rawValue)
-        else { return }
-
-        if preferences.sleepPreventionMode != .timed {
-            RunnerPreferences.setSleepPreventionMode(.timed)
-        }
-        perform(.setSleepPreventionSessionPreset(preset))
-    }
-
-    @objc
-    private func menuTogglePowerAdapterTrigger() {
-        perform(.setSleepPreventionPowerAdapterTrigger(!preferences.sleepPreventionPowerAdapterTriggerEnabled))
-    }
-
-    @objc
-    private func menuToggleCodexAppTrigger() {
-        perform(.setSleepPreventionCodexAppTrigger(!preferences.sleepPreventionCodexAppTriggerEnabled))
-    }
-
-    @objc
-    private func menuToggleChargingBelowThresholdTrigger() {
-        perform(.setSleepPreventionChargingBelowThresholdTrigger(!preferences.sleepPreventionChargingBelowThresholdTriggerEnabled))
-    }
-
-    @objc
-    private func menuToggleCPUThresholdTrigger() {
-        perform(.setSleepPreventionCPUThresholdTrigger(!preferences.sleepPreventionCPUThresholdTriggerEnabled))
-    }
-
-    @objc
-    private func menuToggleNetworkActivityTrigger() {
-        perform(.setSleepPreventionNetworkActivityTrigger(!preferences.sleepPreventionNetworkActivityTriggerEnabled))
-    }
-
-    @objc
-    private func menuToggleExternalVolumeTrigger() {
-        perform(.setSleepPreventionExternalVolumeTrigger(!preferences.sleepPreventionExternalVolumeTriggerEnabled))
-    }
-
-    @objc
-    private func menuTogglePreventDisplaySleep() {
-        perform(.setSleepPreventionPreventDisplaySleep(!preferences.sleepPreventionPreventDisplaySleep))
-    }
-
-    @objc
-    private func menuTogglePreventClosedLidSleep() {
-        perform(.setSleepPreventionPreventClosedLidSleep(!preferences.sleepPreventionPreventClosedLidSleep))
-    }
-
-    @objc
-    private func menuToggleDisableScreenLock() {
-        perform(.setSleepPreventionDisableScreenLock(!preferences.sleepPreventionDisableScreenLock))
-    }
-
-    @objc
-    private func menuOpenBatterySettings() {
-        perform(.openBatterySettings)
-    }
-
-    @objc
-    private func menuShowDesktopPet() {
-        perform(.showDesktopPet)
-    }
-
-    @objc
-    private func menuReturnToMenuBar() {
-        perform(.returnToMenuBar)
-    }
-
-    @objc
-    private func menuQuit() {
-        perform(.quit)
+    private func menuPerformAction(_ sender: NSMenuItem) {
+        guard let box = sender.representedObject as? PetMenuActionBox else { return }
+        perform(box.action)
     }
 
     private func syncDesktopPetVisibility() {
@@ -976,6 +738,14 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func shouldShowDesktopPopoverOnRight(sourceFrame: NSRect, screenFrame: NSRect) -> Bool {
         sourceFrame.midX <= screenFrame.midX
+    }
+}
+
+private final class PetMenuActionBox: NSObject {
+    let action: PetAction
+
+    init(_ action: PetAction) {
+        self.action = action
     }
 }
 
