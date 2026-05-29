@@ -91,7 +91,9 @@ require_contains "$output" "Cache prime timeout: 12 seconds"
 if [[ -d "$APP_BUNDLE" ]]; then
   version="verify"
   stage="$ROOT_DIR/dist/release/MacDog-$version"
-  trap 'rm -rf "$stage"' EXIT
+  dmg_path="$ROOT_DIR/dist/release/MacDog-$version.dmg"
+  checksum_path="$dmg_path.sha256"
+  trap 'rm -rf "$stage"; rm -f "$dmg_path" "$checksum_path"' EXIT
   stage_output="$(MACDOG_RELEASE_VERSION="$version" "$ROOT_DIR/script/package_release.sh" --skip-build --no-dmg)"
 
   require_contains "$stage_output" "$stage"
@@ -166,6 +168,19 @@ if [[ -d "$APP_BUNDLE" ]]; then
   if find "$stage" -maxdepth 1 -type f -name '*.command' -print0 | xargs -0 /usr/bin/grep -Fq '/usr/bin/osascript'; then
     die "release command files must not launch osascript approval prompts"
   fi
+
+  rm -f "$dmg_path" "$checksum_path"
+  MACDOG_RELEASE_VERSION="$version" "$ROOT_DIR/script/package_release.sh" --skip-build >/dev/null
+  [[ -f "$dmg_path" ]] || die "release DMG missing after package generation"
+  [[ -f "$checksum_path" ]] || die "release checksum missing after package generation"
+  checksum_line="$(cat "$checksum_path")"
+  [[ "$checksum_line" == *"  MacDog-$version.dmg" ]] || die "checksum file must use DMG basename"
+  [[ "$checksum_line" != *"$ROOT_DIR"* ]] || die "checksum file must not contain build-machine absolute path"
+  (
+    cd "$ROOT_DIR/dist/release"
+    /usr/bin/shasum -a 256 -c "$(basename "$checksum_path")" >/dev/null
+  )
+  rm -f "$dmg_path" "$checksum_path"
 else
   echo "Release packaging stage verification skipped: dist/MacDog.app missing"
 fi

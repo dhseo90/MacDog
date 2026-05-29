@@ -649,7 +649,10 @@ if [[ "$CREATE_DMG" == "1" ]]; then
     -ov \
     -format UDZO \
     "$DMG_PATH" >/dev/null
-  /usr/bin/shasum -a 256 "$DMG_PATH" >"$CHECKSUM_PATH"
+  (
+    cd "$RELEASE_ROOT"
+    /usr/bin/shasum -a 256 "$(basename "$DMG_PATH")" >"$(basename "$CHECKSUM_PATH")"
+  )
   echo "$DMG_PATH"
   echo "$CHECKSUM_PATH"
 else
