@@ -11,6 +11,7 @@ usage: $0 [--allow-stale-installed]
 Read-only preflight before manual UI clicking.
 Default mode fails when the installed app does not match dist/MacDog.app.
 This script does not install, uninstall, launch the app, or change SleepDisabled.
+Widget cache fixture checks run in self-test mode and do not touch live cache.
 USAGE
 }
 
@@ -47,6 +48,9 @@ echo "==> Checking character asset linkage"
 
 echo "==> Checking WidgetKit source readiness"
 ./script/verify_widget_readiness.sh >/dev/null
+
+echo "==> Checking WidgetKit cache fixture writer"
+./script/write_widget_cache_fixture.sh --self-test >/dev/null
 
 echo "==> Checking helper UI/install preflight"
 ./script/verify_privileged_helper_preflight.sh >/dev/null
