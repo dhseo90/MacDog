@@ -146,7 +146,7 @@ GitHub Release용 더블클릭 설치 artifact 후보:
 현재 release packaging은 로컬 검증용 `.dmg` 후보를 만들며 Developer ID signing/notarization은 아직 수행하지 않는다.
 생성된 `Install MacDog.command`는 앱, CLI, user LaunchAgent를 설치하고 MacDog를 연다.
 생성된 `Install Privileged Helper.command`는 변경할 system 위치를 안내하고 별도 관리자 승인으로 helper를 설치한다.
-생성된 `Uninstall MacDog.command`는 앱, CLI, user LaunchAgent만 제거하고 optional helper는 건드리지 않는다.
+생성된 `Uninstall MacDog.command`는 앱, CLI, user LaunchAgent, usage cache 파일을 제거하고 optional helper는 건드리지 않는다.
 생성된 `Uninstall Privileged Helper.command`는 변경할 system 위치를 안내하고 별도 관리자 승인으로 optional helper를 제거한다.
 생성된 `Check Install Status.command`는 앱, CLI, user LaunchAgent, optional helper 설치 상태, 설치된 앱이 DMG payload와 같은 빌드인지, 실행 중인 MacDog가 다른 binary인지 터미널에서 요약한다.
 공개 배포 전에는 앱 내부 helper 설치 UX와 Gatekeeper 검증을 완료해야 한다.
@@ -181,6 +181,8 @@ Privileged helper를 opt-in으로 설치하면 추가로 아래 system 위치를
 ```sh
 ./script/uninstall.sh
 ```
+
+삭제 스크립트는 앱, CLI, user LaunchAgent와 함께 legacy/shared usage cache 파일을 제거하고, 비어 있는 cache 디렉터리만 정리한다. UserDefaults 설정과 optional privileged helper는 유지한다.
 
 ## 잠들지 않기
 

@@ -25,7 +25,7 @@
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부한다.
 - `.github/workflows/release-stable.yml`은 `SIGNED-STABLE` 확인 입력, GitHub Environment approval, Developer ID Application 인증서 secret, notarization secret이 모두 있어야 signed/notarized `.dmg`를 public GitHub Release로 올린다.
 - public stable payload는 `MACDOG_REQUIRE_SIGNED_HELPER_HOST=1`로 생성해 `Install Privileged Helper.command`가 Developer ID로 서명된 `MacDog.app`의 TeamIdentifier 없이는 helper 설치를 거부하게 한다. 로컬 unsigned 후보에서만 ad-hoc host 허용 plist를 생성한다.
-- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, LaunchAgent plist heredoc 구조, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command의 freshness smoke를 검증한다.
+- `script/verify_release_packaging.sh`는 dry-run 문구와 staging payload의 파일 구조, release note draft, installer/uninstaller syntax, LaunchAgent plist heredoc 구조, usage cache cleanup, helper 별도 설치/제거 경계, 관리자 승인 문구, 설치 후 상태 확인 command의 freshness smoke를 검증한다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인한다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 public stable release로 오해되지 않도록 문서, package dry-run, draft release workflow, future stable release workflow gate를 검증한다.
 

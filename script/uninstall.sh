@@ -10,6 +10,10 @@ CACHE_LABEL="com.dhseo.macdog.usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
+APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
+APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
+SHARED_CACHE_DIR="$HOME/Library/Group Containers/group.com.dhseo.macdog.MacDog"
+SHARED_CACHE_FILE="$SHARED_CACHE_DIR/usage.json"
 HELPER_LABEL="com.dhseo.macdog.helper"
 HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
@@ -113,6 +117,9 @@ case "$MODE" in
     echo "Would remove: $MONITOR_PLIST"
     echo "Would remove: $CLI_DEST"
     echo "Would remove: $APP_DEST"
+    echo "Would remove cache file: $APP_CACHE_FILE"
+    echo "Would remove shared cache file: $SHARED_CACHE_FILE"
+    echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
     echo "Would preserve: MacDog UserDefaults preferences"
     echo "Widget extension: removed with $APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
     if [[ "$WITH_HELPER" == "1" ]]; then
@@ -148,8 +155,9 @@ fi
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$SHARED_CACHE_FILE"
 rm -rf "$APP_DEST"
+rmdir "$APP_CACHE_DIR" "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
 
 echo "Uninstalled MacDog"
 if [[ "$WITH_HELPER" == "1" ]]; then

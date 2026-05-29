@@ -80,7 +80,7 @@ Payload:
 Double-click install: Install MacDog.command copies app/CLI, writes user LaunchAgents, and opens MacDog.
 Privileged helper: Install Privileged Helper.command installs the bundled helper after explicit administrator approval.
 Helper host requirement: $([[ "$REQUIRE_SIGNED_HELPER_HOST" == "1" ]] && echo "Developer ID signed host required" || echo "signed host preferred; local ad-hoc host allowed for validation")
-Double-click uninstall: Uninstall MacDog.command removes the app, CLI, and user LaunchAgents.
+Double-click uninstall: Uninstall MacDog.command removes the app, CLI, user LaunchAgents, and cache files.
 Privileged helper cleanup: Uninstall Privileged Helper.command removes the optional helper after administrator approval.
 Post-install check: Check Install Status.command verifies app, CLI, user LaunchAgents, and optional helper state.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
@@ -117,7 +117,7 @@ MacDog $VERSION
 3. Double-click "Install Privileged Helper.command" to install the helper for full closed-lid sleep prevention.
 4. The helper installer explains the system locations it changes before asking for administrator approval.
 5. Double-click "Check Install Status.command" after installation to verify app, CLI, LaunchAgents, and optional helper state.
-6. Double-click "Uninstall MacDog.command" to remove the app, CLI, and user LaunchAgents.
+6. Double-click "Uninstall MacDog.command" to remove the app, CLI, user LaunchAgents, and cache files.
 7. Double-click "Uninstall Privileged Helper.command" only if you installed the optional helper and want to remove it.
 8. This local release candidate is intended for local unsigned validation.
 README
@@ -148,7 +148,7 @@ Status: unsigned local release candidate.
 
 ## Uninstall
 
-- Double-click \`Uninstall MacDog.command\` to remove the app, CLI, and user LaunchAgents.
+- Double-click \`Uninstall MacDog.command\` to remove the app, CLI, user LaunchAgents, and cache files.
 - Double-click \`Uninstall Privileged Helper.command\` to remove the optional helper after administrator approval.
 - Source checkout uninstall path remains available: \`./script/uninstall.sh --with-helper\`
 NOTES
@@ -466,6 +466,10 @@ CACHE_LABEL="com.dhseo.macdog.usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
+APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
+APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
+SHARED_CACHE_DIR="$HOME/Library/Group Containers/group.com.dhseo.macdog.MacDog"
+SHARED_CACHE_FILE="$SHARED_CACHE_DIR/usage.json"
 
 macdog_owns_sleep_disabled() {
   [[ "$(/usr/bin/defaults read "$BUNDLE_ID" closedLidSleepDisabledByMacDog 2>/dev/null || true)" == "1" ]] || return 1
@@ -488,6 +492,8 @@ This removes:
   - $CLI_DEST
   - $CACHE_PLIST
   - $MONITOR_PLIST
+  - $APP_CACHE_FILE
+  - $SHARED_CACHE_FILE
 
 It preserves MacDog UserDefaults preferences and does not remove the optional
 privileged helper. Run Uninstall Privileged Helper.command separately if needed.
@@ -507,8 +513,9 @@ esac
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST"
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$SHARED_CACHE_FILE"
 rm -rf "$APP_DEST"
+rmdir "$APP_CACHE_DIR" "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
 
 echo "Uninstalled MacDog user components"
 echo "Optional helper was not changed."
