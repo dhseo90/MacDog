@@ -74,6 +74,12 @@ require_tool() {
   command -v "$1" >/dev/null 2>&1 || die "required tool not found: $1"
 }
 
+clean_bundle_xattrs() {
+  local bundle="$1"
+  /usr/bin/xattr -cr "$bundle" >/dev/null 2>&1 || true
+  /usr/bin/find "$bundle" -exec /usr/bin/xattr -d com.apple.FinderInfo {} \; >/dev/null 2>&1 || true
+}
+
 check_prerequisites() {
   [[ -x "$XCRUN" ]] || die "xcrun not found at $XCRUN"
   require_tool pgrep
@@ -162,14 +168,14 @@ PLIST
   /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" "$APP_CLI_BINARY" >/dev/null
   /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
-  /usr/bin/xattr -cr "$APP_BUNDLE" >/dev/null 2>&1 || true
+  clean_bundle_xattrs "$APP_BUNDLE"
   /usr/bin/codesign --force --sign - "$APP_BUNDLE" >/dev/null
   verify_bundle_signature "$APP_BUNDLE"
 
   mkdir -p "$DIST_DIR"
   rm -rf "$final_app_bundle"
   /usr/bin/ditto --norsrc --noextattr "$APP_BUNDLE" "$final_app_bundle"
-  /usr/bin/xattr -cr "$final_app_bundle" >/dev/null 2>&1 || true
+  clean_bundle_xattrs "$final_app_bundle"
   rm -rf "$staging_parent"
   APP_BUNDLE="$final_app_bundle"
   configure_app_bundle_paths
@@ -226,14 +232,14 @@ func render(size: Int, name: String) throws {
     stroke.lineWidth = max(1, side * 0.018)
     stroke.stroke()
 
-    let maxDogWidth = side * 0.70
-    let maxDogHeight = side * 0.74
+    let maxDogWidth = side * 0.82
+    let maxDogHeight = side * 0.82
     let sourceSize = source.size
     let scale = min(maxDogWidth / sourceSize.width, maxDogHeight / sourceSize.height)
     let dogSize = NSSize(width: sourceSize.width * scale, height: sourceSize.height * scale)
     let dogRect = NSRect(
         x: (side - dogSize.width) / 2,
-        y: side * 0.12,
+        y: (side - dogSize.height) / 2,
         width: dogSize.width,
         height: dogSize.height
     )
@@ -284,7 +290,7 @@ embed_widget_extension() {
 
   rm -rf "$APP_WIDGET_APPEX"
   /usr/bin/ditto --norsrc --noextattr "$WIDGET_APPEX" "$APP_WIDGET_APPEX"
-  /usr/bin/xattr -cr "$APP_WIDGET_APPEX" >/dev/null 2>&1 || true
+  clean_bundle_xattrs "$APP_WIDGET_APPEX"
   /usr/bin/codesign --force --sign - --entitlements "$WIDGET_EXTENSION_ENTITLEMENTS" "$APP_WIDGET_APPEX" >/dev/null
 }
 

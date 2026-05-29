@@ -48,7 +48,9 @@ require_contains "$output" "Drag install: drag MacDog.app to Applications"
 require_contains "$output" "First launch setup:"
 require_contains "$output" "user codex-usage symlink"
 require_contains "$output" "usage cache LaunchAgent"
-require_contains "$output" "login LaunchAgent when enabled"
+require_contains "$output" "macOS Login Item when enabled"
+require_contains "$output" "Hidden DMG background artwork"
+require_contains "$output" "First launch cleanup:"
 require_contains "$output" "Privileged helper: first launch offers MacDog-owned helper installation"
 require_contains "$output" "Developer ID signing and notarization are not performed"
 require_contains "$output" "GitHub Release: upload DMG only after signing/notarization gate is satisfied"
@@ -73,15 +75,17 @@ if [[ -d "$APP_BUNDLE" ]]; then
   [[ -d "$stage/MacDog.app" ]] || die "staged app bundle missing: $stage/MacDog.app"
   [[ -L "$stage/Applications" ]] || die "staged Applications symlink missing"
   [[ "$(readlink "$stage/Applications")" == "/Applications" ]] || die "staged Applications symlink must point to /Applications"
+  [[ -f "$stage/.background/background.png" ]] || die "staged DMG background missing"
   [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable"
   [[ -f "$stage/MacDog.app/Contents/Resources/MacDog.icns" ]] || die "staged app icon missing"
   [[ ! -e "$stage/bin/codex-usage" ]] || die "staged standalone CLI must not exist"
   assert_no_legacy_payload "$stage"
 
   [[ -f "$notes_path" ]] || die "release notes missing: $notes_path"
-  /usr/bin/grep -Fq "Drag \`MacDog.app\` to \`Applications\`" "$notes_path" || die "release notes drag install copy missing"
-  /usr/bin/grep -Fq "first launch" "$notes_path" || die "release notes first launch setup missing"
-  /usr/bin/grep -Fq "administrator approval dialog owned by MacDog" "$notes_path" || die "release notes helper approval copy missing"
+  /usr/bin/grep -Fq "\`MacDog.app\`을 \`Applications\`로 드래그" "$notes_path" || die "release notes drag install copy missing"
+  /usr/bin/grep -Fq "첫 실행" "$notes_path" || die "release notes first launch setup missing"
+  /usr/bin/grep -Fq "다운로드한 설치 파일을 정리" "$notes_path" || die "release notes cleanup copy missing"
+  /usr/bin/grep -Fq "MacDog 주체의 관리자 승인창" "$notes_path" || die "release notes helper approval copy missing"
   /usr/bin/grep -Fq "notarized" "$notes_path" || die "release notes notarization gate missing"
   if /usr/bin/grep -Eq 'Install MacDog\.command|Uninstall MacDog\.command|Check Install Status\.command|README_FIRST|RELEASE_NOTES_DRAFT' "$notes_path"; then
     die "release notes must not reference legacy command payloads"
@@ -100,6 +104,29 @@ if [[ -d "$APP_BUNDLE" ]]; then
     /usr/bin/shasum -a 256 -c "$(basename "$checksum_path")" >/dev/null
   )
   /usr/bin/hdiutil verify "$dmg_path" >/dev/null
+  mountpoint="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-release-verify-mount.XXXXXX")"
+  /usr/bin/hdiutil attach "$dmg_path" -mountpoint "$mountpoint" -noautoopen >/dev/null
+  cleanup_mount() {
+    /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
+    rm -rf "$mountpoint"
+  }
+  trap 'cleanup_mount; rm -rf "$stage"; rm -f "$dmg_path" "$checksum_path" "$notes_path"' EXIT
+  [[ -d "$mountpoint/MacDog.app" ]] || die "release DMG app missing after mount"
+  [[ -L "$mountpoint/Applications" ]] || die "release DMG Applications symlink missing after mount"
+  [[ -f "$mountpoint/.background/background.png" ]] || die "release DMG background missing after mount"
+  /usr/bin/strings -a "$mountpoint/.DS_Store" | /usr/bin/grep -Fq ".icvp" || die "release DMG Finder icon view options missing"
+  if /usr/bin/find "$mountpoint/MacDog.app" -exec /bin/sh -c '
+for path do
+  if /usr/bin/xattr -p com.apple.FinderInfo "$path" >/dev/null 2>&1; then
+    printf "%s\n" "$path"
+  fi
+done
+' sh {} + | /usr/bin/grep -q .; then
+    die "release DMG app contains forbidden com.apple.FinderInfo xattr"
+  fi
+  /usr/bin/codesign --verify --deep --strict --verbose=2 "$mountpoint/MacDog.app" >/dev/null
+  cleanup_mount
+  trap 'rm -rf "$stage"; rm -f "$dmg_path" "$checksum_path" "$notes_path"' EXIT
 else
   echo "Release packaging stage verification skipped: dist/MacDog.app missing"
 fi

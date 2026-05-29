@@ -14,6 +14,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     )
     private let privilegedHelperInstaller = PrivilegedHelperInstaller()
     private let userComponentInstaller = UserComponentInstaller()
+    private let installerCleanupController = InstallerCleanupController()
     private let sleepPreventionController = SleepPreventionController()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
@@ -254,7 +255,43 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             )
         }
 
+        showInstallerCleanupPromptIfNeeded()
         showFirstRunHelperPromptIfNeeded()
+    }
+
+    private func showInstallerCleanupPromptIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: InstallerCleanupController.promptDismissedKey) else { return }
+
+        let plan = installerCleanupController.cleanupPlan()
+        guard !plan.isEmpty else {
+            defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "설치 파일 정리"
+        alert.informativeText = """
+        MacDog 설치가 끝났습니다.
+
+        \(plan.summary)를 정리할까요?
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "정리")
+        alert.addButton(withTitle: "나중에")
+
+        defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            try installerCleanupController.cleanup(plan)
+        } catch {
+            showPrivilegedHelperAlert(
+                title: "설치 파일 정리 실패",
+                message: error.localizedDescription,
+                style: .warning
+            )
+        }
     }
 
     private func showFirstRunHelperPromptIfNeeded() {
