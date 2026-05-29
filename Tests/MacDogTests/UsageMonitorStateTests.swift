@@ -144,6 +144,11 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
         XCTAssertTrue(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
+        XCTAssertGreaterThan(MacResourcesPanelLayout.sparklineHeight, 0)
+        XCTAssertLessThanOrEqual(
+            MacResourcesPanelLayout.estimatedContentHeight,
+            MacDogPopoverLayout.nonScrollableContentHeight
+        )
     }
 
     func testDemoDataProvidesCpuAndMemoryTrendSamplesForMacTab() {

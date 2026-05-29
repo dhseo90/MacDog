@@ -25,8 +25,12 @@ struct UsagePopoverView: View {
             contentSurface
             tabRail
         }
-        .padding(10)
-        .frame(width: 370, height: 408, alignment: .topLeading)
+        .padding(MacDogPopoverLayout.outerPadding)
+        .frame(
+            width: MacDogPopoverLayout.outerSize.width,
+            height: MacDogPopoverLayout.outerSize.height,
+            alignment: .topLeading
+        )
     }
 
     private var selectedModule: MacDogPopoverModule {
@@ -34,14 +38,18 @@ struct UsagePopoverView: View {
     }
 
     private var contentSurface: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MacDogPopoverLayout.contentStackSpacing) {
             textHeader
             Divider()
 
             tabContentContainer
         }
-        .padding(12)
-        .frame(width: 278, height: 388, alignment: .topLeading)
+        .padding(MacDogPopoverLayout.contentPadding)
+        .frame(
+            width: MacDogPopoverLayout.contentSurfaceSize.width,
+            height: MacDogPopoverLayout.contentSurfaceSize.height,
+            alignment: .topLeading
+        )
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
@@ -253,12 +261,46 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
     }
 }
 
+enum MacDogPopoverLayout {
+    static let outerSize = CGSize(width: 370, height: 408)
+    static let outerPadding: CGFloat = 10
+    static let contentSurfaceSize = CGSize(width: 278, height: 388)
+    static let contentPadding: CGFloat = 12
+    static let contentStackSpacing: CGFloat = 8
+    static let headerHeight: CGFloat = 34
+    static let dividerHeight: CGFloat = 1
+
+    static var nonScrollableContentHeight: CGFloat {
+        contentSurfaceSize.height
+            - (contentPadding * 2)
+            - headerHeight
+            - dividerHeight
+            - (contentStackSpacing * 2)
+    }
+}
+
+enum MacResourcesPanelLayout {
+    static let verticalSpacing: CGFloat = 8
+    static let sparklineHeight: CGFloat = 30
+    static let trendBlockHeight: CGFloat = 68
+    static let storageBlockHeight: CGFloat = 54
+    static let networkBlockHeight: CGFloat = 56
+
+    static var estimatedContentHeight: CGFloat {
+        (trendBlockHeight * 2)
+            + storageBlockHeight
+            + networkBlockHeight
+            + (MacDogPopoverLayout.dividerHeight * 3)
+            + (verticalSpacing * 6)
+    }
+}
+
 private struct MacResourcesPanel: View {
     let snapshot: SystemMetricsSnapshot
     let history: SystemMetricsHistory
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MacResourcesPanelLayout.verticalSpacing) {
             ResourceTrendBlock(
                 title: "CPU",
                 systemImage: "cpu",
@@ -350,7 +392,7 @@ private struct ResourceTrendBlock: View {
                 }
 
                 SparklineView(values: values, tint: tint)
-                    .frame(height: 30)
+                    .frame(height: MacResourcesPanelLayout.sparklineHeight)
                     .padding(.top, 2)
             }
         }
