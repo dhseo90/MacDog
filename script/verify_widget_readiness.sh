@@ -68,6 +68,9 @@ require_text_match 'statusText = snapshot\.isStale' "$WIDGET_SOURCE" "stale cach
 require_text_match 'statusText = "오류:' "$WIDGET_SOURCE" "error cache state is presented"
 require_text_match 'let resetText: String' "$WIDGET_SOURCE" "widget presentation tracks reset timing"
 require_text_match '초기화까지' "$WIDGET_SOURCE" "widget displays reset countdown copy"
+require_text_match 'let metadataText: String' "$WIDGET_SOURCE" "widget presentation tracks medium metadata"
+require_text_match '크레딧' "$WIDGET_SOURCE" "widget displays credits metadata"
+require_text_match '갱신' "$WIDGET_SOURCE" "widget displays last update metadata"
 
 reject_text_match 'CodexAppServerClient|account/rateLimits/read|auth\.json|codex app-server' "$WIDGET_SOURCE" "widget must not perform live Codex auth or app-server work"
 
@@ -77,6 +80,9 @@ require_text_match '오래된 캐시' "$WIDGET_TESTS" "stale widget state is cov
 require_text_match '오류:' "$WIDGET_TESTS" "error widget state is covered by tests"
 require_text_match 'resetText' "$WIDGET_TESTS" "reset timing is covered by tests"
 require_text_match '초기화까지' "$WIDGET_TESTS" "reset countdown copy is covered by tests"
+require_text_match 'metadataText' "$WIDGET_TESTS" "medium metadata is covered by tests"
+require_text_match '크레딧' "$WIDGET_TESTS" "credits metadata copy is covered by tests"
+require_text_match '갱신' "$WIDGET_TESTS" "last update metadata copy is covered by tests"
 
 require_text_match 'application\(_ application: NSApplication, open urls: \[URL\]\)' "$APP_MAIN" "menu bar app handles URL opens"
 require_text_match '"macdog", "codexusage"' "$APP_MAIN" "menu bar app accepts macdog and compatibility URL schemes"

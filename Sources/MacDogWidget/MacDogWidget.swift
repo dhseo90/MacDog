@@ -70,6 +70,7 @@ struct WidgetUsagePresentation: Equatable {
     let maxUsedPercent: Double
     let statusText: String
     let resetText: String
+    let metadataText: String
 
     init(entry: CodexUsageEntry) {
         self.maxUsedPercent = entry.codexLimit?.maxUsedPercent ?? 0
@@ -86,6 +87,12 @@ struct WidgetUsagePresentation: Equatable {
         } else {
             self.statusText = "캐시 없음"
         }
+
+        self.metadataText = Self.metadataText(
+            report: entry.report,
+            cachedAt: entry.snapshot?.cachedAt,
+            now: entry.date
+        )
     }
 
     static func resetText(label: String?, window: UsageWindowReport?, now: Date) -> String {
@@ -138,6 +145,41 @@ struct WidgetUsagePresentation: Equatable {
             return "\(days)일 남음"
         }
         return "\(days)일 \(remainingHours)시간 남음"
+    }
+
+    static func metadataText(report: CodexUsageReport?, cachedAt: Int?, now: Date) -> String {
+        let credits = creditsText(report?.codexLimit?.credits ?? report?.credits)
+        let updated = lastUpdatedText(cachedAt: cachedAt, now: now)
+        return "\(credits) · \(updated)"
+    }
+
+    private static func creditsText(_ credits: CreditsSnapshot?) -> String {
+        guard let credits else { return "크레딧 알 수 없음" }
+        if credits.unlimited {
+            return "크레딧 무제한"
+        }
+        return "크레딧 \(credits.balance ?? "알 수 없음")"
+    }
+
+    private static func lastUpdatedText(cachedAt: Int?, now: Date) -> String {
+        guard let cachedAt else { return "갱신 알 수 없음" }
+        let cachedDate = Date(timeIntervalSince1970: TimeInterval(cachedAt))
+        let seconds = max(Int(now.timeIntervalSince(cachedDate)), 0)
+        if seconds < 60 {
+            return "갱신 방금"
+        }
+
+        let minutes = seconds / 60
+        if minutes < 60 {
+            return "갱신 \(minutes)분 전"
+        }
+
+        let hours = minutes / 60
+        if hours < 24 {
+            return "갱신 \(hours)시간 전"
+        }
+
+        return "갱신 \(hours / 24)일 전"
     }
 }
 
@@ -268,6 +310,12 @@ public struct MacDogUsageWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Text(presentation.metadataText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             WidgetUsageRow(title: "5시간", window: entry.codexLimit?.fiveHour, date: entry.date)
             WidgetUsageRow(title: "주간", window: entry.codexLimit?.weekly, date: entry.date)

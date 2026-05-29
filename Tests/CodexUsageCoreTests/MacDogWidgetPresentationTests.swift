@@ -14,6 +14,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.statusText, "캐시 없음")
         XCTAssertEqual(presentation.maxUsedPercent, 0)
         XCTAssertEqual(presentation.resetText, "초기화 시각 알 수 없음")
+        XCTAssertEqual(presentation.metadataText, "크레딧 알 수 없음 · 갱신 알 수 없음")
     }
 
     func testPresentationShowsUpdatedCacheAndMaxUsage() {
@@ -27,6 +28,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.statusText, "갱신됨")
         XCTAssertEqual(presentation.maxUsedPercent, 38)
         XCTAssertEqual(presentation.resetText, "주간 초기화까지 2일 7시간 남음")
+        XCTAssertEqual(presentation.metadataText, "크레딧 0 · 갱신 방금")
     }
 
     func testPresentationShowsStaleCacheWhenSnapshotIsOld() {
@@ -56,6 +58,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.statusText, "오류: network unavailable")
         XCTAssertEqual(presentation.maxUsedPercent, 38)
         XCTAssertEqual(presentation.resetText, "주간 초기화까지 2일 7시간 남음")
+        XCTAssertEqual(presentation.metadataText, "크레딧 0 · 갱신 방금")
     }
 
     func testPresentationShowsResetCountdownForHighestUsageWindow() {
@@ -77,6 +80,7 @@ final class MacDogWidgetPresentationTests: XCTestCase {
 
         XCTAssertEqual(presentation.maxUsedPercent, 82)
         XCTAssertEqual(presentation.resetText, "5시간 초기화까지 2시간 남음")
+        XCTAssertEqual(presentation.metadataText, "크레딧 0 · 갱신 방금")
     }
 
     func testWidgetResetTextHandlesMissingAndPastResetTime() {
@@ -113,6 +117,36 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         )
     }
 
+    func testWidgetMetadataShowsCreditsAndRelativeUpdateAge() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let unlimitedReport = makeReport(credits: CreditsSnapshot(hasCredits: true, unlimited: true, balance: nil))
+
+        XCTAssertEqual(
+            WidgetUsagePresentation.metadataText(
+                report: makeReport(credits: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12")),
+                cachedAt: 1_799_999_820,
+                now: now
+            ),
+            "크레딧 12 · 갱신 3분 전"
+        )
+        XCTAssertEqual(
+            WidgetUsagePresentation.metadataText(
+                report: unlimitedReport,
+                cachedAt: 1_799_989_200,
+                now: now
+            ),
+            "크레딧 무제한 · 갱신 3시간 전"
+        )
+        XCTAssertEqual(
+            WidgetUsagePresentation.metadataText(
+                report: nil,
+                cachedAt: 1_799_740_800,
+                now: now
+            ),
+            "크레딧 알 수 없음 · 갱신 3일 전"
+        )
+    }
+
     private func makeSnapshot(
         cachedAt: Int,
         staleAfterSeconds: Int,
@@ -131,7 +165,8 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         fiveHourUsedPercent: Double = 15,
         weeklyUsedPercent: Double = 38,
         fiveHourResetsAt: Int? = 1_779_801_000,
-        weeklyResetsAt: Int? = 1_780_000_000
+        weeklyResetsAt: Int? = 1_780_000_000,
+        credits: CreditsSnapshot = CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0")
     ) -> CodexUsageReport {
         let fiveHour = UsageWindowReport(
             kind: .fiveHour,
@@ -147,7 +182,6 @@ final class MacDogWidgetPresentationTests: XCTestCase {
             windowDurationMins: 10_080,
             resetsAt: weeklyResetsAt
         )
-        let credits = CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0")
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: nil,
