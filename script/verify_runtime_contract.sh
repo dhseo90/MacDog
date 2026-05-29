@@ -31,9 +31,9 @@ require_contains "$RUNTIME_DOC" "./script/build_and_run.sh --verify-runtime 10" 
 require_contains "$RUNTIME_DOC" "./script/build_and_run.sh --verify-floating-pet-runtime 10" "floating pet runtime smoke command is documented"
 require_contains "$RUNTIME_DOC" "CPU max가 50%를 넘으면 실패" "CPU threshold is documented"
 require_contains "$RUNTIME_DOC" "RSS max가 250MB를 넘으면 실패" "RSS threshold is documented"
-require_contains "$RUNTIME_DOC" "장시간 검증은 앱 실행과 사용자 환경 상태를 바꾸므로 명시 요청이 있을 때만 실행한다." "manual long-run boundary is documented"
+require_contains "$RUNTIME_DOC" "장시간 검증은 앱 실행과 사용자 환경 상태를 바꾸므로 명시 요청이 있을 때만 실행합니다." "manual long-run boundary is documented"
 
 require_contains "$ROADMAP" "script/build_and_run.sh --verify-floating-pet-runtime" "roadmap records floating pet runtime command"
-require_contains "$ROADMAP" "runtime 계약은 script/verify_runtime_contract.sh로 자동 검증한다." "roadmap records static runtime guard"
+require_contains "$ROADMAP" "runtime 계약은 script/verify_runtime_contract.sh로 자동 검증합니다." "roadmap records static runtime guard"
 
 echo "Runtime verification contract ok"
