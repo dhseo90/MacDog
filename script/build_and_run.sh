@@ -179,33 +179,85 @@ PLIST
 generate_app_icon() {
   local icon_source="$APP_RESOURCES/DesktopPet/pup-idle-front-0.png"
   local iconset="$APP_RESOURCES/MacDog.iconset"
+  local generator="$iconset/generate.swift"
 
   [[ -f "$icon_source" ]] || die "app icon source missing: $icon_source"
   rm -rf "$iconset"
   mkdir -p "$iconset"
 
-  make_icon_entry() {
-    local size="$1"
-    local name="$2"
-    local inner
-    local scaled="$iconset/.scaled-$name"
-    inner=$(( size * 86 / 100 ))
-    (( inner < 1 )) && inner=1
-    /usr/bin/sips -Z "$inner" "$icon_source" --out "$scaled" >/dev/null
-    /usr/bin/sips -p "$size" "$size" "$scaled" --out "$iconset/$name" >/dev/null
-    rm -f "$scaled"
-  }
+  cat >"$generator" <<'SWIFT'
+import AppKit
+import Foundation
 
-  make_icon_entry 16 icon_16x16.png
-  make_icon_entry 32 icon_16x16@2x.png
-  make_icon_entry 32 icon_32x32.png
-  make_icon_entry 64 icon_32x32@2x.png
-  make_icon_entry 128 icon_128x128.png
-  make_icon_entry 256 icon_128x128@2x.png
-  make_icon_entry 256 icon_256x256.png
-  make_icon_entry 512 icon_256x256@2x.png
-  make_icon_entry 512 icon_512x512.png
-  make_icon_entry 1024 icon_512x512@2x.png
+let sourcePath = CommandLine.arguments[1]
+let outputDirectory = CommandLine.arguments[2]
+
+guard let source = NSImage(contentsOfFile: sourcePath) else {
+    fatalError("Could not read app icon source: \(sourcePath)")
+}
+
+let entries: [(Int, String)] = [
+    (16, "icon_16x16.png"),
+    (32, "icon_16x16@2x.png"),
+    (32, "icon_32x32.png"),
+    (64, "icon_32x32@2x.png"),
+    (128, "icon_128x128.png"),
+    (256, "icon_128x128@2x.png"),
+    (256, "icon_256x256.png"),
+    (512, "icon_256x256@2x.png"),
+    (512, "icon_512x512.png"),
+    (1024, "icon_512x512@2x.png")
+]
+
+func render(size: Int, name: String) throws {
+    let side = CGFloat(size)
+    let image = NSImage(size: NSSize(width: side, height: side))
+    image.lockFocus()
+
+    NSColor.clear.setFill()
+    NSRect(x: 0, y: 0, width: side, height: side).fill()
+
+    let background = NSRect(x: side * 0.05, y: side * 0.05, width: side * 0.90, height: side * 0.90)
+    NSColor(calibratedRed: 0.10, green: 0.12, blue: 0.15, alpha: 1.0).setFill()
+    NSBezierPath(roundedRect: background, xRadius: side * 0.20, yRadius: side * 0.20).fill()
+
+    NSColor(calibratedRed: 0.22, green: 0.26, blue: 0.32, alpha: 1.0).setStroke()
+    let stroke = NSBezierPath(roundedRect: background.insetBy(dx: side * 0.025, dy: side * 0.025), xRadius: side * 0.17, yRadius: side * 0.17)
+    stroke.lineWidth = max(1, side * 0.018)
+    stroke.stroke()
+
+    let maxDogWidth = side * 0.70
+    let maxDogHeight = side * 0.74
+    let sourceSize = source.size
+    let scale = min(maxDogWidth / sourceSize.width, maxDogHeight / sourceSize.height)
+    let dogSize = NSSize(width: sourceSize.width * scale, height: sourceSize.height * scale)
+    let dogRect = NSRect(
+        x: (side - dogSize.width) / 2,
+        y: side * 0.12,
+        width: dogSize.width,
+        height: dogSize.height
+    )
+    source.draw(in: dogRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+    image.unlockFocus()
+
+    guard
+        let tiff = image.tiffRepresentation,
+        let bitmap = NSBitmapImageRep(data: tiff),
+        let png = bitmap.representation(using: .png, properties: [:])
+    else {
+        fatalError("Could not encode app icon entry: \(name)")
+    }
+
+    let url = URL(fileURLWithPath: outputDirectory).appendingPathComponent(name)
+    try png.write(to: url)
+}
+
+for entry in entries {
+    try render(size: entry.0, name: entry.1)
+}
+SWIFT
+
+  "$XCRUN" swift "$generator" "$icon_source" "$iconset" >/dev/null
 
   /usr/bin/iconutil -c icns "$iconset" -o "$APP_RESOURCES/MacDog.icns"
   rm -rf "$iconset"
