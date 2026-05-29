@@ -112,4 +112,25 @@ final class SingleInstanceGuardTests: XCTestCase {
 
         XCTAssertEqual(decision, .terminateDuplicate(processIdentifier: 100))
     }
+
+    func testParsesProcessIdentifiersFromPgrepOutput() {
+        XCTAssertEqual(
+            SingleInstanceGuard.processIdentifiers(from: "100\n 200 \nnot-a-pid\n"),
+            [100, 200]
+        )
+    }
+
+    func testShouldTerminateCurrentWhenAnotherMacDogProcessExists() {
+        XCTAssertTrue(SingleInstanceGuard.shouldTerminateCurrentInstance(
+            currentProcessIdentifier: 200,
+            processIdentifierProvider: { [100, 200] }
+        ))
+    }
+
+    func testShouldContinueWhenOnlyCurrentMacDogProcessExists() {
+        XCTAssertFalse(SingleInstanceGuard.shouldTerminateCurrentInstance(
+            currentProcessIdentifier: 200,
+            processIdentifierProvider: { [200] }
+        ))
+    }
 }

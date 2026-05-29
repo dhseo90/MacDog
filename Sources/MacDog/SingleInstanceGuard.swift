@@ -52,40 +52,39 @@ enum SingleInstanceGuard {
         return .terminateDuplicate(processIdentifier: duplicate.processIdentifier)
     }
 
-    @MainActor
     static func shouldTerminateCurrentInstance(
-        workspace: NSWorkspace = .shared,
-        currentProcessIdentifier: pid_t = getpid()
+        currentProcessIdentifier: pid_t = getpid(),
+        processIdentifierProvider: () -> [pid_t] = Self.macDogProcessIdentifiers
     ) -> Bool {
-        let applications = workspace.runningApplications.map {
-            RunningApplicationSnapshot(
-                processIdentifier: $0.processIdentifier,
-                bundleIdentifier: $0.bundleIdentifier,
-                localizedName: $0.localizedName,
-                bundleURLPath: $0.bundleURL?.standardizedFileURL.path,
-                executableURLPath: $0.executableURL?.standardizedFileURL.path
-            )
+        processIdentifierProvider().contains { $0 != currentProcessIdentifier }
+    }
+
+    static func processIdentifiers(from output: String) -> [pid_t] {
+        output
+            .split(whereSeparator: \.isNewline)
+            .compactMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
+    private static func macDogProcessIdentifiers() -> [pid_t] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        process.arguments = ["-x", appName]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return []
         }
 
-        let decision = launchDecision(
-            applications: applications,
-            currentProcessIdentifier: currentProcessIdentifier
-        )
-
-        switch decision {
-        case .continueCurrent:
-            return false
-        case .terminateCurrent(let processIdentifier):
-            workspace.runningApplications
-                .first { $0.processIdentifier == processIdentifier }?
-                .activate(options: [])
-            return true
-        case .terminateDuplicate(let processIdentifier):
-            workspace.runningApplications
-                .first { $0.processIdentifier == processIdentifier }?
-                .terminate()
-            return false
-        }
+        guard process.terminationStatus == 0 else { return [] }
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8) ?? ""
+        return processIdentifiers(from: output)
     }
 }
 

@@ -54,6 +54,28 @@ run_as_root() {
   fi
 }
 
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  "$@" &
+  local command_pid="$!"
+
+  (
+    sleep "$timeout_seconds"
+    if kill -0 "$command_pid" >/dev/null 2>&1; then
+      kill "$command_pid" >/dev/null 2>&1 || true
+    fi
+  ) &
+  local watchdog_pid="$!"
+
+  local status=0
+  wait "$command_pid" || status="$?"
+  kill "$watchdog_pid" >/dev/null 2>&1 || true
+  wait "$watchdog_pid" >/dev/null 2>&1 || true
+  return "$status"
+}
+
 xml_escape() {
   local value="$1"
   value="${value//&/&amp;}"
@@ -256,6 +278,7 @@ case "$MODE" in
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
     echo "Cache agent interval: 300 seconds"
+    echo "Cache prime timeout: 20 seconds"
     echo "Monitor agent RunAtLoad: true"
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
@@ -350,7 +373,7 @@ cat >"$MONITOR_PLIST" <<PLIST
 </plist>
 PLIST
 
-if ! "$CLI_DEST" status --write-cache >/dev/null; then
+if ! run_with_timeout 20 "$CLI_DEST" status --write-cache >/dev/null; then
   echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
 fi
 
