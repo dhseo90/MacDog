@@ -1,4 +1,4 @@
-# Closed-Display Mode Research
+# 덮개 닫힘 보호 조사
 
 상태: helper 기반 1차 구현 완료 / 장시간 실사용 검증 통과
 작성일: 2026-05-27

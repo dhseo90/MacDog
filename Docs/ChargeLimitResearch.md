@@ -1,4 +1,4 @@
-# Charge Limit Research
+# 충전 한도 조사
 
 상태: native Charge Limit 직접 제어 1차 구현 / 90% 실사용 검증 통과 / Shortcuts read-only probe 추가 / SMC 직접 제어는 별도 기능으로 검토
 작성일: 2026-05-27

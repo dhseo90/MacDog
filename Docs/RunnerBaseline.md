@@ -1,35 +1,35 @@
-# Runner Baseline
+# 러너 기준선
 
-This document fixes the current Codex Pup runner as the app runner baseline.
+이 문서는 현재 `Codex Pup` 러너를 MacDog의 기준 캐릭터 러너로 고정합니다.
 
 ## Codex Pup
 
-- Asset path: `Sources/MacDog/Resources/Runner`
-- Frame files: `pup-runner-0.png` through `pup-runner-7.png`
-- Character profile: `MacDogCharacterProfile.codexPup`
-- Frame count: 8
-- Frame size: 80x48 px
-- Menu bar status item length: 38 pt
-- Popover size: 320x540 pt
-- Default runner speed basis: weekly usage
+- asset 경로: `Sources/MacDog/Resources/Runner`
+- frame 파일: `pup-runner-0.png`부터 `pup-runner-7.png`
+- 캐릭터 profile: `MacDogCharacterProfile.codexPup`
+- frame 수: 8
+- frame 크기: 80x48 px
+- 메뉴바 status item 길이: 38 pt
+- popover 크기: 320x540 pt
+- 기본 러너 속도 기준: 주간 사용량
 
-## Usage Phases
+## 사용량 단계
 
-| Phase | Used percent | Meaning |
+| 단계 | 사용률 | 의미 |
 | --- | ---: | --- |
-| Calm | 0-49% | Low pressure |
-| Active | 50-79% | Moderate pressure |
-| Fast | 80-94% | High pressure |
-| Sprint | 95-99% | Near limit |
-| Limit | 100%+ | Limit reached |
+| 여유 | 0-49% | 낮은 사용량 |
+| 활발 | 50-79% | 보통 사용량 |
+| 빠름 | 80-94% | 높은 사용량 |
+| 질주 | 95-99% | 한도 근접 |
+| 한도 | 100%+ | 한도 도달 |
 
-## Verification
+## 검증
 
-Run:
+다음 명령으로 기준선을 확인합니다.
 
 ```sh
 ./script/verify_runner_baseline.sh
 ./script/build_and_run.sh --verify
 ```
 
-Use this baseline before changing runner assets.
+러너 asset을 바꾸기 전에는 이 기준선과 변경 의도를 먼저 비교합니다.

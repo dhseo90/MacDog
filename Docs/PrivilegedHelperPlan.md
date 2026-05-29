@@ -1,4 +1,4 @@
-# Privileged Helper Plan
+# 권한 도우미 계획
 
 상태: helper 우선 sleep 제어 코드 구현 / helper-only 실제 설치와 XPC read,set 검증 완료 / UI 설정 변경 검증 완료 / 장시간 덮개 닫힘 실사용 검증 통과 / drag-and-drop DMG 첫 실행 설치 마무리 구성 / 앱 내부 helper 설치,제거 버튼 1차 구현
 작성일: 2026-05-28

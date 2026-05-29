@@ -130,8 +130,8 @@ require_plist_value ':com.apple.security.application-groups:0' "$WIDGET_EXTENSIO
 require_plist_value ':com.apple.security.app-sandbox' "$WIDGET_HOST_ENTITLEMENTS" 'true' "widget host sandbox entitlement"
 require_plist_value ':com.apple.security.application-groups:0' "$WIDGET_HOST_ENTITLEMENTS" 'group.com.dhseo.macdog.MacDog' "widget host app group"
 
-require_text_match 'Manually add the widget' "$WIDGET_PACKAGING_DOC" "manual widget gallery verification remains documented"
-require_text_match 'Click the widget' "$WIDGET_PACKAGING_DOC" "manual deep-link verification remains documented"
+require_text_match 'Manually add the widget|macOS widget gallery에서 위젯을 직접 추가' "$WIDGET_PACKAGING_DOC" "manual widget gallery verification remains documented"
+require_text_match 'Click the widget|위젯을 클릭' "$WIDGET_PACKAGING_DOC" "manual deep-link verification remains documented"
 
 if [[ -d "$APP_BUNDLE" ]]; then
   [[ -f "$APP_INFO_PLIST" ]] || die "dist app Info.plist missing: $APP_INFO_PLIST"
@@ -146,4 +146,4 @@ else
 fi
 
 echo "WidgetKit readiness ok"
-echo "Manual checks still required: add the widget from the macOS widget gallery, click it, and inspect stale/error UI on the signed distribution build."
+echo "수동 검수 필요: signed distribution build에서 macOS widget gallery 추가, 클릭, stale/error UI를 직접 확인해야 합니다."

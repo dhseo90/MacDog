@@ -1,14 +1,14 @@
-## Summary
+## 요약
 
 -
 
-## Scope
+## 범위
 
 - 변경 범위:
 - 영향 받는 탭/CLI/스크립트/문서:
 - 사용자 환경 변경 여부:
 
-## Verification
+## 검증
 
 - [ ] `git diff --check`
 - [ ] `./script/check.sh --no-run`
@@ -18,7 +18,7 @@
 - [ ] release packaging 변경 없음 / 실행함:
 - [ ] README 이미지 변경 없음 / `./script/verify_readme_screenshots.sh` 실행함:
 
-## Notes
+## 메모
 
 - 미실행 검증:
 - 사용자 환경 영향:

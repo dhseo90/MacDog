@@ -1,4 +1,4 @@
-# Script Reference
+# 스크립트 참조
 
 이 문서는 `script/*.sh`가 무엇을 하는지 정리합니다. 기본 원칙은 read-only 검증 스크립트와 설치/실행처럼 사용자 환경을 바꾸는 스크립트를 구분하는 것입니다.
 
@@ -10,7 +10,7 @@
 | `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행합니다. |
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, cache 경로를 만듭니다. helper 설치 옵션은 관리자 권한이 필요합니다. |
 | `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, cache 파일을 제거합니다. 기본값은 UserDefaults와 optional helper를 유지합니다. |
-| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop DMG 후보와 checksum을 만듭니다. staging 폴더는 검증 후 남기지 않습니다. signing/notarization은 별도 workflow gate다. |
+| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop 배경이 포함된 DMG 후보와 checksum을 만듭니다. staging 폴더는 검증 후 남기지 않습니다. signing/notarization은 별도 workflow gate입니다. |
 | `script/configure_github_public_repo_settings.sh` | GitHub public release 서버 설정 적용 | 기본은 dry-run입니다. `--apply`는 Actions/security 설정을 변경하고, `--make-public`은 추가 확인값이 있을 때만 repo 공개 전환을 수행합니다. |
 | `script/configure_github_branch_protection.sh` | GitHub `main` 보호 규칙 적용 | 기본은 dry-run입니다. `--apply`는 GitHub repo 설정을 변경하며 public repo 또는 private branch protection 가능 plan이 필요합니다. |
 
@@ -24,6 +24,7 @@
 | `script/install.sh --helper-only` | helper만 설치 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 변경합니다. |
 | `script/uninstall.sh --dry-run` | 삭제 전 변경 대상 출력 | 파일/LaunchAgent를 바꾸지 않습니다. |
 | `script/uninstall.sh` | user component 삭제 | 앱, CLI symlink, user LaunchAgent, cache 파일을 제거합니다. helper는 유지합니다. |
+| `script/uninstall.sh --reset-preferences` | user component 삭제와 설정 초기화 | 앱, CLI symlink, user LaunchAgent, cache 파일을 제거하고 MacDog UserDefaults를 초기화합니다. helper는 유지합니다. |
 | `script/uninstall.sh --with-helper` | user component와 optional helper 삭제 | user component와 `/Library` helper를 함께 제거합니다. |
 | `script/uninstall.sh --helper-only` | helper만 삭제 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 제거합니다. |
 
@@ -37,13 +38,13 @@
 | `script/build_and_run.sh --verify-runtime 10` | 짧은 CPU/RSS smoke | 앱을 실행하고 지정 초 동안 CPU/RSS를 샘플링합니다. |
 | `script/build_and_run.sh --verify-floating-pet-runtime 10` | 플로팅 펫 포함 runtime smoke | 데스크톱 펫을 켠 상태로 CPU/RSS를 샘플링합니다. |
 
-## Read-Only 검증
+## 읽기 전용 검증
 
 | Script | 의미 | 영향 |
 | --- | --- | --- |
 | `script/verify_app_bundle.sh` | app bundle 구조 검증 | 지정 앱 번들의 실행 파일, helper, widget extension, signature 구조를 읽습니다. |
 | `script/verify_app_privacy_boundaries.sh` | 앱 privacy boundary 검증 | menu bar UI가 live Codex app-server나 shared cache fallback을 직접 열지 않는지 코드 기준으로 확인합니다. |
-| `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정과 monitor LaunchAgent 생성 규칙을 확인합니다. |
+| `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정과 macOS 로그인 항목 등록 규칙을 확인합니다. |
 | `script/verify_cache_contract.sh` | cache schema와 stale/error 계약 검증 | cache 모델, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | runner, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
 | `script/verify_dist_hygiene.sh` | dist 산출물 hygiene 검증 | stale app bundle 복사본 같은 혼동 요소를 확인합니다. |
@@ -77,13 +78,13 @@
 | `script/write_widget_cache_fixture.sh --self-test` | widget fixture writer self-test | live cache를 건드리지 않고 fixture writer 동작만 확인합니다. |
 | `script/write_widget_cache_fixture.sh --state stale --shared-cache` | widget 수동 검수용 shared cache fixture 작성 | 실제 shared cache에 stale/error/updated fixture를 써서 위젯 표시를 확인할 수 있습니다. |
 
-## Release Packaging
+## 릴리즈 패키징
 
 | Script | 의미 | 영향 |
 | --- | --- | --- |
 | `script/package_release.sh --dry-run` | release packaging 계획 출력 | 파일을 만들지 않고 DMG 구성과 gate를 보여줍니다. |
-| `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만듭니다. |
-| `script/package_release.sh` | DMG와 checksum 생성 | `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. |
+| `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만들고 숨김 DMG 배경 이미지를 포함합니다. |
+| `script/package_release.sh` | DMG와 checksum 생성 | drag-and-drop 배경이 적용된 `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. Finder layout 적용이 실패하면 plain DMG로 대체합니다. |
 | `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, legacy command payload 미포함, release note, checksum, DMG 무결성을 확인합니다. |
 | `script/configure_github_public_repo_settings.sh --dry-run` | GitHub public release 서버 설정 계획 출력 | GitHub repo를 변경하지 않고 Actions/security/public/branch protection 적용 순서를 출력합니다. |
 | `script/configure_github_public_repo_settings.sh --check` | GitHub 서버 설정 조회 | Actions 권한, workflow token 권한, vulnerability alerts, Dependabot security updates, public fork PR approval 상태를 읽습니다. |
