@@ -17,6 +17,7 @@ MacDog는 macOS menu bar 앱, CLI, WidgetKit, 권한 도우미, release packagin
 
 ```sh
 ./script/check.sh --no-run
+./script/verify_public_repo_guardrails.sh
 ```
 
 앱 실행까지 포함한 검증:

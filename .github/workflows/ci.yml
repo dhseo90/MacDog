@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: verify
+  static-gates:
+    name: static-gates
     runs-on: macos-latest
     timeout-minutes: 45
 

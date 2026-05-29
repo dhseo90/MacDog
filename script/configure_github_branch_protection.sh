@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPOSITORY="${MACDOG_GITHUB_REPOSITORY:-dhseo90/MacDog}"
 BRANCH="${MACDOG_GITHUB_BRANCH:-main}"
-STATUS_CONTEXT="${MACDOG_REQUIRED_STATUS_CONTEXT:-verify}"
+STATUS_CONTEXTS_RAW="${MACDOG_REQUIRED_STATUS_CONTEXTS:-${MACDOG_REQUIRED_STATUS_CONTEXT:-static-gates,guardrails}}"
 MODE="dry-run"
 
 usage() {
@@ -15,7 +15,7 @@ Configures GitHub branch protection for MacDog.
 Environment:
   MACDOG_GITHUB_REPOSITORY       owner/repo target. Default: dhseo90/MacDog
   MACDOG_GITHUB_BRANCH           protected branch. Default: main
-  MACDOG_REQUIRED_STATUS_CONTEXT required CI status context. Default: verify
+  MACDOG_REQUIRED_STATUS_CONTEXTS comma-separated required CI status contexts. Default: static-gates,guardrails
 
 Notes:
   - GitHub Free only allows branch protection on public repositories.
@@ -46,11 +46,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+IFS=',' read -r -a status_contexts <<<"$STATUS_CONTEXTS_RAW"
+status_context_json=""
+for context in "${status_contexts[@]}"; do
+  context="${context#"${context%%[![:space:]]*}"}"
+  context="${context%"${context##*[![:space:]]}"}"
+  [[ -n "$context" ]] || continue
+  if [[ -n "$status_context_json" ]]; then
+    status_context_json+=", "
+  fi
+  status_context_json+="\"$context\""
+done
+[[ -n "$status_context_json" ]] || {
+  echo "error: at least one required status context is needed" >&2
+  exit 2
+}
+
 body="$(cat <<JSON
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["$STATUS_CONTEXT"]
+    "contexts": [$status_context_json]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
@@ -73,7 +89,7 @@ JSON
 if [[ "$MODE" == "dry-run" ]]; then
   echo "Target repository: $REPOSITORY"
   echo "Target branch: $BRANCH"
-  echo "Required status context: $STATUS_CONTEXT"
+  echo "Required status contexts: $STATUS_CONTEXTS_RAW"
   echo
   echo "Branch protection payload:"
   printf '%s\n' "$body"

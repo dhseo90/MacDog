@@ -48,6 +48,7 @@
 | `script/verify_dist_hygiene.sh` | dist 산출물 hygiene 검증 | stale app bundle 복사본 같은 혼동 요소를 확인한다. |
 | `script/verify_distribution_gate.sh` | public release gate 검증 | unsigned draft와 signed stable release 문구/워크플로 분리를 확인한다. |
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인한다. |
+| `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인한다. |
 | `script/verify_readme_screenshots.sh` | README 이미지 hygiene 검증 | README가 참조하는 공식 이미지와 임시 이미지 삭제 상태를 확인한다. |
 | `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인한다. |
 | `script/verify_runner_baseline.sh` | 메뉴바 runner 기준선 검증 | runner frame count, size, 상태 mapping을 확인한다. |

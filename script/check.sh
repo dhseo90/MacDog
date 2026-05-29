@@ -33,10 +33,11 @@ Checks:
   19. Shortcuts Charge Limit fallback availability is probed without changing settings.
   20. The current app/helper install state can be reported without changing the system.
   21. Release packaging dry-run is stable.
-  22. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  23. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  24. Privileged helper reinstall test plan is safe to stage before actual approval.
-  25. Unless --no-run is passed, the app launches and its process is detected.
+  22. Public repository guardrails are present and consistent.
+  23. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  24. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  25. Privileged helper reinstall test plan is safe to stage before actual approval.
+  26. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -140,6 +141,9 @@ echo "==> Probing Shortcuts Charge Limit fallback"
 
 echo "==> Verifying release packaging dry-run"
 ./script/verify_release_packaging.sh
+
+echo "==> Verifying public repo guardrails"
+./script/verify_public_repo_guardrails.sh
 
 echo "==> Verifying release workflow"
 ./script/verify_release_workflow.sh

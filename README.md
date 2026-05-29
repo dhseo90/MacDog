@@ -169,11 +169,14 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만든다.
 레포에는 PR 기반 운영을 위한 기본 준비가 포함되어 있다.
 
 - PR/`main` push 검증 workflow: `.github/workflows/ci.yml`
+- public repo guardrails workflow: `.github/workflows/public-repo-guardrails.yml`
 - 전체 파일 기본 reviewer: `.github/CODEOWNERS`
 - PR 검증 템플릿: `.github/pull_request_template.md`
+- 취약점 보고 기준: `SECURITY.md`
+- public repo 정책 파일: `config/public_repo_policy.json`
 - branch protection 적용 스크립트: `script/configure_github_branch_protection.sh`
 
-`main` 직접 push 차단과 PR 필수 규칙은 GitHub repository 설정이다. GitHub Free private repository에서는 GitHub가 branch protection API를 거절할 수 있으므로, public 전환 또는 branch protection 가능 plan 조건을 먼저 충족한 뒤 적용한다.
+`main` 직접 push 차단과 PR 필수 규칙은 GitHub repository 설정이다. GitHub Free private repository에서는 GitHub가 branch protection API를 거절할 수 있으므로, public 전환 또는 branch protection 가능 plan 조건을 먼저 충족한 뒤 `static-gates`와 `guardrails` required checks를 적용한다.
 
 ## Sleep Prevention
 

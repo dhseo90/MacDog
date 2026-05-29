@@ -1,0 +1,61 @@
+{
+  "repository": "dhseo90/MacDog",
+  "visibilityTarget": "public",
+  "defaultBranch": "main",
+  "requiredFiles": [
+    "LICENSE",
+    "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "AGENTS.md",
+    ".github/CODEOWNERS",
+    ".github/pull_request_template.md",
+    ".github/dependabot.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/public-repo-guardrails.yml",
+    "Docs/GitHubReleaseChecklist.md",
+    "Docs/ReleasePackaging.md"
+  ],
+  "requiredStatusChecks": [
+    "static-gates",
+    "guardrails"
+  ],
+  "githubServerSettings": {
+    "actions": {
+      "enabled": true,
+      "allowedActions": "all",
+      "defaultWorkflowPermissions": "read",
+      "canApprovePullRequestReviews": false,
+      "forkPullRequestContributorApprovalWhenPublic": "first_time_contributors"
+    },
+    "branchProtection": {
+      "target": "main",
+      "requirePullRequest": true,
+      "requiredApprovingReviewCount": 1,
+      "requireCodeOwnerReview": true,
+      "requireStrictStatusChecks": true,
+      "blockForcePushes": true,
+      "blockBranchDeletion": true,
+      "requireConversationResolution": true,
+      "bypassActors": []
+    },
+    "security": {
+      "vulnerabilityAlerts": true,
+      "dependabotSecurityUpdates": true,
+      "secretScanningWhenAvailable": true
+    }
+  },
+  "trackedArtifactPolicy": {
+    "maxFileBytes": 25000000,
+    "forbiddenTrackedPathPrefixes": [
+      "Assets/Generated/",
+      "dist/",
+      ".build/",
+      "DerivedData/"
+    ],
+    "allowedImagePathPrefixes": [
+      "Sources/MacDog/Resources/",
+      "Docs/Images/README/"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+name: Public Repo Guardrails
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  guardrails:
+    name: guardrails
+    runs-on: macos-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Verify public repo guardrails
+        run: ./script/verify_public_repo_guardrails.sh

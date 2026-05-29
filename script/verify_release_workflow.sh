@@ -6,6 +6,7 @@ WORKFLOW="$ROOT_DIR/.github/workflows/release-candidate.yml"
 DRAFT_WORKFLOW="$ROOT_DIR/.github/workflows/release-draft.yml"
 STABLE_WORKFLOW="$ROOT_DIR/.github/workflows/release-stable.yml"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
+GUARDRAILS_WORKFLOW="$ROOT_DIR/.github/workflows/public-repo-guardrails.yml"
 CODEOWNERS="$ROOT_DIR/.github/CODEOWNERS"
 BRANCH_PROTECTION_SCRIPT="$ROOT_DIR/script/configure_github_branch_protection.sh"
 
@@ -34,9 +35,15 @@ require_ci_match() {
   /usr/bin/grep -Eq -- "$pattern" "$CI_WORKFLOW" || die "missing expected ci workflow pattern: $pattern"
 }
 
+require_guardrails_match() {
+  local pattern="$1"
+  /usr/bin/grep -Eq -- "$pattern" "$GUARDRAILS_WORKFLOW" || die "missing expected guardrails workflow pattern: $pattern"
+}
+
 [[ -f "$WORKFLOW" ]] || die "release candidate workflow missing: $WORKFLOW"
 [[ -f "$DRAFT_WORKFLOW" ]] || die "draft release workflow missing: $DRAFT_WORKFLOW"
 [[ -f "$CI_WORKFLOW" ]] || die "ci workflow missing: $CI_WORKFLOW"
+[[ -f "$GUARDRAILS_WORKFLOW" ]] || die "guardrails workflow missing: $GUARDRAILS_WORKFLOW"
 [[ -f "$CODEOWNERS" ]] || die "CODEOWNERS missing: $CODEOWNERS"
 [[ -x "$BRANCH_PROTECTION_SCRIPT" ]] || die "branch protection script missing or not executable: $BRANCH_PROTECTION_SCRIPT"
 
@@ -45,11 +52,19 @@ require_ci_match 'branches:'
 require_ci_match 'main'
 require_ci_match 'runs-on: macos-latest'
 require_ci_match './script/check\.sh --no-run'
-require_ci_match 'name: verify'
+require_ci_match 'name: static-gates'
+require_guardrails_match 'pull_request'
+require_guardrails_match 'branches:'
+require_guardrails_match 'main'
+require_guardrails_match 'runs-on: macos-latest'
+require_guardrails_match './script/verify_public_repo_guardrails\.sh'
+require_guardrails_match 'name: guardrails'
 /usr/bin/grep -Fq -- '@dhseo90' "$CODEOWNERS" || die "CODEOWNERS must include @dhseo90"
 /usr/bin/grep -Fq -- 'required_pull_request_reviews' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing PR review rule"
 /usr/bin/grep -Fq -- 'require_code_owner_reviews' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing code owner review rule"
 /usr/bin/grep -Fq -- 'required_status_checks' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing required status checks"
+/usr/bin/grep -Fq -- 'static-gates' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing static-gates check"
+/usr/bin/grep -Fq -- 'guardrails' "$BRANCH_PROTECTION_SCRIPT" || die "branch protection script missing guardrails check"
 
 require_match 'workflow_dispatch'
 require_match 'MACDOG_RELEASE_VERSION'
