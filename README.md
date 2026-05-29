@@ -71,6 +71,7 @@ runtime smoke:
 codex-usage status
 codex-usage status --json
 codex-usage status --write-cache
+codex-usage status --write-cache --timeout 5
 codex-usage status --watch 60
 codex-usage doctor
 ```

@@ -167,6 +167,7 @@ codex-usage doctor
 - stale 판단 기준 추가
 - menu bar 앱 cache read 주기 기본값 60초
 - 설치형 cache agent 갱신 주기 기본값 300초
+- 설치/LaunchAgent cache writer는 `--timeout`으로 app-server 응답 대기 시간을 제한한다
 - 마지막 성공 snapshot과 현재 오류 상태를 함께 저장
 
 저장 위치:

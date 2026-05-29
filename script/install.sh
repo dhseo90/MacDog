@@ -24,6 +24,8 @@ HELPER_TOOL_DEST="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 HELPER_PLIST_DEST="/Library/LaunchDaemons/$HELPER_LABEL.plist"
 HELPER_LOG_DIR="/Library/Logs/MacDog"
 UID_VALUE="$(id -u)"
+CACHE_REQUEST_TIMEOUT_SECONDS=5
+CACHE_PRIME_TIMEOUT_SECONDS=12
 WITH_HELPER=0
 HELPER_ONLY=0
 
@@ -278,7 +280,8 @@ case "$MODE" in
     echo "LaunchAgent cache plist: $CACHE_PLIST"
     echo "LaunchAgent monitor plist: $MONITOR_PLIST"
     echo "Cache agent interval: 300 seconds"
-    echo "Cache prime timeout: 20 seconds"
+    echo "Cache request timeout: $CACHE_REQUEST_TIMEOUT_SECONDS seconds"
+    echo "Cache prime timeout: $CACHE_PRIME_TIMEOUT_SECONDS seconds"
     echo "Monitor agent RunAtLoad: true"
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
     echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
@@ -336,6 +339,8 @@ cat >"$CACHE_PLIST" <<PLIST
     <string>$CLI_DEST</string>
     <string>status</string>
     <string>--write-cache</string>
+    <string>--timeout</string>
+    <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
     <string>--watch</string>
     <string>300</string>
   </array>
@@ -373,7 +378,7 @@ cat >"$MONITOR_PLIST" <<PLIST
 </plist>
 PLIST
 
-if ! run_with_timeout 20 "$CLI_DEST" status --write-cache >/dev/null; then
+if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
   echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
 fi
 

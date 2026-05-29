@@ -62,6 +62,8 @@ require_contains "$output" "Post-install check: Check Install Status.command"
 require_contains "$output" "Developer ID signing and notarization are not performed"
 require_contains "$output" "Gatekeeper: unsigned candidates are local validation artifacts"
 require_contains "$output" "GitHub Release:"
+require_contains "$output" "Cache request timeout: 5 seconds"
+require_contains "$output" "Cache prime timeout: 12 seconds"
 
 if [[ -d "$APP_BUNDLE" ]]; then
   version="verify"
@@ -94,6 +96,8 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq "Check Install Status.command" "$stage/Install MacDog.command" || die "installer status handoff missing"
   /usr/bin/grep -Fq 'launchctl bootstrap "gui/$UID_VALUE"' "$stage/Install MacDog.command" || die "installer LaunchAgent bootstrap missing"
   /usr/bin/grep -Fq 'pkill -9 -x "$APP_NAME"' "$stage/Install MacDog.command" || die "installer sleep-safe app restart step missing"
+  /usr/bin/grep -Fq '<string>--timeout</string>' "$stage/Install MacDog.command" || die "installer cache agent timeout argument missing"
+  /usr/bin/grep -Fq 'run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS"' "$stage/Install MacDog.command" || die "installer cache prime timeout wrapper missing"
   /usr/bin/grep -Fq 'REQUIRE_SIGNED_HELPER_HOST="0"' "$stage/Install Privileged Helper.command" || die "helper installer local signed-host flag missing"
   /usr/bin/grep -Fq 'detect_host_team_identifier' "$stage/Install Privileged Helper.command" || die "helper installer TeamIdentifier detection missing"
   /usr/bin/grep -Fq 'MACDOG_HELPER_HOST_TEAM_ID' "$stage/Install Privileged Helper.command" || die "helper installer signed host environment missing"

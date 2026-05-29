@@ -13,6 +13,8 @@ DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
 REQUIRE_SIGNED_HELPER_HOST="${MACDOG_REQUIRE_SIGNED_HELPER_HOST:-0}"
+CACHE_REQUEST_TIMEOUT_SECONDS=5
+CACHE_PRIME_TIMEOUT_SECONDS=12
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
@@ -86,6 +88,8 @@ Post-install check: Check Install Status.command verifies app, CLI, user LaunchA
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
 Gatekeeper: unsigned candidates are local validation artifacts and must not be published as public stable releases.
 GitHub Release: upload DMG only after signing/notarization gate is satisfied for public distribution.
+Cache request timeout: $CACHE_REQUEST_TIMEOUT_SECONDS seconds
+Cache prime timeout: $CACHE_PRIME_TIMEOUT_SECONDS seconds
 DRYRUN
   exit 0
 fi
@@ -172,10 +176,34 @@ MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 UID_VALUE="$(id -u)"
+CACHE_REQUEST_TIMEOUT_SECONDS=5
+CACHE_PRIME_TIMEOUT_SECONDS=12
 
 die() {
   echo "error: $*" >&2
   exit 1
+}
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  "$@" &
+  local command_pid="$!"
+
+  (
+    sleep "$timeout_seconds"
+    if kill -0 "$command_pid" >/dev/null 2>&1; then
+      kill "$command_pid" >/dev/null 2>&1 || true
+    fi
+  ) &
+  local watchdog_pid="$!"
+
+  local status=0
+  wait "$command_pid" 2>/dev/null || status="$?"
+  kill "$watchdog_pid" >/dev/null 2>&1 || true
+  wait "$watchdog_pid" >/dev/null 2>&1 || true
+  return "$status"
 }
 
 macdog_owns_sleep_disabled() {
@@ -219,6 +247,8 @@ cat >"$CACHE_PLIST" <<PLIST
     <string>$CLI_DEST</string>
     <string>status</string>
     <string>--write-cache</string>
+    <string>--timeout</string>
+    <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
     <string>--watch</string>
     <string>300</string>
   </array>
@@ -256,7 +286,7 @@ cat >"$MONITOR_PLIST" <<PLIST
 </plist>
 PLIST
 
-"$CLI_DEST" status --write-cache >/dev/null || true
+run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null || true
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$CACHE_PLIST"
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$MONITOR_PLIST"
 /usr/bin/open "$APP_DEST"

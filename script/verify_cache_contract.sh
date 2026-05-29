@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Cache/CodexUsageCache.swift"
+CLI_SOURCE="$ROOT_DIR/Sources/CodexUsageCLI/main.swift"
 CACHE_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/CodexUsageCacheTests.swift"
 WIDGET_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/MacDogWidgetPresentationTests.swift"
 DEFAULT_CACHE="$HOME/Library/Application Support/MacDog/usage.json"
@@ -24,6 +25,8 @@ require_match 'defaultAppGroupIdentifier = "group\.com\.dhseo\.macdog\.MacDog"' 
 require_match 'defaultSharedFileURL' "$CACHE_SOURCE"
 require_match 'defaultMirroredFileURLs' "$CACHE_SOURCE"
 require_match 'cacheAgentRefreshIntervalSeconds = 300' "$CACHE_SOURCE"
+require_match '"--timeout"' "$CLI_SOURCE"
+require_match 'CodexAppServerClient\(timeout: timeout \?\? 15\)' "$CLI_SOURCE"
 require_match 'schemaVersion' "$CACHE_TESTS"
 require_match 'DefaultSharedFileURLUsesStableAppGroupFallback' "$CACHE_TESTS"
 require_match 'DefaultMirroredFileURLsIncludeDefaultAndSharedCachePaths' "$CACHE_TESTS"

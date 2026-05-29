@@ -34,6 +34,7 @@ struct CLI {
         var watchInterval: UInt32?
         var writeCache = false
         var cachePath: String?
+        var timeout: TimeInterval?
         var index = 0
 
         while index < args.count {
@@ -48,6 +49,16 @@ struct CLI {
                     return .usage
                 }
                 cachePath = args[index + 1]
+                index += 1
+            case "--timeout":
+                guard index + 1 < args.count,
+                      let value = TimeInterval(args[index + 1]),
+                      value > 0
+                else {
+                    errorOutput("--timeout requires a positive number of seconds.")
+                    return .usage
+                }
+                timeout = value
                 index += 1
             case "--watch":
                 guard index + 1 < args.count, let interval = UInt32(args[index + 1]), interval > 0 else {
@@ -64,7 +75,7 @@ struct CLI {
         }
 
         repeat {
-            let exitCode = printStatus(json: json, writeCache: writeCache, cachePath: cachePath)
+            let exitCode = printStatus(json: json, writeCache: writeCache, cachePath: cachePath, timeout: timeout)
             if watchInterval == nil {
                 return exitCode
             }
@@ -72,12 +83,12 @@ struct CLI {
         } while true
     }
 
-    private func printStatus(json: Bool, writeCache: Bool, cachePath: String?) -> ExitCode {
+    private func printStatus(json: Bool, writeCache: Bool, cachePath: String?, timeout: TimeInterval?) -> ExitCode {
         let cacheStores = makeCacheStores(path: cachePath)
 
         do {
             let formatter = CodexUsageFormatter()
-            let report = try makeService().readReport()
+            let report = try makeService(timeout: timeout).readReport()
 
             if writeCache {
                 try cacheStores.forEach { try $0.writeSuccess(report: report) }
@@ -121,8 +132,8 @@ struct CLI {
         }
     }
 
-    private func makeService() throws -> CodexUsageService {
-        let client = try CodexAppServerClient()
+    private func makeService(timeout: TimeInterval? = nil) throws -> CodexUsageService {
+        let client = try CodexAppServerClient(timeout: timeout ?? 15)
         return CodexUsageService(client: client)
     }
 
@@ -137,7 +148,7 @@ struct CLI {
 
     static let help = """
     Usage:
-      codex-usage status [--json] [--write-cache] [--cache-path PATH] [--watch SECONDS]
+      codex-usage status [--json] [--write-cache] [--cache-path PATH] [--timeout SECONDS] [--watch SECONDS]
       codex-usage doctor
 
     Commands:
