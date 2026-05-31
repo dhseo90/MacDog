@@ -125,6 +125,7 @@ restore_sleep_disabled_if_requested() {
       "$app_binary" --verify-privileged-helper-xpc-set --value 0 >/dev/null 2>&1 && return 0
     fi
   done
+  return 0
 }
 
 uninstall_privileged_helper() {
