@@ -7,7 +7,7 @@ USE_SHARED_CACHE=0
 DRY_RUN=0
 SELF_TEST=0
 APP_GROUP_ID="group.com.dhseo.macdog.MacDog"
-SENSITIVE_PATTERN='access_token|refresh_token|session_id|authorization|cookie|bearer[[:space:]]+'
+SENSITIVE_PATTERN='access[_-]?token|refresh[_-]?token|session[_-]?id|id[_-]?token|auth[_-]?token|api[_-]?key|client[_-]?secret|authorization|cookie|bearer[[:space:]]+'
 
 usage() {
   cat <<USAGE

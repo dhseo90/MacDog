@@ -115,7 +115,11 @@ final class CodexUsageCacheTests: XCTestCase {
         })
 
         try store.writeFailure(
-            message: "request failed access_token=abc123 refresh_token:'def456' Authorization: Bearer secret789 cookie=session987",
+            message: """
+            request failed access_token=abc123 refresh_token:'def456' accessToken=camel123 refreshToken:"camel456" \
+            session_id=session987 sessionId:'camel789' idToken=json000 apiKey=api111 clientSecret=client222 \
+            Authorization: Bearer secret789 Authorization: Basic basic333 Cookie: sid=cookie444; other=value
+            """,
             staleAfterSeconds: 60
         )
 
@@ -126,6 +130,14 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertFalse(message.contains("def456"))
         XCTAssertFalse(message.contains("secret789"))
         XCTAssertFalse(message.contains("session987"))
+        XCTAssertFalse(message.contains("camel123"))
+        XCTAssertFalse(message.contains("camel456"))
+        XCTAssertFalse(message.contains("camel789"))
+        XCTAssertFalse(message.contains("json000"))
+        XCTAssertFalse(message.contains("api111"))
+        XCTAssertFalse(message.contains("client222"))
+        XCTAssertFalse(message.contains("basic333"))
+        XCTAssertFalse(message.contains("cookie444"))
 
         let data = try Data(contentsOf: fileURL)
         let text = String(decoding: data, as: UTF8.self)
@@ -133,6 +145,14 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertFalse(text.contains("def456"))
         XCTAssertFalse(text.contains("secret789"))
         XCTAssertFalse(text.contains("session987"))
+        XCTAssertFalse(text.contains("camel123"))
+        XCTAssertFalse(text.contains("camel456"))
+        XCTAssertFalse(text.contains("camel789"))
+        XCTAssertFalse(text.contains("json000"))
+        XCTAssertFalse(text.contains("api111"))
+        XCTAssertFalse(text.contains("client222"))
+        XCTAssertFalse(text.contains("basic333"))
+        XCTAssertFalse(text.contains("cookie444"))
     }
 
     private func makeReport() throws -> CodexUsageReport {

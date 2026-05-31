@@ -168,11 +168,19 @@ public struct CodexUsageCacheStore {
     private static func redactedErrorMessage(_ message: String) -> String {
         let patterns: [(pattern: String, replacement: String)] = [
             (
+                #"(?i)(authorization\s*[:=]\s*)(bearer|basic)\s+[A-Za-z0-9._~+/=-]+"#,
+                #"$1$2 <redacted>"#
+            ),
+            (
+                #"(?i)(cookie\s*[:=]\s*)[^\n,]+"#,
+                #"$1<redacted>"#
+            ),
+            (
                 #"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"#,
                 #"Bearer <redacted>"#
             ),
             (
-                #"(?i)(access[_-]?token|refresh[_-]?token|session[_-]?id|authorization|cookie)(["']?\s*[:=]\s*["']?)[^"',;\s}]+"#,
+                #"(?i)(access[_-]?token|refresh[_-]?token|session[_-]?id|id[_-]?token|auth[_-]?token|api[_-]?key|client[_-]?secret|authorization|cookie)(["']?\s*[:=]\s*["']?)[^"',;\s}]+"#,
                 #"$1$2<redacted>"#
             )
         ]

@@ -9,7 +9,7 @@ CACHE_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/CodexUsageCacheTests.swift"
 APPSERVER_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/CodexAppServerClientTests.swift"
 WIDGET_TESTS="$ROOT_DIR/Tests/CodexUsageCoreTests/MacDogWidgetPresentationTests.swift"
 DEFAULT_CACHE="$HOME/Library/Application Support/MacDog/usage.json"
-SENSITIVE_PATTERN='access_token|refresh_token|session_id|authorization|cookie'
+SENSITIVE_PATTERN='access[_-]?token|refresh[_-]?token|session[_-]?id|id[_-]?token|auth[_-]?token|api[_-]?key|client[_-]?secret|authorization|cookie'
 
 die() {
   echo "error: $*" >&2
@@ -38,6 +38,7 @@ require_match 'DefaultMirroredFileURLsIncludeDefaultAndSharedCachePaths' "$CACHE
 require_match 'writeFailure' "$CACHE_TESTS"
 require_match 'redactedErrorMessage' "$CACHE_SOURCE"
 require_match 'RedactsSensitiveSessionMaterial' "$CACHE_TESTS"
+require_match 'accessToken|refreshToken|sessionId|apiKey|clientSecret|Authorization: Basic|Cookie:' "$CACHE_TESTS"
 require_match 'isStale' "$CACHE_TESTS"
 require_match '오래된 캐시|캐시 없음|갱신됨' "$WIDGET_TESTS"
 
