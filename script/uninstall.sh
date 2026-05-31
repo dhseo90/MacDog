@@ -55,6 +55,28 @@ run_script_as_root() {
   run_as_root /bin/bash "$script_path"
 }
 
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  "$@" &
+  local command_pid="$!"
+
+  (
+    sleep "$timeout_seconds"
+    if kill -0 "$command_pid" >/dev/null 2>&1; then
+      kill "$command_pid" >/dev/null 2>&1 || true
+    fi
+  ) &
+  local watchdog_pid="$!"
+
+  local status=0
+  wait "$command_pid" 2>/dev/null || status="$?"
+  kill "$watchdog_pid" >/dev/null 2>&1 || true
+  wait "$watchdog_pid" >/dev/null 2>&1 || true
+  return "$status"
+}
+
 shell_quote() {
   local value="$1"
   printf "'%s'" "${value//\'/\'\\\'\'}"
@@ -216,9 +238,13 @@ disable_login_item_if_possible
 restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$SHARED_CACHE_FILE"
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE"
+if ! run_with_timeout 3 rm -f "$SHARED_CACHE_FILE"; then
+  echo "Warning: failed to remove shared cache file within timeout: $SHARED_CACHE_FILE" >&2
+fi
 rm -rf "$APP_DEST" "$SYSTEM_APP_DEST"
-rmdir "$APP_CACHE_DIR" "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
+rmdir "$APP_CACHE_DIR" >/dev/null 2>&1 || true
+run_with_timeout 3 rmdir "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
 reset_preferences_if_requested
 
 echo "Uninstalled MacDog"
