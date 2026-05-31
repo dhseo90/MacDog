@@ -90,8 +90,8 @@ public struct CodexUsageCacheStore {
     public static func defaultMirroredFileURLs() -> [URL] {
         uniqueFileURLs([
             defaultApplicationSupportFileURL(),
-            defaultSharedFileURL()
-        ])
+            resolvedAppGroupContainerFileURL()
+        ].compactMap { $0 })
     }
 
     public static func defaultApplicationSupportFileURL() -> URL {
@@ -108,6 +108,12 @@ public struct CodexUsageCacheStore {
             .appendingPathComponent("Group Containers", isDirectory: true)
             .appendingPathComponent(defaultAppGroupIdentifier, isDirectory: true)
         return directory.appendingPathComponent("usage.json")
+    }
+
+    private static func resolvedAppGroupContainerFileURL() -> URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: defaultAppGroupIdentifier)?
+            .appendingPathComponent("usage.json")
     }
 
     private static func uniqueFileURLs(_ urls: [URL]) -> [URL] {

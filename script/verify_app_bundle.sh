@@ -35,6 +35,9 @@ plist_value() {
 [[ -f "$APP_ICON" ]] || die "app icon missing: $APP_ICON"
 [[ "$(/usr/bin/sips -g format "$APP_ICON" 2>/dev/null | /usr/bin/awk '/format:/{print $2; exit}')" == "icns" ]] || die "app icon must be an icns file"
 /usr/bin/codesign --verify --strict --verbose=2 "$APP_CLI_BINARY" >/dev/null
+cli_entitlements="$(/usr/bin/codesign -d --entitlements :- "$APP_CLI_BINARY" 2>/dev/null || true)"
+printf '%s' "$cli_entitlements" | /usr/bin/grep -Fq '<string>group.com.dhseo.macdog.MacDog</string>' \
+  || die "bundled CLI missing MacDog app group entitlement"
 
 [[ -d "$WIDGET_APPEX" ]] || die "widget extension not found: $WIDGET_APPEX"
 [[ -x "$WIDGET_BINARY" ]] || die "widget binary missing or not executable: $WIDGET_BINARY"

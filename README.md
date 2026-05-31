@@ -99,6 +99,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 codex-usage status
 codex-usage status --json
 codex-usage status --write-cache
+codex-usage status --write-cache --mirror-cache
 codex-usage status --watch 60
 codex-usage doctor
 ```

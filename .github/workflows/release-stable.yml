@@ -81,6 +81,7 @@ jobs:
           app="dist/MacDog.app"
           appex="$app/Contents/PlugIns/MacDogWidgetExtension.appex"
           widget_entitlements="Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
+          cli_entitlements="Apps/CodexUsageCLI/CodexUsageCLI.entitlements"
           helper="$app/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
           cli="$app/Contents/MacOS/codex-usage"
 
@@ -88,7 +89,7 @@ jobs:
             codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
           done
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$widget_entitlements" "$appex"
-          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$cli"
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$cli_entitlements" "$cli"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$helper"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$app"
           codesign --verify --strict --verbose=2 "$cli"

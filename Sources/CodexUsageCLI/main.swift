@@ -33,6 +33,7 @@ struct CLI {
         var json = false
         var watchInterval: UInt32?
         var writeCache = false
+        var mirrorCache = false
         var cachePath: String?
         var timeout: TimeInterval?
         var index = 0
@@ -43,6 +44,8 @@ struct CLI {
                 json = true
             case "--write-cache":
                 writeCache = true
+            case "--mirror-cache":
+                mirrorCache = true
             case "--cache-path":
                 guard index + 1 < args.count else {
                     errorOutput("--cache-path requires a file path.")
@@ -75,7 +78,13 @@ struct CLI {
         }
 
         repeat {
-            let exitCode = printStatus(json: json, writeCache: writeCache, cachePath: cachePath, timeout: timeout)
+            let exitCode = printStatus(
+                json: json,
+                writeCache: writeCache,
+                mirrorCache: mirrorCache,
+                cachePath: cachePath,
+                timeout: timeout
+            )
             if watchInterval == nil {
                 return exitCode
             }
@@ -83,8 +92,14 @@ struct CLI {
         } while true
     }
 
-    private func printStatus(json: Bool, writeCache: Bool, cachePath: String?, timeout: TimeInterval?) -> ExitCode {
-        let cacheStores = makeCacheStores(path: cachePath)
+    private func printStatus(
+        json: Bool,
+        writeCache: Bool,
+        mirrorCache: Bool,
+        cachePath: String?,
+        timeout: TimeInterval?
+    ) -> ExitCode {
+        let cacheStores = makeCacheStores(path: cachePath, mirrorCache: mirrorCache)
 
         do {
             let formatter = CodexUsageFormatter()
@@ -137,18 +152,19 @@ struct CLI {
         return CodexUsageService(client: client)
     }
 
-    private func makeCacheStores(path: String?) -> [CodexUsageCacheStore] {
+    private func makeCacheStores(path: String?, mirrorCache: Bool) -> [CodexUsageCacheStore] {
         if let path {
             return [CodexUsageCacheStore(fileURL: URL(fileURLWithPath: path))]
         }
-        return CodexUsageCacheStore.defaultMirroredFileURLs().map {
+        let urls = mirrorCache ? CodexUsageCacheStore.defaultMirroredFileURLs() : [CodexUsageCacheStore.defaultFileURL()]
+        return urls.map {
             CodexUsageCacheStore(fileURL: $0)
         }
     }
 
     static let help = """
     Usage:
-      codex-usage status [--json] [--write-cache] [--cache-path PATH] [--timeout SECONDS] [--watch SECONDS]
+      codex-usage status [--json] [--write-cache] [--mirror-cache] [--cache-path PATH] [--timeout SECONDS] [--watch SECONDS]
       codex-usage doctor
 
     Commands:

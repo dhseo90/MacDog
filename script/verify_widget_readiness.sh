@@ -92,7 +92,7 @@ require_text_match 'defaultSharedFileURL' "$CACHE_SOURCE" "core exposes the widg
 require_text_match 'defaultMirroredFileURLs' "$CACHE_SOURCE" "core exposes mirrored cache writer URLs"
 require_text_match 'CodexUsageCacheStore\.defaultFileURL\(\)' "$MENU_BAR_CONTROLLER" "menu bar app reads the app-owned cache"
 reject_text_match 'CodexUsageCacheStore\.defaultSharedFileURL\(\)|CodexUsageCacheStore\.defaultFileURL\(appGroupIdentifier:|CodexUsageCacheStore\.defaultMirroredFileURLs\(\)|CodexAppServerClient|CodexUsageService|account/rateLimits/read|codex app-server' "$MENU_BAR_CONTROLLER" "menu bar app must stay on app-owned cache for Codex usage"
-require_text_match 'CodexUsageCacheStore\.defaultMirroredFileURLs\(\)' "$CLI_SOURCE" "CLI cache writer mirrors default and shared caches"
+require_text_match 'CodexUsageCacheStore\.defaultMirroredFileURLs\(\)' "$CLI_SOURCE" "CLI cache writer can explicitly mirror default and shared caches"
 require_text_match '--state updated\|stale\|error' "$WIDGET_FIXTURE_WRITER" "manual fixture writer supports widget state fixtures"
 require_text_match '--self-test' "$WIDGET_FIXTURE_WRITER" "manual fixture writer has a non-mutating self-test"
 require_text_match 'manual widget fixture error' "$WIDGET_FIXTURE_WRITER" "manual fixture writer can reproduce widget error UI"

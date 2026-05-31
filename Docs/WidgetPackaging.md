@@ -10,7 +10,7 @@
 - `MacDog.xcodeproj`에는 `MacDogWidgetHost` macOS app target과 `MacDogWidgetExtension` app-extension target이 있습니다.
 - `Apps/MacDogWidgetExtension`에는 WidgetKit extension target의 entrypoint, Info.plist, entitlements가 있습니다.
 - `script/verify_widget_packaging.sh`는 Xcode host/extension target을 빌드하고 `MacDogWidgetHost.app/Contents/PlugIns/MacDogWidgetExtension.appex`를 확인합니다.
-- `script/verify_widget_readiness.sh`는 위젯이 shared cache만 읽는지, 메뉴바 앱이 app-owned cache만 읽는지, CLI가 두 cache 경로에 쓰기를 mirror하는지, `macdog://open` deep link와 empty/stale/error/reset/metadata 표시가 테스트로 고정되어 있는지 확인합니다. 위젯 갤러리 추가와 클릭 검수는 수동 검증으로 남깁니다.
+- `script/verify_widget_readiness.sh`는 위젯이 shared cache만 읽는지, 메뉴바 앱이 app-owned cache만 읽는지, CLI가 app-owned cache와 사용 가능한 App Group cache에 쓰기를 mirror하는지, `macdog://open` deep link와 empty/stale/error/reset/metadata 표시가 테스트로 고정되어 있는지 확인합니다. 위젯 갤러리 추가와 클릭 검수는 수동 검증으로 남깁니다.
 - `script/write_widget_cache_fixture.sh --self-test`는 live cache를 건드리지 않고 수동 widget fixture writer만 검증합니다. 수동 UI 검수에서는 `--shared-cache`로 `updated`, `stale`, `error` fixture를 staged 상태로 만들 수 있습니다.
 - `script/verify_manual_ui_prerequisites.sh`는 widget gallery/click 수동 검수 전에 read-only prerequisite gate를 실행하고, 기본적으로 설치본이 최신 `dist/MacDog.app`과 다르면 실패합니다.
 - 설치 스크립트는 CLI와 `MacDog.app`을 설치합니다. 앱 번들에는 `Contents/PlugIns/MacDogWidgetExtension.appex`가 포함됩니다.
@@ -51,7 +51,7 @@ App Group candidate: group.com.dhseo.macdog.MacDog
 ```
 
 내장 Widget Extension의 production 경로는 App Group container입니다. 이렇게 해야 cache writer와 extension이 sandbox 경계를 넘어 같은 `usage.json`을 공유할 수 있습니다.
-메뉴바 앱은 app-owned Application Support cache를 읽습니다. CLI/cache writer는 성공한 write를 legacy Application Support 경로와 shared WidgetKit 경로에 함께 mirror하고, 앱 UI process는 live Codex app-server 접근을 시작하거나 Group Containers fallback을 직접 열지 않습니다. local unsigned build에서 App Group API를 사용할 수 없으면 widget 쪽 shared cache는 다음 fallback 경로를 사용합니다.
+메뉴바 앱은 app-owned Application Support cache를 읽습니다. 기본 CLI/cache writer는 성공한 write를 legacy Application Support 경로에 저장합니다. shared WidgetKit 경로 mirror는 `codex-usage status --write-cache --mirror-cache`처럼 명시적으로 켤 때만 사용합니다. 앱 UI process는 live Codex app-server 접근을 시작하거나 Group Containers fallback을 직접 열지 않습니다. local unsigned build에서 App Group API를 사용할 수 없으면 widget 쪽 shared cache fixture는 다음 fallback 경로를 사용합니다.
 
 ```text
 ~/Library/Group Containers/group.com.dhseo.macdog.MacDog/usage.json

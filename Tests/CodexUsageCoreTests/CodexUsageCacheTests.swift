@@ -42,13 +42,19 @@ final class CodexUsageCacheTests: XCTestCase {
         }
     }
 
-    func testDefaultMirroredFileURLsIncludeDefaultAndSharedCachePaths() {
+    func testDefaultMirroredFileURLsIncludeDefaultAndAvailableSharedCachePaths() {
         let urls = CodexUsageCacheStore.defaultMirroredFileURLs()
         let paths = Set(urls.map { $0.standardizedFileURL.path })
 
         XCTAssertEqual(urls.count, paths.count)
         XCTAssertTrue(paths.contains(CodexUsageCacheStore.defaultFileURL().standardizedFileURL.path))
-        XCTAssertTrue(paths.contains(CodexUsageCacheStore.defaultSharedFileURL().standardizedFileURL.path))
+        if let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: CodexUsageCacheStore.defaultAppGroupIdentifier
+        ) {
+            XCTAssertTrue(paths.contains(containerURL.appendingPathComponent("usage.json").standardizedFileURL.path))
+        } else {
+            XCTAssertFalse(paths.contains(CodexUsageCacheStore.defaultSharedFileURL().standardizedFileURL.path))
+        }
     }
 
     func testWritesAndReadsSuccessSnapshot() throws {

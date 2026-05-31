@@ -16,6 +16,7 @@ HELPER_DESTINATION="/Library/PrivilegedHelperTools/$HELPER_LABEL"
 WIDGET_HOST_APP="$ROOT_DIR/.build/xcode-widget/Build/Products/Debug/MacDogWidgetHost.app"
 WIDGET_APPEX="$WIDGET_HOST_APP/Contents/PlugIns/MacDogWidgetExtension.appex"
 WIDGET_EXTENSION_ENTITLEMENTS="$ROOT_DIR/Apps/MacDogWidgetExtension/MacDogWidgetExtension.entitlements"
+CLI_ENTITLEMENTS="$ROOT_DIR/Apps/CodexUsageCLI/CodexUsageCLI.entitlements"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
@@ -165,7 +166,7 @@ PLIST
   embed_widget_extension
   embed_privileged_helper_launch_daemon
 
-  /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" "$APP_CLI_BINARY" >/dev/null
+  /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" --entitlements "$CLI_ENTITLEMENTS" "$APP_CLI_BINARY" >/dev/null
   /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
   clean_bundle_xattrs "$APP_BUNDLE"
