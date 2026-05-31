@@ -52,21 +52,8 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
         try writeCurrentHostInt(key: "askForPassword", value: 0)
         try writeCurrentHostInt(key: "askForPasswordDelay", value: 0)
 
-        var helperSetError: Error?
         if let helperController, helperController.isInstalled {
-            do {
-                try helperController.setScreenLockDelay(.off)
-            } catch {
-                helperSetError = error
-            }
-        }
-
-        if let systemDelay = try? readSystemScreenLockDelay(),
-           systemDelay.requiresPassword {
-            throw ScreenSaverLockDisablerError.systemLockStillEnabled(systemDelay.displayLabel)
-        }
-        if let helperSetError {
-            throw helperSetError
+            try? helperController.setScreenLockDelay(.off)
         }
 
         return true

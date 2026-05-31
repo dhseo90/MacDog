@@ -9,6 +9,7 @@ struct SleepPreventionStatus: Equatable {
         isClosedLidSleepDisabled: false,
         isScreenLockDisabled: false,
         errorMessage: nil,
+        closedLidWarningMessage: nil,
         screenLockWarningMessage: nil
     )
 
@@ -18,6 +19,7 @@ struct SleepPreventionStatus: Equatable {
     let isClosedLidSleepDisabled: Bool
     let isScreenLockDisabled: Bool
     let errorMessage: String?
+    let closedLidWarningMessage: String?
     let screenLockWarningMessage: String?
 
     var summary: String {
@@ -71,6 +73,7 @@ final class SleepPreventionController {
     private var isScreenLockDisabled = false
     private var endsAt: Date?
     private var lastErrorMessage: String?
+    private var lastClosedLidWarningMessage: String?
     private var lastScreenLockWarningMessage: String?
 
     init(
@@ -95,6 +98,7 @@ final class SleepPreventionController {
             isClosedLidSleepDisabled: isClosedLidSleepDisabled,
             isScreenLockDisabled: isScreenLockDisabled,
             errorMessage: lastErrorMessage,
+            closedLidWarningMessage: lastClosedLidWarningMessage,
             screenLockWarningMessage: lastScreenLockWarningMessage
         )
     }
@@ -116,6 +120,7 @@ final class SleepPreventionController {
             releaseAssertions()
             self.endsAt = nil
             lastErrorMessage = nil
+            lastClosedLidWarningMessage = nil
             lastScreenLockWarningMessage = nil
             closedLidDisableAttempted = false
             screenLockDisableAttempted = false
@@ -178,9 +183,10 @@ final class SleepPreventionController {
 
         do {
             isClosedLidSleepDisabled = try closedLidSleepDisabler.setClosedLidSleepDisabled(true)
+            lastClosedLidWarningMessage = nil
         } catch {
             isClosedLidSleepDisabled = false
-            lastErrorMessage = error.localizedDescription
+            lastClosedLidWarningMessage = error.localizedDescription
         }
     }
 
@@ -208,7 +214,6 @@ final class SleepPreventionController {
 
     private func clearErrorIfPolicyIsSatisfied() {
         guard hasRequiredAssertions else { return }
-        guard !policy.preventClosedLidSleep || isClosedLidSleepDisabled else { return }
         lastErrorMessage = nil
     }
 
@@ -216,8 +221,9 @@ final class SleepPreventionController {
         guard force || closedLidDisableAttempted || isClosedLidSleepDisabled else { return }
         do {
             _ = try closedLidSleepDisabler.setClosedLidSleepDisabled(false)
+            lastClosedLidWarningMessage = nil
         } catch {
-            lastErrorMessage = error.localizedDescription
+            lastClosedLidWarningMessage = error.localizedDescription
         }
         isClosedLidSleepDisabled = false
     }

@@ -670,10 +670,23 @@ private struct SleepPreventionPanel: View {
                             triggerToggle("화면 잠자기 방지", isOn: $preventDisplaySleep)
                             triggerToggle("덮개 닫힘 보호", isOn: $preventClosedLidSleep)
                         }
+
+                        if preventClosedLidSleep, let warning = sleepPreventionStatus.closedLidWarningMessage {
+                            protectionWarningButton(
+                                "덮개 닫힘 보호 확인 · \(warning)",
+                                systemImage: "wrench.and.screwdriver",
+                                action: .installPrivilegedHelper
+                            )
+                        }
+
                         triggerToggle("보호기 후 암호 요구 해제", isOn: $disableScreenLock)
 
                         if disableScreenLock, let warning = sleepPreventionStatus.screenLockWarningMessage {
-                            screenLockWarningButton(warning)
+                            protectionWarningButton(
+                                "잠금 화면 설정 열기 · \(warning)",
+                                systemImage: "lock.open",
+                                action: .openLockScreenSettings
+                            )
                         }
                     }
                 }
@@ -918,11 +931,11 @@ private struct SleepPreventionPanel: View {
         .frame(height: 18)
     }
 
-    private func screenLockWarningButton(_ warning: String) -> some View {
+    private func protectionWarningButton(_ title: String, systemImage: String, action: PetAction) -> some View {
         Button {
-            onAction(.openLockScreenSettings)
+            onAction(action)
         } label: {
-            Label("잠금 화면 설정 열기 · \(warning)", systemImage: "lock.open")
+            Label(title, systemImage: systemImage)
                 .font(.caption2)
                 .foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)

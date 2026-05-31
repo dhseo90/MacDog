@@ -139,6 +139,7 @@ enum MacDogDemoData {
             isClosedLidSleepDisabled: isActive && preferences.sleepPreventionPreventClosedLidSleep,
             isScreenLockDisabled: isActive && preferences.sleepPreventionDisableScreenLock,
             errorMessage: nil,
+            closedLidWarningMessage: nil,
             screenLockWarningMessage: nil
         )
     }

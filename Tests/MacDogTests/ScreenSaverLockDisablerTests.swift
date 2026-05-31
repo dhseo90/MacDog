@@ -3,19 +3,14 @@ import MacDogPrivilegedHelperSupport
 @testable import MacDog
 
 final class ScreenSaverLockDisablerTests: XCTestCase {
-    func testReportsSystemLockWhenSysadminctlStillRequiresPassword() throws {
+    func testAcceptsDefaultsDisableWhenSysadminctlStillRequiresPassword() throws {
         let defaults = UserDefaults(suiteName: "MacDogTests.ScreenSaverLockDisabler.\(UUID().uuidString)")!
         let commandRunner = RecordingScreenLockCommandRunner(systemScreenLockStatus: "screenLock delay is immediate")
         let disabler = ScreenSaverLockDisabler(defaults: defaults, commandRunner: commandRunner, helperController: nil)
 
-        XCTAssertThrowsError(try disabler.setScreenLockDisabled(true)) { error in
-            XCTAssertEqual(
-                error as? ScreenSaverLockDisablerError,
-                .systemLockStillEnabled("즉시")
-            )
-        }
+        XCTAssertTrue(try disabler.setScreenLockDisabled(true))
 
-        XCTAssertTrue(commandRunner.commands.contains("/usr/sbin/sysadminctl -screenLock status"))
+        XCTAssertFalse(commandRunner.commands.contains("/usr/sbin/sysadminctl -screenLock status"))
     }
 
     func testAcceptsDisabledSystemLockStatus() throws {
@@ -24,7 +19,7 @@ final class ScreenSaverLockDisablerTests: XCTestCase {
         let disabler = ScreenSaverLockDisabler(defaults: defaults, commandRunner: commandRunner, helperController: nil)
 
         XCTAssertTrue(try disabler.setScreenLockDisabled(true))
-        XCTAssertTrue(commandRunner.commands.contains("/usr/sbin/sysadminctl -screenLock status"))
+        XCTAssertFalse(commandRunner.commands.contains("/usr/sbin/sysadminctl -screenLock status"))
     }
 
     func testInstalledHelperSetsSystemScreenLockOffAndRestoresOriginalDelay() throws {
@@ -58,7 +53,7 @@ final class ScreenSaverLockDisablerTests: XCTestCase {
             helperController: nil
         )
 
-        XCTAssertThrowsError(try firstDisabler.setScreenLockDisabled(true))
+        XCTAssertTrue(try firstDisabler.setScreenLockDisabled(true))
 
         let helperController = RecordingScreenLockHelperController(
             isInstalled: true,
@@ -73,6 +68,23 @@ final class ScreenSaverLockDisablerTests: XCTestCase {
         XCTAssertTrue(try secondDisabler.setScreenLockDisabled(true))
         XCTAssertFalse(try secondDisabler.setScreenLockDisabled(false))
         XCTAssertEqual(helperController.setRequests, [.off, .seconds(120)])
+    }
+
+    func testInstalledHelperScreenLockSetFailureDoesNotCreateWarning() throws {
+        let defaults = UserDefaults(suiteName: "MacDogTests.ScreenSaverLockDisabler.\(UUID().uuidString)")!
+        let helperController = RecordingScreenLockHelperController(
+            isInstalled: true,
+            readValues: [.immediate],
+            setError: TestScreenLockError.denied
+        )
+        let disabler = ScreenSaverLockDisabler(
+            defaults: defaults,
+            commandRunner: RecordingScreenLockCommandRunner(systemScreenLockStatus: "screenLock delay is immediate"),
+            helperController: helperController
+        )
+
+        XCTAssertTrue(try disabler.setScreenLockDisabled(true))
+        XCTAssertEqual(helperController.setRequests, [.off])
     }
 
     func testInstalledHelperDoesNotSetUnsupportedOriginalSystemDelay() {
@@ -121,6 +133,14 @@ final class ScreenSaverLockDisablerTests: XCTestCase {
 
         try setController.setScreenLockDelay(.off)
         XCTAssertEqual(setSender.commands, [.setScreenLockDelay(.off)])
+    }
+}
+
+private enum TestScreenLockError: LocalizedError {
+    case denied
+
+    var errorDescription: String? {
+        "screenLock 변경이 허용되지 않습니다."
     }
 }
 

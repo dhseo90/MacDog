@@ -17,6 +17,12 @@ CREATE_DMG=1
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
+DMG_WINDOW_WIDTH=760
+DMG_WINDOW_HEIGHT=430
+DMG_ICON_SIZE=150
+DMG_APP_ICON_X=190
+DMG_APPLICATIONS_ICON_X=570
+DMG_ICON_Y=225
 
 usage() {
   cat <<USAGE
@@ -81,6 +87,11 @@ Payload:
   - MacDog.app (includes bundled codex-usage)
   - Applications symlink
   - Hidden DMG background artwork for drag-and-drop layout
+DMG layout:
+  - Window: ${DMG_WINDOW_WIDTH}x${DMG_WINDOW_HEIGHT}
+  - Icon size: ${DMG_ICON_SIZE}
+  - MacDog.app position: {${DMG_APP_ICON_X}, ${DMG_ICON_Y}}
+  - Applications position: {${DMG_APPLICATIONS_ICON_X}, ${DMG_ICON_Y}}
 Install style: Docker-style drag-and-drop app installer
 Drag install: drag MacDog.app to Applications, then launch MacDog.
 First launch setup: MacDog creates the user codex-usage symlink, usage cache LaunchAgent, and macOS Login Item when enabled.
@@ -103,7 +114,28 @@ import AppKit
 import Foundation
 
 let outputPath = CommandLine.arguments[1]
-let size = NSSize(width: 760, height: 430)
+let environment = ProcessInfo.processInfo.environment
+
+func requiredCGFloat(_ name: String) -> CGFloat {
+    guard let rawValue = environment[name], let value = Double(rawValue) else {
+        fatalError("Missing numeric environment value: \(name)")
+    }
+    return CGFloat(value)
+}
+
+let size = NSSize(
+    width: requiredCGFloat("MACDOG_DMG_WINDOW_WIDTH"),
+    height: requiredCGFloat("MACDOG_DMG_WINDOW_HEIGHT")
+)
+let iconSize = requiredCGFloat("MACDOG_DMG_ICON_SIZE")
+let appFinderCenter = NSPoint(
+    x: requiredCGFloat("MACDOG_DMG_APP_ICON_X"),
+    y: requiredCGFloat("MACDOG_DMG_ICON_Y")
+)
+let applicationsFinderCenter = NSPoint(
+    x: requiredCGFloat("MACDOG_DMG_APPLICATIONS_ICON_X"),
+    y: requiredCGFloat("MACDOG_DMG_ICON_Y")
+)
 let image = NSImage(size: size)
 
 func fillPolygon(_ points: [NSPoint], color: NSColor) {
@@ -116,6 +148,37 @@ func fillPolygon(_ points: [NSPoint], color: NSColor) {
     path.close()
     color.setFill()
     path.fill()
+}
+
+func drawingPoint(fromFinder point: NSPoint) -> NSPoint {
+    NSPoint(x: point.x, y: size.height - point.y)
+}
+
+func centeredRect(finderCenter: NSPoint, width: CGFloat, height: CGFloat) -> NSRect {
+    let center = drawingPoint(fromFinder: finderCenter)
+    return NSRect(
+        x: center.x - width / 2,
+        y: center.y - height / 2,
+        width: width,
+        height: height
+    )
+}
+
+func drawSlot(_ rect: NSRect, fillColor: NSColor, strokeColor: NSColor) {
+    let path = NSBezierPath(roundedRect: rect, xRadius: 22, yRadius: 22)
+    NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowBlurRadius = 12
+    shadow.shadowOffset = NSSize(width: 0, height: -2)
+    shadow.shadowColor = NSColor(calibratedWhite: 0.0, alpha: 0.08)
+    shadow.set()
+    fillColor.setFill()
+    path.fill()
+    NSGraphicsContext.restoreGraphicsState()
+
+    strokeColor.setStroke()
+    path.lineWidth = 2.5
+    path.stroke()
 }
 
 image.lockFocus()
@@ -139,50 +202,57 @@ fillPolygon(
     color: NSColor(calibratedWhite: 1.0, alpha: 0.76)
 )
 
-let title = "drag and drop"
+let slotWidth = iconSize + 92
+let slotHeight = iconSize + 56
+let itemLabelOffset: CGFloat = 16
+let appSlotCenter = NSPoint(x: appFinderCenter.x, y: appFinderCenter.y + itemLabelOffset)
+let applicationsSlotCenter = NSPoint(x: applicationsFinderCenter.x, y: applicationsFinderCenter.y + itemLabelOffset)
+let appSlot = centeredRect(finderCenter: appSlotCenter, width: slotWidth, height: slotHeight)
+let applicationsSlot = centeredRect(finderCenter: applicationsSlotCenter, width: slotWidth, height: slotHeight)
+
+drawSlot(
+    appSlot,
+    fillColor: NSColor(calibratedWhite: 1.0, alpha: 0.26),
+    strokeColor: NSColor(calibratedWhite: 1.0, alpha: 0.58)
+)
+drawSlot(
+    applicationsSlot,
+    fillColor: NSColor(calibratedRed: 0.33, green: 0.78, blue: 1.0, alpha: 0.30),
+    strokeColor: NSColor(calibratedWhite: 1.0, alpha: 0.52)
+)
+
+let title = "Install MacDog"
 let titleAttributes: [NSAttributedString.Key: Any] = [
-    .font: NSFont.systemFont(ofSize: 35, weight: .medium),
+    .font: NSFont.systemFont(ofSize: 31, weight: .semibold),
     .foregroundColor: NSColor(calibratedWhite: 0.18, alpha: 0.86)
 ]
 let titleSize = title.size(withAttributes: titleAttributes)
 title.draw(
-    at: NSPoint(x: (size.width - titleSize.width) / 2, y: 274),
+    at: NSPoint(x: (size.width - titleSize.width) / 2, y: size.height - 48 - titleSize.height),
     withAttributes: titleAttributes
 )
 
+let arrowStartFinder = NSPoint(x: appSlotCenter.x + slotWidth / 2 + 24, y: appFinderCenter.y + 8)
+let arrowEndFinder = NSPoint(x: applicationsSlotCenter.x - slotWidth / 2 - 24, y: appFinderCenter.y + 8)
+let arrowColor = NSColor(calibratedWhite: 0.02, alpha: 0.82)
 let arrow = NSBezierPath()
-arrow.move(to: NSPoint(x: 260, y: 218))
-arrow.curve(
-    to: NSPoint(x: 502, y: 218),
-    controlPoint1: NSPoint(x: 330, y: 278),
-    controlPoint2: NSPoint(x: 438, y: 278)
-)
-NSColor(calibratedWhite: 0.02, alpha: 0.82).setStroke()
-arrow.lineWidth = 7
+arrow.move(to: drawingPoint(fromFinder: arrowStartFinder))
+arrow.line(to: drawingPoint(fromFinder: arrowEndFinder))
+arrowColor.setStroke()
+arrow.lineWidth = 8
 arrow.lineCapStyle = .round
 arrow.stroke()
 
 let arrowHead = NSBezierPath()
-arrowHead.move(to: NSPoint(x: 502, y: 218))
-arrowHead.line(to: NSPoint(x: 471, y: 238))
-arrowHead.line(to: NSPoint(x: 480, y: 198))
-arrowHead.close()
-NSColor(calibratedWhite: 0.02, alpha: 0.82).setFill()
-arrowHead.fill()
-
-let appHint = NSBezierPath(roundedRect: NSRect(x: 98, y: 126, width: 184, height: 184), xRadius: 14, yRadius: 14)
-NSColor(calibratedWhite: 1.0, alpha: 0.22).setFill()
-appHint.fill()
-NSColor(calibratedWhite: 1.0, alpha: 0.48).setStroke()
-appHint.lineWidth = 2
-appHint.stroke()
-
-let folderHint = NSBezierPath(roundedRect: NSRect(x: 476, y: 130, width: 188, height: 142), xRadius: 15, yRadius: 15)
-NSColor(calibratedRed: 0.33, green: 0.78, blue: 1.0, alpha: 0.26).setFill()
-folderHint.fill()
-NSColor(calibratedWhite: 1.0, alpha: 0.45).setStroke()
-folderHint.lineWidth = 2
-folderHint.stroke()
+arrowHead.move(to: drawingPoint(fromFinder: arrowEndFinder))
+arrowHead.line(to: drawingPoint(fromFinder: NSPoint(x: arrowEndFinder.x - 28, y: arrowEndFinder.y - 22)))
+arrowHead.move(to: drawingPoint(fromFinder: arrowEndFinder))
+arrowHead.line(to: drawingPoint(fromFinder: NSPoint(x: arrowEndFinder.x - 28, y: arrowEndFinder.y + 22)))
+arrowColor.setStroke()
+arrowHead.lineWidth = 8
+arrowHead.lineCapStyle = .round
+arrowHead.lineJoinStyle = .round
+arrowHead.stroke()
 
 image.unlockFocus()
 
@@ -197,7 +267,13 @@ else {
 try png.write(to: URL(fileURLWithPath: outputPath))
 SWIFT
 
-  "$XCRUN" swift "$generator" "$output_path" >/dev/null
+  MACDOG_DMG_WINDOW_WIDTH="$DMG_WINDOW_WIDTH" \
+  MACDOG_DMG_WINDOW_HEIGHT="$DMG_WINDOW_HEIGHT" \
+  MACDOG_DMG_ICON_SIZE="$DMG_ICON_SIZE" \
+  MACDOG_DMG_APP_ICON_X="$DMG_APP_ICON_X" \
+  MACDOG_DMG_APPLICATIONS_ICON_X="$DMG_APPLICATIONS_ICON_X" \
+  MACDOG_DMG_ICON_Y="$DMG_ICON_Y" \
+    "$XCRUN" swift "$generator" "$output_path" >/dev/null
   rm -f "$generator"
 }
 
@@ -244,18 +320,22 @@ tell application "Finder"
   end try
   set bounds of theWindow to {120, 120, 880, 550}
   set arrangement of icon view options of theWindow to not arranged
-  set icon size of icon view options of theWindow to 128
+  set icon size of icon view options of theWindow to $DMG_ICON_SIZE
   set background picture of icon view options of theWindow to backgroundPath
-  set position of item "$APP_NAME.app" of volumePath to {190, 250}
-  set position of item "Applications" of volumePath to {570, 250}
+  set position of item "$APP_NAME.app" of volumePath to {$DMG_APP_ICON_X, $DMG_ICON_Y}
+  set position of item "Applications" of volumePath to {$DMG_APPLICATIONS_ICON_X, $DMG_ICON_Y}
   update volumePath without registering applications
   delay 1
-  close theWindow
+  try
+    close theWindow
+  end try
   delay 1
   open volumePath
   delay 1
   set reopenedWindow to container window of volumePath
-  close reopenedWindow
+  try
+    close reopenedWindow
+  end try
 end tell
 APPLESCRIPT
   then

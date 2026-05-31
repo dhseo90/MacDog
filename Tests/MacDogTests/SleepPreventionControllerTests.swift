@@ -197,7 +197,7 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertTrue(closedLidSleepDisabler.requests.isEmpty)
     }
 
-    func testClosedLidDisableFailureKeepsPowerAssertionsAndReportsError() {
+    func testClosedLidDisableFailureKeepsPowerAssertionsAndReportsWarning() {
         let assertionManager = RecordingPowerAssertionManager()
         let closedLidSleepDisabler = RecordingClosedLidSleepDisabler(enableError: TestClosedLidError.denied)
         let controller = SleepPreventionController(
@@ -211,7 +211,8 @@ final class SleepPreventionControllerTests: XCTestCase {
 
         XCTAssertTrue(controller.status.isActive)
         XCTAssertFalse(controller.status.isClosedLidSleepDisabled)
-        XCTAssertEqual(controller.status.errorMessage, "관리자 권한이 거부되었습니다.")
+        XCTAssertNil(controller.status.errorMessage)
+        XCTAssertEqual(controller.status.closedLidWarningMessage, "관리자 권한이 거부되었습니다.")
         XCTAssertEqual(closedLidSleepDisabler.requests, [true])
     }
 
@@ -234,6 +235,7 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertTrue(controller.status.isActive)
         XCTAssertTrue(controller.status.isClosedLidSleepDisabled)
         XCTAssertNil(controller.status.errorMessage)
+        XCTAssertNil(controller.status.closedLidWarningMessage)
         XCTAssertEqual(closedLidSleepDisabler.requests, [true, true])
     }
 
@@ -251,6 +253,7 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertTrue(controller.status.isClosedLidSleepDisabled)
         XCTAssertFalse(controller.status.isScreenLockDisabled)
         XCTAssertNil(controller.status.errorMessage)
+        XCTAssertNil(controller.status.closedLidWarningMessage)
         XCTAssertEqual(controller.status.screenLockWarningMessage, "관리자 권한이 거부되었습니다.")
     }
 

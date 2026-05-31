@@ -17,6 +17,14 @@ require_contains() {
   fi
 }
 
+require_matches() {
+  local output="$1"
+  local expected="$2"
+  if ! /usr/bin/grep -Eq "$expected" <<<"$output"; then
+    die "missing expected release packaging pattern: $expected"
+  fi
+}
+
 require_not_contains() {
   local output="$1"
   local unexpected="$2"
@@ -45,6 +53,11 @@ require_contains "$output" "Docker-style drag-and-drop app installer"
 require_contains "$output" "MacDog.app (includes bundled codex-usage)"
 require_contains "$output" "Applications symlink"
 require_contains "$output" "Drag install: drag MacDog.app to Applications"
+require_contains "$output" "DMG layout:"
+require_contains "$output" "Window: 760x430"
+require_contains "$output" "Icon size: 150"
+require_contains "$output" "MacDog.app position: {190, 225}"
+require_contains "$output" "Applications position: {570, 225}"
 require_contains "$output" "First launch setup:"
 require_contains "$output" "user codex-usage symlink"
 require_contains "$output" "usage cache LaunchAgent"
@@ -76,6 +89,9 @@ if [[ -d "$APP_BUNDLE" ]]; then
   [[ -L "$stage/Applications" ]] || die "staged Applications symlink missing"
   [[ "$(readlink "$stage/Applications")" == "/Applications" ]] || die "staged Applications symlink must point to /Applications"
   [[ -f "$stage/.background/background.png" ]] || die "staged DMG background missing"
+  background_info="$(/usr/bin/sips -g pixelWidth -g pixelHeight "$stage/.background/background.png" 2>/dev/null)"
+  require_matches "$background_info" "pixelWidth:[[:space:]]+1520"
+  require_matches "$background_info" "pixelHeight:[[:space:]]+860"
   [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable"
   [[ -f "$stage/MacDog.app/Contents/Resources/MacDog.icns" ]] || die "staged app icon missing"
   [[ ! -e "$stage/bin/codex-usage" ]] || die "staged standalone CLI must not exist"
