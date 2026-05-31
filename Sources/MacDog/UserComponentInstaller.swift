@@ -101,11 +101,39 @@ struct UserComponentInstaller {
         "gui/\(getuid())"
     }
 
-    private func installCLISymlink() throws {
-        if fileManager.fileExists(atPath: cliSymlinkURL.path) {
+    func installCLISymlink() throws {
+        if let existingTarget = try? fileManager.destinationOfSymbolicLink(atPath: cliSymlinkURL.path) {
+            let existingTargetURL = Self.resolvedSymlinkDestination(
+                existingTarget,
+                relativeTo: cliSymlinkURL.deletingLastPathComponent()
+            )
+            guard Self.isMacDogCLISymlinkTarget(existingTargetURL) else {
+                throw UserComponentInstallerError.cliSymlinkConflict(
+                    path: cliSymlinkURL.path,
+                    existingTarget: existingTargetURL.path
+                )
+            }
+            guard existingTargetURL != bundledCLIURL.standardizedFileURL else { return }
             try fileManager.removeItem(at: cliSymlinkURL)
+        } else if fileManager.fileExists(atPath: cliSymlinkURL.path) {
+            throw UserComponentInstallerError.cliSymlinkConflict(
+                path: cliSymlinkURL.path,
+                existingTarget: nil
+            )
         }
         try fileManager.createSymbolicLink(at: cliSymlinkURL, withDestinationURL: bundledCLIURL)
+    }
+
+    static func resolvedSymlinkDestination(_ destination: String, relativeTo directoryURL: URL) -> URL {
+        if destination.hasPrefix("/") {
+            return URL(fileURLWithPath: destination).standardizedFileURL
+        }
+        return directoryURL.appendingPathComponent(destination).standardizedFileURL
+    }
+
+    static func isMacDogCLISymlinkTarget(_ url: URL) -> Bool {
+        let suffix = ["MacDog.app", "Contents", "MacOS", "codex-usage"]
+        return Array(url.standardizedFileURL.pathComponents.suffix(suffix.count)) == suffix
     }
 
     private func installCacheLaunchAgentIfNeeded() throws {
@@ -164,12 +192,18 @@ struct UserComponentInstaller {
 
 enum UserComponentInstallerError: LocalizedError, Equatable {
     case missingBundledCLI(String)
+    case cliSymlinkConflict(path: String, existingTarget: String?)
     case launchctlFailed(String, String)
 
     var errorDescription: String? {
         switch self {
         case .missingBundledCLI(let path):
             return "번들 내부 codex-usage 실행 파일을 찾을 수 없습니다: \(path)"
+        case .cliSymlinkConflict(let path, let existingTarget):
+            if let existingTarget {
+                return "\(path)에 MacDog가 만들지 않은 codex-usage symlink가 있어 덮어쓰지 않았습니다: \(existingTarget)"
+            }
+            return "\(path)에 기존 파일이 있어 codex-usage symlink로 덮어쓰지 않았습니다."
         case .launchctlFailed(let command, let detail):
             if detail.isEmpty {
                 return "사용자 자동 실행 설정 실패: launchctl \(command)"
