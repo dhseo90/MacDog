@@ -146,10 +146,17 @@ detect_host_team_identifier() {
   fi
 }
 
+detect_host_designated_requirement() {
+  local bundle_path="$1"
+  local output
+  output="$(/usr/bin/codesign -dr - "$bundle_path" 2>&1 || true)"
+  printf '%s\n' "$output" | sed -n 's/^designated =>[[:space:]]*//p' | head -n 1
+}
+
 write_helper_launch_daemon_plist() {
   local target="$1"
   local host_team_id="$2"
-  local allow_adhoc_host="$3"
+  local host_requirement="$3"
 
   cat >"$target" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -170,7 +177,7 @@ write_helper_launch_daemon_plist() {
   </dict>
 PLIST
 
-  if [[ -n "$host_team_id" || "$allow_adhoc_host" == "1" ]]; then
+  if [[ -n "$host_team_id" || -n "$host_requirement" ]]; then
     cat >>"$target" <<PLIST
   <key>EnvironmentVariables</key>
   <dict>
@@ -181,10 +188,10 @@ PLIST
     <string>$(xml_escape "$host_team_id")</string>
 PLIST
     fi
-    if [[ "$allow_adhoc_host" == "1" ]]; then
+    if [[ -n "$host_requirement" ]]; then
       cat >>"$target" <<PLIST
-    <key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>
-    <string>1</string>
+    <key>MACDOG_HELPER_HOST_REQUIREMENT</key>
+    <string>$(xml_escape "$host_requirement")</string>
 PLIST
     fi
     cat >>"$target" <<PLIST
@@ -215,14 +222,15 @@ install_privileged_helper() {
 
   local host_team_id
   host_team_id="${MACDOG_HELPER_HOST_TEAM_ID:-$(detect_host_team_identifier "$host_bundle_path")}"
-  local allow_adhoc_host=0
+  local host_requirement="${MACDOG_HELPER_HOST_REQUIREMENT:-}"
   if [[ -z "$host_team_id" ]]; then
-    allow_adhoc_host=1
+    host_requirement="${host_requirement:-$(detect_host_designated_requirement "$host_bundle_path")}"
+    [[ -n "$host_requirement" ]] || die "could not detect host designated requirement for ad-hoc helper authorization"
   fi
 
   local temp_plist
   temp_plist="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-helper.XXXXXX")"
-  write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$allow_adhoc_host"
+  write_helper_launch_daemon_plist "$temp_plist" "$host_team_id" "$host_requirement"
   /usr/bin/plutil -lint "$temp_plist" >/dev/null
 
   local temp_script

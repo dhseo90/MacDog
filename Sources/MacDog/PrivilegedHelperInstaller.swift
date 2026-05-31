@@ -27,12 +27,14 @@ struct PrivilegedHelperInstaller: Sendable {
         ])
 
         let hostTeamIdentifier = try detectHostTeamIdentifier(appBundleURL: appBundleURL)
-        let allowAdHocHost = hostTeamIdentifier == nil
+        let hostRequirementString = hostTeamIdentifier == nil
+            ? try detectHostDesignatedRequirement(appBundleURL: appBundleURL)
+            : nil
         let tempPlistURL = try writeTemporaryFile(
             prefix: "macdog-helper",
             contents: scriptBuilder.launchDaemonPlist(
                 hostTeamIdentifier: hostTeamIdentifier,
-                allowAdHocHost: allowAdHocHost
+                hostRequirementString: hostRequirementString
             )
         )
         let rootScriptURL = try writeTemporaryFile(
@@ -78,6 +80,26 @@ struct PrivilegedHelperInstaller: Sendable {
         }
 
         return nil
+    }
+
+    private func detectHostDesignatedRequirement(appBundleURL: URL) throws -> String {
+        let output = try runProcess("/usr/bin/codesign", arguments: [
+            "-dr",
+            "-",
+            appBundleURL.path
+        ], allowedExitCodes: [0])
+
+        for line in output.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.hasPrefix("designated =>") else { continue }
+            let requirement = String(trimmed.dropFirst("designated =>".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !requirement.isEmpty {
+                return requirement
+            }
+        }
+
+        throw PrivilegedHelperInstallerError.missingHostDesignatedRequirement(appBundleURL.path)
     }
 
     private func runWithAdministratorApproval(_ scriptURL: URL) throws {
@@ -135,6 +157,7 @@ struct PrivilegedHelperInstaller: Sendable {
 
 enum PrivilegedHelperInstallerError: LocalizedError {
     case missingEmbeddedHelper(String)
+    case missingHostDesignatedRequirement(String)
     case commandFailed(String, Int32, String)
     case appleScriptFailed(message: String?, number: Int?)
 
@@ -142,6 +165,8 @@ enum PrivilegedHelperInstallerError: LocalizedError {
         switch self {
         case .missingEmbeddedHelper(let path):
             return "권한 도우미 실행 파일을 찾을 수 없습니다: \(path)"
+        case .missingHostDesignatedRequirement(let path):
+            return "호스트 앱의 코드 서명 requirement를 확인할 수 없습니다: \(path)"
         case .commandFailed(let command, let status, let detail):
             if detail.isEmpty {
                 return "권한 도우미 명령 실패: \(command) (\(status))"

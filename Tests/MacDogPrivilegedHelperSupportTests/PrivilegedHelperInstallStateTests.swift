@@ -60,12 +60,13 @@ final class PrivilegedHelperInstallStateTests: XCTestCase {
 
         let plist = builder.launchDaemonPlist(
             hostTeamIdentifier: "TEAM&ID",
-            allowAdHocHost: true
+            hostRequirementString: #"identifier "com.dhseo.macdog.MacDog" and cdhash H"#
         )
 
         XCTAssertTrue(plist.contains("<key>MACDOG_HELPER_HOST_TEAM_ID</key>"))
         XCTAssertTrue(plist.contains("<string>TEAM&amp;ID</string>"))
-        XCTAssertTrue(plist.contains("<key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>"))
+        XCTAssertTrue(plist.contains("<key>MACDOG_HELPER_HOST_REQUIREMENT</key>"))
+        XCTAssertFalse(plist.contains("MACDOG_HELPER_ALLOW_ADHOC_HOST"))
         XCTAssertTrue(plist.contains("<key>MachServices</key>"))
         XCTAssertTrue(plist.contains("<key>RunAtLoad</key>"))
         XCTAssertTrue(plist.contains("/Library/Logs/MacDog Test/helper.out.log"))

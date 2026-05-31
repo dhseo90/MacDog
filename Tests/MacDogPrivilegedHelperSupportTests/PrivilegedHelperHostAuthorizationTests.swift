@@ -24,13 +24,26 @@ final class PrivilegedHelperHostAuthorizationTests: XCTestCase {
         )
     }
 
-    func testAdHocDevelopmentRequirementIsExplicit() {
+    func testLegacyAdHocFlagDoesNotRelaxRequirement() {
         let requirement = PrivilegedHelperHostRequirement.runtime(environment: [
             "MACDOG_HELPER_ALLOW_ADHOC_HOST": "1"
         ])
 
-        XCTAssertTrue(requirement.acceptsAdHocDevelopmentSignature)
-        XCTAssertEqual(requirement.requirementString, #"identifier "com.dhseo.macdog.MacDog""#)
+        XCTAssertFalse(requirement.acceptsAdHocDevelopmentSignature)
+        XCTAssertEqual(
+            requirement.requirementString,
+            #"identifier "com.dhseo.macdog.MacDog" and anchor apple generic"#
+        )
+    }
+
+    func testExplicitHostRequirementOverridesDefaultTerms() {
+        let explicitRequirement = #"identifier "com.dhseo.macdog.MacDog" and cdhash H"#
+        let requirement = PrivilegedHelperHostRequirement.runtime(environment: [
+            "MACDOG_HELPER_HOST_REQUIREMENT": explicitRequirement
+        ])
+
+        XCTAssertEqual(requirement.explicitRequirementString, explicitRequirement)
+        XCTAssertEqual(requirement.requirementString, explicitRequirement)
     }
 
     func testRequirementEscapesValues() {

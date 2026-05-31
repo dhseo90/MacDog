@@ -14,7 +14,7 @@ public struct PrivilegedHelperInstallScriptBuilder: Equatable, Sendable {
 
     public func launchDaemonPlist(
         hostTeamIdentifier: String?,
-        allowAdHocHost: Bool
+        hostRequirementString: String? = nil
     ) -> String {
         var environmentEntries = ""
         if let hostTeamIdentifier, !hostTeamIdentifier.isEmpty {
@@ -24,11 +24,12 @@ public struct PrivilegedHelperInstallScriptBuilder: Equatable, Sendable {
                 <string>\(Self.xmlEscaped(hostTeamIdentifier))</string>
             """
         }
-        if allowAdHocHost {
+        if let hostRequirementString,
+           !hostRequirementString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             environmentEntries += """
 
-                <key>MACDOG_HELPER_ALLOW_ADHOC_HOST</key>
-                <string>1</string>
+                <key>MACDOG_HELPER_HOST_REQUIREMENT</key>
+                <string>\(Self.xmlEscaped(hostRequirementString))</string>
             """
         }
 

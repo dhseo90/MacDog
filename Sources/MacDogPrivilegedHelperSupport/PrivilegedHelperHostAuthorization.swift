@@ -5,15 +5,18 @@ public struct PrivilegedHelperHostRequirement: Equatable, Sendable {
     public let bundleIdentifier: String
     public let teamIdentifier: String?
     public let acceptsAdHocDevelopmentSignature: Bool
+    public let explicitRequirementString: String?
 
     public init(
         bundleIdentifier: String = MacDogPrivilegedHelperContract.hostBundleIdentifier,
         teamIdentifier: String? = nil,
-        acceptsAdHocDevelopmentSignature: Bool = false
+        acceptsAdHocDevelopmentSignature: Bool = false,
+        explicitRequirementString: String? = nil
     ) {
         self.bundleIdentifier = bundleIdentifier
         self.teamIdentifier = teamIdentifier
         self.acceptsAdHocDevelopmentSignature = acceptsAdHocDevelopmentSignature
+        self.explicitRequirementString = explicitRequirementString
     }
 
     public static func runtime(
@@ -21,17 +24,23 @@ public struct PrivilegedHelperHostRequirement: Equatable, Sendable {
     ) -> PrivilegedHelperHostRequirement {
         PrivilegedHelperHostRequirement(
             teamIdentifier: environment["MACDOG_HELPER_HOST_TEAM_ID"],
-            acceptsAdHocDevelopmentSignature: environment["MACDOG_HELPER_ALLOW_ADHOC_HOST"] == "1"
+            acceptsAdHocDevelopmentSignature: false,
+            explicitRequirementString: environment["MACDOG_HELPER_HOST_REQUIREMENT"]
         )
     }
 
     public var requirementString: String {
+        if let explicitRequirementString,
+           !explicitRequirementString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return explicitRequirementString
+        }
+
         var terms = ["identifier \(Self.quoted(bundleIdentifier))"]
 
         if let teamIdentifier, !teamIdentifier.isEmpty {
             terms.append("anchor apple generic")
             terms.append("certificate leaf[subject.OU] = \(Self.quoted(teamIdentifier))")
-        } else if !acceptsAdHocDevelopmentSignature {
+        } else {
             terms.append("anchor apple generic")
         }
 
