@@ -20,6 +20,7 @@ enum PetAction: Equatable {
     case installPrivilegedHelper
     case uninstallPrivilegedHelper
     case openBatterySettings
+    case openLockScreenSettings
     case showDesktopPet
     case returnToMenuBar
     case quit

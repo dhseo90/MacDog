@@ -118,6 +118,7 @@ struct UsagePopoverView: View {
             SleepPreventionPanel(
                 sleepPreventionStatus: state.sleepPreventionStatus,
                 sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
+                onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged
             )
         case .battery:
@@ -555,6 +556,7 @@ struct SparklineScale: Equatable {
 private struct SleepPreventionPanel: View {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
+    let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
 
     @AppStorage(RunnerPreferences.sleepPreventionControlModeKey) private var sleepPreventionControlMode = RunnerPreferences.defaultSleepPreventionControlMode.rawValue
@@ -671,10 +673,7 @@ private struct SleepPreventionPanel: View {
                         triggerToggle("보호기 후 암호 요구 해제", isOn: $disableScreenLock)
 
                         if disableScreenLock, let warning = sleepPreventionStatus.screenLockWarningMessage {
-                            Text("잠금 화면 옵션 확인 필요 · \(warning)")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
+                            screenLockWarningButton(warning)
                         }
                     }
                 }
@@ -917,6 +916,19 @@ private struct SleepPreventionPanel: View {
                 .frame(width: 38, alignment: .trailing)
         }
         .frame(height: 18)
+    }
+
+    private func screenLockWarningButton(_ warning: String) -> some View {
+        Button {
+            onAction(.openLockScreenSettings)
+        } label: {
+            Label("잠금 화면 설정 열기 · \(warning)", systemImage: "lock.open")
+                .font(.caption2)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
     }
 }
 

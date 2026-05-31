@@ -307,7 +307,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         alert.informativeText = """
         기본 설치는 완료되었습니다.
 
-        덮개 닫힘 보호와 잠금 화면 암호 요구 해제를 사용하려면 권한 도우미가 필요합니다. 계속하면 macOS 관리자 승인창이 이어서 열리고, 아래 시스템 위치에 MacDog 전용 도우미가 설치됩니다.
+        덮개 닫힘 보호를 사용하려면 권한 도우미가 필요합니다. 잠금 화면 암호 요구 해제는 macOS 잠금 화면 설정에 따라 별도 확인이 필요할 수 있습니다. 계속하면 macOS 관리자 승인창이 이어서 열리고, 아래 시스템 위치에 MacDog 전용 도우미가 설치됩니다.
 
         /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
         /Library/LaunchDaemons/com.dhseo.macdog.helper.plist
@@ -470,6 +470,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             runPrivilegedHelperOperation(.uninstall)
         case .openBatterySettings:
             _ = SystemSettingsDestination.openBatterySettings()
+        case .openLockScreenSettings:
+            _ = SystemSettingsDestination.openLockScreenSettings()
         case .showDesktopPet:
             RunnerPreferences.setDesktopPetEnabled(true)
             refreshUsage(allowLiveRefresh: false)
@@ -497,9 +499,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         var successMessage: String {
             switch self {
             case .install:
-                "덮개 닫힘 보호와 잠금 화면 암호 요구 해제는 권한 도우미가 대신 처리합니다."
+                "덮개 닫힘 보호는 권한 도우미가 대신 처리합니다. 잠금 화면 암호 요구는 macOS 설정에 따라 추가 확인이 필요할 수 있습니다."
             case .uninstall:
-                "덮개 닫힘 보호와 잠금 화면 암호 요구 해제 시 다시 관리자 승인이 필요할 수 있습니다."
+                "덮개 닫힘 보호를 다시 사용하려면 관리자 승인이 필요할 수 있습니다."
             }
         }
 
@@ -516,7 +518,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             switch self {
             case .install:
                 """
-                MacDog가 덮개 닫힘 보호와 잠금 화면 암호 요구 해제를 위해 권한 도우미를 설치합니다.
+                MacDog가 덮개 닫힘 보호를 위해 권한 도우미를 설치합니다. 잠금 화면 암호 요구 해제는 macOS 잠금 화면 설정에 따라 별도 확인이 필요할 수 있습니다.
 
                 변경할 시스템 위치:
                 /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
@@ -532,7 +534,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 /Library/PrivilegedHelperTools/com.dhseo.macdog.helper
                 /Library/LaunchDaemons/com.dhseo.macdog.helper.plist
 
-                제거 후에는 덮개 닫힘 보호와 잠금 화면 암호 요구 해제 시 다시 관리자 승인이 필요할 수 있습니다.
+                제거 후에는 덮개 닫힘 보호를 다시 사용할 때 관리자 승인이 필요할 수 있습니다.
                 """
             }
         }

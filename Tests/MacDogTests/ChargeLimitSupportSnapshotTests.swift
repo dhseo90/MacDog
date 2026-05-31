@@ -65,6 +65,13 @@ final class ChargeLimitSupportSnapshotTests: XCTestCase {
         XCTAssertEqual(firstURL.absoluteString, "x-apple.systempreferences:com.apple.Battery-Settings.extension")
     }
 
+    func testLockScreenSettingsDestinationStartsWithSystemSettingsURL() throws {
+        let firstURL = try XCTUnwrap(SystemSettingsDestination.lockScreenSettingsURLCandidates.first)
+
+        XCTAssertEqual(firstURL.scheme, "x-apple.systempreferences")
+        XCTAssertEqual(firstURL.absoluteString, "x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension")
+    }
+
     func testChargeLimitTargetPreferenceClampsAndRoundsToNativeRange() throws {
         let suiteName = "MacDogChargeLimitTargetPreferenceTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
