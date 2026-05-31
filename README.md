@@ -185,9 +185,9 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 
 MacDog는 일반 idle sleep 방지를 위해 IOKit power assertion을 사용합니다. 덮개 닫힘 보호는 `pmset disablesleep` 기반이며 관리자 승인이 필요합니다.
 
-권한 도우미가 설치되어 있으면 MacDog가 덮개 닫힘 보호 설정 변경을 대신 처리합니다. 권한 도우미가 설치된 상태에서 연결이 실패하면 예전 관리자 승인창으로 조용히 우회하지 않고 실패 상태를 표시합니다.
+권한 도우미가 설치되어 있으면 MacDog가 덮개 닫힘 보호와 잠금 화면 암호 요구 해제 변경을 대신 처리합니다. 권한 도우미가 설치된 상태에서 연결이 실패하면 예전 관리자 승인창으로 조용히 우회하지 않고 실패 상태를 표시합니다.
 
-화면 또는 덮개 닫힘 후 macOS 로그인창이 뜨는지는 Lock Screen의 암호 요구 설정도 영향을 줍니다. 최신 macOS에서 실제 Lock Screen 상태가 `immediate`이면 예전 `com.apple.screensaver` 값만으로는 해제되지 않으므로, MacDog는 이 상태를 감지해 오류로 표시합니다.
+화면 또는 덮개 닫힘 후 macOS 로그인창이 뜨는지는 Lock Screen의 암호 요구 설정도 영향을 줍니다. 최신 macOS에서 실제 Lock Screen 상태가 `immediate`이면 예전 `com.apple.screensaver` 값만으로는 해제되지 않으므로, MacDog는 권한 도우미가 설치된 경우 `screenLock off` 적용을 시도하고 적용 후 상태를 다시 확인합니다. 적용되지 않거나 helper가 없으면 오류로 표시합니다.
 
 2026-05-29 기준 확인된 실사용 결과:
 

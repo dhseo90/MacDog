@@ -253,6 +253,26 @@ final class SleepPreventionControllerTests: XCTestCase {
         XCTAssertNil(controller.status.errorMessage)
         XCTAssertEqual(controller.status.screenLockWarningMessage, "관리자 권한이 거부되었습니다.")
     }
+
+    func testScreenLockDisableRetriesOnNextSyncAfterFailure() {
+        let assertionManager = RecordingPowerAssertionManager()
+        let screenLockDisabler = RecordingScreenLockDisabler(
+            enableError: TestClosedLidError.denied,
+            enableFailuresBeforeSuccess: 1
+        )
+        let controller = SleepPreventionController(
+            assertionManager: assertionManager,
+            closedLidSleepDisabler: RecordingClosedLidSleepDisabler(),
+            screenLockDisabler: screenLockDisabler
+        )
+
+        controller.setEnabled(true, endsAt: nil)
+        controller.setEnabled(true, endsAt: nil)
+
+        XCTAssertTrue(controller.status.isScreenLockDisabled)
+        XCTAssertNil(controller.status.screenLockWarningMessage)
+        XCTAssertEqual(screenLockDisabler.requests, [true, true])
+    }
 }
 
 private final class RecordingPowerAssertionManager: PowerAssertionManaging {
@@ -312,15 +332,18 @@ private final class RecordingClosedLidSleepDisabler: ClosedLidSleepDisabling {
 
 private final class RecordingScreenLockDisabler: ScreenLockDisabling {
     private let enableError: Error?
+    private var enableFailuresBeforeSuccess: Int
     private(set) var requests: [Bool] = []
 
-    init(enableError: Error? = nil) {
+    init(enableError: Error? = nil, enableFailuresBeforeSuccess: Int? = nil) {
         self.enableError = enableError
+        self.enableFailuresBeforeSuccess = enableFailuresBeforeSuccess ?? (enableError == nil ? 0 : Int.max)
     }
 
     func setScreenLockDisabled(_ isDisabled: Bool) throws -> Bool {
         requests.append(isDisabled)
-        if isDisabled, let enableError {
+        if isDisabled, let enableError, enableFailuresBeforeSuccess > 0 {
+            enableFailuresBeforeSuccess -= 1
             throw enableError
         }
         return isDisabled

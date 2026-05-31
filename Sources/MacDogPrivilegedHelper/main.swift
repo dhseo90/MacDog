@@ -23,7 +23,8 @@ enum HelperCLI {
             usage: MacDogPrivilegedHelper [--version|--install-plan|--handle-json-stdin|--run-xpc-service]
 
             This helper is intended to run as a privileged LaunchDaemon after explicit installation.
-            Allowed commands are limited to reading SleepDisabled and setting SleepDisabled to 0 or 1.
+            Allowed commands are limited to reading SleepDisabled, setting SleepDisabled to 0 or 1,
+            reading screenLock, and setting screenLock to off, immediate, or seconds.
             """)
             return 0
         default:

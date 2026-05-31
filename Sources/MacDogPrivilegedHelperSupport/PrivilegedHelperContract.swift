@@ -30,15 +30,20 @@ public struct PrivilegedHelperRequest: Codable, Equatable, Sendable {
 public enum PrivilegedHelperCommand: Codable, Equatable, Sendable {
     case readSleepDisabled
     case setSleepDisabled(Bool)
+    case readScreenLockDelay
+    case setScreenLockDelay(ScreenLockDelay)
 
     private enum CodingKeys: String, CodingKey {
         case name
         case sleepDisabled
+        case screenLockDelay
     }
 
     private enum Name: String, Codable {
         case readSleepDisabled
         case setSleepDisabled
+        case readScreenLockDelay
+        case setScreenLockDelay
     }
 
     public init(from decoder: Decoder) throws {
@@ -50,6 +55,10 @@ public enum PrivilegedHelperCommand: Codable, Equatable, Sendable {
             self = .readSleepDisabled
         case .setSleepDisabled:
             self = .setSleepDisabled(try container.decode(Bool.self, forKey: .sleepDisabled))
+        case .readScreenLockDelay:
+            self = .readScreenLockDelay
+        case .setScreenLockDelay:
+            self = .setScreenLockDelay(try container.decode(ScreenLockDelay.self, forKey: .screenLockDelay))
         }
     }
 
@@ -62,6 +71,101 @@ public enum PrivilegedHelperCommand: Codable, Equatable, Sendable {
         case .setSleepDisabled(let sleepDisabled):
             try container.encode(Name.setSleepDisabled, forKey: .name)
             try container.encode(sleepDisabled, forKey: .sleepDisabled)
+        case .readScreenLockDelay:
+            try container.encode(Name.readScreenLockDelay, forKey: .name)
+        case .setScreenLockDelay(let screenLockDelay):
+            try container.encode(Name.setScreenLockDelay, forKey: .name)
+            try container.encode(screenLockDelay, forKey: .screenLockDelay)
+        }
+    }
+}
+
+public enum ScreenLockDelay: Codable, Equatable, Sendable {
+    case off
+    case immediate
+    case seconds(Int)
+    case unknown(String)
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case seconds
+        case rawValue
+    }
+
+    private enum Name: String, Codable {
+        case off
+        case immediate
+        case seconds
+        case unknown
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let name = try container.decode(Name.self, forKey: .name)
+
+        switch name {
+        case .off:
+            self = .off
+        case .immediate:
+            self = .immediate
+        case .seconds:
+            self = .seconds(try container.decode(Int.self, forKey: .seconds))
+        case .unknown:
+            self = .unknown(try container.decode(String.self, forKey: .rawValue))
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        switch self {
+        case .off:
+            try container.encode(Name.off, forKey: .name)
+        case .immediate:
+            try container.encode(Name.immediate, forKey: .name)
+        case .seconds(let seconds):
+            try container.encode(Name.seconds, forKey: .name)
+            try container.encode(seconds, forKey: .seconds)
+        case .unknown(let rawValue):
+            try container.encode(Name.unknown, forKey: .name)
+            try container.encode(rawValue, forKey: .rawValue)
+        }
+    }
+
+    public var requiresPassword: Bool {
+        switch self {
+        case .off:
+            false
+        case .immediate, .seconds, .unknown:
+            true
+        }
+    }
+
+    public var displayLabel: String {
+        switch self {
+        case .off:
+            "안 함"
+        case .immediate:
+            "즉시"
+        case .seconds(let seconds):
+            "\(seconds)초 후"
+        case .unknown(let rawValue):
+            rawValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "알 수 없음" : rawValue
+        }
+    }
+
+    public var sysadminctlArgument: String? {
+        switch self {
+        case .off:
+            "off"
+        case .immediate:
+            "immediate"
+        case .seconds(let seconds) where seconds >= 0:
+            String(seconds)
+        case .seconds:
+            nil
+        case .unknown:
+            nil
         }
     }
 }
@@ -71,6 +175,7 @@ public struct PrivilegedHelperResponse: Codable, Equatable, Sendable {
     public let helperVersion: String
     public let status: PrivilegedHelperResponseStatus
     public let sleepDisabled: Bool?
+    public let screenLockDelay: ScreenLockDelay?
     public let errorMessage: String?
 
     public init(
@@ -78,12 +183,14 @@ public struct PrivilegedHelperResponse: Codable, Equatable, Sendable {
         helperVersion: String = MacDogPrivilegedHelperContract.helperVersion,
         status: PrivilegedHelperResponseStatus,
         sleepDisabled: Bool? = nil,
+        screenLockDelay: ScreenLockDelay? = nil,
         errorMessage: String? = nil
     ) {
         self.protocolVersion = protocolVersion
         self.helperVersion = helperVersion
         self.status = status
         self.sleepDisabled = sleepDisabled
+        self.screenLockDelay = screenLockDelay
         self.errorMessage = errorMessage
     }
 }
@@ -118,6 +225,20 @@ public enum PrivilegedHelperCommandPlanner {
                 executablePath: "/usr/bin/pmset",
                 arguments: ["-a", "disablesleep", sleepDisabled ? "1" : "0"]
             )
+        case .readScreenLockDelay, .setScreenLockDelay:
+            preconditionFailure("screenLock commands must use sysadminctlInvocation(for:)")
+        }
+    }
+
+    public static func sysadminctlInvocation(for command: PrivilegedHelperCommand) -> PMSetInvocation? {
+        switch command {
+        case .readScreenLockDelay:
+            return PMSetInvocation(executablePath: "/usr/sbin/sysadminctl", arguments: ["-screenLock", "status"])
+        case .setScreenLockDelay(let delay):
+            guard let argument = delay.sysadminctlArgument else { return nil }
+            return PMSetInvocation(executablePath: "/usr/sbin/sysadminctl", arguments: ["-screenLock", argument])
+        case .readSleepDisabled, .setSleepDisabled:
+            return nil
         }
     }
 }
@@ -141,6 +262,34 @@ public enum SleepDisabledLiveParser {
         }
 
         throw PrivilegedHelperContractError.missingSleepDisabledValue
+    }
+}
+
+public enum ScreenLockDelayParser {
+    public static func parse(_ output: String) -> ScreenLockDelay {
+        let normalized = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowercased = normalized.lowercased()
+
+        if lowercased.contains("off") {
+            return .off
+        }
+        if lowercased.contains("immediate") {
+            return .immediate
+        }
+
+        let pattern = #"screenlock delay is ([0-9]+)"#
+        if let match = lowercased.range(of: pattern, options: .regularExpression) {
+            let matched = String(lowercased[match])
+            let secondsText = matched
+                .split(separator: " ")
+                .last
+                .map(String.init)
+            if let secondsText, let seconds = Int(secondsText) {
+                return .seconds(seconds)
+            }
+        }
+
+        return .unknown(normalized)
     }
 }
 
@@ -178,7 +327,7 @@ public struct PrivilegedHelperInstallPlan: Equatable, Sendable {
             "Helper mach service: \(machServiceName)",
             "Helper protocol: \(protocolVersion)",
             "Helper version: \(helperVersion)",
-            "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
+            "Helper commands: read SleepDisabled, set SleepDisabled 0/1, read screenLock, set screenLock off/immediate/seconds only"
         ]
     }
 }

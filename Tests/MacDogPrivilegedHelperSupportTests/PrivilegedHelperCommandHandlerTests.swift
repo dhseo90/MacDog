@@ -47,6 +47,48 @@ final class PrivilegedHelperCommandHandlerTests: XCTestCase {
         ])
     }
 
+    func testReadsScreenLockDelayUsingAllowlistedSysadminctlInvocation() {
+        let runner = RecordingPrivilegedHelperRunner(
+            results: [
+                PrivilegedHelperExecutionResult(exitCode: 0, stdout: "", stderr: "screenLock delay is immediate")
+            ]
+        )
+        let handler = PrivilegedHelperCommandHandler(runner: runner)
+        let response = handler.handle(PrivilegedHelperRequest(command: .readScreenLockDelay))
+
+        XCTAssertEqual(response.status, .success)
+        XCTAssertEqual(response.screenLockDelay, .immediate)
+        XCTAssertEqual(runner.invocations, [
+            PMSetInvocation(executablePath: "/usr/sbin/sysadminctl", arguments: ["-screenLock", "status"])
+        ])
+    }
+
+    func testSetsScreenLockDelayUsingAllowlistedSysadminctlInvocation() {
+        let runner = RecordingPrivilegedHelperRunner(
+            results: [
+                PrivilegedHelperExecutionResult(exitCode: 0, stdout: "", stderr: "")
+            ]
+        )
+        let handler = PrivilegedHelperCommandHandler(runner: runner)
+        let response = handler.handle(PrivilegedHelperRequest(command: .setScreenLockDelay(.off)))
+
+        XCTAssertEqual(response.status, .success)
+        XCTAssertEqual(response.screenLockDelay, .off)
+        XCTAssertEqual(runner.invocations, [
+            PMSetInvocation(executablePath: "/usr/sbin/sysadminctl", arguments: ["-screenLock", "off"])
+        ])
+    }
+
+    func testRejectsUnsupportedScreenLockDelayBeforeRunningCommand() {
+        let runner = RecordingPrivilegedHelperRunner()
+        let handler = PrivilegedHelperCommandHandler(runner: runner)
+        let response = handler.handle(PrivilegedHelperRequest(command: .setScreenLockDelay(.unknown("managed"))))
+
+        XCTAssertEqual(response.status, .unsupportedCommand)
+        XCTAssertEqual(response.screenLockDelay, nil)
+        XCTAssertTrue(runner.invocations.isEmpty)
+    }
+
     func testCommandFailureReturnsRedactedFailureSummary() {
         let runner = RecordingPrivilegedHelperRunner(
             results: [

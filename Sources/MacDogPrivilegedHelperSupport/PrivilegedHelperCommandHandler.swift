@@ -46,6 +46,10 @@ public struct PrivilegedHelperCommandHandler<Runner: PrivilegedHelperCommandRunn
             return readSleepDisabled()
         case .setSleepDisabled(let sleepDisabled):
             return setSleepDisabled(sleepDisabled)
+        case .readScreenLockDelay:
+            return readScreenLockDelay()
+        case .setScreenLockDelay(let delay):
+            return setScreenLockDelay(delay)
         }
     }
 
@@ -77,6 +81,43 @@ public struct PrivilegedHelperCommandHandler<Runner: PrivilegedHelperCommandRunn
             }
 
             return PrivilegedHelperResponse(status: .success, sleepDisabled: sleepDisabled)
+        } catch {
+            return failedResponse(command: invocation.displayCommand, detail: error.localizedDescription)
+        }
+    }
+
+    private func readScreenLockDelay() -> PrivilegedHelperResponse {
+        guard let invocation = PrivilegedHelperCommandPlanner.sysadminctlInvocation(for: .readScreenLockDelay) else {
+            return PrivilegedHelperResponse(status: .unsupportedCommand, errorMessage: "지원하지 않는 screenLock 명령입니다.")
+        }
+
+        do {
+            let result = try runner.run(invocation)
+            guard result.exitCode == 0 else {
+                return failedResponse(command: invocation.displayCommand, detail: result.failureSummary)
+            }
+
+            return PrivilegedHelperResponse(
+                status: .success,
+                screenLockDelay: ScreenLockDelayParser.parse([result.stdout, result.stderr].joined(separator: "\n"))
+            )
+        } catch {
+            return failedResponse(command: invocation.displayCommand, detail: error.localizedDescription)
+        }
+    }
+
+    private func setScreenLockDelay(_ delay: ScreenLockDelay) -> PrivilegedHelperResponse {
+        guard let invocation = PrivilegedHelperCommandPlanner.sysadminctlInvocation(for: .setScreenLockDelay(delay)) else {
+            return PrivilegedHelperResponse(status: .unsupportedCommand, errorMessage: "지원하지 않는 screenLock 값입니다: \(delay.displayLabel)")
+        }
+
+        do {
+            let result = try runner.run(invocation)
+            guard result.exitCode == 0 else {
+                return failedResponse(command: invocation.displayCommand, detail: result.failureSummary)
+            }
+
+            return PrivilegedHelperResponse(status: .success, screenLockDelay: delay)
         } catch {
             return failedResponse(command: invocation.displayCommand, detail: error.localizedDescription)
         }
