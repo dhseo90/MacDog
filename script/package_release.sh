@@ -306,6 +306,7 @@ if [[ "$SKIP_BUILD" != "1" ]]; then
   ./script/build_and_run.sh --no-run >/dev/null
 fi
 
+clean_bundle_xattrs "$APP_BUNDLE"
 ./script/verify_app_bundle.sh "$APP_BUNDLE" >/dev/null
 
 rm -rf "$STAGE_DIR"
