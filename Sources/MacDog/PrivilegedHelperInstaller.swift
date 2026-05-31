@@ -82,6 +82,25 @@ struct PrivilegedHelperInstaller: Sendable {
         return nil
     }
 
+    static func hostDesignatedRequirement(from codesignOutput: String) -> String? {
+        let marker = "designated =>"
+
+        for line in codesignOutput.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalized = trimmed.hasPrefix("#")
+                ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+                : trimmed
+            guard normalized.hasPrefix(marker) else { continue }
+            let requirement = String(normalized.dropFirst(marker.count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !requirement.isEmpty {
+                return requirement
+            }
+        }
+
+        return nil
+    }
+
     private func detectHostDesignatedRequirement(appBundleURL: URL) throws -> String {
         let output = try runProcess("/usr/bin/codesign", arguments: [
             "-dr",
@@ -89,14 +108,8 @@ struct PrivilegedHelperInstaller: Sendable {
             appBundleURL.path
         ], allowedExitCodes: [0])
 
-        for line in output.split(whereSeparator: \.isNewline) {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.hasPrefix("designated =>") else { continue }
-            let requirement = String(trimmed.dropFirst("designated =>".count))
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !requirement.isEmpty {
-                return requirement
-            }
+        if let requirement = Self.hostDesignatedRequirement(from: output) {
+            return requirement
         }
 
         throw PrivilegedHelperInstallerError.missingHostDesignatedRequirement(appBundleURL.path)

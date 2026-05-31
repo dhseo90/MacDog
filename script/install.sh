@@ -150,7 +150,19 @@ detect_host_designated_requirement() {
   local bundle_path="$1"
   local output
   output="$(/usr/bin/codesign -dr - "$bundle_path" 2>&1 || true)"
-  printf '%s\n' "$output" | sed -n 's/^designated =>[[:space:]]*//p' | head -n 1
+  printf '%s\n' "$output" | awk '
+    {
+      line = $0
+      sub(/^[[:space:]]*#[[:space:]]*/, "", line)
+      if (line ~ /^designated =>[[:space:]]*/) {
+        sub(/^designated =>[[:space:]]*/, "", line)
+        if (length(line) > 0) {
+          print line
+          exit
+        }
+      }
+    }
+  '
 }
 
 write_helper_launch_daemon_plist() {
@@ -264,7 +276,7 @@ print_helper_install_dry_run() {
   echo "Helper tool destination: $HELPER_TOOL_DEST"
   echo "Helper launch daemon destination: $HELPER_PLIST_DEST"
   echo "Helper mach service: $HELPER_MACH_SERVICE"
-  echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1 only"
+  echo "Helper commands: read SleepDisabled, set SleepDisabled 0/1, read screenLock, set screenLock off/immediate/seconds only"
   echo "Helper install status: implemented; actual run requires administrator approval"
   echo "Helper approval UX: terminal sudo when interactive, or MacDog Settings helper button; non-interactive osascript fallback is disabled unless MACDOG_ALLOW_OSASCRIPT_ADMIN=1"
   echo "Helper host requirement: team id when signed, local ad-hoc allowance for unsigned development builds"
