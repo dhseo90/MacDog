@@ -13,6 +13,7 @@ CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
 APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
+APP_HISTORY_FILE="$APP_CACHE_DIR/usage-weekly-history.json"
 SHARED_CACHE_DIR="$HOME/Library/Group Containers/group.com.dhseo.macdog.MacDog"
 SHARED_CACHE_FILE="$SHARED_CACHE_DIR/usage.json"
 HELPER_LABEL="com.dhseo.macdog.helper"
@@ -195,6 +196,7 @@ case "$MODE" in
     echo "Would remove: $APP_DEST"
     echo "Would remove: $SYSTEM_APP_DEST if present"
     echo "Would remove cache file: $APP_CACHE_FILE"
+    echo "Would remove usage history file: $APP_HISTORY_FILE"
     echo "Would remove shared cache file: $SHARED_CACHE_FILE"
     echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
     if [[ "$RESET_PREFERENCES" == "1" ]]; then
@@ -203,7 +205,7 @@ case "$MODE" in
     else
       echo "Would preserve: MacDog UserDefaults preferences"
     fi
-    echo "Widget extension: removed with $APP_DEST/Contents/PlugIns/MacDogWidgetExtension.appex"
+    echo "Widget extension: removed with app bundle if present"
     if [[ "$WITH_HELPER" == "1" ]]; then
       echo "Privileged helper: opt-in cleanup enabled"
       echo "Would bootout system helper: $HELPER_LABEL"
@@ -239,7 +241,7 @@ disable_login_item_if_possible
 restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE"
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE"
 if ! run_with_timeout 3 rm -f "$SHARED_CACHE_FILE"; then
   echo "Warning: failed to remove shared cache file within timeout: $SHARED_CACHE_FILE" >&2
 fi

@@ -30,12 +30,13 @@ CACHE_REQUEST_TIMEOUT_SECONDS=5
 CACHE_PRIME_TIMEOUT_SECONDS=12
 WITH_HELPER=0
 HELPER_ONLY=0
+WITH_WIDGET=0
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
 
 usage() {
-  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only]"
+  echo "usage: $0 [--dry-run] [--with-helper] [--helper-only] [--with-widget]"
 }
 
 die() {
@@ -292,6 +293,7 @@ while [[ $# -gt 0 ]]; do
     install) MODE="install" ;;
     --dry-run|dry-run) MODE="dry-run" ;;
     --with-helper) WITH_HELPER=1 ;;
+    --with-widget) WITH_WIDGET=1 ;;
     --helper-only)
       WITH_HELPER=1
       HELPER_ONLY=1
@@ -324,7 +326,11 @@ case "$MODE" in
     fi
 
     echo "MacDog install dry run"
-    echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+    if [[ "$WITH_WIDGET" == "1" ]]; then
+      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run --with-widget"
+    else
+      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+    fi
     echo "App source: $APP_SOURCE"
     echo "App destination: $APP_DEST"
     echo "CLI destination: $CLI_DEST -> $APP_CLI_DEST"
@@ -343,7 +349,13 @@ case "$MODE" in
       echo "Login item enabled by preference: false"
     fi
     echo "Preferences: preserved in UserDefaults and restored by MacDog on launch"
-    echo "Widget extension: bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
+    if [[ "$WITH_WIDGET" == "1" ]]; then
+      echo "Widget extension: opt-in bundled in $APP_SOURCE/Contents/PlugIns/MacDogWidgetExtension.appex"
+      echo "Widget cache mirror: enabled"
+    else
+      echo "Widget extension: skipped by default; pass --with-widget to build/install it"
+      echo "Widget cache mirror: disabled"
+    fi
     if [[ "$WITH_HELPER" == "1" ]]; then
       print_helper_install_dry_run
     else
@@ -366,7 +378,11 @@ if [[ "$HELPER_ONLY" == "1" ]]; then
   exit 0
 fi
 
-"$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
+if [[ "$WITH_WIDGET" == "1" ]]; then
+  "$ROOT_DIR/script/build_and_run.sh" --no-run --with-widget >/dev/null
+else
+  "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
+fi
 
 mkdir -p "$HOME/Applications" "$BIN_DIR" "$LAUNCH_AGENT_DIR" "$LOG_DIR"
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
@@ -398,6 +414,13 @@ cat >"$CACHE_PLIST" <<PLIST
     <string>$APP_CLI_DEST</string>
     <string>status</string>
     <string>--write-cache</string>
+PLIST
+if [[ "$WITH_WIDGET" == "1" ]]; then
+  cat >>"$CACHE_PLIST" <<PLIST
+    <string>--mirror-cache</string>
+PLIST
+fi
+cat >>"$CACHE_PLIST" <<PLIST
     <string>--timeout</string>
     <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
     <string>--watch</string>
@@ -417,8 +440,14 @@ PLIST
 
 rm -f "$MONITOR_PLIST"
 
-if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
-  echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
+if [[ "$WITH_WIDGET" == "1" ]]; then
+  if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --mirror-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
+    echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
+  fi
+else
+  if ! run_with_timeout "$CACHE_PRIME_TIMEOUT_SECONDS" "$APP_CLI_DEST" status --write-cache --timeout "$CACHE_REQUEST_TIMEOUT_SECONDS" >/dev/null; then
+    echo "Warning: failed to prime usage cache; LaunchAgent will retry." >&2
+  fi
 fi
 
 /bin/launchctl bootstrap "gui/$UID_VALUE" "$CACHE_PLIST"
@@ -439,4 +468,9 @@ fi
 if [[ "$WITH_HELPER" == "1" ]]; then
   echo "Privileged helper: $HELPER_TOOL_DEST"
   echo "LaunchDaemon: $HELPER_PLIST_DEST"
+fi
+if [[ "$WITH_WIDGET" == "1" ]]; then
+  echo "Widget extension: installed opt-in"
+else
+  echo "Widget extension: not installed"
 fi

@@ -135,6 +135,24 @@ struct RunnerPreferences: Equatable {
         )
     }
 
+    var hasAutomaticSleepPreventionTrigger: Bool {
+        sleepPreventionPowerAdapterTriggerEnabled ||
+            sleepPreventionCodexAppTriggerEnabled ||
+            sleepPreventionChargingBelowThresholdTriggerEnabled ||
+            sleepPreventionCPUThresholdTriggerEnabled ||
+            sleepPreventionMemoryThresholdTriggerEnabled ||
+            sleepPreventionNetworkActivityTriggerEnabled ||
+            sleepPreventionExternalVolumeTriggerEnabled
+    }
+
+    var requiresSystemMetricsForSleepPreventionTrigger: Bool {
+        sleepPreventionPowerAdapterTriggerEnabled ||
+            sleepPreventionChargingBelowThresholdTriggerEnabled ||
+            sleepPreventionCPUThresholdTriggerEnabled ||
+            sleepPreventionMemoryThresholdTriggerEnabled ||
+            sleepPreventionNetworkActivityTriggerEnabled
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.displayBasis = UsageDisplayBasis(rawValue: defaults.string(forKey: Self.displayBasisKey) ?? "") ?? Self.defaultDisplayBasis
         self.reducedMotion = defaults.bool(forKey: Self.reducedMotionKey)

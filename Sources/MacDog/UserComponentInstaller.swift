@@ -45,18 +45,29 @@ struct UserComponentInstaller {
         try installLoginLaunchIfNeeded(isEnabled: loginLaunchEnabled)
     }
 
-    static func cachePlistData(appCLIPath: String, logDirectoryPath: String) throws -> Data {
+    static func cachePlistData(
+        appCLIPath: String,
+        logDirectoryPath: String,
+        mirrorWidgetCache: Bool = false
+    ) throws -> Data {
+        var programArguments = [
+            appCLIPath,
+            "status",
+            "--write-cache"
+        ]
+        if mirrorWidgetCache {
+            programArguments.append("--mirror-cache")
+        }
+        programArguments.append(contentsOf: [
+            "--timeout",
+            String(Int(CodexUsageCacheRefreshPolicy.requestTimeout)),
+            "--watch",
+            String(CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds)
+        ])
+
         let plist: [String: Any] = [
             "Label": cacheLabel,
-            "ProgramArguments": [
-                appCLIPath,
-                "status",
-                "--write-cache",
-                "--timeout",
-                String(Int(CodexUsageCacheRefreshPolicy.requestTimeout)),
-                "--watch",
-                String(CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds)
-            ],
+            "ProgramArguments": programArguments,
             "RunAtLoad": true,
             "KeepAlive": true,
             "StandardOutPath": "\(logDirectoryPath)/cache.out.log",
@@ -70,6 +81,13 @@ struct UserComponentInstaller {
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
             .appendingPathComponent("codex-usage")
+    }
+
+    private var bundledWidgetExtensionURL: URL {
+        appBundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("PlugIns", isDirectory: true)
+            .appendingPathComponent("MacDogWidgetExtension.appex", isDirectory: true)
     }
 
     private var binDirectoryURL: URL {
@@ -139,7 +157,8 @@ struct UserComponentInstaller {
     private func installCacheLaunchAgentIfNeeded() throws {
         let plistData = try Self.cachePlistData(
             appCLIPath: bundledCLIURL.path,
-            logDirectoryPath: logDirectoryURL.path
+            logDirectoryPath: logDirectoryURL.path,
+            mirrorWidgetCache: fileManager.fileExists(atPath: bundledWidgetExtensionURL.path)
         )
         let existingData = try? Data(contentsOf: cachePlistURL)
         guard existingData != plistData else {

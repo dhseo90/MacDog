@@ -9,6 +9,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let runnerRenderer = RunnerIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
+    private let weeklyHistoryStore = CodexUsageWeeklyHistoryStore(fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL())
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
@@ -62,14 +63,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func startRefreshTimer() {
         refreshTimer?.invalidate()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: CodexUsageCacheRefreshPolicy.cacheReadInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refreshUsage(allowLiveRefresh: false)
             }
         }
+        refreshTimer?.tolerance = CodexUsageCacheRefreshPolicy.cacheReadTolerance
     }
 
-    private func startPopoverMetricsTimer() {
+    private func startPopoverMetricsTimerIfNeeded() {
+        guard popoverMetricsTimer == nil else { return }
         popoverMetricsTimer?.invalidate()
         popoverMetricsTimer = Timer.scheduledTimer(withTimeInterval: PopoverMetricsRefreshPolicy.localMetricsInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -82,6 +85,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func stopPopoverMetricsTimer() {
         popoverMetricsTimer?.invalidate()
         popoverMetricsTimer = nil
+    }
+
+    private func updatePopoverMetricsTimer() {
+        let selectedModuleRaw = UserDefaults.standard.string(forKey: RunnerPreferences.popoverModuleKey)
+        if PopoverMetricsRefreshPolicy.shouldRunTimer(
+            isPopoverShown: popover.isShown,
+            selectedModuleRaw: selectedModuleRaw
+        ) {
+            startPopoverMetricsTimerIfNeeded()
+        } else {
+            stopPopoverMetricsTimer()
+        }
     }
 
     private func refreshPopoverMetricsIfNeeded() {
@@ -151,11 +166,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             if previousPhase != state.phase || previousPreferences != preferences {
                 restartAnimationTimer()
             }
+            updatePopoverMetricsTimer()
             syncDesktopPetVisibility()
             return
         }
 
-        let systemMetrics = captureSystemMetrics()
+        let systemMetrics = systemMetricsSnapshotForUsageRefresh()
         syncSleepPrevention(systemMetrics: systemMetrics)
         let loadedState = loadCachedState(systemMetrics: systemMetrics)
         let shouldRefreshCache = allowLiveRefresh || loadedState.report == nil
@@ -168,6 +184,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             restartAnimationTimer()
         }
 
+        updatePopoverMetricsTimer()
         syncDesktopPetVisibility()
     }
 
@@ -204,12 +221,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         await Task.detached(priority: .utility) {
             let process = Process()
             process.executableURL = codexUsageURL
-            process.arguments = [
+            var arguments = [
                 "status",
                 "--write-cache",
                 "--timeout",
                 String(Int(CodexUsageCacheRefreshPolicy.requestTimeout))
             ]
+            if Self.isWidgetBundled(relativeTo: codexUsageURL) {
+                arguments.insert("--mirror-cache", at: 2)
+            }
+            process.arguments = arguments
             process.standardOutput = Pipe()
             process.standardError = Pipe()
 
@@ -226,6 +247,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 return
             }
         }.value
+    }
+
+    private nonisolated static func isWidgetBundled(relativeTo codexUsageURL: URL) -> Bool {
+        let bundleURL = codexUsageURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let widgetURL = bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("PlugIns", isDirectory: true)
+            .appendingPathComponent("MacDogWidgetExtension.appex", isDirectory: true)
+        return FileManager.default.fileExists(atPath: widgetURL.path)
     }
 
     private func applyState(_ newState: UsageMonitorState) {
@@ -324,12 +357,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .capture()) -> UsageMonitorState {
+    private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
+        let weeklyUsageHistory = (try? weeklyHistoryStore.read()) ?? .empty
+
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
                 return UsageMonitorState(
                     report: report,
                     cacheSnapshot: snapshot,
+                    weeklyUsageHistory: weeklyUsageHistory,
                     errorMessage: errorMessage ?? snapshot.error?.message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
@@ -345,6 +381,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return UsageMonitorState(
                 report: nil,
                 cacheSnapshot: snapshot,
+                weeklyUsageHistory: weeklyUsageHistory,
                 errorMessage: errorMessage ?? snapshot.error?.message ?? "사용량 캐시가 아직 없습니다.",
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
@@ -360,6 +397,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return UsageMonitorState(
             report: nil,
             cacheSnapshot: nil,
+            weeklyUsageHistory: weeklyUsageHistory,
             errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -374,6 +412,23 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func privilegedHelperInstallSnapshot() -> PrivilegedHelperInstallSnapshot {
         privilegedHelperInstallStateReader.snapshot()
+    }
+
+    private func systemMetricsSnapshotForUsageRefresh() -> SystemMetricsSnapshot {
+        guard shouldCaptureBackgroundSystemMetrics else {
+            return state.systemMetrics
+        }
+        return captureSystemMetrics()
+    }
+
+    private var shouldCaptureBackgroundSystemMetrics: Bool {
+        if popover.isShown, shouldRefreshLocalMetricsForSelectedPopoverModule {
+            return true
+        }
+        if preferences.desktopPetEnabled {
+            return true
+        }
+        return preferences.requiresSystemMetricsForSleepPreventionTrigger
     }
 
     private func captureSystemMetrics() -> SystemMetricsSnapshot {
@@ -728,8 +783,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 of: sourceView,
                 preferredEdge: preferredEdge(for: sourceView, placement: placement)
             )
-            startPopoverMetricsTimer()
         }
+        updatePopoverMetricsTimer()
         positionPopoverWindow(relativeTo: sourceView, placement: placement)
         refreshPopoverMetricsIfNeeded()
     }

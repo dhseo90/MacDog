@@ -18,26 +18,33 @@ Checks:
   4. README generated screenshot artifacts are absent from the repo.
   5. Ignored dist output does not contain stale app bundle copies.
   6. Runtime CPU/RSS sampling commands and documentation stay wired.
-  7. The menu bar app keeps live Codex app-server access out of the UI process.
-  8. Swift tests pass.
-  9. Cache schema and privacy contract checks pass.
-  10. Install/uninstall dry-run output is stable.
-  11. Restart/login autostart contract preserves app preferences.
-  12. The privileged helper product builds without installing it.
-  13. The menu bar app builds.
-  14. The generated app bundle contains the WidgetKit extension.
-  15. WidgetKit host/extension packaging builds an embedded .appex.
-  16. WidgetKit cache/deep-link readiness guards pass.
-  17. WidgetKit manual cache fixture writer is tested without touching live cache.
-  18. Shortcuts Charge Limit fallback parser is tested with a local fixture.
-  19. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  20. The current app/helper install state can be reported without changing the system.
-  21. Release packaging dry-run is stable.
-  22. Public repository guardrails are present and consistent.
-  23. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  24. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  25. Privileged helper reinstall test plan is safe to stage before actual approval.
-  26. Unless --no-run is passed, the app launches and its process is detected.
+  7. The read-only existing-process runtime sampler is self-tested.
+  8. The menu bar app keeps live Codex app-server access out of the UI process.
+  9. Swift tests pass.
+  10. Cache schema and privacy contract checks pass.
+  11. Install/uninstall dry-run output is stable.
+  12. Restart/login autostart contract preserves app preferences.
+  13. The privileged helper product builds without installing it.
+  14. The menu bar app builds.
+  15. The generated app bundle omits the WidgetKit extension by default.
+  16. WidgetKit source and opt-in packaging boundary guards pass.
+  17. WidgetKit App Group signing classifier is self-tested.
+  18. v1.1.0 priority item list and manual/external evidence boundaries are checked.
+  19. v1.1.0 manual/external runbook coverage is checked without running it.
+  20. v1.1.0 manual/external evidence ledger is checked without claiming completion.
+  21. v1.1.0 manual/external execution readiness is summarized without running it.
+  22. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
+  23. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
+  24. Shortcuts Charge Limit fallback parser is tested with a local fixture.
+  25. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  26. The current app/helper install state and dist freshness delta can be reported without changing the system.
+  27. Install freshness delta reporting is self-tested with local fixtures.
+  28. Release packaging dry-run is stable.
+  29. Public repository guardrails are present and consistent.
+  30. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  31. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  32. Privileged helper reinstall test plan is safe to stage before actual approval.
+  33. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -92,6 +99,9 @@ echo "==> Verifying dist hygiene"
 echo "==> Verifying runtime sampling contract"
 ./script/verify_runtime_contract.sh
 
+echo "==> Verifying existing-process runtime sampler"
+./script/sample_existing_runtime_resources.sh --self-test
+
 echo "==> Verifying app privacy boundaries"
 ./script/verify_app_privacy_boundaries.sh
 
@@ -124,11 +134,31 @@ fi
 echo "==> Verifying generated app bundle"
 ./script/verify_app_bundle.sh
 
-echo "==> Verifying WidgetKit packaging"
-./script/verify_widget_packaging.sh
-
-echo "==> Verifying WidgetKit readiness"
+echo "==> Verifying WidgetKit opt-in boundary"
 ./script/verify_widget_readiness.sh
+
+echo "==> Verifying WidgetKit App Group signing classifier"
+./script/verify_widget_app_group_signing.sh --self-test
+
+echo "==> Verifying v1.1.0 priority plan"
+./script/verify_v110_priority_plan.sh --self-test
+
+echo "==> Verifying v1.1.0 manual runbook"
+./script/verify_v110_manual_runbook.sh --self-test
+
+echo "==> Verifying v1.1.0 manual evidence ledger"
+./script/render_v110_manual_evidence.sh --self-test
+./script/render_v110_manual_evidence.sh --check
+./script/record_v110_manual_evidence.sh --self-test
+./script/verify_v110_manual_evidence.sh --self-test
+./script/verify_v110_manual_evidence.sh --allow-incomplete
+
+echo "==> Verifying v1.1.0 manual execution readiness"
+./script/verify_v110_manual_execution_readiness.sh --self-test
+./script/verify_v110_manual_execution_readiness.sh --allow-incomplete
+
+echo "==> Verifying WidgetKit manual UI plan"
+./script/verify_widget_manual_ui_plan.sh --self-test
 
 echo "==> Verifying WidgetKit cache fixture writer"
 ./script/write_widget_cache_fixture.sh --self-test
@@ -153,6 +183,8 @@ echo "==> Verifying distribution gate"
 
 echo "==> Reporting install state"
 ./script/verify_install_state.sh --report
+./script/verify_install_state.sh --explain-current-dist
+./script/verify_install_state.sh --self-test
 ./script/verify_privileged_helper_state.sh --allow-missing
 if [[ "$MODE" == "--no-run" || "$MODE" == "no-run" ]]; then
   ./script/verify_privileged_helper_xpc.sh --allow-missing --skip-runtime

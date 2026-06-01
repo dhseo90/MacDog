@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_BUNDLE="$ROOT_DIR/dist/MacDog.app"
+PACKAGE_SCRIPT="$ROOT_DIR/script/package_release.sh"
 
 die() {
   echo "error: $*" >&2
@@ -47,11 +48,19 @@ assert_no_legacy_payload() {
   fi
 }
 
-output="$("$ROOT_DIR/script/package_release.sh" --dry-run)"
+script_source="$(cat "$PACKAGE_SCRIPT")"
+require_not_contains "$script_source" "stagingBounds"
+require_not_contains "$script_source" "-12000"
+require_not_contains "$script_source" "-11240"
+require_not_contains "$script_source" "-11570"
+
+output="$("$PACKAGE_SCRIPT" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
 require_contains "$output" "Docker-style drag-and-drop app installer"
 require_contains "$output" "MacDog.app (includes bundled codex-usage)"
 require_contains "$output" "Applications symlink"
+require_contains "$output" "Widget extension: omitted by default"
+require_contains "$output" "Widget setup: default release omits WidgetKit"
 require_contains "$output" "Drag install: drag MacDog.app to Applications"
 require_contains "$output" "DMG layout:"
 require_contains "$output" "Window: 760x430"
@@ -82,7 +91,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
   notes_path="$ROOT_DIR/dist/release/MacDog-$version-release-notes.md"
   trap 'rm -rf "$stage"; rm -f "$dmg_path" "$checksum_path" "$notes_path"' EXIT
 
-  stage_output="$(MACDOG_RELEASE_VERSION="$version" "$ROOT_DIR/script/package_release.sh" --skip-build --no-dmg)"
+  stage_output="$(MACDOG_RELEASE_VERSION="$version" "$PACKAGE_SCRIPT" --skip-build --no-dmg)"
   require_contains "$stage_output" "$stage"
   require_contains "$stage_output" "$notes_path"
   [[ -d "$stage/MacDog.app" ]] || die "staged app bundle missing: $stage/MacDog.app"
@@ -94,6 +103,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
   require_matches "$background_info" "pixelHeight:[[:space:]]+860"
   [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable"
   [[ -f "$stage/MacDog.app/Contents/Resources/MacDog.icns" ]] || die "staged app icon missing"
+  [[ ! -e "$stage/MacDog.app/Contents/PlugIns/MacDogWidgetExtension.appex" ]] || die "default release stage must not include WidgetKit extension"
   [[ ! -e "$stage/bin/codex-usage" ]] || die "staged standalone CLI must not exist"
   assert_no_legacy_payload "$stage"
 
@@ -102,6 +112,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
   /usr/bin/grep -Fq "첫 실행" "$notes_path" || die "release notes first launch setup missing"
   /usr/bin/grep -Fq "다운로드한 설치 파일을 정리" "$notes_path" || die "release notes cleanup copy missing"
   /usr/bin/grep -Fq "MacDog 주체의 관리자 승인창" "$notes_path" || die "release notes helper approval copy missing"
+  /usr/bin/grep -Fq "WidgetKit 위젯은 기본 DMG에 포함하지 않습니다" "$notes_path" || die "release notes widget opt-in boundary missing"
   /usr/bin/grep -Fq "notarized" "$notes_path" || die "release notes notarization gate missing"
   if /usr/bin/grep -Eq 'Install MacDog\.command|Uninstall MacDog\.command|Check Install Status\.command|README_FIRST|RELEASE_NOTES_DRAFT' "$notes_path"; then
     die "release notes must not reference legacy command payloads"
@@ -109,7 +120,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
 
   rm -rf "$stage"
   rm -f "$dmg_path" "$checksum_path"
-  MACDOG_RELEASE_VERSION="$version" "$ROOT_DIR/script/package_release.sh" --skip-build >/dev/null
+  MACDOG_RELEASE_VERSION="$version" "$PACKAGE_SCRIPT" --skip-build >/dev/null
   [[ -f "$dmg_path" ]] || die "release DMG missing after package generation"
   [[ -f "$checksum_path" ]] || die "release checksum missing after package generation"
   checksum_line="$(cat "$checksum_path")"
@@ -130,6 +141,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
   [[ -d "$mountpoint/MacDog.app" ]] || die "release DMG app missing after mount"
   [[ -L "$mountpoint/Applications" ]] || die "release DMG Applications symlink missing after mount"
   [[ -f "$mountpoint/.background/background.png" ]] || die "release DMG background missing after mount"
+  [[ ! -e "$mountpoint/MacDog.app/Contents/PlugIns/MacDogWidgetExtension.appex" ]] || die "default release DMG must not include WidgetKit extension"
   /usr/bin/strings -a "$mountpoint/.DS_Store" | /usr/bin/grep -Fq ".icvp" || die "release DMG Finder icon view options missing"
   if /usr/bin/find "$mountpoint/MacDog.app" -exec /bin/sh -c '
 for path do

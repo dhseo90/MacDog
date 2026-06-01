@@ -155,6 +155,50 @@ final class SleepPreventionModeTests: XCTestCase {
         )
     }
 
+    func testDefaultPreferencesDoNotRequireBackgroundSystemMetrics() {
+        let preferences = RunnerPreferences(defaults: defaults)
+
+        XCTAssertFalse(preferences.hasAutomaticSleepPreventionTrigger)
+        XCTAssertFalse(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+    }
+
+    func testProviderOnlyTriggersDoNotRequireBackgroundSystemMetrics() {
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionExternalVolumeTrigger(true, defaults: defaults)
+
+        let preferences = RunnerPreferences(defaults: defaults)
+
+        XCTAssertTrue(preferences.hasAutomaticSleepPreventionTrigger)
+        XCTAssertFalse(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+    }
+
+    func testMetricBasedTriggersRequireBackgroundSystemMetrics() {
+        RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
+        var preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.hasAutomaticSleepPreventionTrigger)
+        XCTAssertTrue(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+
+        RunnerPreferences.setSleepPreventionMode(.off, defaults: defaults)
+        RunnerPreferences.setSleepPreventionChargingBelowThresholdTrigger(true, defaults: defaults)
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+
+        RunnerPreferences.setSleepPreventionMode(.off, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+
+        RunnerPreferences.setSleepPreventionMode(.off, defaults: defaults)
+        RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+
+        RunnerPreferences.setSleepPreventionMode(.off, defaults: defaults)
+        RunnerPreferences.setSleepPreventionNetworkActivityTrigger(true, defaults: defaults)
+        preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.requiresSystemMetricsForSleepPreventionTrigger)
+    }
+
     func testLoginLaunchPreferenceDefaultsToEnabledAndPersists() {
         var preferences = RunnerPreferences(defaults: defaults)
         XCTAssertTrue(preferences.loginLaunchEnabled)

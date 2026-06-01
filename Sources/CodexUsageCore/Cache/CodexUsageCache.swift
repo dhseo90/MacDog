@@ -94,12 +94,15 @@ public struct CodexUsageCacheStore {
         ].compactMap { $0 })
     }
 
-    public static func defaultApplicationSupportFileURL() -> URL {
-        let directory = FileManager.default.urls(
+    public static func defaultApplicationSupportDirectoryURL() -> URL {
+        FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0].appendingPathComponent("MacDog", isDirectory: true)
-        return directory.appendingPathComponent("usage.json")
+    }
+
+    public static func defaultApplicationSupportFileURL() -> URL {
+        defaultApplicationSupportDirectoryURL().appendingPathComponent("usage.json")
     }
 
     private static func defaultAppGroupContainerFallbackFileURL() -> URL {
@@ -147,6 +150,13 @@ public struct CodexUsageCacheStore {
             error: nil
         )
         try write(snapshot)
+        if let sample = CodexUsageWeeklyHistorySample(report: report, recordedAt: now) {
+            try CodexUsageWeeklyHistoryStore(
+                fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL),
+                fileManager: fileManager,
+                dateProvider: dateProvider
+            ).append(sample)
+        }
     }
 
     public func writeFailure(

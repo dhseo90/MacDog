@@ -185,6 +185,7 @@ struct WidgetUsagePresentation: Equatable {
 
 public struct CodexUsageTimelineProvider: TimelineProvider {
     private let cacheURL: URL
+    private static let missingFilePOSIXCode = Int(POSIXErrorCode.ENOENT.rawValue)
 
     public init(cacheURL: URL = CodexUsageCacheStore.defaultFileURL()) {
         self.cacheURL = cacheURL
@@ -214,8 +215,27 @@ public struct CodexUsageTimelineProvider: TimelineProvider {
             let snapshot = try CodexUsageCacheStore(fileURL: cacheURL).read()
             return CodexUsageEntry(date: date, snapshot: snapshot, errorMessage: snapshot.error?.message)
         } catch {
-            return CodexUsageEntry(date: date, snapshot: nil, errorMessage: error.localizedDescription)
+            if Self.isMissingCacheError(error) {
+                return CodexUsageEntry(date: date, snapshot: nil, errorMessage: nil)
+            }
+            return CodexUsageEntry(date: date, snapshot: nil, errorMessage: "캐시를 읽을 수 없음")
         }
+    }
+
+    static func isMissingCacheError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain,
+           nsError.code == CocoaError.fileReadNoSuchFile.rawValue {
+            return true
+        }
+
+        if nsError.domain == NSPOSIXErrorDomain,
+           nsError.code == missingFilePOSIXCode {
+            return true
+        }
+
+        let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+        return underlying?.domain == NSPOSIXErrorDomain && underlying?.code == missingFilePOSIXCode
     }
 
     private static var placeholderSnapshot: CodexUsageCacheSnapshot {

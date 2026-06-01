@@ -14,6 +14,7 @@ BACKGROUND_PATH="$STAGE_DIR/.background/background.png"
 DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
+WITH_WIDGET=0
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
@@ -26,12 +27,13 @@ DMG_ICON_Y=225
 
 usage() {
   cat <<USAGE
-usage: $0 [--dry-run] [--skip-build] [--no-dmg] [--version VERSION]
+usage: $0 [--dry-run] [--skip-build] [--no-dmg] [--version VERSION] [--with-widget]
 
 Build a GitHub Release payload.
 The generated DMG is ad-hoc signed and not notarized; release notes must say so clearly.
 The DMG is staged as a Docker-style drag-and-drop app installer.
 First launch from Applications finishes user-level setup and offers helper setup.
+WidgetKit is omitted by default; --with-widget builds an opt-in widget bundle.
 USAGE
 }
 
@@ -51,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=1 ;;
     --skip-build) SKIP_BUILD=1 ;;
     --no-dmg) CREATE_DMG=0 ;;
+    --with-widget) WITH_WIDGET=1 ;;
     --version)
       shift
       [[ $# -gt 0 ]] || die "--version requires a value"
@@ -74,10 +77,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$DRY_RUN" == "1" ]]; then
+  build_plan="$ROOT_DIR/script/build_and_run.sh --no-run"
+  if [[ "$WITH_WIDGET" == "1" ]]; then
+    build_plan="$build_plan --with-widget"
+  fi
   cat <<DRYRUN
 MacDog release package dry run
 Version: $VERSION
-Build app bundle: $([[ "$SKIP_BUILD" == "1" ]] && echo "skipped" || echo "$ROOT_DIR/script/build_and_run.sh --no-run")
+Build app bundle: $([[ "$SKIP_BUILD" == "1" ]] && echo "skipped" || echo "$build_plan")
+Widget extension: $([[ "$WITH_WIDGET" == "1" ]] && echo "opt-in bundled" || echo "omitted by default")
 App source: $APP_BUNDLE
 Stage directory: $STAGE_DIR
 DMG path: $DMG_PATH
@@ -95,6 +103,7 @@ DMG layout:
 Install style: Docker-style drag-and-drop app installer
 Drag install: drag MacDog.app to Applications, then launch MacDog.
 First launch setup: MacDog creates the user codex-usage symlink, usage cache LaunchAgent, and macOS Login Item when enabled.
+Widget setup: default release omits WidgetKit; opt-in widget builds mirror cache only when the extension is bundled.
 First launch cleanup: MacDog can offer to eject the installer disk and delete downloaded installer files.
 Privileged helper: first launch offers MacDog-owned helper installation; Settings can install or remove it later.
 Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
@@ -307,10 +316,12 @@ create_styled_dmg() {
   if ! /usr/bin/osascript <<APPLESCRIPT >/dev/null
 set volumePath to POSIX file "$mountpoint" as alias
 set backgroundPath to alias "$volume_name:.background:background.png"
+set finalBounds to {120, 120, 880, 550}
 tell application "Finder"
   open volumePath
-  delay 0.5
+  delay 0.2
   set theWindow to container window of volumePath
+  set bounds of theWindow to finalBounds
   set current view of theWindow to icon view
   try
     set toolbar visible of theWindow to false
@@ -318,23 +329,14 @@ tell application "Finder"
   try
     set statusbar visible of theWindow to false
   end try
-  set bounds of theWindow to {120, 120, 880, 550}
   set arrangement of icon view options of theWindow to not arranged
   set icon size of icon view options of theWindow to $DMG_ICON_SIZE
   set background picture of icon view options of theWindow to backgroundPath
   set position of item "$APP_NAME.app" of volumePath to {$DMG_APP_ICON_X, $DMG_ICON_Y}
   set position of item "Applications" of volumePath to {$DMG_APPLICATIONS_ICON_X, $DMG_ICON_Y}
   update volumePath without registering applications
-  delay 1
   try
     close theWindow
-  end try
-  delay 1
-  open volumePath
-  delay 1
-  set reopenedWindow to container window of volumePath
-  try
-    close reopenedWindow
   end try
 end tell
 APPLESCRIPT
@@ -383,11 +385,19 @@ create_plain_dmg() {
 cd "$ROOT_DIR"
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
-  ./script/build_and_run.sh --no-run >/dev/null
+  if [[ "$WITH_WIDGET" == "1" ]]; then
+    ./script/build_and_run.sh --no-run --with-widget >/dev/null
+  else
+    ./script/build_and_run.sh --no-run >/dev/null
+  fi
 fi
 
 clean_bundle_xattrs "$APP_BUNDLE"
-./script/verify_app_bundle.sh "$APP_BUNDLE" >/dev/null
+if [[ "$WITH_WIDGET" == "1" ]]; then
+  ./script/verify_app_bundle.sh "$APP_BUNDLE" --with-widget >/dev/null
+else
+  ./script/verify_app_bundle.sh "$APP_BUNDLE" >/dev/null
+fi
 
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR" "$RELEASE_ROOT"
@@ -418,6 +428,7 @@ cat >"$NOTES_PATH" <<NOTES
 - 첫 실행 시 MacDog가 설치 디스크를 추출하고 다운로드한 설치 파일을 정리할지 물어볼 수 있습니다.
 - 첫 실행 시 MacDog가 덮개 닫힘 보호용 optional 권한 도우미 설치 여부를 물어봅니다. 동의하면 macOS가 MacDog 주체의 관리자 승인창을 표시합니다.
 - optional 권한 도우미는 나중에 MacDog 설정 탭에서도 설치하거나 제거할 수 있습니다.
+- WidgetKit 위젯은 기본 DMG에 포함하지 않습니다. 위젯은 App Group provisioning 검증이 가능한 환경에서 \`--with-widget\` opt-in build로만 설치합니다.
 
 ## 보안과 Gatekeeper
 
@@ -430,6 +441,7 @@ cat >"$NOTES_PATH" <<NOTES
 - Codex 사용량 popover와 CLI를 지원합니다.
 - Mac 자원, 잠들지 않기, native Charge Limit UI를 지원합니다.
 - Native Charge Limit은 Apple silicon과 macOS 26.4 이상이 필요합니다.
+- WidgetKit은 source/자동 검증 일부만 유지하며, App Group provisioning이 통과한 opt-in build 전까지 실제 위젯 UI 지원 범위에 포함하지 않습니다.
 
 ## 삭제
 

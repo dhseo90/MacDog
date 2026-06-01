@@ -101,6 +101,20 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.withRefreshing(true).privilegedHelperInstallSnapshot, snapshot)
     }
 
+    func testRefreshingPreservesWeeklyUsageHistory() {
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: 1_000, remainingPercent: 92, resetsAt: 1_000 + 604_800)
+        ])
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            weeklyUsageHistory: history,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(state.withRefreshing(true).weeklyUsageHistory, history)
+    }
+
     func testSystemMetricsUpdateReplacesPrivilegedHelperInstallSnapshot() {
         let state = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: true)
@@ -118,6 +132,15 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(updated.privilegedHelperInstallSnapshot, snapshot)
         XCTAssertEqual(updated.systemMetricsHistory, history)
+    }
+
+    func testEmptyStateDoesNotCaptureSystemMetrics() {
+        let empty = UsageMonitorState.empty
+
+        XCTAssertNil(empty.systemMetrics.cpuLoadPercent)
+        XCTAssertNil(empty.systemMetrics.memoryUsedPercent)
+        XCTAssertNil(empty.systemMetrics.networkReceivedRateBytesPerSecond)
+        XCTAssertFalse(empty.systemMetrics.battery.isPresent)
     }
 
     func testSystemMetricsHistoryKeepsMostRecentSamples() {
@@ -161,12 +184,131 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(scale.normalized(45), 0.45, accuracy: 0.001)
     }
 
+    func testWeeklyHistoryChartAnchorsResetAtHundredPercentAndMapsSamplesAcrossWeek() throws {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 302_400, remainingPercent: 63, resetsAt: reset)
+        ])
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 63, resetsAt: reset),
+            calendar: Self.utcCalendar
+        )
+
+        XCTAssertEqual(chart.points.count, 2)
+        XCTAssertEqual(chart.dayGridPositions.count, 8)
+        XCTAssertEqual(chart.dayGridPositions.first, 0)
+        XCTAssertEqual(chart.dayGridPositions.last, 1)
+        XCTAssertEqual(chart.dayMarkers.count, 1)
+        XCTAssertEqual(chart.points.first?.isResetAnchor, true)
+        XCTAssertEqual(try XCTUnwrap(chart.points.first?.xPosition), 0, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(chart.points.first?.yPosition), 1, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(chart.latestActualPoint?.xPosition), 0.5, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(chart.latestActualPoint?.yPosition), 0.63, accuracy: 0.001)
+        XCTAssertEqual(chart.summaryText, "63% 남음")
+    }
+
+    func testWeeklyHistoryChartShowsActualResetWeekdaysOnTimeline() throws {
+        let calendar = Self.utcCalendar
+        let resetDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 8,
+            hour: 0,
+            minute: 0
+        )))
+        let reset = Int(resetDate.timeIntervalSince1970)
+        let chart = WeeklyRemainingHistoryChart(
+            history: .empty,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 94, resetsAt: reset),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(chart.resetStartLabel, "6/1 월")
+        XCTAssertEqual(chart.resetEndLabel, "6/8 월")
+    }
+
+    func testWeeklyHistoryChartKeepsLastSampleForEachDayMarker() throws {
+        let calendar = Self.utcCalendar
+        let startDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0,
+            minute: 0
+        )))
+        let start = Int(startDate.timeIntervalSince1970)
+        let reset = start + 604_800
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 3_600, remainingPercent: 95, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 82_800, remainingPercent: 88, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 90_000, remainingPercent: 70, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 560_000, remainingPercent: 41, resetsAt: reset)
+        ])
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 41, resetsAt: reset),
+            calendar: calendar
+        )
+
+        XCTAssertEqual(chart.dayMarkers.map(\.id), [0, 1, 6])
+        XCTAssertEqual(chart.dayMarkers.map { UsageMonitorState.percent($0.point.remainingPercent) }, ["88", "70", "41"])
+        XCTAssertEqual(chart.dayMarkers.first?.hoverLabel, "6/1 월 · 88%")
+        XCTAssertEqual(chart.dayMarkers.last?.hoverLabel, "6/7 일 · 41%")
+    }
+
+    func testWeeklyHistoryChartFiltersPreviousResetWindow() {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start - 120, remainingPercent: 20, resetsAt: reset - 604_800),
+            Self.weeklySample(recordedAt: start + 60, remainingPercent: 99, resetsAt: reset)
+        ])
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 99, resetsAt: reset)
+        )
+
+        XCTAssertEqual(chart.actualSampleCount, 1)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 99)
+    }
+
+    func testWeeklyHistoryChartUsesCurrentSampleBeforePersistedHistoryCatchesUp() throws {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let currentSample = Self.weeklySample(recordedAt: start + 151_200, remainingPercent: 82, resetsAt: reset)
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: .empty,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 82, resetsAt: reset),
+            currentSample: currentSample
+        )
+
+        XCTAssertEqual(chart.actualSampleCount, 1)
+        XCTAssertEqual(try XCTUnwrap(chart.latestActualPoint?.xPosition), 0.25, accuracy: 0.001)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 82)
+    }
+
     func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {
         XCTAssertFalse(MacDogPopoverModule.codex.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.settings.usesScrollableContent)
+        XCTAssertGreaterThan(CodexUsagePanelLayout.weeklyGraphHeight, 0)
+        XCTAssertLessThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 90)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphYAxisWidth, 28)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphAxisSpacing, 5)
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphPlotStartX,
+            CodexUsagePanelLayout.weeklyGraphYAxisWidth + CodexUsagePanelLayout.weeklyGraphAxisSpacing
+        )
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphTimelineHeight, 13)
         XCTAssertGreaterThan(MacResourcesPanelLayout.sparklineHeight, 0)
         XCTAssertLessThanOrEqual(
             MacResourcesPanelLayout.estimatedContentHeight,
@@ -181,6 +323,17 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertGreaterThan(state.systemMetricsHistory.memoryUsedPercents.count, 1)
         XCTAssertEqual(state.systemMetricsHistory.cpuLoadPercents.last, state.systemMetrics.cpuLoadPercent)
         XCTAssertEqual(state.systemMetricsHistory.memoryUsedPercents.last, state.systemMetrics.memoryUsedPercent)
+    }
+
+    func testDemoDataProvidesWeeklyUsageHistoryForCodexTab() {
+        let state = MacDogDemoData.state()
+        let chart = WeeklyRemainingHistoryChart(
+            history: state.weeklyUsageHistory,
+            weeklyWindow: state.codexLimit?.weekly
+        )
+
+        XCTAssertGreaterThan(chart.actualSampleCount, 1)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, state.codexLimit?.weekly?.remainingPercent)
     }
 
     func testPetReactionPrioritizesSystemLoad() {
@@ -282,6 +435,33 @@ final class UsageMonitorStateTests: XCTestCase {
             credits: nil,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static func weeklyWindow(
+        remainingPercent: Double,
+        resetsAt: Int
+    ) -> UsageWindowReport {
+        UsageWindowReport(
+            kind: .weekly,
+            usedPercent: 100 - remainingPercent,
+            remainingPercent: remainingPercent,
+            windowDurationMins: 10_080,
+            resetsAt: resetsAt
+        )
+    }
+
+    private static func weeklySample(
+        recordedAt: Int,
+        remainingPercent: Double,
+        resetsAt: Int
+    ) -> CodexUsageWeeklyHistorySample {
+        CodexUsageWeeklyHistorySample(
+            recordedAt: recordedAt,
+            usedPercent: 100 - remainingPercent,
+            remainingPercent: remainingPercent,
+            resetsAt: resetsAt,
+            windowDurationMins: 10_080
         )
     }
 

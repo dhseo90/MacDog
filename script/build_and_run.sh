@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-run}"
+MODE="run"
+RUN_DURATION=""
+WITH_WIDGET="${MACDOG_INCLUDE_WIDGET:-0}"
 APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 MIN_SYSTEM_VERSION="14.0"
@@ -41,7 +43,7 @@ configure_app_bundle_paths
 
 usage() {
   cat <<USAGE
-usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--verify-floating-pet-runtime [SECONDS]|--logs|--telemetry|--debug|--help]
+usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--verify-floating-pet-runtime [SECONDS]|--logs|--telemetry|--debug] [--with-widget|--help]
 
 Build and run the MacDog SwiftPM macOS app.
 
@@ -56,10 +58,12 @@ Commands:
   --logs                      Build, launch, and stream app logs.
   --telemetry                 Build, launch, and stream subsystem logs.
   --debug                     Build and launch the executable under lldb.
+  --with-widget               Embed the WidgetKit extension. Default builds omit it.
   --help                      Show this help.
 
 Environment:
   DEVELOPER_DIR defaults to /Applications/Xcode.app/Contents/Developer.
+  MACDOG_INCLUDE_WIDGET=1 also enables the WidgetKit extension.
 
 Output:
   App bundle: $APP_BUNDLE
@@ -69,6 +73,34 @@ USAGE
 die() {
   echo "error: $*" >&2
   exit 1
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --with-widget)
+        WITH_WIDGET=1
+        ;;
+      -h|--help|help)
+        MODE="help"
+        ;;
+      run|--no-run|no-run|--verify|verify|--verify-deeplink|verify-deeplink|--logs|logs|--telemetry|telemetry|--debug|debug)
+        MODE="$1"
+        ;;
+      --verify-runtime|verify-runtime|--verify-floating-pet-runtime|verify-floating-pet-runtime)
+        MODE="$1"
+        if [[ $# -gt 1 && "$2" =~ ^[0-9]+$ ]]; then
+          RUN_DURATION="$2"
+          shift
+        fi
+        ;;
+      *)
+        usage >&2
+        exit 2
+        ;;
+    esac
+    shift
+  done
 }
 
 require_tool() {
@@ -106,7 +138,10 @@ build_bundle() {
   configure_app_bundle_paths
 
   rm -rf "$APP_BUNDLE"
-  mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_PLUGINS" "$APP_LAUNCH_SERVICES" "$APP_LAUNCH_DAEMONS"
+  mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_LAUNCH_SERVICES" "$APP_LAUNCH_DAEMONS"
+  if [[ "$WITH_WIDGET" == "1" ]]; then
+    mkdir -p "$APP_PLUGINS"
+  fi
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   cp "$build_bin/codex-usage" "$APP_CLI_BINARY"
   cp "$build_bin/$HELPER_NAME" "$APP_HELPER_BINARY"
@@ -163,10 +198,16 @@ build_bundle() {
 </plist>
 PLIST
 
-  embed_widget_extension
+  if [[ "$WITH_WIDGET" == "1" ]]; then
+    embed_widget_extension
+  fi
   embed_privileged_helper_launch_daemon
 
-  /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" --entitlements "$CLI_ENTITLEMENTS" "$APP_CLI_BINARY" >/dev/null
+  if [[ "$WITH_WIDGET" == "1" ]]; then
+    /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" --entitlements "$CLI_ENTITLEMENTS" "$APP_CLI_BINARY" >/dev/null
+  else
+    /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" "$APP_CLI_BINARY" >/dev/null
+  fi
   /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
   clean_bundle_xattrs "$APP_BUNDLE"
@@ -419,6 +460,8 @@ verify_floating_pet_runtime() {
   sample_runtime_resources "$duration" "Floating pet runtime"
 }
 
+parse_args "$@"
+
 case "$MODE" in
   -h|--help|help)
     usage
@@ -447,12 +490,12 @@ case "$MODE" in
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_app
-    verify_runtime "${2:-10}"
+    verify_runtime "${RUN_DURATION:-10}"
     ;;
   --verify-floating-pet-runtime|verify-floating-pet-runtime)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
-    verify_floating_pet_runtime "${2:-10}"
+    verify_floating_pet_runtime "${RUN_DURATION:-10}"
     ;;
   --logs|logs)
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true

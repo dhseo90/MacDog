@@ -21,7 +21,7 @@ final class UserComponentInstallerTests: XCTestCase {
         ))
     }
 
-    func testCacheLaunchAgentPlistRunsBundledCLIAtSixtySecondCadence() throws {
+    func testCacheLaunchAgentPlistRunsBundledCLIAtSixtySecondCadenceWithoutWidgetMirrorByDefault() throws {
         let data = try UserComponentInstaller.cachePlistData(
             appCLIPath: "/Applications/MacDog.app/Contents/MacOS/codex-usage",
             logDirectoryPath: "/Users/test/Library/Logs/MacDog"
@@ -47,6 +47,31 @@ final class UserComponentInstallerTests: XCTestCase {
         )
         XCTAssertEqual(plist["StandardOutPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.out.log")
         XCTAssertEqual(plist["StandardErrorPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.err.log")
+    }
+
+    func testCacheLaunchAgentPlistMirrorsWidgetCacheOnlyWhenRequested() throws {
+        let data = try UserComponentInstaller.cachePlistData(
+            appCLIPath: "/Applications/MacDog.app/Contents/MacOS/codex-usage",
+            logDirectoryPath: "/Users/test/Library/Logs/MacDog",
+            mirrorWidgetCache: true
+        )
+        let plist = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+
+        XCTAssertEqual(
+            plist["ProgramArguments"] as? [String],
+            [
+                "/Applications/MacDog.app/Contents/MacOS/codex-usage",
+                "status",
+                "--write-cache",
+                "--mirror-cache",
+                "--timeout",
+                "5",
+                "--watch",
+                "60"
+            ]
+        )
     }
 
     func testInstallCLISymlinkCreatesMissingLink() throws {

@@ -215,6 +215,25 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         XCTAssertEqual(status.summary, "활성 · 드라이브")
     }
 
+    func testProviderOnlyTriggersCanUseUnavailableSystemMetrics() {
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+        RunnerPreferences.setSleepPreventionExternalVolumeTrigger(true, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.capture(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: .unavailable,
+            configuredAppRunningProvider: { _ in true },
+            externalVolumeCountProvider: { 1 }
+        )
+
+        XCTAssertTrue(status.isMatched)
+        XCTAssertTrue(status.codexAppRunning)
+        XCTAssertTrue(status.externalVolumeConnected)
+        XCTAssertNil(status.cpuLoadPercent)
+        XCTAssertNil(status.memoryUsedPercent)
+        XCTAssertNil(status.networkActivityBytesPerSecond)
+    }
+
     private func makeMetrics(
         cpuLoadPercent: Double? = nil,
         memoryUsedPercent: Double? = nil,

@@ -85,11 +85,15 @@ jobs:
           helper="$app/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
           cli="$app/Contents/MacOS/codex-usage"
 
-          find "$appex" -type f \( -name '*.dylib' -o -perm +111 \) -print0 | while IFS= read -r -d '' file; do
-            codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
-          done
-          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$widget_entitlements" "$appex"
-          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$cli_entitlements" "$cli"
+          if [[ -d "$appex" ]]; then
+            find "$appex" -type f \( -name '*.dylib' -o -perm +111 \) -print0 | while IFS= read -r -d '' file; do
+              codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$file"
+            done
+            codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$widget_entitlements" "$appex"
+            codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" --entitlements "$cli_entitlements" "$cli"
+          else
+            codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$cli"
+          fi
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$helper"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$app"
           codesign --verify --strict --verbose=2 "$cli"

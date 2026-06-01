@@ -22,7 +22,6 @@ final class FloatingPetController: NSObject {
     private var state = UsageMonitorState.empty
 
     private static let petSize = NSSize(width: 96, height: 102)
-    private static let tickInterval: TimeInterval = 1.0 / 30.0
     private static let maxMovementStep: TimeInterval = 1.0 / 20.0
     private static let speedResponse = 4.0
     private static let maxTurnRadiansPerSecond = CGFloat.pi * 0.85
@@ -126,7 +125,7 @@ final class FloatingPetController: NSObject {
                 self?.updateOneTick()
             }
         }
-        timer.tolerance = min(interval * 0.25, 0.08)
+        timer.tolerance = FloatingPetRuntimePolicy.timerTolerance(for: interval)
         RunLoop.main.add(timer, forMode: .common)
         updateTimer = timer
     }
@@ -138,7 +137,11 @@ final class FloatingPetController: NSObject {
     }
 
     private func updateTimerInterval() -> TimeInterval {
-        canMove ? Self.tickInterval : desktopFrameInterval()
+        FloatingPetRuntimePolicy.updateTimerInterval(
+            canMove: canMove,
+            phase: state.phase,
+            frameInterval: desktopFrameInterval()
+        )
     }
 
     private var canMove: Bool {

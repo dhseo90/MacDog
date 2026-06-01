@@ -21,4 +21,8 @@ struct PopoverMetricsRefreshPolicy: Equatable {
 
         return shouldRefreshLocalMetrics(for: module)
     }
+
+    static func shouldRunTimer(isPopoverShown: Bool, selectedModuleRaw: String?) -> Bool {
+        isPopoverShown && shouldRefreshLocalMetrics(forRawValue: selectedModuleRaw)
+    }
 }

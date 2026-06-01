@@ -21,4 +21,13 @@ final class PopoverMetricsRefreshPolicyTests: XCTestCase {
         XCTAssertFalse(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(forRawValue: MacDogPopoverModule.codex.rawValue))
         XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRefreshLocalMetrics(forRawValue: MacDogPopoverModule.mac.rawValue))
     }
+
+    func testTimerRunsOnlyWhenPopoverShowsLocalSystemTabs() {
+        XCTAssertFalse(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: false, selectedModuleRaw: MacDogPopoverModule.mac.rawValue))
+        XCTAssertFalse(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: true, selectedModuleRaw: MacDogPopoverModule.codex.rawValue))
+        XCTAssertFalse(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: true, selectedModuleRaw: MacDogPopoverModule.settings.rawValue))
+        XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: true, selectedModuleRaw: MacDogPopoverModule.mac.rawValue))
+        XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: true, selectedModuleRaw: MacDogPopoverModule.sleep.rawValue))
+        XCTAssertTrue(PopoverMetricsRefreshPolicy.shouldRunTimer(isPopoverShown: true, selectedModuleRaw: MacDogPopoverModule.battery.rawValue))
+    }
 }

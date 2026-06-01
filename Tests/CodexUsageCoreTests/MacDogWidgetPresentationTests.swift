@@ -17,6 +17,28 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.metadataText, "크레딧 알 수 없음 · 갱신 알 수 없음")
     }
 
+    func testTimelineProviderTreatsMissingCacheAsNoCache() {
+        let error = NSError(
+            domain: NSCocoaErrorDomain,
+            code: CocoaError.fileReadNoSuchFile.rawValue,
+            userInfo: [NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(POSIXErrorCode.ENOENT.rawValue))]
+        )
+
+        XCTAssertTrue(CodexUsageTimelineProvider.isMissingCacheError(error))
+    }
+
+    func testPresentationShowsGenericReadFailureWithoutRawFilePath() {
+        let entry = CodexUsageEntry(
+            date: Date(timeIntervalSince1970: 1_779_800_000),
+            snapshot: nil,
+            errorMessage: "캐시를 읽을 수 없음"
+        )
+        let presentation = WidgetUsagePresentation(entry: entry)
+
+        XCTAssertEqual(presentation.statusText, "오류: 캐시를 읽을 수 없음")
+        XCTAssertFalse(presentation.statusText.contains("usage.json"))
+    }
+
     func testPresentationShowsUpdatedCacheAndMaxUsage() {
         let entry = CodexUsageEntry(
             date: Date(timeIntervalSince1970: 1_779_800_030),

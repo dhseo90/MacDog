@@ -96,6 +96,67 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertNoSensitiveCacheMaterial(in: object)
     }
 
+    func testWriteSuccessAppendsWeeklyHistoryNextToCacheFile() throws {
+        let fileURL = temporaryFileURL()
+        let now = 1_800_000_000
+        let resetsAt = now + 345_600
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        let historyURL = CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        let history = try CodexUsageWeeklyHistoryStore(fileURL: historyURL).read()
+
+        XCTAssertEqual(history.schemaVersion, CodexUsageWeeklyHistory.currentSchemaVersion)
+        XCTAssertEqual(history.samples.count, 1)
+        XCTAssertEqual(history.samples.first?.recordedAt, now)
+        XCTAssertEqual(history.samples.first?.usedPercent, 38)
+        XCTAssertEqual(history.samples.first?.remainingPercent, 62)
+        XCTAssertEqual(history.samples.first?.resetsAt, resetsAt)
+        XCTAssertEqual(history.samples.first?.windowDurationMins, 10_080)
+    }
+
+    func testWeeklyHistorySkipsDenseUnchangedSamplesButKeepsMaterialChanges() throws {
+        let fileURL = temporaryHistoryFileURL()
+        let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)
+        let reset = 2_000
+
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 1_000, remainingPercent: 80, resetsAt: reset)))
+        XCTAssertFalse(try store.append(Self.weeklySample(recordedAt: 1_060, remainingPercent: 79.9, resetsAt: reset)))
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 1_120, remainingPercent: 79.6, resetsAt: reset)))
+
+        let history = try store.read()
+        XCTAssertEqual(history.samples.map(\.remainingPercent), [80, 79.6])
+    }
+
+    func testWeeklyHistoryKeepsNewResetWindowEvenWhenCloseTogether() throws {
+        let fileURL = temporaryHistoryFileURL()
+        let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)
+
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 1_000, remainingPercent: 80, resetsAt: 2_000)))
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 1_060, remainingPercent: 80, resetsAt: 3_000)))
+
+        XCTAssertEqual(try store.read().samples.map(\.resetsAt), [2_000, 3_000])
+    }
+
+    func testWeeklyHistoryPrunesSamplesOlderThanRetentionWindow() throws {
+        let fileURL = temporaryHistoryFileURL()
+        let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)
+        let newRecordedAt = CodexUsageWeeklyHistoryStore.defaultRetentionSeconds + 10
+
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 0, remainingPercent: 90, resetsAt: 10_080 * 60)))
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: newRecordedAt, remainingPercent: 70, resetsAt: newRecordedAt + 10_080 * 60)))
+
+        let history = try store.read()
+        XCTAssertEqual(history.samples.count, 1)
+        XCTAssertEqual(history.samples.first?.recordedAt, newRecordedAt)
+    }
+
     func testFailureSnapshotPreservesLastSuccessReport() throws {
         let fileURL = temporaryFileURL()
         var now = 1_779_800_000
@@ -177,6 +238,56 @@ final class CodexUsageCacheTests: XCTestCase {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent("usage.json")
+    }
+
+    private func temporaryHistoryFileURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("usage-weekly-history.json")
+    }
+
+    private static func weeklySample(
+        recordedAt: Int,
+        remainingPercent: Double,
+        resetsAt: Int
+    ) -> CodexUsageWeeklyHistorySample {
+        CodexUsageWeeklyHistorySample(
+            recordedAt: recordedAt,
+            usedPercent: 100 - remainingPercent,
+            remainingPercent: remainingPercent,
+            resetsAt: resetsAt,
+            windowDurationMins: 10_080
+        )
+    }
+
+    private static func historyReport(
+        weeklyUsedPercent: Double,
+        weeklyResetsAt: Int
+    ) -> CodexUsageReport {
+        let weekly = UsageWindowReport(
+            kind: .weekly,
+            usedPercent: weeklyUsedPercent,
+            remainingPercent: 100 - weeklyUsedPercent,
+            windowDurationMins: 10_080,
+            resetsAt: weeklyResetsAt
+        )
+        let limit = UsageLimitReport(
+            limitId: "codex",
+            limitName: "Codex",
+            primary: nil,
+            secondary: weekly,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        return CodexUsageReport(
+            generatedAt: 0,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: ["codex": limit]
+        )
     }
 
     private func XCTAssertNoSensitiveCacheMaterial(

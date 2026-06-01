@@ -16,6 +16,8 @@
 7. 실패와 미실행 항목을 숨기지 않습니다.
 8. 확인된 사실과 추정은 분리해서 보고합니다.
 9. 실패한 단계 이후의 단계는 모두 중단하고 `건너뜀`으로 보고합니다. 단, 사용자가 `/goal`로 end-to-end 목표 달성을 지시한 경우는 3.1의 예외를 따릅니다.
+10. 사용자가 설치, 패키징 설치, DMG 설치, drag-and-drop 설치 검수를 요청하면 최종 사용자가 받는 DMG를 실제로 열고 Finder에서 `MacDog.app`을 `Applications`로 드래그앤드롭하는 방식만 설치 검수로 인정합니다.
+11. `install.sh`, `cp`, `ditto`, `rsync`, Finder 숨김 조작, 화면 밖 Finder 창, hdiutil mount 후 직접 복사, 앱 번들 직접 교체는 사용자 설치 검수의 대체 수단으로 사용할 수 없습니다. 사용 가능한 도구로 실제 drag-and-drop을 수행할 수 없으면 즉시 중단하고 `미수행`으로 보고합니다.
 
 ---
 
@@ -32,6 +34,9 @@
 - 커밋하지 않았는데 커밋 해시나 커밋 메시지를 보고
 - 푸시하지 않았는데 푸시 완료라고 보고
 - macOS 앱 또는 위젯을 실행/확인하지 않았는데 UI 검수 완료라고 보고
+- DMG를 실제로 열고 Finder drag-and-drop을 수행하지 않았는데 drag-and-drop 설치 검수 완료라고 보고
+- `install.sh` 또는 직접 파일 복사를 수행하고 사용자 설치 방식으로 검수했다고 보고
+- Finder 창이나 설치 UI를 화면 밖/숨김 상태로 조작하고 사용자가 보는 설치 흐름을 확인했다고 보고
 - raw JSON만 확인하고 menu bar popover 또는 Widget UI를 확인했다고 보고
 - 문서만 수정하고 CLI/macOS 앱 구현까지 했다고 보고
 - 코드만 수정하고 README/ROADMAP/AGENTS 반영까지 했다고 보고
@@ -273,6 +278,9 @@ git diff --check
 
 설치 스크립트, LaunchAgent 등록, 로그인 항목 등록, codesign, notarization, `spctl` 검증은 사용자 명시 요청 없이 실행하지 않습니다.
 Apple Developer Program이 필요한 단계와 로컬 개인 사용만으로 가능한 단계를 구분해 보고합니다.
+사용자 설치 검수는 `install.sh`가 아니라 최종 DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 실제 드래그앤드롭하는 절차로만 수행합니다.
+이 절차를 직접 수행하지 않았다면 `drag-and-drop 설치 검수: 실행하지 않음`으로 보고하고 완료 처리하지 않습니다.
+Finder나 설치 UI를 화면 밖으로 이동하거나 숨겨서 검수하지 않습니다.
 
 ### 7.7 장시간 테스트
 
@@ -584,6 +592,8 @@ MVP 완료
 - 실패, 미실행 테스트, 미확인 화면, 미커밋/미푸시 상태를 완료처럼 보고
 - Codex usage JSON schema, cache schema, app-server 해석 계약을 요청 없이 breaking change
 - 장시간 테스트, GUI 앱 실행, 설치/LaunchAgent/codesign/notarization, 푸시를 명시 요청 없이 실행
+- 사용자 설치 검수를 `install.sh`, 직접 복사, 숨김 Finder 조작, 화면 밖 UI, hdiutil mount 후 파일 복사로 대체
+- 실제 Finder drag-and-drop을 수행하지 않고 DMG 설치 검수 완료로 보고
 - Codex token/session/auth material 노출
 - RunCat asset/캐릭터/브랜드 복제
 - 제품 기능을 문서에서 과장하거나 구현 예정 기능을 구현 완료처럼 표현

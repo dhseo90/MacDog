@@ -178,6 +178,15 @@ struct UsagePopoverView: View {
                     UsageRow(title: "주간", window: limit.weekly)
                 }
 
+                Divider()
+
+                WeeklyRemainingHistoryBlock(
+                    history: state.weeklyUsageHistory,
+                    weeklyWindow: limit.weekly,
+                    currentReport: state.report,
+                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
+                )
+
                 if let message = state.highUsageMessage {
                     PressureBanner(message: message, phase: state.phase)
                 }
@@ -312,6 +321,17 @@ enum MacDogPopoverLayout {
             - headerHeight
             - dividerHeight
             - (contentStackSpacing * 2)
+    }
+}
+
+enum CodexUsagePanelLayout {
+    static let weeklyGraphHeight: CGFloat = 74
+    static let weeklyGraphYAxisWidth: CGFloat = 28
+    static let weeklyGraphAxisSpacing: CGFloat = 5
+    static let weeklyGraphTimelineHeight: CGFloat = 13
+
+    static var weeklyGraphPlotStartX: CGFloat {
+        weeklyGraphYAxisWidth + weeklyGraphAxisSpacing
     }
 }
 
@@ -1555,6 +1575,487 @@ private struct PopoverTabArtwork: View {
 
         return NSImage(contentsOf: url)
     }
+}
+
+private struct WeeklyRemainingHistoryBlock: View {
+    let history: CodexUsageWeeklyHistory
+    let weeklyWindow: UsageWindowReport?
+    let currentReport: CodexUsageReport?
+    let currentTimestamp: Int?
+
+    private var chart: WeeklyRemainingHistoryChart {
+        WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: weeklyWindow,
+            currentSample: currentSample
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("주간 잔여량")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Text(chart.summaryText)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
+
+            WeeklyRemainingHistoryGraph(chart: chart)
+                .frame(height: CodexUsagePanelLayout.weeklyGraphHeight)
+
+            WeeklyRemainingTimelineLabels(
+                startLabel: chart.resetStartLabel,
+                endLabel: chart.resetEndLabel
+            )
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("주간 잔여량 그래프")
+        .accessibilityValue(chart.accessibilityValue)
+    }
+
+    private var currentSample: CodexUsageWeeklyHistorySample? {
+        guard let currentReport,
+              let currentTimestamp
+        else {
+            return nil
+        }
+
+        return CodexUsageWeeklyHistorySample(
+            report: currentReport,
+            recordedAt: currentTimestamp
+        )
+    }
+}
+
+private struct WeeklyRemainingTimelineLabels: View {
+    let startLabel: String
+    let endLabel: String
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Text(startLabel)
+                    .position(
+                        x: CodexUsagePanelLayout.weeklyGraphPlotStartX,
+                        y: CodexUsagePanelLayout.weeklyGraphTimelineHeight / 2
+                    )
+
+                Text(endLabel)
+                    .frame(width: geometry.size.width, alignment: .trailing)
+            }
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+        .frame(height: CodexUsagePanelLayout.weeklyGraphTimelineHeight)
+    }
+}
+
+private struct WeeklyRemainingHistoryGraph: View {
+    let chart: WeeklyRemainingHistoryChart
+
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(alignment: .top, spacing: CodexUsagePanelLayout.weeklyGraphAxisSpacing) {
+                yAxisLabels
+                    .frame(width: CodexUsagePanelLayout.weeklyGraphYAxisWidth, height: geometry.size.height)
+
+                WeeklyRemainingHistoryPlot(chart: chart, tint: tint)
+                    .frame(
+                        width: max(
+                            0,
+                            geometry.size.width -
+                                CodexUsagePanelLayout.weeklyGraphPlotStartX
+                        ),
+                        height: geometry.size.height
+                    )
+            }
+        }
+    }
+
+    private var tint: Color {
+        switch chart.latestActualPoint?.remainingPercent ?? 100 {
+        case ..<10:
+            .red
+        case 10..<30:
+            .orange
+        case 30..<60:
+            .yellow
+        default:
+            .green
+        }
+    }
+}
+
+private var yAxisLabels: some View {
+    VStack(alignment: .trailing) {
+        Text("100%")
+        Spacer()
+        Text("50%")
+        Spacer()
+        Text("0%")
+    }
+    .font(.caption2.weight(.medium))
+    .foregroundStyle(.secondary.opacity(0.76))
+    .lineLimit(1)
+    .minimumScaleFactor(0.72)
+}
+
+private struct WeeklyRemainingHistoryPlot: View {
+    let chart: WeeklyRemainingHistoryChart
+    let tint: Color
+
+    @State private var hoveredMarkerID: Int?
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.045))
+
+                guideLines(in: geometry.size)
+                    .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
+
+                chartLine(in: geometry.size)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+
+                ForEach(chart.dayMarkers) { marker in
+                    let markerPoint = point(for: marker.point, in: geometry.size)
+
+                    ZStack {
+                        Circle()
+                            .fill(marker.id == hoveredMarkerID ? tint : Color.primary.opacity(0.42))
+                            .frame(
+                                width: marker.id == hoveredMarkerID ? 6 : 4,
+                                height: marker.id == hoveredMarkerID ? 6 : 4
+                            )
+                    }
+                    .frame(width: 18, height: 18)
+                    .contentShape(Circle())
+                    .onHover { isHovering in
+                        if isHovering {
+                            hoveredMarkerID = marker.id
+                        } else if hoveredMarkerID == marker.id {
+                            hoveredMarkerID = nil
+                        }
+                    }
+                    .onTapGesture {
+                        hoveredMarkerID = marker.id
+                    }
+                        .position(markerPoint)
+                }
+
+                if let latest = chart.latestActualPoint {
+                    let latestPoint = point(for: latest, in: geometry.size)
+
+                    Circle()
+                        .fill(tint)
+                        .frame(width: 5, height: 5)
+                        .position(latestPoint)
+
+                    if hoveredMarker?.point != latest {
+                        Text("\(UsageMonitorState.percent(latest.remainingPercent))%")
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(tint)
+                            .position(valueLabelPosition(for: latestPoint, in: geometry.size))
+                    }
+                }
+
+                if let hoveredMarker {
+                    let markerPoint = point(for: hoveredMarker.point, in: geometry.size)
+
+                    Text(hoveredMarker.hoverLabel)
+                        .font(.caption2.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .position(hoverLabelPosition(for: markerPoint, in: geometry.size))
+                }
+            }
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    hoveredMarkerID = nearestMarkerID(to: location, in: geometry.size)
+                case .ended:
+                    hoveredMarkerID = nil
+                }
+            }
+        }
+    }
+
+    private var hoveredMarker: WeeklyRemainingHistoryDayMarker? {
+        guard let hoveredMarkerID else { return nil }
+        return chart.dayMarkers.first { $0.id == hoveredMarkerID }
+    }
+
+    private func guideLines(in size: CGSize) -> Path {
+        Path { path in
+            for fraction in [0.0, 0.5, 1.0] {
+                let y = size.height * CGFloat(fraction)
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+
+            for fraction in chart.dayGridPositions {
+                let x = size.width * CGFloat(fraction)
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+            }
+        }
+    }
+
+    private func chartLine(in size: CGSize) -> Path {
+        Path { path in
+            guard chart.points.count > 1 else { return }
+
+            for (index, point) in chart.points.enumerated() {
+                let cgPoint = self.point(for: point, in: size)
+                if index == 0 {
+                    path.move(to: cgPoint)
+                } else {
+                    path.addLine(to: cgPoint)
+                }
+            }
+        }
+    }
+
+    private func point(for point: WeeklyRemainingHistoryPoint, in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: size.width * CGFloat(point.xPosition),
+            y: size.height * CGFloat(1 - point.yPosition)
+        )
+    }
+
+    private func valueLabelPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
+        let xOffset: CGFloat = point.x > size.width - 34 ? -24 : 24
+        let yOffset: CGFloat
+        if point.y < 14 {
+            yOffset = 12
+        } else if point.y > size.height - 14 {
+            yOffset = -12
+        } else {
+            yOffset = -11
+        }
+
+        return CGPoint(
+            x: min(max(point.x + xOffset, 18), size.width - 18),
+            y: min(max(point.y + yOffset, 9), size.height - 9)
+        )
+    }
+
+    private func hoverLabelPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
+        let xOffset: CGFloat = point.x > size.width - 46 ? -35 : 35
+        let yOffset: CGFloat = point.y < 16 ? 13 : -13
+
+        return CGPoint(
+            x: min(max(point.x + xOffset, 22), size.width - 22),
+            y: min(max(point.y + yOffset, 9), size.height - 9)
+        )
+    }
+
+    private func nearestMarkerID(to location: CGPoint, in size: CGSize) -> Int? {
+        var nearestID: Int?
+        var nearestDistance: CGFloat = 12
+
+        for marker in chart.dayMarkers {
+            let markerPoint = point(for: marker.point, in: size)
+            let distance = hypot(markerPoint.x - location.x, markerPoint.y - location.y)
+            if distance <= nearestDistance {
+                nearestID = marker.id
+                nearestDistance = distance
+            }
+        }
+
+        return nearestID
+    }
+}
+
+struct WeeklyRemainingHistoryChart: Equatable {
+    let points: [WeeklyRemainingHistoryPoint]
+    let dayGridPositions: [Double]
+    let dayMarkers: [WeeklyRemainingHistoryDayMarker]
+    let actualSampleCount: Int
+    let resetStartAt: Int?
+    let resetsAt: Int?
+    let resetStartLabel: String
+    let resetEndLabel: String
+
+    init(
+        history: CodexUsageWeeklyHistory,
+        weeklyWindow: UsageWindowReport?,
+        currentSample: CodexUsageWeeklyHistorySample? = nil,
+        calendar: Calendar = .current
+    ) {
+        guard let weeklyWindow,
+              let resetsAt = weeklyWindow.resetsAt
+        else {
+            self.points = []
+            self.dayGridPositions = []
+            self.dayMarkers = []
+            self.actualSampleCount = 0
+            self.resetStartAt = nil
+            self.resetsAt = nil
+            self.resetStartLabel = "시작"
+            self.resetEndLabel = "종료"
+            return
+        }
+
+        let durationMins = weeklyWindow.windowDurationMins ?? 10_080
+        let durationSeconds = max(durationMins, 1) * 60
+        let resetStartAt = resetsAt - durationSeconds
+        var samples = history.samples.filter {
+            $0.resetsAt == resetsAt &&
+                $0.recordedAt >= resetStartAt &&
+                $0.recordedAt <= resetsAt
+        }
+
+        if let currentSample,
+           currentSample.resetsAt == resetsAt,
+           currentSample.recordedAt >= resetStartAt,
+           currentSample.recordedAt <= resetsAt,
+           !samples.contains(where: { $0.recordedAt == currentSample.recordedAt }) {
+            samples.append(currentSample)
+        }
+
+        samples.sort { $0.recordedAt < $1.recordedAt }
+
+        let dayGridPositions = Self.dayGridPositions(durationSeconds: durationSeconds)
+        let actualPoints = samples.map {
+            WeeklyRemainingHistoryPoint(
+                recordedAt: $0.recordedAt,
+                remainingPercent: $0.remainingPercent,
+                xPosition: Self.xPosition(
+                    recordedAt: $0.recordedAt,
+                    resetStartAt: resetStartAt,
+                    durationSeconds: durationSeconds
+                ),
+                isResetAnchor: false
+            )
+        }
+
+        self.points = [
+            WeeklyRemainingHistoryPoint(
+                recordedAt: resetStartAt,
+                remainingPercent: 100,
+                xPosition: 0,
+                isResetAnchor: true
+            )
+        ] + actualPoints
+        self.dayGridPositions = dayGridPositions
+        self.dayMarkers = Self.dayMarkers(
+            from: actualPoints,
+            resetStartAt: resetStartAt,
+            durationSeconds: durationSeconds,
+            calendar: calendar
+        )
+        self.actualSampleCount = actualPoints.count
+        self.resetStartAt = resetStartAt
+        self.resetsAt = resetsAt
+        self.resetStartLabel = Self.resetDayLabel(timestamp: resetStartAt, calendar: calendar)
+        self.resetEndLabel = Self.resetDayLabel(timestamp: resetsAt, calendar: calendar)
+    }
+
+    var latestActualPoint: WeeklyRemainingHistoryPoint? {
+        points.last { !$0.isResetAnchor }
+    }
+
+    var summaryText: String {
+        guard let latestActualPoint else {
+            return resetsAt == nil ? "초기화 시각 필요" : "샘플 대기"
+        }
+        return "\(UsageMonitorState.percent(latestActualPoint.remainingPercent))% 남음"
+    }
+
+    var accessibilityValue: String {
+        guard let latestActualPoint else {
+            return summaryText
+        }
+        return "최근 주간 잔여량 \(UsageMonitorState.percent(latestActualPoint.remainingPercent))%, 샘플 \(actualSampleCount)개"
+    }
+
+    private static func xPosition(
+        recordedAt: Int,
+        resetStartAt: Int,
+        durationSeconds: Int
+    ) -> Double {
+        let elapsed = Double(recordedAt - resetStartAt)
+        return min(max(elapsed / Double(durationSeconds), 0), 1)
+    }
+
+    private static func dayGridPositions(durationSeconds: Int) -> [Double] {
+        let daySeconds = 86_400
+        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
+
+        return (0...dayCount).map {
+            min(Double($0 * daySeconds) / Double(durationSeconds), 1)
+        }
+    }
+
+    private static func dayMarkers(
+        from actualPoints: [WeeklyRemainingHistoryPoint],
+        resetStartAt: Int,
+        durationSeconds: Int,
+        calendar: Calendar
+    ) -> [WeeklyRemainingHistoryDayMarker] {
+        let daySeconds = 86_400
+        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
+        let maxDayIndex = max(0, dayCount - 1)
+        var latestByDay: [Int: WeeklyRemainingHistoryPoint] = [:]
+
+        for point in actualPoints {
+            let elapsed = min(max(point.recordedAt - resetStartAt, 0), max(durationSeconds - 1, 0))
+            let dayIndex = min(max(Int(Double(elapsed) / Double(daySeconds)), 0), maxDayIndex)
+            latestByDay[dayIndex] = point
+        }
+
+        return latestByDay.keys.sorted().compactMap { dayIndex in
+            guard let point = latestByDay[dayIndex] else { return nil }
+            let dayLabel = resetDayLabel(timestamp: point.recordedAt, calendar: calendar)
+            return WeeklyRemainingHistoryDayMarker(
+                id: dayIndex,
+                point: point,
+                hoverLabel: "\(dayLabel) · \(UsageMonitorState.percent(point.remainingPercent))%"
+            )
+        }
+    }
+
+    private static func resetDayLabel(timestamp: Int, calendar inputCalendar: Calendar) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+        let components = inputCalendar.dateComponents([.month, .day, .weekday], from: date)
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        let weekday = weekdaySymbol(for: components.weekday)
+        return "\(month)/\(day) \(weekday)"
+    }
+
+    private static func weekdaySymbol(for weekday: Int?) -> String {
+        let symbols = ["일", "월", "화", "수", "목", "금", "토"]
+        guard let weekday, (1...7).contains(weekday) else { return "?" }
+        return symbols[weekday - 1]
+    }
+}
+
+struct WeeklyRemainingHistoryPoint: Equatable {
+    let recordedAt: Int
+    let remainingPercent: Double
+    let xPosition: Double
+    let isResetAnchor: Bool
+
+    var yPosition: Double {
+        min(max(remainingPercent / 100, 0), 1)
+    }
+}
+
+struct WeeklyRemainingHistoryDayMarker: Equatable, Identifiable {
+    let id: Int
+    let point: WeeklyRemainingHistoryPoint
+    let hoverLabel: String
 }
 
 private struct PressureBanner: View {

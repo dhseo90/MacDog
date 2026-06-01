@@ -9,9 +9,11 @@ enum MacDogDemoData {
     }
 
     static func state(preferences: RunnerPreferences = RunnerPreferences()) -> UsageMonitorState {
-        UsageMonitorState(
-            report: report,
+        let now = Int(Date().timeIntervalSince1970)
+        return UsageMonitorState(
+            report: report(now: now),
             cacheSnapshot: nil,
+            weeklyUsageHistory: weeklyUsageHistory(now: now),
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -41,8 +43,7 @@ enum MacDogDemoData {
         return SystemMetricsHistory(samples: samples)
     }
 
-    private static var report: CodexUsageReport {
-        let now = Int(Date().timeIntervalSince1970)
+    private static func report(now: Int) -> CodexUsageReport {
         let credits = CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12")
         let limit = UsageLimitReport(
             limitId: "codex",
@@ -74,6 +75,30 @@ enum MacDogDemoData {
             rateLimitReachedType: nil,
             limits: ["codex": limit]
         )
+    }
+
+    private static func weeklyUsageHistory(now: Int) -> CodexUsageWeeklyHistory {
+        let resetsAt = now + 345_600
+        let windowDurationMins = 10_080
+        let start = resetsAt - (windowDurationMins * 60)
+        let currentFraction = Double(now - start) / Double(windowDurationMins * 60)
+        let baseProgress: [(Double, Double)] = [
+            (0.00, 100),
+            (0.10, 94),
+            (0.22, 86),
+            (0.36, 72)
+        ]
+        let progress = baseProgress.filter { $0.0 < currentFraction } + [(currentFraction, 32)]
+        let samples = progress.map { fraction, remaining in
+            CodexUsageWeeklyHistorySample(
+                recordedAt: start + Int(Double(windowDurationMins * 60) * min(max(fraction, 0), 1)),
+                usedPercent: 100 - remaining,
+                remainingPercent: remaining,
+                resetsAt: resetsAt,
+                windowDurationMins: windowDurationMins
+            )
+        }
+        return CodexUsageWeeklyHistory(samples: samples)
     }
 
     private static var systemMetrics: SystemMetricsSnapshot {

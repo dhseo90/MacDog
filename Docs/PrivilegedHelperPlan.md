@@ -58,7 +58,7 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - `verify_privileged_helper_state.sh`는 helper 파일, LaunchDaemon plist, code signature, launchd load 상태를 읽기 전용으로 확인합니다.
 - `verify_privileged_helper_xpc.sh`는 앱 번들의 진단 모드를 LaunchServices로 실행해 helper XPC `SleepDisabled` 조회와 `--set 0|1 --restore` 변경/복구 검증을 수행하며, `dist/MacDog.app`을 설치된 앱보다 우선 사용합니다.
 - `verify_install_state.sh --expect-current-dist`는 UI 검수 전에 설치된 앱과 `dist/MacDog.app`의 payload가 같은지, 실행 중인 MacDog가 설치된 앱 binary인지 확인해 이전 설치본 실행 문제를 막습니다.
-- `verify_manual_ui_prerequisites.sh`는 메뉴바 popover, 플로팅 펫, helper 버튼, WidgetKit 수동 검수 전에 앱 bundle, 캐릭터 asset, 앱 privacy boundary, widget readiness, widget cache fixture self-test, helper preflight, Shortcuts read-only probe, 설치본 freshness를 묶어 확인합니다.
+- `verify_manual_ui_prerequisites.sh`는 메뉴바 popover, 플로팅 펫, helper 버튼 수동 검수 전에 앱 bundle, 캐릭터 asset, 앱 privacy boundary, helper preflight, Shortcuts read-only probe, 설치본 freshness를 묶어 확인합니다. WidgetKit은 기본 검수에서 제외하고 `--with-widget`일 때만 widget readiness와 fixture self-test를 확인합니다.
 - `verify_privileged_helper_preflight.sh`는 helper-only dry-run, 생성된 앱 번들, 현재 helper 상태, XPC 진단 경로를 실제 설치 전에 묶어서 확인합니다.
 - `verify_privileged_helper_reinstall_plan.sh`는 helper-only uninstall/install dry-run, 현재 helper 상태, XPC skip-runtime 조회를 묶어 실제 삭제/재설치 전 승인용 순서를 검증합니다.
 - 앱의 덮개 닫힘 보호는 helper가 설치된 상태면 helper 연결로 `SleepDisabled` 조회/변경을 먼저 시도합니다.
@@ -78,7 +78,7 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - 2026-05-28 23:50 KST에 전원 연결 기준 슬립 방지, `SleepDisabled=1`, Charge Limit `90%`, 배터리 `95%`, AC 연결, `not charging` 상태로 장시간 에이징을 시작했습니다.
 - 2026-05-29 사용자 실사용 확인에서 덮개 닫힘 상태가 슬립/락으로 떨어지지 않았고, 배터리가 `95%`에서 `90%`로 내려갔습니다.
 - 2026-05-29에 권한 도우미 설치 상태별 popover 버튼 계약을 자동 테스트로 고정했습니다. 미설치는 `도우미 설치`, 부분 설치는 `제거` 후 `다시 설치`, 설치 완료는 `도우미 제거`만 노출합니다.
-- 2026-05-29에 실제 UI 클릭 검수 전 read-only prerequisite gate를 추가해 이전 설치본, 깨진 widget readiness, helper preflight 누락을 먼저 잡도록 했다.
+- 2026-05-29에 실제 UI 클릭 검수 전 read-only prerequisite gate를 추가해 이전 설치본, helper preflight 누락을 먼저 잡도록 했다. WidgetKit readiness는 이후 기본 v1.1.0 gate에서 제외하고 opt-in 검수로 분리했다.
 
 검증 시 주의:
 

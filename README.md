@@ -37,21 +37,21 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태를 표시합니다.
+- Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태와 주간 잔여량 그래프를 표시합니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80~100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
 - 설정: 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리합니다.
-- WidgetKit: shared cache 기반 small/medium 위젯 코드를 포함합니다. 실제 위젯 갤러리 추가와 클릭 검수는 수동 검증 항목입니다.
+- WidgetKit: small/medium 위젯 코드는 남겨두되 기본 앱/DMG에는 포함하지 않습니다. `--with-widget` opt-in build에서만 설치하며, App Group provisioning이 되는 환경에서 별도 검수합니다.
 
 ## 갱신 주기
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행합니다.
-- WidgetKit timeline도 60초 뒤 갱신을 요청합니다. macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있습니다.
+- 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행해 앱 cache를 갱신합니다. 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 별도로 샘플링되어 Codex 탭 그래프에 쓰입니다.
+- WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다. WidgetKit timeline은 60초 뒤 갱신을 요청하지만 macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있습니다.
 
 ## 빠른 시작
 
@@ -86,7 +86,10 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 | `./script/check.sh` | 전체 로컬 검증. 기본 모드는 앱 실행까지 포함합니다. |
 | `./script/check.sh --no-run` | 앱을 실행하지 않고 테스트, 빌드, packaging gate를 검증합니다. |
 | `./script/build_and_run.sh` | 앱 번들을 빌드하고 MacDog를 실행합니다. |
+| `./script/build_and_run.sh --with-widget` | optional WidgetKit extension을 포함해 앱 번들을 빌드합니다. 기본 빌드는 위젯을 제외합니다. |
+| `./script/sample_existing_runtime_resources.sh --samples 5 --interval 1` | 이미 실행 중인 MacDog 프로세스의 CPU/RSS를 read-only로 샘플링합니다. |
 | `./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
+| `./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
 
 전체 스크립트 의미와 영향 범위는 [Docs/Scripts.md](Docs/Scripts.md)에 정리되어 있습니다.
@@ -104,14 +107,21 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. JSON 출력은 앱, 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다.
+`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history도 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 ## 로컬 설치
 
 개발용 설치 스크립트는 release build를 만들고 `~/Applications/MacDog.app`에 설치합니다. 앱 번들 내부 `codex-usage`를 `~/bin/codex-usage` symlink로 연결하고, usage cache LaunchAgent를 등록합니다. 로그인 자동 실행은 앱이 macOS 로그인 항목으로 직접 등록합니다.
+이 경로는 개발 편의용이며 릴리즈/사용자 설치 검수를 대체하지 않습니다. 사용자 설치 검수는 최종 DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우에만 인정합니다.
 
 ```sh
 ./script/install.sh
+```
+
+WidgetKit까지 포함한 실험/검수용 설치:
+
+```sh
+./script/install.sh --with-widget
 ```
 
 설치 전 변경 대상 확인:
@@ -128,6 +138,7 @@ codex-usage doctor
 ```sh
 ./script/verify_install_state.sh --expect-installed
 ./script/verify_install_state.sh --expect-current-dist
+./script/verify_install_state.sh --explain-current-dist
 ./script/verify_privileged_helper_state.sh --expect-installed
 ./script/verify_privileged_helper_xpc.sh --expect-installed
 ./script/verify_charge_limit.sh --read
@@ -154,6 +165,12 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 ```
 
 릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. DMG는 드래그 앤 드롭 배경 화면을 포함하고, 앱을 `Applications`에서 처음 실행하면 MacDog가 터미널용 `~/bin/codex-usage` symlink와 usage cache LaunchAgent를 사용자 영역에 마무리 설치합니다. 로그인 자동 실행은 macOS 로그인 항목으로 등록합니다. 첫 실행 후에는 설치 디스크와 다운로드한 설치 파일 정리를 물어봅니다. optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻고, 사용자가 동의하면 MacDog 이름의 관리자 승인창을 엽니다.
+
+설치 검수 원칙:
+
+- `script/install.sh`, 직접 복사, hdiutil mount 후 파일 복사, 앱 번들 직접 교체는 사용자 설치 검수로 기록하지 않습니다.
+- Finder 창을 숨기거나 화면 밖에서 조작하지 않습니다.
+- 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하지 못했으면 설치 검수는 미수행으로 기록합니다.
 
 현재 공개 배포 전 gate:
 
@@ -206,7 +223,7 @@ macOS 26.4 이상 Apple silicon Mac에서는 native Charge Limit 값을 80~100% 
 - Codex 사용량 기준은 로컬 Codex app-server의 `account/rateLimits/read` 응답입니다.
 - `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석합니다.
 - auth token, refresh token, cookie, session material은 읽거나 저장하지 않습니다.
-- cache에는 plan, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다.
+- cache에는 plan, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다. 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
 - 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않습니다. Codex 사용량이 비어 있으면 번들 내부 `codex-usage`를 짧은 cache writer로 실행한 뒤 app-owned cache를 다시 읽습니다.
 
 ## 프로젝트 구조
@@ -231,6 +248,11 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 경계
 - [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
 - [Docs/Scripts.md](Docs/Scripts.md): `script/*.sh` 용도와 영향 범위
+- [Docs/V110PriorityVerification.md](Docs/V110PriorityVerification.md): v1.1.0 우선 항목 완료 증거와 수동/외부 gate 경계
+- [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md): v1.1.0 실제 수동/외부 검수 순서
+- [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md): v1.1.0 실제 수동/외부 검수 증거 현황
+- [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
+- `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과
 - [Docs/PrivilegedHelperPlan.md](Docs/PrivilegedHelperPlan.md): 권한 도우미 설치와 IPC contract
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 연동 조사 결과

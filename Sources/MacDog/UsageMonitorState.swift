@@ -3,10 +3,16 @@ import Foundation
 import MacDogPrivilegedHelperSupport
 
 struct UsageMonitorState: Equatable {
-    static let empty = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
+    static let empty = UsageMonitorState(
+        report: nil,
+        cacheSnapshot: nil,
+        errorMessage: nil,
+        systemMetrics: .unavailable
+    )
 
     let report: CodexUsageReport?
     let cacheSnapshot: CodexUsageCacheSnapshot?
+    let weeklyUsageHistory: CodexUsageWeeklyHistory
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
@@ -21,12 +27,13 @@ struct UsageMonitorState: Equatable {
     init(
         report: CodexUsageReport?,
         cacheSnapshot: CodexUsageCacheSnapshot?,
+        weeklyUsageHistory: CodexUsageWeeklyHistory = .empty,
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
         reducedMotion: Bool = false,
         animationPaused: Bool = false,
         isRefreshing: Bool = false,
-        systemMetrics: SystemMetricsSnapshot = .capture(),
+        systemMetrics: SystemMetricsSnapshot = .unavailable,
         systemMetricsHistory: SystemMetricsHistory = .empty,
         sleepPreventionStatus: SleepPreventionStatus = .disabled,
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
@@ -34,6 +41,7 @@ struct UsageMonitorState: Equatable {
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
+        self.weeklyUsageHistory = weeklyUsageHistory
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
@@ -50,6 +58,7 @@ struct UsageMonitorState: Equatable {
         UsageMonitorState(
             report: report,
             cacheSnapshot: cacheSnapshot,
+            weeklyUsageHistory: weeklyUsageHistory,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -73,6 +82,7 @@ struct UsageMonitorState: Equatable {
         UsageMonitorState(
             report: report,
             cacheSnapshot: cacheSnapshot,
+            weeklyUsageHistory: weeklyUsageHistory,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
