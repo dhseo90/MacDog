@@ -1662,7 +1662,7 @@ private struct WeeklyRemainingHistoryGraph: View {
     var body: some View {
         GeometryReader { geometry in
             HStack(alignment: .top, spacing: CodexUsagePanelLayout.weeklyGraphAxisSpacing) {
-                yAxisLabels
+                WeeklyRemainingHistoryYAxisLabels()
                     .frame(width: CodexUsagePanelLayout.weeklyGraphYAxisWidth, height: geometry.size.height)
 
                 WeeklyRemainingHistoryPlot(chart: chart, tint: tint)
@@ -1692,18 +1692,20 @@ private struct WeeklyRemainingHistoryGraph: View {
     }
 }
 
-private var yAxisLabels: some View {
-    VStack(alignment: .trailing) {
-        Text("100%")
-        Spacer()
-        Text("50%")
-        Spacer()
-        Text("0%")
+private struct WeeklyRemainingHistoryYAxisLabels: View {
+    var body: some View {
+        VStack(alignment: .trailing) {
+            Text("100%")
+            Spacer()
+            Text("50%")
+            Spacer()
+            Text("0%")
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(.secondary.opacity(0.76))
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
     }
-    .font(.caption2.weight(.medium))
-    .foregroundStyle(.secondary.opacity(0.76))
-    .lineLimit(1)
-    .minimumScaleFactor(0.72)
 }
 
 private struct WeeklyRemainingHistoryPlot: View {
