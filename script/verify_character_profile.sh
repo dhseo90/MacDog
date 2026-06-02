@@ -30,6 +30,39 @@ require_png() {
   printf '%s\n' "$1" >>"$EXPECTED_PNGS"
 }
 
+png_property() {
+  local file="$1"
+  local property="$2"
+  sips -g "$property" "$file" 2>/dev/null | awk -v property="$property:" '$1 == property { print $2 }'
+}
+
+require_png_dimensions() {
+  local file="$1"
+  local expected_width="$2"
+  local expected_height="$3"
+  local width
+  local height
+  width="$(png_property "$file" pixelWidth)"
+  height="$(png_property "$file" pixelHeight)"
+  [[ "$width" == "$expected_width" && "$height" == "$expected_height" ]] || die "unexpected PNG size for $file: ${width}x${height}, expected ${expected_width}x${expected_height}"
+}
+
+require_png_alpha() {
+  local file="$1"
+  local has_alpha
+  has_alpha="$(png_property "$file" hasAlpha)"
+  [[ "$has_alpha" == "yes" ]] || die "PNG must keep transparent-background alpha channel: $file"
+}
+
+require_profile_png() {
+  local file="$1"
+  local expected_width="$2"
+  local expected_height="$3"
+  require_png "$file"
+  require_png_dimensions "$file" "$expected_width" "$expected_height"
+  require_png_alpha "$file"
+}
+
 require_text_match() {
   local pattern="$1"
   local file="$2"
@@ -46,9 +79,11 @@ require_png_series() {
   local dir="$1"
   local prefix="$2"
   local count="$3"
+  local expected_width="$4"
+  local expected_height="$5"
 
   for index in $(seq 0 $((count - 1))); do
-    require_png "$dir/$prefix-$index.png"
+    require_profile_png "$dir/$prefix-$index.png" "$expected_width" "$expected_height"
   done
 }
 
@@ -83,20 +118,17 @@ require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*0' "$TAB_MANIFEST
 require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*2' "$TAB_MANIFEST" "tab artwork manifest records an active resources frame"
 require_text_match '"outputDirectory"[[:space:]]*:[[:space:]]*"PopoverTabs"' "$TAB_MANIFEST" "tab artwork manifest records the tab output directory"
 
-require_png_series "$RUNNER_DIR" "pup-runner" 8
-require_png_series "$DESKTOP_DIR" "pup-run-right" 8
-require_png_series "$DESKTOP_DIR" "pup-run-up" 8
-require_png_series "$DESKTOP_DIR" "pup-run-down" 8
-require_png_series "$DESKTOP_DIR" "pup-idle-front" 4
-require_png_series "$DESKTOP_DIR" "pup-idle-side" 4
-require_png_series "$DESKTOP_DIR" "pup-rest" 4
-require_png_series "$DESKTOP_DIR" "pup-alert" 4
+require_png_series "$RUNNER_DIR" "pup-runner" 8 80 48
+require_png_series "$DESKTOP_DIR" "pup-run-right" 8 192 204
+require_png_series "$DESKTOP_DIR" "pup-run-up" 8 192 204
+require_png_series "$DESKTOP_DIR" "pup-run-down" 8 192 204
+require_png_series "$DESKTOP_DIR" "pup-idle-front" 4 192 204
+require_png_series "$DESKTOP_DIR" "pup-idle-side" 4 192 204
+require_png_series "$DESKTOP_DIR" "pup-rest" 4 192 204
+require_png_series "$DESKTOP_DIR" "pup-alert" 4 192 204
 
 for tab in codex mac sleep battery settings; do
-  require_png "$TAB_DIR/$tab-tab.png"
-  width="$(sips -g pixelWidth "$TAB_DIR/$tab-tab.png" 2>/dev/null | awk '/pixelWidth/ { print $2 }')"
-  height="$(sips -g pixelHeight "$TAB_DIR/$tab-tab.png" 2>/dev/null | awk '/pixelHeight/ { print $2 }')"
-  [[ "$width" == "256" && "$height" == "256" ]] || die "unexpected tab artwork size for $tab-tab.png: ${width}x${height}"
+  require_profile_png "$TAB_DIR/$tab-tab.png" 256 256
 done
 
 find "$RESOURCE_ROOT" -type f -name '*.png' -print | sort >"$ACTUAL_PNGS"

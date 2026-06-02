@@ -52,6 +52,8 @@
 | `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정과 macOS 로그인 항목 등록 규칙을 확인합니다. |
 | `script/verify_cache_contract.sh` | cache schema와 stale/error/history 계약 검증 | cache 모델, 주간 잔여량 history, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | runner, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
+| `script/verify_character_asset_polish.sh --self-test` | 캐릭터 asset polish 점검 | 캐릭터 프로필, runner 기준선, README 이미지 hygiene, PNG 크기/alpha 계약을 확인합니다. 실제 UI는 열지 않습니다. |
+| `script/verify_codex_app_server_protocol_drift.sh --self-test` | Codex app-server protocol drift guardrail | live app-server를 호출하지 않고 redacted fixture schema, 기본 codex bucket, 5시간/주간 window, failure guide redaction 문구를 확인합니다. |
 | `script/verify_dist_hygiene.sh` | dist 산출물 hygiene 검증 | stale app bundle 복사본 같은 혼동 요소를 확인합니다. |
 | `script/verify_distribution_gate.sh` | public release gate 검증 | unsigned draft와 signed stable release 문구/워크플로 분리를 확인합니다. |
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인합니다. |
@@ -67,6 +69,7 @@
 | `script/record_v110_manual_evidence.sh --self-test` | v1.1.0 증거 기록기 자체검증 | 실제 검수 없이 임시 ledger에 증거를 기록하고 renderer/verifier 연결을 확인합니다. |
 | `script/verify_v110_manual_evidence.sh --allow-incomplete` | v1.1.0 수동/외부 증거 ledger 확인 | 실제 검수를 수행하지 않고 `Docs/V110ManualEvidence.json`과 `Docs/V110ManualEvidence.md`가 미완료 항목을 숨기지 않는지 확인합니다. |
 | `script/verify_v110_manual_execution_readiness.sh --allow-incomplete` | v1.1.0 실제 검수 착수 가능 상태 요약 | 실제 실행 없이 7개 항목을 `ready-for-manual-ui`, `blocked`, `external-required`, `ready-for-additional-runtime-sampling`으로 분리해 보여줍니다. |
+| `script/verify_v110_reinforcement_plan.sh --self-test` | v1.1.0 보강 항목 계획 자체검증 | Shortcuts 계약, native Charge Limit 회귀, closed-display 장시간 검증, public repo/branch protection, app-server drift, character polish 보강 self-test를 묶어 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |
 | `script/verify_widget_app_group_signing.sh` | WidgetKit App Group 서명 상태 분류 | installed Widget extension의 code signature와 embedded provisioning profile이 shared cache UI 검수 가능한 App Group grant를 갖는지 읽기 전용으로 분류합니다. |
@@ -82,7 +85,9 @@
 | `script/verify_privileged_helper_preflight.sh` | helper 설치 전 안전 점검 | helper dry-run, bundle 상태, 현재 helper 상태, 연결 진단 경로를 묶어 확인합니다. |
 | `script/verify_privileged_helper_reinstall_plan.sh` | helper 재설치 전 계획 검증 | helper-only uninstall/install dry-run과 현재 상태를 묶어 실제 승인 전 순서를 확인합니다. |
 | `script/verify_charge_limit.sh --read` | 배터리 충전 한도 조회 | native Charge Limit 현재값과 지원 상태를 읽습니다. 쓰기 옵션은 실제 시스템 한도를 바꿀 수 있습니다. |
-| `script/verify_shortcuts_charge_limit.sh` | Shortcuts Charge Limit 후보 확인 | 기본은 read-only probe다. `--self-test`는 fixture 기반 parser만 확인합니다. |
+| `script/verify_charge_limit_regression.sh --self-test` | native Charge Limit 회귀 진단 | captured read 출력과 기대 current 값을 비교하고 Battery Settings 화면 비교는 manual-required로 분리합니다. live read 모드는 진단 앱 실행을 동반하지만 값을 변경하지 않습니다. |
+| `script/verify_closed_display_regression_plan.sh --self-test` | closed-display 장시간 회귀 preflight | `pmset -g live`와 helper 상태를 읽어 장시간 검증 readiness를 출력합니다. `SleepDisabled` 변경, helper 설치/삭제, 덮개 닫힘, 장시간 대기는 하지 않습니다. |
+| `script/verify_shortcuts_charge_limit.sh` | Shortcuts Charge Limit 후보/입력 계약 확인 | 기본은 read-only probe다. `--self-test`는 fixture 기반 후보 parser와 contract parser를 확인하고, `--contract-file`은 수동 확인한 입력 계약 JSON을 검증합니다. |
 
 ## 수동 UI 검수 보조
 
@@ -103,6 +108,7 @@
 | `script/package_release.sh` | DMG와 checksum 생성 | drag-and-drop 배경이 적용된 `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. Finder layout 적용이 실패하면 plain DMG로 대체합니다. |
 | `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, legacy command payload 미포함, release note, checksum, DMG 무결성을 확인합니다. |
 | `script/configure_github_public_repo_settings.sh --dry-run` | GitHub public release 서버 설정 계획 출력 | GitHub repo를 변경하지 않고 Actions/security/public/branch protection 적용 순서를 출력합니다. |
+| `script/verify_public_repo_branch_protection_plan.sh --self-test` | public repo/branch protection 적용 준비 검증 | GitHub 서버 설정을 바꾸지 않고 public repo policy, guardrail workflow, required checks, branch protection dry-run payload를 확인합니다. |
 | `script/configure_github_public_repo_settings.sh --check` | GitHub 서버 설정 조회 | Actions 권한, workflow token 권한, vulnerability alerts, Dependabot security updates, public fork PR approval 상태를 읽습니다. |
 | `script/configure_github_public_repo_settings.sh --apply` | GitHub 서버 설정 적용 | Actions/security 설정을 변경합니다. repo가 public이면 fork PR approval과 branch protection도 적용합니다. |
 | `script/configure_github_public_repo_settings.sh --apply --make-public` | GitHub public 전환 포함 적용 | `MACDOG_CONFIRM_PUBLIC=MAKE-MACDOG-PUBLIC` 확인값이 있어야 public 전환 후 보호 규칙을 적용합니다. |

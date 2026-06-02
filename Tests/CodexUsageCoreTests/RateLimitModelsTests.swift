@@ -61,6 +61,75 @@ final class RateLimitModelsTests: XCTestCase {
         XCTAssertEqual(response.codexBucket.weeklyWindow?.remainingPercent, 45)
     }
 
+    func testCodexBucketFallsBackWhenBucketMapOmitsCodex() {
+        let legacyBucket = RateLimitSnapshot(
+            limitId: "codex",
+            limitName: nil,
+            primary: RateLimitWindow(usedPercent: 21, windowDurationMins: 300, resetsAt: nil),
+            secondary: RateLimitWindow(usedPercent: 43, windowDurationMins: 10_080, resetsAt: nil),
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let advancedBucket = RateLimitSnapshot(
+            limitId: "codex_bengalfox",
+            limitName: nil,
+            primary: RateLimitWindow(usedPercent: 1, windowDurationMins: 300, resetsAt: nil),
+            secondary: RateLimitWindow(usedPercent: 2, windowDurationMins: 10_080, resetsAt: nil),
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let response = RateLimitsResponse(
+            rateLimits: legacyBucket,
+            rateLimitsByLimitId: ["codex_bengalfox": advancedBucket]
+        )
+
+        XCTAssertEqual(response.codexBucket.limitId, "codex")
+        XCTAssertEqual(response.codexBucket.fiveHourWindow?.usedPercent, 21)
+        XCTAssertEqual(response.codexBucket.weeklyWindow?.usedPercent, 43)
+    }
+
+    func testDecodesAdditiveProtocolDriftFieldsWithoutChangingContract() throws {
+        let json = """
+        {
+          "rateLimits": {
+            "limitId": "legacy",
+            "limitName": "Legacy",
+            "primary": { "usedPercent": 20, "windowDurationMins": 300, "resetsAt": 1780000000 },
+            "secondary": { "usedPercent": 40, "windowDurationMins": 10080, "resetsAt": 1780500000 },
+            "credits": { "hasCredits": false, "unlimited": false, "balance": "0" },
+            "planType": "pro",
+            "rateLimitReachedType": null
+          },
+          "rateLimitsByLimitId": {
+            "codex": {
+              "limitId": "codex",
+              "limitName": "Codex",
+              "primary": {
+                "usedPercent": 12,
+                "windowDurationMins": 300,
+                "resetsAt": 1780000000,
+                "futureServerField": "ignored"
+              },
+              "secondary": { "usedPercent": 34, "windowDurationMins": 10080, "resetsAt": 1780500000 },
+              "credits": { "hasCredits": false, "unlimited": false, "balance": "0" },
+              "planType": "pro",
+              "rateLimitReachedType": null,
+              "futureBucketMetadata": { "ignored": true }
+            }
+          },
+          "futureTopLevelField": "ignored"
+        }
+        """
+
+        let response = try JSONDecoder().decode(RateLimitsResponse.self, from: Data(json.utf8))
+
+        XCTAssertEqual(response.codexBucket.limitId, "codex")
+        XCTAssertEqual(response.codexBucket.fiveHourWindow?.usedPercent, 12)
+        XCTAssertEqual(response.codexBucket.weeklyWindow?.usedPercent, 34)
+    }
+
     func testIdentifiesKnownWindowDurations() {
         XCTAssertEqual(
             RateLimitWindow(usedPercent: 1, windowDurationMins: 300, resetsAt: nil).identifiedKind,

@@ -253,7 +253,9 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md): v1.1.0 실제 수동/외부 검수 순서
 - [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md): v1.1.0 실제 수동/외부 검수 증거 현황
 - [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
+- [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 보강 항목 read-only/self-test 검증 경계
 - `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
+- `./script/verify_v110_reinforcement_plan.sh --self-test`: v1.1.0 보강 항목 문서 연결과 로컬 self-test 확인
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과
 - [Docs/PrivilegedHelperPlan.md](Docs/PrivilegedHelperPlan.md): 권한 도우미 설치와 IPC contract
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 연동 조사 결과
