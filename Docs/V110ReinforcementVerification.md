@@ -1,6 +1,6 @@
 # v1.1.0 보강 항목 검증
 
-상태: read-only/self-test 보강 구현 완료 / 최신 설치본 GUI, Battery Settings, GitHub 서버 상태, live app-server smoke 별도 확인 / 장시간 덮개 닫힘은 물리 검증 대기
+상태: read-only/self-test 보강 구현 완료 / 최신 설치본 GUI, Battery Settings, GitHub 서버 상태, live app-server smoke, 장시간 덮개 닫힘 실사용 증거 별도 확인
 
 이 문서는 `ROADMAP.md`의 `v1.1.0` 보강 항목 6개를 완료 증거 경계와 로컬 검증 스크립트에 연결합니다. 자동 self-test와 dry-run은 실제 UI, 장시간 관찰, Shortcuts helper 정상 환경, GitHub 서버 설정 적용을 대체하지 않습니다.
 
@@ -77,13 +77,15 @@
 - v1.1.0 DMG를 Finder drag-and-drop으로 `/Applications/MacDog.app`에 갱신한 뒤 `script/verify_closed_display_regression_plan.sh`를 실행했습니다.
 - helper는 installed-loaded 상태이고 `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper` code signature가 valid이며 designated requirement를 만족합니다.
 - `SleepDisabled` 현재값은 `1`이고, verifier는 `SleepDisabled`, helper install state, screen lock state를 변경하지 않았습니다.
-- 실제 장시간 덮개 닫힘 검증은 노트북 덮개를 닫고 대기하는 물리 검증이라 수행하지 않았고, readiness는 `ready-for-approved-long-run`입니다.
+- 사용자는 2026-06-01부터 2026-06-02까지 노트북 덮개를 닫은 상태로 계속 사용했다고 보고했습니다.
+- 2026-06-02 22:40 KST 현재 전원 상태는 AC 연결, 배터리 89%, not charging이고 `SleepDisabled=1`입니다.
+- `pmset -g log` 기준 2026-06-01 00:00 KST 이후 `Entering Sleep`, `Entering DarkWake`, `Clamshell Sleep`, `Maintenance Sleep` 이벤트 카운트는 `0`입니다.
+- 같은 기간 MacDog sleep-prevention assertion 관련 로그는 640라인 확인됐고, 현재 MacDog는 `PreventUserIdleSystemSleep`, `PreventUserIdleDisplaySleep`, `NetworkClientActive` assertion을 유지합니다.
+- 2026-06-02 재확인한 preflight도 `ready-for-approved-long-run`이며, helper는 여전히 installed-loaded입니다.
 
 남은 실제 증거:
 
-- 승인된 환경에서 덮개 닫힘 전 `SleepDisabled`와 helper 상태 기록
-- 지정한 장시간 동안 잠금/슬립으로 떨어지지 않았는지 확인
-- 재개 후 `SleepDisabled`, 전원 상태, 배터리 상태, 잠금/슬립 결과 기록
+- 없음. macOS 업데이트, helper 재설치, 공개 설치본 변경, power policy 변경 후에는 같은 방식으로 다시 기록합니다.
 
 ## 4. public repo와 branch protection 적용 준비
 
