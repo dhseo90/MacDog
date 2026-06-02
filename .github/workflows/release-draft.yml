@@ -57,7 +57,8 @@ jobs:
         run: hdiutil verify "dist/release/MacDog-${{ inputs.version }}.dmg"
 
       - name: Verify checksum
-        run: shasum -a 256 -c "dist/release/MacDog-${{ inputs.version }}.dmg.sha256"
+        working-directory: dist/release
+        run: shasum -a 256 -c "MacDog-${{ inputs.version }}.dmg.sha256"
 
       - name: Create draft GitHub Release
         env:
