@@ -2,11 +2,55 @@
 
 상태: 미완료
 
-이 문서는 `v1.1.0` 우선 항목을 실제 완료로 볼 수 있는 증거를 기록하는 ledger입니다. 구조화된 원본은 `Docs/V110ManualEvidence.json`이며, 이 Markdown 문서는 사람이 검수할 때 읽기 쉬운 요약입니다. 자동 검증, dry-run, self-test는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다. 실제로 보지 않은 화면, 실행하지 않은 GitHub Actions run, 수행하지 않은 signing/notarization/Gatekeeper 검증은 `확인됨`으로 바꾸지 않습니다.
+이 문서는 `v1.1.0` 우선 항목을 실제 완료로 볼 수 있는 증거를 기록하는 ledger입니다. 구조화된 원본은 `Docs/V110ManualEvidence.json`이며, 이 Markdown 문서는 사람이 검수할 때 읽기 쉬운 요약입니다. 자동 검증, dry-run, self-test는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다. 실제로 보지 않은 화면, 실제로 수행하지 않은 Finder drag-and-drop 설치, 실행하지 않은 unsigned GitHub Actions run은 `확인됨`으로 바꾸지 않습니다. Apple Developer Program이 필요한 항목은 v1.1.0 구현 계획에서 제외합니다.
 
 기록 명령: `script/record_v110_manual_evidence.sh --item <id> --status <status> --evidence <text>`
 
-## 1. 앱 내부 helper 버튼 실제 클릭 검수
+## 1. 요일별 주간 잔여량 그래프 마무리와 실제 UI 검수
+
+상태: 부분 확인
+
+필요 완료 증거:
+- 최신 설치본 Codex 탭에서 요일별 주간 잔여량 그래프 실제 확인
+- 주간 reset 시작 요일과 그래프 시작점 정렬 확인
+- 100%, 50%, 0% 라벨과 그래프 영역 분리 확인
+- 요일별 구분선과 지나간 요일 마지막 잔여율 점 확인
+- 현재 퍼센트 표기와 hover tooltip 확인
+- reset 직후/직전 대신 실제 reset 요일 표시 확인
+
+현재 증거:
+- 주간 잔여량 history cache 경로 추가
+- Codex 탭 그래프 UI 1차 구현
+- 요일별 구분선, 과거 일자 점, 현재 퍼센트 표기, hover tooltip 요구사항 반영
+- CodexUsageCacheTests와 UsageMonitorStateTests에 주간 history 관련 자동 검증 포함
+
+남은 검수:
+- 최신 설치본 popover에서 실제 그래프 표시 확인
+- hover tooltip 실제 확인
+- reset 요일 표시 실제 확인
+
+## 2. 깨끗한 drag-and-drop DMG 설치 검수
+
+상태: 미확인
+
+필요 완료 증거:
+- 오래된 설치본과 이전 다운로드 산출물이 없는 clean install 환경 설명
+- DMG Finder 창에 MacDog.app과 Applications symlink만 표시됨
+- Finder에서 MacDog.app을 Applications로 실제 drag-and-drop 수행
+- /Applications에서 첫 실행 설치 마무리와 user component 상태 확인
+
+현재 증거:
+- script/verify_release_packaging.sh
+- script/package_release.sh --dry-run
+- 2026-06-01 MacDog-1.1.0.dmg 생성과 hdiutil verify 통과
+- 2026-06-01 Finder에서 MacDog 1.1.0 DMG 창이 보이고 MacDog.app과 Applications만 표시되는 것 확인
+- 2026-06-01 실제 drag-and-drop 설치는 사용자 최종 승인 전 요청 변경으로 수행하지 않음
+
+남은 검수:
+- clean 환경에서 실제 Finder drag-and-drop 설치
+- 첫 실행 설치 마무리 확인
+
+## 3. 앱 내부 helper 버튼 실제 클릭 검수
 
 상태: 미확인
 
@@ -28,78 +72,7 @@
 - helper 상태 변화 확인
 - 관리자 승인 흐름 확인
 
-## 2. signed stable DMG 기준 helper 설치 UX 검수
-
-상태: 미확인
-
-필요 완료 증거:
-- signed stable DMG 산출물 경로와 checksum
-- helper 설치 승인창 주체가 MacDog로 표시됨
-- helper 설치/제거 경로와 사용자 안내 문구 확인
-
-현재 증거:
-- script/verify_distribution_gate.sh
-- script/verify_release_workflow.sh
-
-남은 검수:
-- Developer ID signed stable artifact 생성
-- signed build에서 helper 승인 UI 확인
-
-## 3. 깨끗한 drag-and-drop DMG 설치 검수
-
-상태: 미확인
-
-필요 완료 증거:
-- 오래된 설치본과 이전 다운로드 산출물이 없는 clean install 환경 설명
-- DMG Finder 창에 MacDog.app과 Applications symlink만 표시됨
-- Finder에서 MacDog.app을 Applications로 실제 drag-and-drop 수행
-- /Applications에서 첫 실행 설치 마무리와 user component 상태 확인
-
-현재 증거:
-- script/verify_release_packaging.sh
-- script/package_release.sh --dry-run
-
-남은 검수:
-- clean 환경에서 실제 Finder drag-and-drop 설치
-- 첫 실행 설치 마무리 확인
-
-## 4. GitHub Actions release workflow 실제 실행 검증
-
-상태: 미확인
-
-필요 완료 증거:
-- release candidate workflow run URL과 결과
-- draft release workflow run URL과 결과
-- stable release workflow run URL과 결과
-- 생성된 artifact, checksum, GitHub Release 결과
-
-현재 증거:
-- script/verify_release_workflow.sh
-- 2026-05-31 script/verify_v110_manual_evidence.sh --self-test: weak GitHub Actions evidence without real actions/runs URLs, artifact/checksum, and release URL is rejected; actual workflow not run
-
-남은 검수:
-- 실제 GitHub Actions workflow dispatch
-- artifact, checksum, release 결과 확인
-
-## 5. Developer ID signing, notarization, stapling, Gatekeeper 검증
-
-상태: 미확인
-
-필요 완료 증거:
-- Developer ID signing에 사용한 stable artifact 식별자
-- xcrun notarytool submit 성공 결과
-- xcrun stapler staple 및 xcrun stapler validate 성공 결과
-- spctl Gatekeeper assessment 성공 결과
-
-현재 증거:
-- script/verify_distribution_gate.sh
-- 2026-05-31 script/verify_v110_manual_evidence.sh --self-test: weak Developer ID evidence without 64-char SHA-256, notarytool submit, stapler, and spctl accepted results is rejected; actual signing/notarization/Gatekeeper not run
-
-남은 검수:
-- Apple Developer ID credential이 있는 환경에서 signing 수행
-- notarization, stapling, Gatekeeper 검증 수행
-
-## 6. 플로팅 펫 실제 동작 검수
+## 4. 플로팅 펫 실제 동작 검수
 
 상태: 부분 확인
 
@@ -123,7 +96,7 @@
 - 화면 밖 보정 실제 확인
 - 메뉴바 action 차이 실제 확인
 
-## 7. 런타임 리소스 최적화 검토
+## 5. 런타임 리소스 최적화 검토
 
 상태: 부분 확인
 
@@ -152,3 +125,23 @@
 - 플로팅 펫/Popover 상태별 추가 runtime sampling
 - energy impact 확인
 - 60초 이상 장시간 runtime 검증
+
+## 6. unsigned GitHub Actions release workflow 실제 실행 검증
+
+상태: 미확인
+
+필요 완료 증거:
+- release candidate workflow run URL과 결과
+- unsigned draft release workflow run URL과 결과
+- 생성된 artifact와 checksum 결과
+- GitHub draft release 결과
+
+현재 증거:
+- script/verify_release_workflow.sh
+- 2026-05-31 script/verify_v110_manual_evidence.sh --self-test: weak GitHub Actions evidence without real actions/runs URLs, artifact/checksum, and release URL is rejected; actual workflow not run
+- signed stable workflow는 Apple Developer 의존 항목이라 v1.1.0 완료 조건에서 제외
+
+남은 검수:
+- release candidate workflow 실제 dispatch
+- unsigned draft release workflow 실제 dispatch
+- artifact, checksum, draft release 결과 확인

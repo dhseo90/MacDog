@@ -106,7 +106,7 @@ First launch setup: MacDog creates the user codex-usage symlink, usage cache Lau
 Widget setup: default release omits WidgetKit; opt-in widget builds mirror cache only when the extension is bundled.
 First launch cleanup: MacDog can offer to eject the installer disk and delete downloaded installer files.
 Privileged helper: first launch offers MacDog-owned helper installation; Settings can install or remove it later.
-Signing: local ad-hoc build only; Developer ID signing and notarization are not performed.
+Signing: local ad-hoc build only; Developer ID signing and notarization are not performed and are excluded from the current implementation plan.
 Gatekeeper: GitHub Release notes must clearly say this DMG is not notarized and may show a macOS warning.
 GitHub Release: upload DMG with checksum and release notes that state the notarization status.
 DRYRUN
@@ -417,7 +417,7 @@ generate_dmg_background "$BACKGROUND_PATH"
 cat >"$NOTES_PATH" <<NOTES
 # MacDog $VERSION 릴리즈 노트
 
-상태: GitHub v$VERSION 안정 릴리즈입니다. 이 DMG는 ad-hoc signed build이며 Apple notarization은 아직 적용되지 않았습니다.
+상태: GitHub v$VERSION 로컬/unsigned 검증용 릴리즈 후보입니다. 이 DMG는 ad-hoc signed build이며 Apple notarization은 적용되지 않습니다.
 
 ## 설치
 
@@ -433,7 +433,7 @@ cat >"$NOTES_PATH" <<NOTES
 ## 보안과 Gatekeeper
 
 - 이 DMG는 ad-hoc signed build이며 notarized build가 아닙니다.
-- macOS Gatekeeper 경고가 표시될 수 있습니다. Developer ID signing, hardened runtime, notarization, stapling은 후속 배포 단계에서 진행합니다.
+- macOS Gatekeeper 경고가 표시될 수 있습니다. Developer ID signing, hardened runtime, notarization, stapling, App Group provisioning은 Apple Developer Program이 필요하므로 현재 구현 계획에서 제외합니다.
 - optional 권한 도우미는 MacDog에서 명시적으로 승인한 뒤에만 \`/Library/PrivilegedHelperTools/com.dhseo.macdog.helper\`와 \`/Library/LaunchDaemons/com.dhseo.macdog.helper.plist\`를 변경합니다.
 
 ## 지원 범위
@@ -441,7 +441,7 @@ cat >"$NOTES_PATH" <<NOTES
 - Codex 사용량 popover와 CLI를 지원합니다.
 - Mac 자원, 잠들지 않기, native Charge Limit UI를 지원합니다.
 - Native Charge Limit은 Apple silicon과 macOS 26.4 이상이 필요합니다.
-- WidgetKit은 source/자동 검증 일부만 유지하며, App Group provisioning이 통과한 opt-in build 전까지 실제 위젯 UI 지원 범위에 포함하지 않습니다.
+- WidgetKit은 source/자동 검증 일부만 유지합니다. 실제 위젯 UI의 shared cache 표시, stale/error 반영, 클릭 deep link는 App Group provisioning 이후 단계라 현재 지원 범위에 포함하지 않습니다.
 
 ## 삭제
 

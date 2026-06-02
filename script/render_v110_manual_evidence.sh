@@ -12,7 +12,8 @@ usage: $0 [--check|--write|--self-test] [--json PATH] [--output PATH]
 
 Render the v1.1.0 manual/external evidence Markdown ledger from the structured
 JSON source. This script does not open GUI apps, install MacDog, run GitHub
-Actions, codesign, notarize, staple, run Gatekeeper assessment, or push.
+Actions, or push. Apple Developer dependent verification is excluded from
+v1.1.0.
 
 Options:
   --check      Fail when the Markdown ledger does not match the JSON source.
@@ -43,7 +44,7 @@ puts "# v1.1.0 수동/외부 검수 증거 현황"
 puts
 puts "상태: #{status_label}"
 puts
-puts "이 문서는 `v1.1.0` 우선 항목을 실제 완료로 볼 수 있는 증거를 기록하는 ledger입니다. 구조화된 원본은 `Docs/V110ManualEvidence.json`이며, 이 Markdown 문서는 사람이 검수할 때 읽기 쉬운 요약입니다. 자동 검증, dry-run, self-test는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다. 실제로 보지 않은 화면, 실행하지 않은 GitHub Actions run, 수행하지 않은 signing/notarization/Gatekeeper 검증은 `확인됨`으로 바꾸지 않습니다."
+puts "이 문서는 `v1.1.0` 우선 항목을 실제 완료로 볼 수 있는 증거를 기록하는 ledger입니다. 구조화된 원본은 `Docs/V110ManualEvidence.json`이며, 이 Markdown 문서는 사람이 검수할 때 읽기 쉬운 요약입니다. 자동 검증, dry-run, self-test는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다. 실제로 보지 않은 화면, 실제로 수행하지 않은 Finder drag-and-drop 설치, 실행하지 않은 unsigned GitHub Actions run은 `확인됨`으로 바꾸지 않습니다. Apple Developer Program이 필요한 항목은 v1.1.0 구현 계획에서 제외합니다."
 puts
 puts "기록 명령: `#{data.fetch("recordCommand")}`" if data["recordCommand"]
 puts
@@ -112,13 +113,13 @@ run_self_test() {
   "overallStatus": "incomplete",
   "items": [
     {
-      "id": "helper_button_click",
-      "title": "앱 내부 helper 버튼 실제 클릭 검수",
+      "id": "weekly_usage_graph",
+      "title": "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수",
       "status": "unverified",
       "statusLabel": "미확인",
-      "requiredEvidence": ["helper 설치 버튼 실제 클릭"],
-      "currentEvidence": ["script/verify_privileged_helper_preflight.sh"],
-      "remainingVerification": ["실제 앱 UI 클릭"]
+      "requiredEvidence": ["최신 설치본 Codex 탭 그래프 실제 확인"],
+      "currentEvidence": ["주간 잔여량 그래프 구현"],
+      "remainingVerification": ["실제 앱 UI 확인"]
     }
   ]
 }

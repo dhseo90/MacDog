@@ -172,14 +172,15 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 - Finder 창을 숨기거나 화면 밖에서 조작하지 않습니다.
 - 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하지 못했으면 설치 검수는 미수행으로 기록합니다.
 
-현재 공개 배포 전 gate:
+현재 v1.1.0 배포 gate:
 
-- Developer ID signing
-- hardened runtime
-- notarization
-- stapling
-- Gatekeeper 검증
+- 로컬 ad-hoc DMG 생성과 checksum 검증
+- 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하는 설치 검수
+- 첫 실행 user component 마무리 설치 검수
+- unsigned GitHub Actions release candidate/draft workflow 실제 실행 검증
 - 깨끗한 사용자 환경에서 DMG 설치/제거 검수
+
+Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning이 필요한 signed/notarized public 배포와 WidgetKit 실제 UI 검수는 현재 구현 계획에서 제외합니다.
 
 세부 배포 경계는 [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md)에 정리합니다.
 

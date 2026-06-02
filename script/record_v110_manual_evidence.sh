@@ -22,7 +22,8 @@ usage: $0 --item ID --status STATUS --evidence TEXT [--evidence TEXT ...] [--rem
 Record v1.1.0 manual/external verification evidence in the structured JSON
 ledger, then render the Markdown ledger from that JSON. This script only edits
 the ledger files. It does not open GUI apps, install or uninstall helpers, run
-GitHub Actions, codesign, notarize, staple, run Gatekeeper assessment, or push.
+GitHub Actions, or push. Apple Developer dependent verification is excluded
+from v1.1.0.
 
 Status values:
   unverified
@@ -244,16 +245,16 @@ RUBY
   "$ROOT_DIR/script/record_v110_manual_evidence.sh" \
     --json "$json_path" \
     --markdown "$markdown_path" \
-    --item github_actions_release_run \
+    --item unsigned_release_workflow_run \
     --status unverified \
     --evidence "self-test evidence-only blocker recorded" >/dev/null
 
   /usr/bin/ruby -rjson - "$json_path" <<'RUBY'
 json_path = ARGV.fetch(0)
-item = JSON.parse(File.read(json_path)).fetch("items").find { |candidate| candidate.fetch("id") == "github_actions_release_run" }
+item = JSON.parse(File.read(json_path)).fetch("items").find { |candidate| candidate.fetch("id") == "unsigned_release_workflow_run" }
 abort("self-test evidence-only status changed") unless item.fetch("status") == "unverified"
 abort("self-test evidence-only entry missing") unless item.fetch("currentEvidence").include?("self-test evidence-only blocker recorded")
-abort("self-test evidence-only remaining changed") unless item.fetch("remainingVerification").include?("실제 GitHub Actions workflow dispatch")
+abort("self-test evidence-only remaining changed") unless item.fetch("remainingVerification").include?("release candidate workflow 실제 dispatch")
 RUBY
 
   "$ROOT_DIR/script/render_v110_manual_evidence.sh" --check --json "$json_path" --output "$markdown_path"

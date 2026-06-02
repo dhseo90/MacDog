@@ -7,13 +7,20 @@ DOC="$ROOT_DIR/Docs/V110PriorityVerification.md"
 SELF_TEST=0
 
 priority_items=(
-  "앱 내부 helper 버튼 실제 클릭 검수"
-  "signed stable DMG 기준 helper 설치 UX 검수"
+  "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수"
   "깨끗한 drag-and-drop DMG 설치 검수"
-  "GitHub Actions release workflow 실제 실행 검증"
-  "Developer ID signing, notarization, stapling, Gatekeeper 검증"
+  "앱 내부 helper 버튼 실제 클릭 검수"
   "플로팅 펫 실제 동작 검수"
   "런타임 리소스 최적화 검토"
+  "unsigned GitHub Actions release workflow 실제 실행 검증"
+)
+
+excluded_terms=(
+  "Apple Developer Program"
+  "Developer ID"
+  "notarization"
+  "App Group provisioning"
+  "signed stable"
 )
 
 usage() {
@@ -21,9 +28,9 @@ usage() {
 usage: $0 [--self-test]
 
 Verify that the v1.1.0 priority item list is present, mapped to local
-read-only support checks, and clearly separated from manual/external evidence.
+read-only support checks, and excludes Apple Developer dependent work.
 This script does not open GUI apps, install MacDog, register LaunchAgents, run
-GitHub workflows, codesign, notarize, staple, run Gatekeeper assessment, or push.
+GitHub workflows, or push.
 
 Options:
   --self-test  Validate the plan output and local support mapping.
@@ -58,11 +65,14 @@ require_text() {
 verify_roadmap_list() {
   require_file "$ROADMAP"
   require_text 'v1\.1\.0.*우선 항목' "$ROADMAP" "v1.1.0 priority section"
+  require_text 'Apple Developer Program.*v1\.1\.0.*제외|v1\.1\.0.*Apple Developer Program.*제외' "$ROADMAP" "Apple Developer exclusion"
 
   local item
   for item in "${priority_items[@]}"; do
     require_text "$item" "$ROADMAP" "$item"
   done
+
+  require_text 'WidgetKit.*보존.*확인.*source|WidgetKit.*source.*확인.*미확인' "$ROADMAP" "WidgetKit retained-but-unverified boundary"
 }
 
 verify_supporting_files() {
@@ -77,12 +87,10 @@ verify_supporting_files() {
   require_executable "$ROOT_DIR/script/verify_privileged_helper_reinstall_plan.sh"
   require_executable "$ROOT_DIR/script/verify_release_packaging.sh"
   require_executable "$ROOT_DIR/script/verify_release_workflow.sh"
-  require_executable "$ROOT_DIR/script/verify_distribution_gate.sh"
   require_executable "$ROOT_DIR/script/verify_runtime_contract.sh"
   require_executable "$ROOT_DIR/script/sample_existing_runtime_resources.sh"
   require_file "$ROOT_DIR/.github/workflows/release-candidate.yml"
   require_file "$ROOT_DIR/.github/workflows/release-draft.yml"
-  require_file "$ROOT_DIR/.github/workflows/release-stable.yml"
   require_file "$ROOT_DIR/Docs/WidgetPackaging.md"
   require_file "$ROOT_DIR/Docs/PrivilegedHelperPlan.md"
   require_file "$ROOT_DIR/Docs/ReleasePackaging.md"
@@ -97,41 +105,37 @@ print_plan() {
   cat <<'PLAN'
 ==> v1.1.0 priority development list
 Source: ROADMAP.md `v1.1.0` 우선 항목.
+Boundary: Apple Developer Program, Developer ID, notarization, App Group provisioning, and signed stable release work are excluded from v1.1.0.
 
-1. 앱 내부 helper 버튼 실제 클릭 검수
+1. 요일별 주간 잔여량 그래프 마무리와 실제 UI 검수
+   Completion evidence: latest installed app popover shows weekday weekly remaining graph, reset weekday, current percent, historical day dots, and hover tooltip.
+   Local support: cache/history Swift tests and ./script/verify_cache_contract.sh
+   Status boundary: actual installed-app UI evidence is still required.
+
+2. 깨끗한 drag-and-drop DMG 설치 검수
+   Completion evidence: clean environment, DMG contains only MacDog.app and Applications symlink, actual Finder drag-and-drop install, first-run user component finish observed.
+   Local support: ./script/verify_release_packaging.sh
+   Status boundary: clean install environment and Finder UI evidence are still required.
+
+3. 앱 내부 helper 버튼 실제 클릭 검수
    Completion evidence: latest installed app UI click on helper install/remove buttons, state transition copy observed, no unreported password prompt behavior.
    Local support: ./script/verify_manual_ui_prerequisites.sh and helper preflight scripts.
    Status boundary: GUI click and helper install/remove approval are still required.
 
-2. signed stable DMG 기준 helper 설치 UX 검수
-   Completion evidence: signed stable DMG build, helper approval dialog identity shown as MacDog, install/remove path observed.
-   Local support: ./script/verify_distribution_gate.sh and ./script/verify_release_workflow.sh
-   Status boundary: Developer ID signed stable artifact and UI evidence are still required.
-
-3. 깨끗한 drag-and-drop DMG 설치 검수
-   Completion evidence: clean environment, DMG contains only MacDog.app and Applications symlink, first-run user component finish observed.
-   Local support: ./script/verify_release_packaging.sh
-   Status boundary: clean install environment and Finder UI evidence are still required.
-
-4. GitHub Actions release workflow 실제 실행 검증
-   Completion evidence: actual GitHub workflow run URLs/results for release candidate, draft release, and stable release paths.
-   Local support: ./script/verify_release_workflow.sh
-   Status boundary: real GitHub Actions execution is still required.
-
-5. Developer ID signing, notarization, stapling, Gatekeeper 검증
-   Completion evidence: signed/notarized DMG, stapler success, spctl Gatekeeper assessment success.
-   Local support: ./script/verify_distribution_gate.sh
-   Status boundary: Apple Developer ID credentials and signing/notarization execution are still required.
-
-6. 플로팅 펫 실제 동작 검수
+4. 플로팅 펫 실제 동작 검수
    Completion evidence: drag position save, right-click menu, offscreen correction, and menu bar action differences observed in the desktop UI.
    Local support: FloatingPetMotionBoundsTests, PetMenuModelTests, ./script/verify_runtime_contract.sh
    Status boundary: actual desktop UI evidence is still required.
 
-7. 런타임 리소스 최적화 검토
+5. 런타임 리소스 최적화 검토
    Completion evidence: CPU/RSS/energy impact measured while app is running, menu bar runner, floating pet, popover refresh, cache polling, and system metrics sampling reviewed.
    Local support: ./script/verify_runtime_contract.sh and ./script/sample_existing_runtime_resources.sh --self-test
    Status boundary: app runtime sampling and optimization review are still required.
+
+6. unsigned GitHub Actions release workflow 실제 실행 검증
+   Completion evidence: actual GitHub workflow run URLs/results for release candidate and unsigned draft release paths, artifact, checksum, and draft release URL.
+   Local support: ./script/verify_release_workflow.sh
+   Status boundary: signed stable workflow is excluded from v1.1.0.
 PLAN
 }
 
@@ -152,6 +156,11 @@ run_self_test() {
     require_text "$item" "$DOC" "$item documentation"
   done
 
+  local term
+  for term in "${excluded_terms[@]}"; do
+    require_text "$term.*제외|제외.*$term|excluded.*$term|$term.*excluded" "$DOC" "$term exclusion documentation"
+  done
+
   require_text '자동화 가능한 검증은 수동 검수를 대체하지 않습니다|수동 UI 증거' "$DOC" "manual evidence boundary"
   require_text 'Docs/V110ManualEvidence\.md' "$DOC" "manual evidence ledger documentation"
   require_text 'Docs/V110ManualEvidence\.json' "$DOC" "structured manual evidence ledger documentation"
@@ -159,10 +168,7 @@ run_self_test() {
   require_text 'verify_v110_manual_evidence\.sh --allow-incomplete' "$DOC" "manual evidence ledger verifier documentation"
   require_text 'verify_v110_manual_execution_readiness\.sh --allow-incomplete' "$DOC" "manual execution readiness documentation"
   require_text 'verify_v110_manual_runbook\.sh --self-test' "$DOC" "manual runbook verifier documentation"
-  require_text 'GitHub Actions.*실제 실행' "$DOC" "GitHub Actions evidence boundary"
-  require_text 'Developer ID signing' "$DOC" "Developer ID evidence boundary"
-  require_text 'notarization' "$DOC" "notarization evidence boundary"
-  require_text 'Gatekeeper' "$DOC" "Gatekeeper evidence boundary"
+  require_text 'unsigned GitHub Actions.*실제 실행' "$DOC" "unsigned GitHub Actions evidence boundary"
   require_text 'sample_existing_runtime_resources\.sh' "$DOC" "existing runtime sampler documentation"
 
   echo "v1.1.0 priority plan self-test ok"

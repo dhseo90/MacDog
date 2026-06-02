@@ -16,8 +16,8 @@ usage: $0 [--allow-incomplete] [--self-test] [--json-report PATH]
 
 Summarize whether each v1.1.0 priority item is ready for real manual/external
 execution. This script is read-only: it does not open GUI apps, install or
-uninstall helpers, run GitHub Actions, codesign, notarize, staple, run
-Gatekeeper assessment, or push.
+uninstall helpers, run GitHub Actions, or push. Apple Developer dependent
+verification is excluded from v1.1.0.
 
 Options:
   --allow-incomplete   Return success while reporting incomplete/blocked items.
@@ -153,11 +153,13 @@ verify_readiness() {
   fi
 
   echo "==> v1.1.0 manual/external execution readiness"
-  echo "This readiness check is read-only: no GUI launch, install, helper change, GitHub Actions run, signing, notarization, stapling, Gatekeeper assessment, or push."
+  echo "This readiness check is read-only: no GUI launch, install, helper change, GitHub Actions run, or push."
+  echo "apple-developer-boundary: excluded-from-v1.1.0"
   echo "ledger-overall-status: $overall_status"
   echo "installed-app-freshness: $install_freshness"
   echo "installed-app-detail: $install_reason"
   echo "widgetkit-default-boundary: omitted-from-v1.1.0-default-install"
+  echo "widgetkit-unverified-after: source/test/opt-in build; actual shared cache UI, stale/error UI, click deep link"
   echo
 
   local incomplete_count=0
@@ -174,32 +176,28 @@ verify_readiness() {
   local runtime_reason="local runtime contract and read-only sampler are available"
   local runtime_next="explicitly approve long-running or GUI-specific runtime sampling, or record external energy impact evidence"
 
-  print_item 1 helper_button_click "앱 내부 helper 버튼 실제 클릭 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
-  [[ "$(status_for "$status_file" helper_button_click)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
+  print_item 1 weekly_usage_graph "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  [[ "$(status_for "$status_file" weekly_usage_graph)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 2 signed_stable_helper_ux "signed stable DMG 기준 helper 설치 UX 검수" "external-required" "$status_file" "Developer ID signed stable DMG helper approval UI evidence is not recorded" "run signed stable DMG helper UX flow only after explicit approval and record artifact checksum plus approval identity"
-  [[ "$(status_for "$status_file" signed_stable_helper_ux)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
-  echo
-
-  print_item 3 clean_drag_and_drop_dmg "깨끗한 drag-and-drop DMG 설치 검수" "external-required" "$status_file" "clean Finder drag-and-drop install evidence is not recorded" "prepare a clean install environment, perform the Finder install flow after explicit approval, and record first-run evidence"
+  print_item 2 clean_drag_and_drop_dmg "깨끗한 drag-and-drop DMG 설치 검수" "external-required" "$status_file" "clean Finder drag-and-drop install evidence is not recorded" "prepare a clean install environment, perform the Finder install flow after explicit approval, and record first-run evidence"
   [[ "$(status_for "$status_file" clean_drag_and_drop_dmg)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 4 github_actions_release_run "GitHub Actions release workflow 실제 실행 검증" "external-required" "$status_file" "actual GitHub Actions run URLs are not recorded" "explicitly dispatch release candidate, draft release, and stable release workflows, then record run URLs/artifacts/checksums/release URL"
-  [[ "$(status_for "$status_file" github_actions_release_run)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
+  print_item 3 helper_button_click "앱 내부 helper 버튼 실제 클릭 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  [[ "$(status_for "$status_file" helper_button_click)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 5 developer_id_distribution_gate "Developer ID signing, notarization, stapling, Gatekeeper 검증" "external-required" "$status_file" "Developer ID signing/notarization/stapling/Gatekeeper success evidence is not recorded" "run signing/notarization/stapling/spctl only after explicit approval and record SHA-256 plus accepted results"
-  [[ "$(status_for "$status_file" developer_id_distribution_gate)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
-  echo
-
-  print_item 6 floating_pet_manual_ui "플로팅 펫 실제 동작 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  print_item 4 floating_pet_manual_ui "플로팅 펫 실제 동작 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
   [[ "$(status_for "$status_file" floating_pet_manual_ui)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 7 runtime_resource_review "런타임 리소스 최적화 검토" "$runtime_readiness" "$status_file" "$runtime_reason" "$runtime_next"
+  print_item 5 runtime_resource_review "런타임 리소스 최적화 검토" "$runtime_readiness" "$status_file" "$runtime_reason" "$runtime_next"
   [[ "$(status_for "$status_file" runtime_resource_review)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
+  echo
+
+  print_item 6 unsigned_release_workflow_run "unsigned GitHub Actions release workflow 실제 실행 검증" "external-required" "$status_file" "actual unsigned GitHub Actions run URLs are not recorded" "explicitly dispatch release candidate and unsigned draft workflows, then record run URLs/artifacts/checksums/draft release URL"
+  [[ "$(status_for "$status_file" unsigned_release_workflow_run)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
   if [[ "$overall_status" == "complete" && "$incomplete_count" == "0" ]]; then
@@ -245,15 +243,16 @@ EXPLAIN
     --install-explain "$install_explain_path" >"$output_file"
 
   require_text 'read-only: no GUI launch, install, helper change' "$output_file" "read-only boundary"
+  require_text 'apple-developer-boundary: excluded-from-v1\.1\.0' "$output_file" "Apple Developer boundary"
   require_text 'installed-app-freshness: differs-from-dist' "$output_file" "stale installed app detail"
   require_text 'widgetkit-default-boundary: omitted-from-v1.1.0-default-install' "$output_file" "WidgetKit default boundary"
-  require_text 'helper_button_click' "$output_file" "helper item"
-  require_text 'signed_stable_helper_ux' "$output_file" "signed stable helper item"
+  require_text 'widgetkit-unverified-after:' "$output_file" "WidgetKit unverified after boundary"
+  require_text 'weekly_usage_graph' "$output_file" "weekly graph item"
   require_text 'clean_drag_and_drop_dmg' "$output_file" "clean DMG item"
-  require_text 'github_actions_release_run' "$output_file" "GitHub Actions item"
-  require_text 'developer_id_distribution_gate' "$output_file" "Developer ID item"
+  require_text 'helper_button_click' "$output_file" "helper item"
   require_text 'floating_pet_manual_ui' "$output_file" "floating pet item"
   require_text 'runtime_resource_review' "$output_file" "runtime item"
+  require_text 'unsigned_release_workflow_run' "$output_file" "unsigned GitHub Actions item"
   require_text 'readiness: blocked' "$output_file" "manual UI blocked state"
   require_text 'readiness: external-required' "$output_file" "external required state"
   require_text 'readiness: ready-for-additional-runtime-sampling' "$output_file" "runtime ready state"

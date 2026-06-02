@@ -41,15 +41,17 @@ require_output_contains() {
 [[ -f "$DRAFT_WORKFLOW" ]] || die "draft release workflow missing"
 
 for file in "$README" "$ROADMAP" "$RELEASE_DOC"; do
-  require_file_contains "$file" "Developer ID signing"
-  require_file_contains "$file" "notarization"
-  require_file_contains "$file" "Gatekeeper"
+  require_file_contains "$file" "Apple Developer Program"
+  require_file_contains "$file" "현재 구현 계획에서 제외"
 done
-require_file_contains "$ROADMAP" "hardened runtime"
-require_file_contains "$RELEASE_DOC" "stapling"
+
+require_file_match "$ROADMAP" 'signed stable.*v1\.1\.0.*제외|signed stable.*현재 계획에서 삭제'
+require_file_match "$ROADMAP" 'WidgetKit.*확인.*source|WidgetKit.*source.*확인'
+require_file_match "$ROADMAP" '실제.*위젯 UI.*확인하지 못했습니다'
 
 dry_run_output="$("$PACKAGE_SCRIPT" --dry-run)"
-require_output_contains "$dry_run_output" "Signing: local ad-hoc build only; Developer ID signing and notarization are not performed."
+require_output_contains "$dry_run_output" "Signing: local ad-hoc build only; Developer ID signing and notarization are not performed"
+require_output_contains "$dry_run_output" "excluded from the current implementation plan"
 require_output_contains "$dry_run_output" "Gatekeeper: GitHub Release notes must clearly say this DMG is not notarized and may show a macOS warning."
 require_output_contains "$dry_run_output" "GitHub Release:"
 
@@ -59,23 +61,8 @@ require_file_contains "$DRAFT_WORKFLOW" "--prerelease"
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_file_contains "$STABLE_WORKFLOW" "SIGNED-STABLE"
-  require_file_contains "$STABLE_WORKFLOW" "public-stable-release"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION_CERT_BASE64"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_DEVELOPER_ID_APPLICATION"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APPLE_ID"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_TEAM_ID"
-  require_file_contains "$STABLE_WORKFLOW" "MACDOG_NOTARY_APP_SPECIFIC_PASSWORD"
-  require_file_match "$STABLE_WORKFLOW" 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
-  require_file_contains "$STABLE_WORKFLOW" "notarytool"
-  require_file_contains "$STABLE_WORKFLOW" "stapler"
-  require_file_contains "$STABLE_WORKFLOW" "spctl"
-  require_file_contains "$STABLE_WORKFLOW" "gh release create"
-  require_file_contains "$STABLE_WORKFLOW" "--latest"
-  if /usr/bin/grep -Fq -- "--draft" "$STABLE_WORKFLOW"; then
-    die "stable release workflow must not create draft releases"
-  fi
-else
-  echo "Stable release workflow not present; public stable release remains gated."
+  require_file_contains "$RELEASE_DOC" "release-stable.yml"
+  require_file_match "$RELEASE_DOC" 'release-stable\.yml.*v1\.1\.0.*제외|signed stable.*v1\.1\.0.*제외'
 fi
 
 echo "Distribution gate verification ok"

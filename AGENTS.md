@@ -18,6 +18,8 @@
 9. 실패한 단계 이후의 단계는 모두 중단하고 `건너뜀`으로 보고합니다. 단, 사용자가 `/goal`로 end-to-end 목표 달성을 지시한 경우는 3.1의 예외를 따릅니다.
 10. 사용자가 설치, 패키징 설치, DMG 설치, drag-and-drop 설치 검수를 요청하면 최종 사용자가 받는 DMG를 실제로 열고 Finder에서 `MacDog.app`을 `Applications`로 드래그앤드롭하는 방식만 설치 검수로 인정합니다.
 11. `install.sh`, `cp`, `ditto`, `rsync`, Finder 숨김 조작, 화면 밖 Finder 창, hdiutil mount 후 직접 복사, 앱 번들 직접 교체는 사용자 설치 검수의 대체 수단으로 사용할 수 없습니다. 사용 가능한 도구로 실제 drag-and-drop을 수행할 수 없으면 즉시 중단하고 `미수행`으로 보고합니다.
+12. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획에서 전면 제외합니다. 이러한 항목은 사용자가 Apple Developer Program 사용 가능 상태를 명시하고 별도 milestone으로 승인하기 전까지 ROADMAP/README/검증 ledger의 구현 대상, 완료 조건, 후속 이슈로 넣지 않습니다.
+13. 현재 남아 있는 WidgetKit 코드는 보존 대상일 뿐 기본 v1.1.0 구현 범위가 아닙니다. source/test/opt-in build 경계까지만 확인된 것으로 기록하고, App Group provisioning 이후 필요한 실제 위젯 shared cache 표시, stale/error 반영, 클릭 deep link 검수는 확인하지 못했다고 명시합니다.
 
 ---
 
@@ -38,6 +40,8 @@
 - `install.sh` 또는 직접 파일 복사를 수행하고 사용자 설치 방식으로 검수했다고 보고
 - Finder 창이나 설치 UI를 화면 밖/숨김 상태로 조작하고 사용자가 보는 설치 흐름을 확인했다고 보고
 - raw JSON만 확인하고 menu bar popover 또는 Widget UI를 확인했다고 보고
+- Apple Developer Program이 필요한 항목을 현재 구현 계획에 넣거나, 해당 계정/credential 없이 완료 가능하다고 보고
+- WidgetKit source/test 또는 opt-in build만 확인하고 실제 위젯 shared cache 표시, stale/error 반영, 클릭 deep link까지 검수했다고 보고
 - 문서만 수정하고 CLI/macOS 앱 구현까지 했다고 보고
 - 코드만 수정하고 README/ROADMAP/AGENTS 반영까지 했다고 보고
 
@@ -269,6 +273,7 @@ xcodebuild build
 - widget에서 app-server를 직접 호출하지 않는지
 - stale/error/empty 상태가 표시되는지
 - deep link가 menu bar app 또는 상세 화면으로 이어지는지
+- 단, App Group provisioning이나 Apple Developer Program이 필요한 실제 위젯 UI 검수는 현재 구현 계획에서 제외합니다. 위 항목을 source/test/fixture/opt-in build 수준까지만 확인했다면 실제 위젯 UI 완료로 보고하지 않습니다.
 
 ### 7.6 설치/배포 변경
 
@@ -277,7 +282,7 @@ git diff --check
 ```
 
 설치 스크립트, LaunchAgent 등록, 로그인 항목 등록, codesign, notarization, `spctl` 검증은 사용자 명시 요청 없이 실행하지 않습니다.
-Apple Developer Program이 필요한 단계와 로컬 개인 사용만으로 가능한 단계를 구분해 보고합니다.
+Apple Developer Program이 필요한 단계는 현재 구현 계획에서 제외하고, 로컬 개인 사용만으로 가능한 단계와 섞어 완료 조건으로 쓰지 않습니다.
 사용자 설치 검수는 `install.sh`가 아니라 최종 DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 실제 드래그앤드롭하는 절차로만 수행합니다.
 이 절차를 직접 수행하지 않았다면 `drag-and-drop 설치 검수: 실행하지 않음`으로 보고하고 완료 처리하지 않습니다.
 Finder나 설치 UI를 화면 밖으로 이동하거나 숨겨서 검수하지 않습니다.
@@ -487,7 +492,7 @@ swift test --filter PopoverScreenshotRendererTests
 2. CLI 명령 이름이 일치하는지
 3. 사용량 창 해석이 일치하는지
 4. RunCat 참고 범위가 과장되거나 asset 복제로 오해되지 않는지
-5. Apple Developer 필요 여부를 개인 사용/외부 배포/App Store 배포로 구분했는지
+5. Apple Developer Program이 필요한 항목을 현재 구현 계획, v1.1.0 완료 조건, 후속 이슈에서 제외했는지
 6. 구현 완료, MVP 예정, 후속 예정, 검증 미수행을 구분했는지
 7. 실행하지 않은 검증을 문서에 완료처럼 쓰지 않았는지
 
