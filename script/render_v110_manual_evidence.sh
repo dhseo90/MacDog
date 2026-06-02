@@ -40,6 +40,10 @@ status_label = {
   "complete" => "완료"
 }.fetch(data.fetch("overallStatus"))
 
+def markdown_entry(text)
+  text.gsub(%r{https://[^\s<>\]]+}) { |url| "[#{url}](#{url})" }
+end
+
 puts "# v1.1.0 수동/외부 검수 증거 현황"
 puts
 puts "상태: #{status_label}"
@@ -55,18 +59,21 @@ data.fetch("items").each_with_index do |item, index|
   puts "상태: #{item.fetch("statusLabel")}"
   puts
   puts "필요 완료 증거:"
+  puts
   item.fetch("requiredEvidence").each do |entry|
-    puts "- #{entry}"
+    puts "- #{markdown_entry(entry)}"
   end
   puts
   puts "현재 증거:"
+  puts
   item.fetch("currentEvidence").each do |entry|
-    puts "- #{entry}"
+    puts "- #{markdown_entry(entry)}"
   end
   puts
   puts "남은 검수:"
+  puts
   item.fetch("remainingVerification").each do |entry|
-    puts "- #{entry}"
+    puts "- #{markdown_entry(entry)}"
   end
   puts unless index == data.fetch("items").length - 1
 end

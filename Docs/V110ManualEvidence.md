@@ -11,6 +11,7 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - 최신 설치본 Codex 탭에서 요일별 주간 잔여량 그래프 실제 확인
 - 주간 reset 시작 요일과 그래프 시작점 정렬 확인
 - 100%, 50%, 0% 라벨과 그래프 영역 분리 확인
@@ -19,6 +20,7 @@
 - reset 직후/직전 대신 실제 reset 요일 표시 확인
 
 현재 증거:
+
 - 주간 잔여량 history cache 경로 추가
 - Codex 탭 그래프 UI 1차 구현
 - 요일별 구분선, 과거 일자 점, 현재 퍼센트 표기, hover tooltip 요구사항 반영
@@ -28,6 +30,7 @@
 - 2026-06-02 v1.1.0 DMG drag-and-drop 갱신 후 최신 /Applications/MacDog.app에서 macdog://open으로 Codex 탭 popover를 실제 확인했습니다. 메뉴바 runner가 표시됐고, Codex 탭의 5시간/주간 사용률, 주간 잔여량 그래프, 6/1 월 -> 6/8 월 timeline, 현재 잔여율 표시가 최신 설치본에서 보였습니다.
 
 남은 검수:
+
 - 없음
 
 ## 2. 깨끗한 drag-and-drop DMG 설치 검수
@@ -35,12 +38,14 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - 오래된 설치본과 이전 다운로드 산출물이 없는 clean install 환경 설명
 - DMG Finder 창에 MacDog.app과 Applications symlink만 표시됨
 - Finder에서 MacDog.app을 Applications로 실제 drag-and-drop 수행
 - /Applications에서 첫 실행 설치 마무리와 user component 상태 확인
 
 현재 증거:
+
 - script/verify_release_packaging.sh
 - script/package_release.sh --dry-run
 - 2026-06-01 MacDog-1.1.0.dmg 생성과 hdiutil verify 통과
@@ -50,6 +55,7 @@
 - 2026-06-02 최신 dist 기준 MacDog-1.1.0.dmg를 --version 1.1.0으로 재생성했고 hdiutil verify와 dist/release 디렉터리 기준 shasum -a 256 -c를 통과했습니다. DMG Finder 창에서 MacDog.app과 Applications symlink만 표시되는 것을 확인한 뒤 MacDog.app을 Applications로 실제 drag-and-drop했고, Finder의 기존 MacDog 대치 확인에서 대치를 선택했습니다. 설치 후 /Applications/MacDog.app은 dist/MacDog.app과 일치했고 app-owned codex-usage symlink/cache LaunchAgent/login launch 상태가 유지됐으며, DMG 볼륨은 eject했습니다.
 
 남은 검수:
+
 - 없음
 
 ## 3. 앱 내부 helper 버튼 실제 클릭 검수
@@ -57,12 +63,14 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - 최신 설치본에서 helper 설치 버튼 실제 클릭
 - 최신 설치본에서 helper 제거 버튼 실제 클릭
 - 설치/제거 후 helper 상태 전환과 안내 문구 확인
 - 관리자 승인창이 표시된 경우 주체와 문구 확인
 
 현재 증거:
+
 - script/verify_manual_ui_prerequisites.sh
 - script/verify_privileged_helper_preflight.sh
 - script/verify_privileged_helper_reinstall_plan.sh
@@ -71,6 +79,7 @@
 - 2026-06-02 최신 /Applications/MacDog.app 설정 탭에서 helper 제거 버튼 클릭 확인: 권한 도우미 설치됨/준비됨 상태에서 도우미 제거를 눌렀고 앱 내부 alert에 제거 대상 /Library/PrivilegedHelperTools/com.dhseo.macdog.helper 및 /Library/LaunchDaemons/com.dhseo.macdog.helper.plist 표시 확인. 관리자 승인창은 MacDog 주체로 표시됐고 사용자 승인 후 helper:missing 확인. 이어서 helper 설치 버튼 클릭 확인: 권한 도우미 미설치/설치 필요 상태에서 도우미 설치를 눌렀고 앱 내부 alert에 변경할 시스템 위치와 반복 승인 감소 안내 표시 확인. 관리자 승인창은 MacDog 주체로 표시됐고 사용자 승인 후 helper:installed launchd:loaded, helper XPC read SleepDisabled=1, 설정 탭 권한 도우미 설치됨/권한 도우미 준비됨/도우미 제거 버튼 복귀 확인.
 
 남은 검수:
+
 - 없음
 
 ## 4. 플로팅 펫 실제 동작 검수
@@ -78,12 +87,14 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - 플로팅 펫 드래그 후 위치 저장 확인
 - 우클릭 메뉴 확인
 - 화면 밖 보정 확인
 - 메뉴바와 플로팅 펫 action 차이 또는 동일성 확인
 
 현재 증거:
+
 - FloatingPetMotionBoundsTests
 - PetMenuModelTests
 - script/verify_runtime_contract.sh
@@ -93,6 +104,7 @@
 - 2026-06-02 /Applications/MacDog.app에서 설정의 데스크톱 펫 표시를 실제 클릭해 플로팅 펫 표시 확인. 실제 마우스 드래그 후 desktopPetOriginX/Y가 531,149에서 30,294로 변경되어 드래그 위치 저장 확인. 플로팅 펫 우클릭 메뉴 실제 확인: 사용량 상세 보기, 캐시 다시 읽기, 움직임 줄이기, 애니메이션 일시 정지, 메뉴바로 돌아가기, 코덱스 사용량 종료 표시. 화면 밖 방향으로 실제 드래그 후 저장값이 X=0, Y=847로 화면 안 경계에 보정되어 화면 밖 보정 확인. 플로팅 펫 메뉴에서 메뉴바로 돌아가기 action을 실제 클릭해 desktopPetEnabled=0 및 플로팅 펫 창 숨김 확인. PetMenuModelTests 통과로 메뉴바/데스크톱 action 차이 확인, FloatingPetMotionBoundsTests 및 verify_runtime_contract.sh 통과.
 
 남은 검수:
+
 - 없음
 
 ## 5. 런타임 리소스 최적화 검토
@@ -100,6 +112,7 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - 앱 실행 중 CPU, RSS, energy impact 측정 결과
 - 메뉴바 러너 애니메이션 검토
 - 플로팅 펫 로밍 검토
@@ -109,6 +122,7 @@
 - 최적화 적용 여부와 재검증 결과
 
 현재 증거:
+
 - 60초 cache refresh timer tolerance
 - 불필요한 background system metrics capture 회피
 - 플로팅 펫 이동 timer를 calm 20fps, active 24fps, fast/sprint 30fps로 조절
@@ -122,6 +136,7 @@
 - 2026-06-02 /Applications/MacDog.app 실행 중 runtime CPU RSS energy impact 확인. 메뉴바 러너만 상태(desktopPetEnabled=0, MacDog window count=0): sample_existing_runtime_resources.sh --samples 5 --interval 1 통과, CPU avg 1.08%, max 1.80%, RSS avg/max 172.7MiB. 플로팅 펫 로밍 상태(desktopPetEnabled=1, 96x102 pet window only): CPU avg 5.74%, max 8.10%, RSS avg 174.1MiB, max 175.6MiB 통과. Popover refresh review 확인: Mac/활성 자원 탭을 실제 선택해 CPU/메모리/네트워크 수치 표시 및 1초 갱신 상태에서 CPU avg 5.68%, max 6.50%, RSS avg/max 172.9MiB 통과. energy impact 확인: top -l 5 POWER samples 0.0, 5.0, 6.7, 6.6, 7.0(max 7.0) while floating pet running. system metrics sampling 확인 및 usage cache 60초 polling/timer tolerance는 verify_runtime_contract.sh 통과로 검토. sample_existing_runtime_resources.sh --self-test는 sandbox /bin/ps 제한으로 1회 실패 후 권한 밖 재실행 통과. optimization 최적화 결정 확인: CPU/RSS threshold 미초과, popover 1초 metrics는 Mac 탭에서만 활성, popover 닫힘+펫 off 상태는 background system metrics capture를 건너뛰는 기존 정책 유지; 추가 코드 변경 없음.
 
 남은 검수:
+
 - 없음
 
 ## 6. unsigned GitHub Actions release workflow 실제 실행 검증
@@ -129,17 +144,20 @@
 상태: 확인됨
 
 필요 완료 증거:
+
 - release candidate workflow run URL과 결과
 - unsigned draft release workflow run URL과 결과
 - 생성된 artifact와 checksum 결과
 - GitHub draft release 결과
 
 현재 증거:
+
 - script/verify_release_workflow.sh
-- 2026-06-02 release candidate workflow run URL https://github.com/dhseo90/MacDog/actions/runs/26815191376 success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Upload release candidate artifact 단계 모두 success. artifact MacDog-1.1.0.dmg and checksum MacDog-1.1.0.dmg.sha256 confirmed via GitHub artifact MacDog-1.1.0-unsigned-release-candidate; downloaded to /tmp/macdog-gh-candidate-26815191376.OhxU1O; shasum -a 256 -c passed; hdiutil verify passed.
-- 2026-06-02 unsigned draft release workflow run URL https://github.com/dhseo90/MacDog/actions/runs/26815189716 success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Create draft GitHub Release 단계 모두 success. GitHub draft release https://github.com/dhseo90/MacDog/releases/tag/untagged-ab96d430df23fcf56672 확인; tagName v1.1.0, isDraft=true, isPrerelease=true, targetCommitish=f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0, assets MacDog-1.1.0.dmg and MacDog-1.1.0.dmg.sha256 uploaded. Downloaded draft release assets to /tmp/macdog-gh-draft-release-v110.ZSNRzl; shasum -a 256 -c passed; hdiutil verify passed.
+- 2026-06-02 release candidate workflow run URL [https://github.com/dhseo90/MacDog/actions/runs/26815191376](https://github.com/dhseo90/MacDog/actions/runs/26815191376) success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Upload release candidate artifact 단계 모두 success. artifact MacDog-1.1.0.dmg and checksum MacDog-1.1.0.dmg.sha256 confirmed via GitHub artifact MacDog-1.1.0-unsigned-release-candidate; downloaded to /tmp/macdog-gh-candidate-26815191376.OhxU1O; shasum -a 256 -c passed; hdiutil verify passed.
+- 2026-06-02 unsigned draft release workflow run URL [https://github.com/dhseo90/MacDog/actions/runs/26815189716](https://github.com/dhseo90/MacDog/actions/runs/26815189716) success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Create draft GitHub Release 단계 모두 success. GitHub draft release [https://github.com/dhseo90/MacDog/releases/tag/untagged-ab96d430df23fcf56672](https://github.com/dhseo90/MacDog/releases/tag/untagged-ab96d430df23fcf56672) 확인; tagName v1.1.0, isDraft=true, isPrerelease=true, targetCommitish=f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0, assets MacDog-1.1.0.dmg and MacDog-1.1.0.dmg.sha256 uploaded. Downloaded draft release assets to /tmp/macdog-gh-draft-release-v110.ZSNRzl; shasum -a 256 -c passed; hdiutil verify passed.
 - 2026-06-02 initial failed runs recorded and fixed: 34298c8 runs 26814501268/26814511653 failed SwiftUI actor isolation and were fixed by e0c5f12; e0c5f12 runs 26814672620/26814683471 failed a Retina-only DMG background dimension assumption and were fixed by 267f3f9; 267f3f9 runs 26814983925/26814982780 failed checksum working directory and were fixed by f6bd9f6.
 - signed stable workflow는 Apple Developer 의존 항목이라 v1.1.0 완료 조건에서 제외
 
 남은 검수:
+
 - 없음

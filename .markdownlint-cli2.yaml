@@ -1,0 +1,18 @@
+globs:
+  - README.md
+  - ROADMAP.md
+  - AGENTS.md
+  - CONTRIBUTING.md
+  - SECURITY.md
+  - .github/pull_request_template.md
+  - Docs/**/*.md
+ignores:
+  - .build/**
+  - dist/**
+  - DerivedData/**
+  - node_modules/**
+config:
+  MD013: false
+  MD025: false
+  MD033: false
+  MD041: false

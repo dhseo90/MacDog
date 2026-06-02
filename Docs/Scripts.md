@@ -81,7 +81,7 @@
 | --- | --- | --- |
 | `script/verify_install_state.sh` | 현재 설치 상태 조회 | 설치된 앱, CLI symlink, LaunchAgent, WidgetKit mirror 인자, 실행 중인 앱 경로, payload freshness를 읽습니다. `--explain-current-dist`는 설치본과 `dist/MacDog.app`이 다를 때 변경/추가/삭제 payload 경로를 요약하고, `--self-test`는 이 요약 경로를 fixture로 검증합니다. |
 | `script/verify_privileged_helper_state.sh` | helper 설치/로드 상태 조회 | `/Library` helper 파일, LaunchDaemon plist, launchd load 상태를 읽습니다. |
-| `script/verify_privileged_helper_xpc.sh` | helper 연결 진단 | 기본은 read-only 조회입니다. `--set 0|1 --restore`를 주면 `SleepDisabled` 변경 후 복구합니다. |
+| `script/verify_privileged_helper_xpc.sh` | helper 연결 진단 | 기본은 read-only 조회입니다. `--set 0` 또는 `--set 1`과 `--restore`를 주면 `SleepDisabled` 변경 후 복구합니다. |
 | `script/verify_privileged_helper_preflight.sh` | helper 설치 전 안전 점검 | helper dry-run, bundle 상태, 현재 helper 상태, 연결 진단 경로를 묶어 확인합니다. |
 | `script/verify_privileged_helper_reinstall_plan.sh` | helper 재설치 전 계획 검증 | helper-only uninstall/install dry-run과 현재 상태를 묶어 실제 승인 전 순서를 확인합니다. |
 | `script/verify_charge_limit.sh --read` | 배터리 충전 한도 조회 | native Charge Limit 현재값과 지원 상태를 읽습니다. 쓰기 옵션은 실제 시스템 한도를 바꿀 수 있습니다. |
