@@ -68,7 +68,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_distribution_gate.sh` | public release gate 검증 | unsigned draft와 signed stable release 문구/워크플로 분리를 확인합니다. |
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인합니다. |
 | `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인합니다. |
-| `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. |
+| `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. GitHub Actions에서는 SwiftUI PNG rasterization 차이를 피하기 위해 렌더 산출물과 이미지 크기까지 확인하고, byte 일치는 로컬 또는 `MACDOG_README_SCREENSHOT_STRICT=1`에서 강제합니다. |
 | `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인합니다. |
 | `script/verify_runner_baseline.sh` | 메뉴바 runner 기준선 검증 | runner frame count, size, 상태 mapping을 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |

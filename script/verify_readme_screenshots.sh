@@ -12,6 +12,21 @@ die() {
   exit 1
 }
 
+image_dimensions() {
+  local image="$1"
+  /usr/bin/sips -g pixelWidth -g pixelHeight "$image" 2>/dev/null |
+    /usr/bin/awk '
+      /pixelWidth:/ { width = $2 }
+      /pixelHeight:/ { height = $2 }
+      END {
+        if (width == "" || height == "") {
+          exit 1
+        }
+        printf "%sx%s", width, height
+      }
+    '
+}
+
 [[ -f "$README" ]] || die "README missing: $README"
 
 if /usr/bin/grep -Fq "Assets/Generated/Docs" "$README"; then
@@ -95,11 +110,30 @@ MACDOG_RENDER_README_SCREENSHOTS=1 \
 MACDOG_RENDER_README_SCREENSHOTS_OUTPUT_DIR="$render_dir" \
   "$XCRUN" swift test --filter PopoverScreenshotRendererTests >/dev/null
 
+strict_pixel_compare=1
+if [[ "${GITHUB_ACTIONS:-}" == "true" && "${MACDOG_README_SCREENSHOT_STRICT:-}" != "1" ]]; then
+  strict_pixel_compare=0
+fi
+
 for image in "${required_images[@]}"; do
   relative="${image#Docs/Images/README/}"
   rendered="$render_dir/$relative"
   [[ -f "$rendered" ]] || die "README renderer did not generate expected image: $relative"
   if ! /usr/bin/cmp -s "$ROOT_DIR/$image" "$rendered"; then
+    if [[ "$strict_pixel_compare" == "0" ]]; then
+      committed_dimensions="$(image_dimensions "$ROOT_DIR/$image")" ||
+        die "could not read committed README image dimensions: $image"
+      rendered_dimensions="$(image_dimensions "$rendered")" ||
+        die "could not read rendered README image dimensions: $relative"
+      if [[ "$committed_dimensions" != "$rendered_dimensions" ]]; then
+        echo "committed: $image $committed_dimensions" >&2
+        echo "rendered: $relative $rendered_dimensions" >&2
+        die "README image dimensions changed; regenerate README screenshots from PopoverScreenshotRendererTests"
+      fi
+      echo "README image pixel hash differs on GitHub runner; dimensions match: $image $committed_dimensions" >&2
+      continue
+    fi
+
     echo "committed: $image" >&2
     if command -v /usr/bin/shasum >/dev/null 2>&1; then
       /usr/bin/shasum -a 256 "$ROOT_DIR/$image" "$rendered" >&2
