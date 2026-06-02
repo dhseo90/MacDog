@@ -255,8 +255,26 @@ verify_report() {
 write_incomplete_fixture() {
   local markdown_path="$1"
   local json_path="$2"
-  /bin/cp "$REPORT" "$markdown_path"
   /bin/cp "$JSON_REPORT" "$json_path"
+  /usr/bin/ruby -rjson - "$json_path" <<'RUBY'
+json_path = ARGV.fetch(0)
+data = JSON.parse(File.read(json_path))
+item = data.fetch("items").find { |candidate| candidate.fetch("id") == "unsigned_release_workflow_run" }
+item["status"] = "unverified"
+item["statusLabel"] = "미확인"
+item["currentEvidence"] = [
+  "self-test release workflow weak baseline",
+  "signed stable workflow는 Apple Developer 의존 항목이라 v1.1.0 완료 조건에서 제외"
+]
+item["remainingVerification"] = [
+  "release candidate workflow 실제 dispatch",
+  "unsigned draft release workflow 실제 dispatch",
+  "artifact, checksum, draft release 결과 확인"
+]
+data["overallStatus"] = "incomplete"
+File.write(json_path, JSON.pretty_generate(data) + "\n")
+RUBY
+  "$ROOT_DIR/script/render_v110_manual_evidence.sh" --write --json "$json_path" --output "$markdown_path" >/dev/null
 }
 
 write_complete_fixture() {

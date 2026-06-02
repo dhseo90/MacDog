@@ -1,6 +1,6 @@
 # v1.1.0 수동/외부 검수 증거 현황
 
-상태: 미완료
+상태: 완료
 
 이 문서는 `v1.1.0` 우선 항목을 실제 완료로 볼 수 있는 증거를 기록하는 ledger입니다. 구조화된 원본은 `Docs/V110ManualEvidence.json`이며, 이 Markdown 문서는 사람이 검수할 때 읽기 쉬운 요약입니다. 자동 검증, dry-run, self-test는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다. 실제로 보지 않은 화면, 실제로 수행하지 않은 Finder drag-and-drop 설치, 실행하지 않은 unsigned GitHub Actions run은 `확인됨`으로 바꾸지 않습니다. Apple Developer Program이 필요한 항목은 v1.1.0 구현 계획에서 제외합니다.
 
@@ -124,7 +124,7 @@
 
 ## 6. unsigned GitHub Actions release workflow 실제 실행 검증
 
-상태: 미확인
+상태: 확인됨
 
 필요 완료 증거:
 - release candidate workflow run URL과 결과
@@ -134,10 +134,10 @@
 
 현재 증거:
 - script/verify_release_workflow.sh
-- 2026-05-31 script/verify_v110_manual_evidence.sh --self-test: weak GitHub Actions evidence without real actions/runs URLs, artifact/checksum, and release URL is rejected; actual workflow not run
+- 2026-06-02 release candidate workflow run URL https://github.com/dhseo90/MacDog/actions/runs/26815191376 success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Upload release candidate artifact 단계 모두 success. artifact MacDog-1.1.0.dmg and checksum MacDog-1.1.0.dmg.sha256 confirmed via GitHub artifact MacDog-1.1.0-unsigned-release-candidate; downloaded to /tmp/macdog-gh-candidate-26815191376.OhxU1O; shasum -a 256 -c passed; hdiutil verify passed.
+- 2026-06-02 unsigned draft release workflow run URL https://github.com/dhseo90/MacDog/actions/runs/26815189716 success on headSha f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0. Verify, Package DMG, Verify DMG, Verify checksum, Create draft GitHub Release 단계 모두 success. GitHub draft release https://github.com/dhseo90/MacDog/releases/tag/untagged-ab96d430df23fcf56672 확인; tagName v1.1.0, isDraft=true, isPrerelease=true, targetCommitish=f6bd9f6029f9e2fcaa808b21c885b7ea72cf7ef0, assets MacDog-1.1.0.dmg and MacDog-1.1.0.dmg.sha256 uploaded. Downloaded draft release assets to /tmp/macdog-gh-draft-release-v110.ZSNRzl; shasum -a 256 -c passed; hdiutil verify passed.
+- 2026-06-02 initial failed runs recorded and fixed: 34298c8 runs 26814501268/26814511653 failed SwiftUI actor isolation and were fixed by e0c5f12; e0c5f12 runs 26814672620/26814683471 failed a Retina-only DMG background dimension assumption and were fixed by 267f3f9; 267f3f9 runs 26814983925/26814982780 failed checksum working directory and were fixed by f6bd9f6.
 - signed stable workflow는 Apple Developer 의존 항목이라 v1.1.0 완료 조건에서 제외
 
 남은 검수:
-- release candidate workflow 실제 dispatch
-- unsigned draft release workflow 실제 dispatch
-- artifact, checksum, draft release 결과 확인
+- 없음

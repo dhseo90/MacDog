@@ -176,11 +176,29 @@ verify_readiness() {
   local runtime_reason="local runtime contract and read-only sampler are available"
   local runtime_next="explicitly approve long-running or GUI-specific runtime sampling, or record external energy impact evidence"
 
+  local clean_dmg_readiness="verified"
+  local clean_dmg_reason="clean Finder drag-and-drop install evidence is recorded in the ledger"
+  local clean_dmg_next="없음"
+  if [[ "$(status_for "$status_file" clean_drag_and_drop_dmg)" != "verified" ]]; then
+    clean_dmg_readiness="external-required"
+    clean_dmg_reason="clean Finder drag-and-drop install evidence is not recorded"
+    clean_dmg_next="prepare a clean install environment, perform the Finder install flow after explicit approval, and record first-run evidence"
+  fi
+
+  local unsigned_release_readiness="verified"
+  local unsigned_release_reason="actual unsigned GitHub Actions run URLs, artifacts, checksums, and draft release are recorded"
+  local unsigned_release_next="없음"
+  if [[ "$(status_for "$status_file" unsigned_release_workflow_run)" != "verified" ]]; then
+    unsigned_release_readiness="external-required"
+    unsigned_release_reason="actual unsigned GitHub Actions run URLs are not recorded"
+    unsigned_release_next="explicitly dispatch release candidate and unsigned draft workflows, then record run URLs/artifacts/checksums/draft release URL"
+  fi
+
   print_item 1 weekly_usage_graph "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
   [[ "$(status_for "$status_file" weekly_usage_graph)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 2 clean_drag_and_drop_dmg "깨끗한 drag-and-drop DMG 설치 검수" "external-required" "$status_file" "clean Finder drag-and-drop install evidence is not recorded" "prepare a clean install environment, perform the Finder install flow after explicit approval, and record first-run evidence"
+  print_item 2 clean_drag_and_drop_dmg "깨끗한 drag-and-drop DMG 설치 검수" "$clean_dmg_readiness" "$status_file" "$clean_dmg_reason" "$clean_dmg_next"
   [[ "$(status_for "$status_file" clean_drag_and_drop_dmg)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
@@ -196,7 +214,7 @@ verify_readiness() {
   [[ "$(status_for "$status_file" runtime_resource_review)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 6 unsigned_release_workflow_run "unsigned GitHub Actions release workflow 실제 실행 검증" "external-required" "$status_file" "actual unsigned GitHub Actions run URLs are not recorded" "explicitly dispatch release candidate and unsigned draft workflows, then record run URLs/artifacts/checksums/draft release URL"
+  print_item 6 unsigned_release_workflow_run "unsigned GitHub Actions release workflow 실제 실행 검증" "$unsigned_release_readiness" "$status_file" "$unsigned_release_reason" "$unsigned_release_next"
   [[ "$(status_for "$status_file" unsigned_release_workflow_run)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
@@ -223,6 +241,24 @@ run_self_test() {
   local install_report_path="$temp_dir/install-report.txt"
   local install_explain_path="$temp_dir/install-explain.txt"
   /bin/cp "$JSON_REPORT" "$json_path"
+  /usr/bin/ruby -rjson - "$json_path" <<'RUBY'
+json_path = ARGV.fetch(0)
+data = JSON.parse(File.read(json_path))
+item = data.fetch("items").find { |candidate| candidate.fetch("id") == "unsigned_release_workflow_run" }
+item["status"] = "unverified"
+item["statusLabel"] = "미확인"
+item["currentEvidence"] = [
+  "self-test release workflow weak baseline",
+  "signed stable workflow는 Apple Developer 의존 항목이라 v1.1.0 완료 조건에서 제외"
+]
+item["remainingVerification"] = [
+  "release candidate workflow 실제 dispatch",
+  "unsigned draft release workflow 실제 dispatch",
+  "artifact, checksum, draft release 결과 확인"
+]
+data["overallStatus"] = "incomplete"
+File.write(json_path, JSON.pretty_generate(data) + "\n")
+RUBY
   cat >"$install_report_path" <<'REPORT'
 app-freshness:differs-from-dist expected:/tmp/dist/MacDog.app actual:/Applications/MacDog.app
 REPORT
