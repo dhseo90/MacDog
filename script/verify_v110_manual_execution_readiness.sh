@@ -121,6 +121,56 @@ print_item() {
   echo "   next: $next_step"
 }
 
+print_manual_ui_item() {
+  local index="$1"
+  local item_id="$2"
+  local title="$3"
+  local status_file="$4"
+  local install_freshness="$5"
+  local install_reason="$6"
+
+  local readiness="ready-for-manual-ui"
+  local reason="latest installed app matches dist/MacDog.app"
+  local next_step="perform the runbook item in the actual macOS UI and record evidence"
+
+  if [[ "$(status_for "$status_file" "$item_id")" == "verified" ]]; then
+    if [[ "$install_freshness" == "matches-dist" ]]; then
+      readiness="verified"
+      reason="actual installed-app UI evidence is recorded in the ledger for the current dist-matching install"
+      next_step="없음"
+    else
+      readiness="blocked"
+      reason="$install_reason; recorded UI evidence must be refreshed after the installed app matches dist/MacDog.app"
+      next_step="explicitly approve updating the installed MacDog app from dist/MacDog.app before re-verification"
+    fi
+  elif [[ "$install_freshness" != "matches-dist" ]]; then
+    readiness="blocked"
+    reason="$install_reason"
+    next_step="explicitly approve updating the installed MacDog app from dist/MacDog.app before UI verification"
+  fi
+
+  print_item "$index" "$item_id" "$title" "$readiness" "$status_file" "$reason" "$next_step"
+}
+
+print_runtime_item() {
+  local index="$1"
+  local item_id="$2"
+  local title="$3"
+  local status_file="$4"
+
+  local readiness="ready-for-additional-runtime-sampling"
+  local reason="local runtime contract and read-only sampler are available"
+  local next_step="explicitly approve long-running or GUI-specific runtime sampling, or record external energy impact evidence"
+
+  if [[ "$(status_for "$status_file" "$item_id")" == "verified" ]]; then
+    readiness="verified"
+    reason="runtime CPU/RSS/energy impact and sampling policy evidence is recorded in the ledger"
+    next_step="없음"
+  fi
+
+  print_item "$index" "$item_id" "$title" "$readiness" "$status_file" "$reason" "$next_step"
+}
+
 verify_readiness() {
   require_file "$JSON_REPORT"
   run_support_checks
@@ -163,19 +213,6 @@ verify_readiness() {
   echo
 
   local incomplete_count=0
-  local manual_ui_readiness="ready-for-manual-ui"
-  local manual_ui_next="perform the runbook item in the actual macOS UI and record evidence"
-  local manual_ui_reason="latest installed app matches dist/MacDog.app"
-  if [[ "$install_freshness" != "matches-dist" ]]; then
-    manual_ui_readiness="blocked"
-    manual_ui_reason="$install_reason"
-    manual_ui_next="explicitly approve updating the installed MacDog app from dist/MacDog.app before UI verification"
-  fi
-
-  local runtime_readiness="ready-for-additional-runtime-sampling"
-  local runtime_reason="local runtime contract and read-only sampler are available"
-  local runtime_next="explicitly approve long-running or GUI-specific runtime sampling, or record external energy impact evidence"
-
   local clean_dmg_readiness="verified"
   local clean_dmg_reason="clean Finder drag-and-drop install evidence is recorded in the ledger"
   local clean_dmg_next="없음"
@@ -194,7 +231,7 @@ verify_readiness() {
     unsigned_release_next="explicitly dispatch release candidate and unsigned draft workflows, then record run URLs/artifacts/checksums/draft release URL"
   fi
 
-  print_item 1 weekly_usage_graph "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  print_manual_ui_item 1 weekly_usage_graph "요일별 주간 잔여량 그래프 마무리와 실제 UI 검수" "$status_file" "$install_freshness" "$install_reason"
   [[ "$(status_for "$status_file" weekly_usage_graph)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
@@ -202,15 +239,15 @@ verify_readiness() {
   [[ "$(status_for "$status_file" clean_drag_and_drop_dmg)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 3 helper_button_click "앱 내부 helper 버튼 실제 클릭 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  print_manual_ui_item 3 helper_button_click "앱 내부 helper 버튼 실제 클릭 검수" "$status_file" "$install_freshness" "$install_reason"
   [[ "$(status_for "$status_file" helper_button_click)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 4 floating_pet_manual_ui "플로팅 펫 실제 동작 검수" "$manual_ui_readiness" "$status_file" "$manual_ui_reason" "$manual_ui_next"
+  print_manual_ui_item 4 floating_pet_manual_ui "플로팅 펫 실제 동작 검수" "$status_file" "$install_freshness" "$install_reason"
   [[ "$(status_for "$status_file" floating_pet_manual_ui)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  print_item 5 runtime_resource_review "런타임 리소스 최적화 검토" "$runtime_readiness" "$status_file" "$runtime_reason" "$runtime_next"
+  print_runtime_item 5 runtime_resource_review "런타임 리소스 최적화 검토" "$status_file"
   [[ "$(status_for "$status_file" runtime_resource_review)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
@@ -218,13 +255,16 @@ verify_readiness() {
   [[ "$(status_for "$status_file" unsigned_release_workflow_run)" == "verified" ]] || incomplete_count=$((incomplete_count + 1))
   echo
 
-  if [[ "$overall_status" == "complete" && "$incomplete_count" == "0" ]]; then
+  if [[ "$overall_status" == "complete" && "$incomplete_count" == "0" && "$install_freshness" == "matches-dist" ]]; then
     echo "v1.1.0 manual/external execution readiness: complete"
     return 0
   fi
 
   echo "v1.1.0 manual/external execution readiness: incomplete"
   echo "incomplete-or-unverified-count: $incomplete_count"
+  if [[ "$install_freshness" != "matches-dist" ]]; then
+    echo "freshness-blocked: yes"
+  fi
   if [[ "$ALLOW_INCOMPLETE" == "1" ]]; then
     return 0
   fi
@@ -291,8 +331,10 @@ EXPLAIN
   require_text 'unsigned_release_workflow_run' "$output_file" "unsigned GitHub Actions item"
   require_text 'readiness: blocked' "$output_file" "manual UI blocked state"
   require_text 'readiness: external-required' "$output_file" "external required state"
-  require_text 'readiness: ready-for-additional-runtime-sampling' "$output_file" "runtime ready state"
+  require_text 'runtime_resource_review' "$output_file" "runtime review item"
+  require_text 'readiness: verified' "$output_file" "verified ledger state"
   require_text 'v1\.1\.0 manual/external execution readiness: incomplete' "$output_file" "incomplete state"
+  require_text 'freshness-blocked: yes' "$output_file" "freshness blocked state"
 
   if "$ROOT_DIR/script/verify_v110_manual_execution_readiness.sh" \
     --skip-support-checks \

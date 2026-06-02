@@ -1,8 +1,10 @@
 # v1.1.0 수동/외부 검수 Runbook
 
-상태: Apple Developer 의존 항목 제외 / 절차 고정 / 실제 수동 검수 미완료
+상태: Apple Developer 의존 항목 제외 / 절차 고정 / 실제 수동 검수 ledger 완료
 
 이 문서는 `ROADMAP.md`의 `v1.1.0` 우선 항목을 실제로 완료 처리하기 전에 따라야 하는 수동/외부 검수 순서를 정리합니다. 자동 검증, dry-run, self-test, static gate는 수동 UI 검수나 외부 서비스 실행을 대체하지 않습니다.
+
+2026-06-02 현재 이 runbook의 6개 우선 항목은 `Docs/V110ManualEvidence.md`와 `Docs/V110ManualEvidence.json`에 `확인됨`으로 기록되어 있으며, 완료 ledger는 `script/verify_v110_manual_evidence.sh`로 검증합니다. 이 runbook은 절차와 금지 경계를 보존하기 위한 문서이므로, 이후 같은 항목을 다시 수행할 때도 아래 절차를 따릅니다.
 
 증거 기록 원본은 `Docs/V110ManualEvidence.json`이고, 사람이 읽는 요약은 `Docs/V110ManualEvidence.md`입니다. 실제 검수 뒤에는 아래 형식으로 기록합니다.
 

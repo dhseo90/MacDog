@@ -72,7 +72,9 @@ RUBY
 }
 
 verify_runbook_text() {
-  require_text '상태: Apple Developer 의존 항목 제외 / 절차 고정 / 실제 수동 검수 미완료' "$RUNBOOK" "status boundary"
+  require_text '상태: Apple Developer 의존 항목 제외 / 절차 고정 / 실제 수동 검수 ledger 완료' "$RUNBOOK" "status boundary"
+  require_text 'Docs/V110ManualEvidence\.md.*확인됨|확인됨.*Docs/V110ManualEvidence\.md' "$RUNBOOK" "completed evidence ledger reference"
+  require_text 'verify_v110_manual_evidence\.sh' "$RUNBOOK" "completed evidence verifier reference"
   require_text '자동 검증, dry-run, self-test.*대체하지 않습니다' "$RUNBOOK" "automation does not replace manual evidence"
   require_text 'script/record_v110_manual_evidence\.sh --item <id>' "$RUNBOOK" "record command"
   require_text './script/check\.sh --no-run' "$RUNBOOK" "common no-run preflight"

@@ -110,32 +110,32 @@ Boundary: Apple Developer Program, Developer ID, notarization, App Group provisi
 1. 요일별 주간 잔여량 그래프 마무리와 실제 UI 검수
    Completion evidence: latest installed app popover shows weekday weekly remaining graph, reset weekday, current percent, historical day dots, and hover tooltip.
    Local support: cache/history Swift tests and ./script/verify_cache_contract.sh
-   Status boundary: actual installed-app UI evidence is still required.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete.
 
 2. 깨끗한 drag-and-drop DMG 설치 검수
    Completion evidence: clean environment, DMG contains only MacDog.app and Applications symlink, actual Finder drag-and-drop install, first-run user component finish observed.
    Local support: ./script/verify_release_packaging.sh
-   Status boundary: clean install environment and Finder UI evidence are still required.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete.
 
 3. 앱 내부 helper 버튼 실제 클릭 검수
    Completion evidence: latest installed app UI click on helper install/remove buttons, state transition copy observed, no unreported password prompt behavior.
    Local support: ./script/verify_manual_ui_prerequisites.sh and helper preflight scripts.
-   Status boundary: GUI click and helper install/remove approval are still required.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete.
 
 4. 플로팅 펫 실제 동작 검수
    Completion evidence: drag position save, right-click menu, offscreen correction, and menu bar action differences observed in the desktop UI.
    Local support: FloatingPetMotionBoundsTests, PetMenuModelTests, ./script/verify_runtime_contract.sh
-   Status boundary: actual desktop UI evidence is still required.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete.
 
 5. 런타임 리소스 최적화 검토
    Completion evidence: CPU/RSS/energy impact measured while app is running, menu bar runner, floating pet, popover refresh, cache polling, and system metrics sampling reviewed.
    Local support: ./script/verify_runtime_contract.sh and ./script/sample_existing_runtime_resources.sh --self-test
-   Status boundary: app runtime sampling and optimization review are still required.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete.
 
 6. unsigned GitHub Actions release workflow 실제 실행 검증
    Completion evidence: actual GitHub workflow run URLs/results for release candidate and unsigned draft release paths, artifact, checksum, and draft release URL.
    Local support: ./script/verify_release_workflow.sh
-   Status boundary: signed stable workflow is excluded from v1.1.0.
+   Current evidence: verified in Docs/V110ManualEvidence.md when the ledger overallStatus is complete; signed stable workflow is excluded from v1.1.0.
 PLAN
 }
 
