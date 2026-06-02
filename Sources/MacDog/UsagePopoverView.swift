@@ -1763,18 +1763,30 @@ private struct WeeklyRemainingHistoryPlot: View {
                             .font(.caption2.weight(.semibold))
                             .monospacedDigit()
                             .foregroundStyle(tint)
-                            .position(valueLabelPosition(for: latestPoint, in: geometry.size))
+                            .position(
+                                WeeklyRemainingHistoryLabelPlacement.valueLabelPosition(
+                                    for: latestPoint,
+                                    in: geometry.size
+                                )
+                            )
                     }
                 }
 
                 if let hoveredMarker {
                     let markerPoint = point(for: hoveredMarker.point, in: geometry.size)
+                    let latestLabelPosition = latestLabelPositionToAvoid(for: hoveredMarker, in: geometry.size)
 
                     Text(hoveredMarker.hoverLabel)
                         .font(.caption2.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(.primary)
-                        .position(hoverLabelPosition(for: markerPoint, in: geometry.size))
+                        .position(
+                            WeeklyRemainingHistoryLabelPlacement.hoverLabelPosition(
+                                for: markerPoint,
+                                avoiding: latestLabelPosition,
+                                in: geometry.size
+                            )
+                        )
                 }
             }
             .contentShape(Rectangle())
@@ -1832,30 +1844,19 @@ private struct WeeklyRemainingHistoryPlot: View {
         )
     }
 
-    private func valueLabelPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
-        let xOffset: CGFloat = point.x > size.width - 34 ? -24 : 24
-        let yOffset: CGFloat
-        if point.y < 14 {
-            yOffset = 12
-        } else if point.y > size.height - 14 {
-            yOffset = -12
-        } else {
-            yOffset = -11
+    private func latestLabelPositionToAvoid(
+        for hoveredMarker: WeeklyRemainingHistoryDayMarker,
+        in size: CGSize
+    ) -> CGPoint? {
+        guard let latest = chart.latestActualPoint,
+              hoveredMarker.point != latest
+        else {
+            return nil
         }
 
-        return CGPoint(
-            x: min(max(point.x + xOffset, 18), size.width - 18),
-            y: min(max(point.y + yOffset, 9), size.height - 9)
-        )
-    }
-
-    private func hoverLabelPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
-        let xOffset: CGFloat = point.x > size.width - 46 ? -35 : 35
-        let yOffset: CGFloat = point.y < 16 ? 13 : -13
-
-        return CGPoint(
-            x: min(max(point.x + xOffset, 22), size.width - 22),
-            y: min(max(point.y + yOffset, 9), size.height - 9)
+        return WeeklyRemainingHistoryLabelPlacement.valueLabelPosition(
+            for: point(for: latest, in: size),
+            in: size
         )
     }
 
@@ -1873,6 +1874,94 @@ private struct WeeklyRemainingHistoryPlot: View {
         }
 
         return nearestID
+    }
+}
+
+struct WeeklyRemainingHistoryLabelPlacement {
+    static let valueLabelSize = CGSize(width: 30, height: 12)
+    static let hoverLabelSize = CGSize(width: 74, height: 12)
+    static let collisionPadding = CGSize(width: 4, height: 3)
+
+    static func valueLabelPosition(for point: CGPoint, in size: CGSize) -> CGPoint {
+        let xOffset: CGFloat = point.x > size.width - 34 ? -24 : 24
+        let yOffset: CGFloat
+        if point.y < 14 {
+            yOffset = 12
+        } else if point.y > size.height - 14 {
+            yOffset = -12
+        } else {
+            yOffset = -11
+        }
+
+        return CGPoint(
+            x: min(max(point.x + xOffset, 18), size.width - 18),
+            y: min(max(point.y + yOffset, 9), size.height - 9)
+        )
+    }
+
+    static func hoverLabelPosition(
+        for point: CGPoint,
+        avoiding latestLabelPosition: CGPoint?,
+        in size: CGSize
+    ) -> CGPoint {
+        let xOffset: CGFloat = point.x > size.width - 46 ? -35 : 35
+        let yOffsets: [CGFloat] = point.y < 16 ? [13, -13, 25, -25] : [-13, 13, -25, 25]
+        let xOffsets: [CGFloat] = [xOffset, -xOffset]
+
+        let candidates = xOffsets.flatMap { xOffset in
+            yOffsets.map { yOffset in
+                clampedPosition(
+                    CGPoint(x: point.x + xOffset, y: point.y + yOffset),
+                    in: size,
+                    horizontalMargin: 22,
+                    verticalMargin: 9
+                )
+            }
+        }
+
+        guard let latestLabelPosition else {
+            return candidates[0]
+        }
+
+        let latestRect = labelRect(center: latestLabelPosition, size: valueLabelSize)
+            .insetBy(dx: -collisionPadding.width, dy: -collisionPadding.height)
+        if let clearCandidate = candidates.first(where: {
+            !labelRect(center: $0, size: hoverLabelSize).intersects(latestRect)
+        }) {
+            return clearCandidate
+        }
+
+        return candidates.max {
+            distanceSquared(from: $0, to: latestLabelPosition) <
+                distanceSquared(from: $1, to: latestLabelPosition)
+        } ?? candidates[0]
+    }
+
+    static func labelRect(center: CGPoint, size: CGSize) -> CGRect {
+        CGRect(
+            x: center.x - size.width / 2,
+            y: center.y - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
+    private static func clampedPosition(
+        _ point: CGPoint,
+        in size: CGSize,
+        horizontalMargin: CGFloat,
+        verticalMargin: CGFloat
+    ) -> CGPoint {
+        CGPoint(
+            x: min(max(point.x, horizontalMargin), size.width - horizontalMargin),
+            y: min(max(point.y, verticalMargin), size.height - verticalMargin)
+        )
+    }
+
+    private static func distanceSquared(from lhs: CGPoint, to rhs: CGPoint) -> CGFloat {
+        let dx = lhs.x - rhs.x
+        let dy = lhs.y - rhs.y
+        return dx * dx + dy * dy
     }
 }
 

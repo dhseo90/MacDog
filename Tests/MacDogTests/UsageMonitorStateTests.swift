@@ -294,6 +294,35 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 82)
     }
 
+    func testWeeklyHistoryHoverLabelAvoidsCurrentPercentLabelWhenMarkersAreClose() {
+        let size = CGSize(width: 244, height: 74)
+        let mondayMarker = CGPoint(x: 36, y: 12)
+        let currentMarker = CGPoint(x: 70, y: 12)
+        let currentLabel = WeeklyRemainingHistoryLabelPlacement.valueLabelPosition(
+            for: currentMarker,
+            in: size
+        )
+        let hoverLabel = WeeklyRemainingHistoryLabelPlacement.hoverLabelPosition(
+            for: mondayMarker,
+            avoiding: currentLabel,
+            in: size
+        )
+
+        let currentRect = WeeklyRemainingHistoryLabelPlacement.labelRect(
+            center: currentLabel,
+            size: WeeklyRemainingHistoryLabelPlacement.valueLabelSize
+        )
+        let hoverRect = WeeklyRemainingHistoryLabelPlacement.labelRect(
+            center: hoverLabel,
+            size: WeeklyRemainingHistoryLabelPlacement.hoverLabelSize
+        )
+
+        XCTAssertFalse(
+            hoverRect.intersects(currentRect.insetBy(dx: -4, dy: -3)),
+            "Hover tooltip should not cover the current percent label for adjacent weekday markers"
+        )
+    }
+
     func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {
         XCTAssertFalse(MacDogPopoverModule.codex.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
