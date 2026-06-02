@@ -45,14 +45,15 @@
 - release workflow는 unsigned candidate/draft 경로를 v1.1.0 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.
 - optional helper 설치/제거는 앱 UI에서 처리합니다.
 - GitHub PR 보호 준비물은 repo 안에 포함되어 있습니다.
+- 2026-06-02 v1.1.0 최신 dist 기준 `MacDog-1.1.0.dmg`를 재생성하고, checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` freshness, 첫 실행 user component 상태를 확인했습니다.
+- 2026-06-02 GitHub Actions `release-candidate`와 unsigned `release-draft` workflow 실제 실행이 success였고, artifact/checksum/draft release asset 검증을 완료했습니다.
+- 2026-06-02 최신 설치본 UI에서 optional helper 제거/설치 버튼을 실제 클릭해 관리자 승인창 주체, 안내 문구, helper 상태 전환을 확인했습니다.
 
 ## 미확인
 
-- GitHub Actions runner에서 workflow 실제 실행
-- GitHub draft release 생성 workflow 실제 실행
-- GitHub Release에서 실제로 내려받은 `.dmg`로 깨끗한 설치 검수
-- 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent, Gatekeeper 동작 검증
-- MacDog UI의 helper 설치/제거를 최신 로컬 설치본에서 실제 실행
+- GitHub Release에서 실제로 내려받은 `.dmg`를 Finder로 설치하는 최종 smoke는 release publish 직후 다시 수행합니다.
+- 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
+- Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 v1.1.0에서 제외합니다.
 
 ## 아직 하지 않는 것
 
