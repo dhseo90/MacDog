@@ -3,13 +3,18 @@ import Foundation
 import MacDogPrivilegedHelperSupport
 
 enum MacDogDemoData {
+    static let readmeScreenshotTimestamp = 1_780_401_600
+    static let readmeScreenshotWeeklyResetTimestamp = 1_780_876_800
+
     static var isEnabled: Bool {
         let value = ProcessInfo.processInfo.environment["MACDOG_DEMO_MODE"]?.lowercased()
         return value == "1" || value == "true" || value == "yes"
     }
 
-    static func state(preferences: RunnerPreferences = RunnerPreferences()) -> UsageMonitorState {
-        let now = Int(Date().timeIntervalSince1970)
+    static func state(
+        preferences: RunnerPreferences = RunnerPreferences(),
+        now: Int = Int(Date().timeIntervalSince1970)
+    ) -> UsageMonitorState {
         return UsageMonitorState(
             report: report(now: now),
             cacheSnapshot: nil,
@@ -20,7 +25,7 @@ enum MacDogDemoData {
             animationPaused: preferences.animationPaused,
             systemMetrics: systemMetrics,
             systemMetricsHistory: systemMetricsHistory,
-            sleepPreventionStatus: sleepPreventionStatus(preferences: preferences),
+            sleepPreventionStatus: sleepPreventionStatus(preferences: preferences, now: now),
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus(preferences: preferences),
             privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot(
                 helperToolExists: false,
@@ -57,10 +62,10 @@ enum MacDogDemoData {
             ),
             secondary: UsageWindowReport(
                 kind: .weekly,
-                usedPercent: 68,
-                remainingPercent: 32,
+                usedPercent: 100 - weeklyRemainingPercent(now: now),
+                remainingPercent: weeklyRemainingPercent(now: now),
                 windowDurationMins: 10_080,
-                resetsAt: now + 345_600
+                resetsAt: weeklyResetTimestamp(now: now)
             ),
             credits: credits,
             planType: "pro",
@@ -78,17 +83,12 @@ enum MacDogDemoData {
     }
 
     private static func weeklyUsageHistory(now: Int) -> CodexUsageWeeklyHistory {
-        let resetsAt = now + 345_600
+        let resetsAt = weeklyResetTimestamp(now: now)
         let windowDurationMins = 10_080
         let start = resetsAt - (windowDurationMins * 60)
         let currentFraction = Double(now - start) / Double(windowDurationMins * 60)
-        let baseProgress: [(Double, Double)] = [
-            (0.00, 100),
-            (0.10, 94),
-            (0.22, 86),
-            (0.36, 72)
-        ]
-        let progress = baseProgress.filter { $0.0 < currentFraction } + [(currentFraction, 32)]
+        let baseProgress = weeklyBaseProgress(now: now)
+        let progress = baseProgress.filter { $0.0 < currentFraction } + [(currentFraction, weeklyRemainingPercent(now: now))]
         let samples = progress.map { fraction, remaining in
             CodexUsageWeeklyHistorySample(
                 recordedAt: start + Int(Double(windowDurationMins * 60) * min(max(fraction, 0), 1)),
@@ -99,6 +99,34 @@ enum MacDogDemoData {
             )
         }
         return CodexUsageWeeklyHistory(samples: samples)
+    }
+
+    private static func weeklyResetTimestamp(now: Int) -> Int {
+        if now == readmeScreenshotTimestamp {
+            return readmeScreenshotWeeklyResetTimestamp
+        }
+        return now + 345_600
+    }
+
+    private static func weeklyRemainingPercent(now: Int) -> Double {
+        now == readmeScreenshotTimestamp ? 93 : 32
+    }
+
+    private static func weeklyBaseProgress(now: Int) -> [(Double, Double)] {
+        if now == readmeScreenshotTimestamp {
+            return [
+                (0.00, 100),
+                (0.08, 98),
+                (0.14, 96)
+            ]
+        }
+
+        return [
+            (0.00, 100),
+            (0.10, 94),
+            (0.22, 86),
+            (0.36, 72)
+        ]
     }
 
     private static var systemMetrics: SystemMetricsSnapshot {
@@ -154,13 +182,13 @@ enum MacDogDemoData {
         )
     }
 
-    private static func sleepPreventionStatus(preferences: RunnerPreferences) -> SleepPreventionStatus {
+    private static func sleepPreventionStatus(preferences: RunnerPreferences, now: Int) -> SleepPreventionStatus {
         let triggerStatus = sleepPreventionTriggerStatus(preferences: preferences)
         let isActive = preferences.sleepPreventionEnabled || triggerStatus.isMatched
         return SleepPreventionStatus(
             isEnabled: isActive,
             isActive: isActive,
-            endsAt: preferences.sleepPreventionEnabled ? demoEndsAt(preferences: preferences) : nil,
+            endsAt: preferences.sleepPreventionEnabled ? demoEndsAt(preferences: preferences, now: now) : nil,
             isClosedLidSleepDisabled: isActive && preferences.sleepPreventionPreventClosedLidSleep,
             isScreenLockDisabled: isActive && preferences.sleepPreventionDisableScreenLock,
             errorMessage: nil,
@@ -169,14 +197,14 @@ enum MacDogDemoData {
         )
     }
 
-    private static func demoEndsAt(preferences: RunnerPreferences) -> Date? {
+    private static func demoEndsAt(preferences: RunnerPreferences, now: Int) -> Date? {
         if let endsAt = preferences.sleepPreventionEndsAt {
             return endsAt
         }
         guard let durationMinutes = preferences.sleepPreventionSessionPreset.durationMinutes else {
             return nil
         }
-        return Date().addingTimeInterval(TimeInterval(durationMinutes * 60))
+        return Date(timeIntervalSince1970: TimeInterval(now + durationMinutes * 60))
     }
 
     private static func sleepPreventionTriggerStatus(preferences: RunnerPreferences) -> SleepPreventionTriggerStatus {

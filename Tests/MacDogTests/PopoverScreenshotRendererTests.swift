@@ -62,7 +62,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         for module in MacDogPopoverModule.allCases {
             configureDefaults(for: module, defaults: defaults)
             let preferences = RunnerPreferences(defaults: defaults)
-            let state = MacDogDemoData.state(preferences: preferences)
+            let state = MacDogDemoData.state(
+                preferences: preferences,
+                now: MacDogDemoData.readmeScreenshotTimestamp
+            )
             let view = UsagePopoverView(state: state)
             let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
             try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-\(module.rawValue).png"))

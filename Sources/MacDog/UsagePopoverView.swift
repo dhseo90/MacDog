@@ -238,7 +238,10 @@ struct UsagePopoverView: View {
     }
 
     private func resetMetadataValue(_ window: UsageWindowReport?) -> String {
-        let summary = UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt)
+        let summary = UsageWindowStatus.resetSummary(
+            resetsAt: window?.resetsAt,
+            now: resetSummaryNow
+        )
         if summary.hasPrefix("초기화까지 ") {
             return String(summary.dropFirst("초기화까지 ".count))
         }
@@ -246,6 +249,15 @@ struct UsagePopoverView: View {
             return String(summary.dropFirst("초기화 ".count))
         }
         return summary
+    }
+
+    private var resetSummaryNow: Date {
+        guard let report = state.report,
+              report.source == "demo"
+        else {
+            return Date()
+        }
+        return Date(timeIntervalSince1970: TimeInterval(report.generatedAt))
     }
 }
 
@@ -605,7 +617,10 @@ private struct SleepPreventionPanel: View {
                 Text(controlModeSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, currentControlMode == .condition ? 2 : 0)
             }
 
             if currentControlMode == .time {
@@ -626,7 +641,7 @@ private struct SleepPreventionPanel: View {
             }
 
             if currentControlMode == .condition {
-                PopoverFormSection(title: "상태 기준", systemImage: "switch.2") {
+                PopoverFormSection(title: "상태 기준", systemImage: "slider.horizontal.3") {
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 14) {
                             triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)

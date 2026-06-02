@@ -1,6 +1,6 @@
 # 권한 도우미 계획
 
-상태: helper 우선 sleep 제어 코드 구현 / helper-only 실제 설치와 XPC read,set 검증 완료 / UI 설정 변경 검증 완료 / 장시간 덮개 닫힘 실사용 검증 통과 / drag-and-drop DMG 첫 실행 설치 마무리 구성 / 앱 내부 helper 설치,제거 버튼 1차 구현
+상태: helper 우선 sleep 제어 코드 구현 / helper-only 실제 설치와 XPC read,set 검증 완료 / UI 설정 변경 검증 완료 / 장시간 덮개 닫힘 실사용 검증 통과 / drag-and-drop DMG 첫 실행 설치 마무리 구성 / 앱 내부 helper 설치,제거 버튼 실제 클릭 검수 완료
 작성일: 2026-05-28
 
 ## 목적
@@ -86,11 +86,11 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - 장시간 `pmset disablesleep` 값 유지
 - 개발 설치본에서는 `verify_install_state.sh --expect-current-dist` 없이 최신 설치본 UI 검수 완료 처리
 
-## 다음 구현 순서
+## 후속 재검수 조건
 
-1. 앱 내부 helper 설치/제거 버튼을 최신 설치본에서 실제 클릭 검수합니다.
-2. GitHub Release용 drag-and-drop DMG의 실제 Finder 설치와 첫 실행 설치 마무리 경로를 검증합니다.
-3. 장시간 검증 결과를 기준으로 공개 배포 설치본에서도 같은 helper 상태 진단을 제공합니다.
+1. macOS 업데이트, helper 재설치, 공개 설치본 교체 뒤에는 helper 설치/제거 버튼과 XPC read/set/restore를 다시 확인합니다.
+2. GitHub Release에서 내려받은 DMG로 추가 smoke를 수행할 때는 Finder drag-and-drop 설치와 첫 실행 설치 마무리 경로를 다시 기록합니다.
+3. 장시간 덮개 닫힘 조건이 바뀌면 전원 상태, `SleepDisabled`, helper 상태, `pmset` 로그를 함께 기록합니다.
 
 ## 보안 원칙
 

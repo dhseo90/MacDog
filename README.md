@@ -6,7 +6,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 스크린샷
 
-아래 이미지는 현재 SwiftUI popover를 README용 demo snapshot으로 렌더링한 화면입니다. 실제 사용량 값은 사용자 환경에 따라 달라집니다.
+아래 이미지는 현재 SwiftUI popover를 README용 v1.1.0 demo snapshot으로 렌더링한 화면입니다. 실제 사용량 값은 사용자 환경에 따라 달라집니다.
 
 <table>
   <tr>
@@ -185,7 +185,7 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 - 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하는 설치 검수
 - 첫 실행 user component 마무리 설치 검수
 - unsigned GitHub Actions release candidate/draft workflow 실제 실행 검증
-- 깨끗한 사용자 환경에서 DMG 설치/제거 검수
+- 기존 설치본 대치가 포함된 clean release payload drag-and-drop 설치 검수
 
 Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning이 필요한 signed/notarized public 배포와 WidgetKit 실제 UI 검수는 현재 구현 계획에서 제외합니다.
 

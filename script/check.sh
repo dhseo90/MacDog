@@ -15,7 +15,7 @@ Checks:
   1. Required macOS/Xcode tools are available.
   2. Runner PNG assets have the expected count and size.
   3. Character profile links runner, desktop pet, and tab artwork assets.
-  4. README generated screenshot artifacts are absent from the repo.
+  4. README generated screenshot artifacts are absent and committed screenshots match the renderer.
   5. Ignored dist output does not contain stale app bundle copies.
   6. Runtime CPU/RSS sampling commands and documentation stay wired.
   7. The read-only existing-process runtime sampler is self-tested.
@@ -91,7 +91,7 @@ echo "==> Verifying runner assets"
 echo "==> Verifying character profile"
 ./script/verify_character_profile.sh
 
-echo "==> Verifying README generated image hygiene"
+echo "==> Verifying README generated image hygiene and freshness"
 ./script/verify_readme_screenshots.sh
 
 echo "==> Verifying dist hygiene"

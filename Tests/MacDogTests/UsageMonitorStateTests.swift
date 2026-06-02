@@ -355,14 +355,17 @@ final class UsageMonitorStateTests: XCTestCase {
     }
 
     func testDemoDataProvidesWeeklyUsageHistoryForCodexTab() {
-        let state = MacDogDemoData.state()
+        let state = MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp)
         let chart = WeeklyRemainingHistoryChart(
             history: state.weeklyUsageHistory,
-            weeklyWindow: state.codexLimit?.weekly
+            weeklyWindow: state.codexLimit?.weekly,
+            calendar: Self.utcCalendar
         )
 
         XCTAssertGreaterThan(chart.actualSampleCount, 1)
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, state.codexLimit?.weekly?.remainingPercent)
+        XCTAssertEqual(chart.resetStartLabel, "6/1 월")
+        XCTAssertEqual(chart.resetEndLabel, "6/8 월")
     }
 
     func testPetReactionPrioritizesSystemLoad() {

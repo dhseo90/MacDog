@@ -62,13 +62,13 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정과 macOS 로그인 항목 등록 규칙을 확인합니다. |
 | `script/verify_cache_contract.sh` | cache schema와 stale/error/history 계약 검증 | cache 모델, 주간 잔여량 history, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | runner, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
-| `script/verify_character_asset_polish.sh --self-test` | 캐릭터 asset polish 점검 | 캐릭터 프로필, runner 기준선, README 이미지 hygiene, PNG 크기/alpha 계약을 확인합니다. 실제 UI는 열지 않습니다. |
+| `script/verify_character_asset_polish.sh --self-test` | 캐릭터 asset polish 점검 | 캐릭터 프로필, runner 기준선, README 이미지 hygiene/freshness, PNG 크기/alpha 계약을 확인합니다. 실제 UI는 열지 않습니다. |
 | `script/verify_codex_app_server_protocol_drift.sh --self-test` | Codex app-server protocol drift guardrail | live app-server를 호출하지 않고 redacted fixture schema, 기본 codex bucket, 5시간/주간 window, failure guide redaction 문구를 확인합니다. |
 | `script/verify_dist_hygiene.sh` | dist 산출물 hygiene 검증 | stale app bundle 복사본 같은 혼동 요소를 확인합니다. |
 | `script/verify_distribution_gate.sh` | public release gate 검증 | unsigned draft와 signed stable release 문구/워크플로 분리를 확인합니다. |
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인합니다. |
 | `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인합니다. |
-| `script/verify_readme_screenshots.sh` | README 이미지 hygiene 검증 | README가 참조하는 공식 이미지와 임시 이미지 삭제 상태를 확인합니다. |
+| `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. |
 | `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인합니다. |
 | `script/verify_runner_baseline.sh` | 메뉴바 runner 기준선 검증 | runner frame count, size, 상태 mapping을 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |

@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 README="$ROOT_DIR/README.md"
 GENERATED_DOCS_DIR="$ROOT_DIR/Assets/Generated/Docs"
 README_IMAGE_DIR="$ROOT_DIR/Docs/Images/README"
+XCRUN="/usr/bin/xcrun"
 
 die() {
   echo "error: $*" >&2
@@ -83,4 +84,27 @@ if [[ -d "$README_IMAGE_DIR" ]]; then
   fi
 fi
 
-echo "README screenshot image hygiene ok"
+[[ -x "$XCRUN" ]] || die "xcrun not found at $XCRUN"
+export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+
+render_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-readme-screenshots.XXXXXX")"
+trap 'rm -rf "$render_dir"' EXIT
+
+MACDOG_RENDER_README_SCREENSHOTS=1 \
+MACDOG_RENDER_README_SCREENSHOTS_OUTPUT_DIR="$render_dir" \
+  "$XCRUN" swift test --filter PopoverScreenshotRendererTests >/dev/null
+
+for image in "${required_images[@]}"; do
+  relative="${image#Docs/Images/README/}"
+  rendered="$render_dir/$relative"
+  [[ -f "$rendered" ]] || die "README renderer did not generate expected image: $relative"
+  if ! /usr/bin/cmp -s "$ROOT_DIR/$image" "$rendered"; then
+    echo "committed: $image" >&2
+    if command -v /usr/bin/shasum >/dev/null 2>&1; then
+      /usr/bin/shasum -a 256 "$ROOT_DIR/$image" "$rendered" >&2
+    fi
+    die "README image is stale; regenerate README screenshots from PopoverScreenshotRendererTests"
+  fi
+done
+
+echo "README screenshot image hygiene and freshness ok"

@@ -10,7 +10,7 @@ usage: $0 [--self-test]
 
 Verify Codex Pup character asset polish boundaries without launching the GUI.
 This checks profile ownership, runner baseline, desktop-pet/tab PNG dimensions
-and alpha channels, tab artwork manifest linkage, and README image hygiene.
+and alpha channels, tab artwork manifest linkage, and README image hygiene/freshness.
 
 Options:
   --self-test  Run the same read-only checks and validate summary output.

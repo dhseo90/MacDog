@@ -144,7 +144,7 @@
 - `script/verify_runner_baseline.sh`
 - `swift test --filter 'MacDogCharacterProfileTests|PopoverScreenshotRendererTests'`
 
-검증은 runner 8프레임 `80x48`, desktop pet 40프레임 `192x204`, popover tab 5개 `256x256`, 모든 PNG alpha channel, `MacDogCharacterProfile.codexPup` 연결, tab artwork manifest 연결, README 이미지 hygiene을 확인합니다.
+검증은 runner 8프레임 `80x48`, desktop pet 40프레임 `192x204`, popover tab 5개 `256x256`, 모든 PNG alpha channel, `MacDogCharacterProfile.codexPup` 연결, tab artwork manifest 연결, README 이미지 hygiene/freshness를 확인합니다.
 
 2026-06-02 실제 UI 확인:
 

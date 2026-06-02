@@ -42,7 +42,7 @@ MacDog는 closed-display mode를 다음처럼 다룹니다.
 
 ## 후속 후보
 
-- closed-display 장시간 회귀 검증: macOS 업데이트, helper 재설치, 공개 배포 설치본 변경 뒤 실제 덮개 닫힘 유지 여부 재확인
+- closed-display 장시간 회귀 검증 유지: macOS 업데이트, helper 재설치, 공개 배포 설치본 변경 뒤 실제 덮개 닫힘 유지 여부 재확인
 - closed-display readiness 표시: 전원 연결 여부, 외부 디스플레이 연결 여부, 외부 입력 장치 감지 가능성 조사
 - display sleep 허용/방지 옵션: `잠들지 않기` 탭의 세션 옵션으로 분리했고, 끄면 system sleep assertion만 유지합니다.
 - 관리자 권한 helper polish: 앱 내부 설치 UX, 업데이트/삭제 flow, 실패 시 degraded 안내 강화

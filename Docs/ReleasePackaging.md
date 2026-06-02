@@ -49,9 +49,9 @@
 - 2026-06-02 GitHub Actions `release-candidate`와 unsigned `release-draft` workflow 실제 실행이 success였고, artifact/checksum/draft release asset 검증을 완료했습니다.
 - 2026-06-02 최신 설치본 UI에서 optional helper 제거/설치 버튼을 실제 클릭해 관리자 승인창 주체, 안내 문구, helper 상태 전환을 확인했습니다.
 
-## 미확인
+## 후속 release smoke
 
-- GitHub Release에서 실제로 내려받은 `.dmg`를 Finder로 설치하는 최종 smoke는 release publish 직후 다시 수행합니다.
+- GitHub Release에서 실제로 내려받은 `.dmg`의 checksum과 `hdiutil verify`는 v1.1.0 published asset 기준으로 확인했습니다. 같은 다운로드본을 Finder에서 drag-and-drop 설치하는 최종 smoke는 필요 시 후속 release smoke로 수행합니다.
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
 - Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 v1.1.0에서 제외합니다.
 
@@ -87,5 +87,5 @@
 - DMG 안에는 앱 설치에 필요 없는 command 파일이나 임시 안내 파일이 없습니다.
 - signed/notarized public stable release는 현재 구현 계획에서 제외합니다.
 - Release note에 지원 OS, unsigned/notarized 여부, helper 권한 이유, uninstall 경로를 적습니다.
-- `.dmg`를 내려받아 Finder로 설치하는 흐름을 새 사용자 환경에서 검증합니다.
-- helper 설치가 포함되는 경우 앱 UI가 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons` 변경을 명확히 안내하고 uninstall 복구를 검증합니다.
+- 후속 release smoke가 필요하면 `.dmg`를 내려받아 Finder로 설치하는 흐름을 새 사용자 환경에서 검증합니다.
+- helper 설치가 포함되는 후속 smoke에서는 앱 UI가 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons` 변경을 명확히 안내하고 uninstall 복구를 검증합니다.

@@ -10,7 +10,7 @@
 - frame 수: 8
 - frame 크기: 80x48 px
 - 메뉴바 status item 길이: 38 pt
-- popover 크기: 320x540 pt
+- popover 크기: 370x408 pt
 - 기본 러너 속도 기준: 주간 사용량
 
 ## 사용량 단계
