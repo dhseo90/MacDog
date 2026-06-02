@@ -51,8 +51,7 @@
 - 2026-06-01 MacDog-1.1.0.dmg 생성과 hdiutil verify 통과
 - 2026-06-01 Finder에서 MacDog 1.1.0 DMG 창이 보이고 MacDog.app과 Applications만 표시되는 것 확인
 - 2026-06-01 실제 drag-and-drop 설치는 사용자 최종 승인 전 요청 변경으로 수행하지 않음
-- 2026-06-02 clean 환경에서 기존 /Applications 및 ~/Applications MacDog.app, ~/bin/codex-usage, usage LaunchAgent, Downloads/Desktop MacDog installer 산출물 제거 확인 후 MacDog-1.0.0.dmg를 Finder로 열어 MacDog.app과 Applications symlink만 표시됨을 확인. Finder에서 MacDog.app을 Applications symlink로 실제 drag-and-drop 설치했고 /Applications/MacDog.app 생성 확인. /Applications/MacDog.app 첫 실행 후 verify_install_state --expect-installed 통과: active-app /Applications/MacDog.app, cli symlink 앱 내부 codex-usage, usage cache LaunchAgent present, widget mirror disabled.
-- 2026-06-02 최신 dist 기준 MacDog-1.1.0.dmg를 --version 1.1.0으로 재생성했고 hdiutil verify와 dist/release 디렉터리 기준 shasum -a 256 -c를 통과했습니다. DMG Finder 창에서 MacDog.app과 Applications symlink만 표시되는 것을 확인한 뒤 MacDog.app을 Applications로 실제 drag-and-drop했고, Finder의 기존 MacDog 대치 확인에서 대치를 선택했습니다. 설치 후 /Applications/MacDog.app은 dist/MacDog.app과 일치했고 app-owned codex-usage symlink/cache LaunchAgent/login launch 상태가 유지됐으며, DMG 볼륨은 eject했습니다.
+- 2026-06-02 최신 dist 기준 MacDog-1.1.0.dmg를 --version 1.1.0으로 재생성했고 hdiutil verify와 dist/release 디렉터리 기준 shasum -a 256 -c를 통과했습니다. DMG Finder 창에서 MacDog.app과 Applications symlink만 표시되는 clean release payload를 확인한 뒤 MacDog.app을 Applications로 실제 drag-and-drop했고, Finder의 기존 MacDog 대치 확인에서 대치를 선택했습니다. 설치 후 /Applications/MacDog.app은 dist/MacDog.app과 일치했고 app-owned codex-usage symlink/cache LaunchAgent/login launch 상태와 첫 실행 user component 마무리 상태가 유지됐으며, DMG 볼륨은 eject했습니다.
 
 남은 검수:
 

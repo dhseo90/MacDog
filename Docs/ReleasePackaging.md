@@ -38,8 +38,8 @@
 - `script/package_release.sh --dry-run` 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build --no-dmg` staging 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build`는 `dist/release/MacDog-<version>.dmg`와 checksum을 생성합니다.
-- `MacDog-1.0.0.dmg`는 `~/Downloads`에서 Finder로 열었을 때 drag-and-drop 배경, `MacDog.app`, `Applications` symlink가 보이는 것을 확인했습니다.
-- `MacDog-1.0.0.dmg`는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
+- `MacDog-1.1.0.dmg`는 `~/Downloads`에서 Finder로 열었을 때 drag-and-drop 배경, `MacDog.app`, `Applications` symlink가 보이는 것을 확인했습니다.
+- `MacDog-1.1.0.dmg`는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
 - mounted DMG의 `MacDog.app`을 `/Applications/MacDog.app`으로 복사한 뒤 설치본 실행, popover 열기, app-owned `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 상태를 확인했습니다.
 - 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일이 제거되는 것을 확인했습니다.
 - release workflow는 unsigned candidate/draft 경로를 v1.1.0 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.

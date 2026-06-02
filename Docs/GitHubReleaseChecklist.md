@@ -82,8 +82,8 @@ unsigned 검증 후보:
 ```sh
 ./script/check.sh --no-run
 ./script/package_release.sh
-hdiutil verify dist/release/MacDog-1.0.0.dmg
-shasum -a 256 -c dist/release/MacDog-1.0.0.dmg.sha256
+hdiutil verify dist/release/MacDog-1.1.0.dmg
+shasum -a 256 -c dist/release/MacDog-1.1.0.dmg.sha256
 ```
 
 GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
