@@ -26,6 +26,20 @@ require_matches() {
   fi
 }
 
+require_dmg_background_dimensions() {
+  local image_path="$1"
+  local info width height
+  info="$(/usr/bin/sips -g pixelWidth -g pixelHeight "$image_path" 2>/dev/null)"
+  width="$(/usr/bin/awk '/pixelWidth:/ { print $2 }' <<<"$info")"
+  height="$(/usr/bin/awk '/pixelHeight:/ { print $2 }' <<<"$info")"
+  case "${width}x${height}" in
+    760x430|1520x860)
+      return 0
+      ;;
+  esac
+  die "unexpected DMG background dimensions: ${width:-missing}x${height:-missing}"
+}
+
 require_not_contains() {
   local output="$1"
   local unexpected="$2"
@@ -99,9 +113,7 @@ if [[ -d "$APP_BUNDLE" ]]; then
   [[ -L "$stage/Applications" ]] || die "staged Applications symlink missing"
   [[ "$(readlink "$stage/Applications")" == "/Applications" ]] || die "staged Applications symlink must point to /Applications"
   [[ -f "$stage/.background/background.png" ]] || die "staged DMG background missing"
-  background_info="$(/usr/bin/sips -g pixelWidth -g pixelHeight "$stage/.background/background.png" 2>/dev/null)"
-  require_matches "$background_info" "pixelWidth:[[:space:]]+1520"
-  require_matches "$background_info" "pixelHeight:[[:space:]]+860"
+  require_dmg_background_dimensions "$stage/.background/background.png"
   [[ -x "$stage/MacDog.app/Contents/MacOS/codex-usage" ]] || die "bundled CLI missing or not executable"
   [[ -f "$stage/MacDog.app/Contents/Resources/MacDog.icns" ]] || die "staged app icon missing"
   [[ ! -e "$stage/MacDog.app/Contents/PlugIns/MacDogWidgetExtension.appex" ]] || die "default release stage must not include WidgetKit extension"
