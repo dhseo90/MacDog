@@ -25,6 +25,12 @@
 
 `--contract-file`은 실제 대상 환경에서 확인한 계약 JSON을 parser-only로 검증합니다. 요구 입력 계약은 정수 또는 숫자 타입이며 허용값은 `80,85,90,95,100`입니다. 이 스크립트는 단축어를 생성, 실행, 수정하지 않습니다.
 
+2026-06-02 실제 환경 확인:
+
+- v1.1.0 최신 설치본 갱신 후 `script/verify_shortcuts_charge_limit.sh --allow-unavailable`를 실행했습니다.
+- Shortcuts 앱을 실행해 helper를 깨운 뒤 다시 probe했지만 `/usr/bin/shortcuts list`는 `Error: Couldn’t communicate with a helper application.`으로 실패했습니다.
+- 단축어 생성, 실행, 수정은 하지 않았고, native Charge Limit read-only 경로가 primary implementation으로 유지되는 것을 확인했습니다.
+
 남은 실제 증거:
 
 - Shortcuts CLI/helper가 정상인 환경에서 후보 액션 이름 확인
@@ -64,6 +70,13 @@
 
 이 스크립트는 `pmset -g live`의 `SleepDisabled`와 helper 설치 상태를 읽고 장시간 검증 readiness만 출력합니다. `SleepDisabled`를 바꾸거나 helper를 설치/삭제하거나 덮개를 닫거나 장시간 대기하지 않습니다.
 
+2026-06-02 최신 설치본 변경 후 preflight:
+
+- v1.1.0 DMG를 Finder drag-and-drop으로 `/Applications/MacDog.app`에 갱신한 뒤 `script/verify_closed_display_regression_plan.sh`를 실행했습니다.
+- helper는 installed-loaded 상태이고 `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper` code signature가 valid이며 designated requirement를 만족합니다.
+- `SleepDisabled` 현재값은 `1`이고, verifier는 `SleepDisabled`, helper install state, screen lock state를 변경하지 않았습니다.
+- 실제 장시간 덮개 닫힘 검증은 노트북 덮개를 닫고 대기하는 물리 검증이라 수행하지 않았고, readiness는 `ready-for-approved-long-run`입니다.
+
 남은 실제 증거:
 
 - 승인된 환경에서 덮개 닫힘 전 `SleepDisabled`와 helper 상태 기록
@@ -82,11 +95,16 @@
 
 검증은 `config/public_repo_policy.json`, `static-gates`, `guardrails`, `CODEOWNERS`, PR template, Dependabot, required check payload를 확인합니다. `--apply`와 public 전환은 실행하지 않습니다.
 
+2026-06-02 실제 서버 상태 확인:
+
+- `script/configure_github_public_repo_settings.sh --check`로 `dhseo90/MacDog`가 `PUBLIC`임을 확인했습니다.
+- Actions는 enabled/all, workflow token은 read, PR review approval은 disabled, vulnerability alerts는 enabled, Dependabot security updates는 enabled, public fork PR workflow approval은 `first_time_contributors`로 확인했습니다.
+- `gh api repos/dhseo90/MacDog/branches/main/protection`으로 main branch protection을 확인했습니다. required status checks는 `static-gates`, `guardrails`이고 strict mode가 enabled입니다.
+- branch protection은 stale review dismissal, code owner review required, required approving review count 1, required conversation resolution enabled, force push/deletion disabled로 확인했습니다.
+
 남은 실제 증거:
 
-- GitHub repository visibility 또는 private branch protection 가능 plan 확인
-- 서버 설정 적용 별도 승인
-- `static-gates`와 `guardrails`가 GitHub에 표시된 뒤 branch protection 적용 결과 확인
+- 없음. 단, `script/verify_public_repo_branch_protection_plan.sh` 자체는 서버 설정을 바꾸지 않는 repo-local verifier입니다.
 
 ## 5. Codex app-server protocol drift 대응
 
