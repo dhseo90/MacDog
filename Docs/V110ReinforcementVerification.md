@@ -43,11 +43,15 @@
 
 실제 read 모드는 `script/verify_charge_limit.sh --read`를 호출하므로 MacDog 진단 모드 실행을 동반합니다. 기본 동작은 native 값을 읽기만 하며 시스템 충전 한도를 변경하지 않습니다.
 
+2026-06-02 실제 회귀 비교:
+
+- v1.1.0 DMG를 Finder drag-and-drop으로 `/Applications/MacDog.app`에 갱신한 뒤 `script/verify_charge_limit_regression.sh --allow-unavailable`를 실행했습니다.
+- native read 결과는 `current=90`, `available=80,85,90,95,100`이었고, verifier는 charge limit을 변경하지 않았습니다.
+- Battery Settings 화면의 접근성 트리와 화면에서 `충전 중: 89% 90% 한도까지 충전 중`이 확인되어 native current `90`과 표시값이 일치했습니다.
+
 남은 실제 증거:
 
-- `charge-limit:read current=<value>` 결과
-- Battery Settings 화면의 Charge Limit 표시값 직접 확인
-- 두 값 불일치 시 OS 버전, 설치본 freshness, helper 재설치 여부 기록
+- 없음. 두 값 불일치가 새로 발생하면 OS 버전, 설치본 freshness, helper 재설치 여부를 별도 기록합니다.
 
 ## 3. closed-display 장시간 회귀 검증
 
@@ -120,10 +124,15 @@
 
 검증은 runner 8프레임 `80x48`, desktop pet 40프레임 `192x204`, popover tab 5개 `256x256`, 모든 PNG alpha channel, `MacDogCharacterProfile.codexPup` 연결, tab artwork manifest 연결, README 이미지 hygiene을 확인합니다.
 
+2026-06-02 실제 UI 확인:
+
+- v1.1.0 DMG를 Finder drag-and-drop으로 `/Applications/MacDog.app`에 갱신한 뒤, 설치본이 `dist/MacDog.app`과 일치하는 상태에서 최신 설치본을 실행했습니다.
+- 메뉴바 runner, Codex 탭 popover 우측 tab buttons, 설정 탭의 `Codex Pup` 캐릭터 미리보기, 설정 탭 버튼이 같은 강아지 캐릭터 세트로 보이는 것을 확인했습니다.
+- `데스크톱 펫 표시`를 잠시 켜서 desktop pet이 같은 캐릭터 세트로 표시되는 것을 확인했고, 확인 뒤 원래처럼 꺼서 `desktopPetEnabled` preference가 남지 않게 복원했습니다.
+
 남은 실제 증거:
 
-- 최신 앱에서 menu bar runner, desktop pet, popover tab button, 설정 탭 미리보기 직접 확인
-- 직접 확인하지 않은 경우 `UI 확인 미수행`으로 보고
+- 없음. 단, `script/verify_character_asset_polish.sh` 자체는 여전히 UI를 열지 않는 read-only verifier이므로, verifier 출력의 `ui-not-run`은 자동 검증 경계를 뜻합니다.
 
 ## 전체 self-test
 

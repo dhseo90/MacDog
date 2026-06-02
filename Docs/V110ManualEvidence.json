@@ -22,7 +22,8 @@
         "요일별 구분선, 과거 일자 점, 현재 퍼센트 표기, hover tooltip 요구사항 반영",
         "CodexUsageCacheTests와 UsageMonitorStateTests에 주간 history 관련 자동 검증 포함",
         "2026-06-02 최신 /Applications/MacDog.app 실행본 Codex 탭에서 요일별 주간 잔여량 그래프 확인. reset 시작 요일과 timeline은 6/1 월 -> 6/8 월로 표시되고, 100% 50% 0% 라벨과 그래프 영역이 분리됨. 요일별 세로 구분선, 지나간 요일 마지막 잔여율 점, 현재 퍼센트 표시(6/2 화 93%), hover tooltip/현재 점 표시 확인.",
-        "2026-06-02 사용자 지적 반영: 월요일 marker hover tooltip이 오늘/current percent label을 가리던 겹침을 수정. 새 dist/MacDog.app에서 hover tooltip은 왼쪽, current percent(91%)는 오른쪽에 분리 표시되어 요일별 주간 잔여량 그래프 label 충돌이 사라진 것을 실제 화면 캡처로 확인."
+        "2026-06-02 사용자 지적 반영: 월요일 marker hover tooltip이 오늘/current percent label을 가리던 겹침을 수정. 새 dist/MacDog.app에서 hover tooltip은 왼쪽, current percent(91%)는 오른쪽에 분리 표시되어 요일별 주간 잔여량 그래프 label 충돌이 사라진 것을 실제 화면 캡처로 확인.",
+        "2026-06-02 v1.1.0 DMG drag-and-drop 갱신 후 최신 /Applications/MacDog.app에서 macdog://open으로 Codex 탭 popover를 실제 확인했습니다. 메뉴바 runner가 표시됐고, Codex 탭의 5시간/주간 사용률, 주간 잔여량 그래프, 6/1 월 -> 6/8 월 timeline, 현재 잔여율 표시가 최신 설치본에서 보였습니다."
       ],
       "remainingVerification": [
         "없음"
@@ -45,7 +46,8 @@
         "2026-06-01 MacDog-1.1.0.dmg 생성과 hdiutil verify 통과",
         "2026-06-01 Finder에서 MacDog 1.1.0 DMG 창이 보이고 MacDog.app과 Applications만 표시되는 것 확인",
         "2026-06-01 실제 drag-and-drop 설치는 사용자 최종 승인 전 요청 변경으로 수행하지 않음",
-        "2026-06-02 clean 환경에서 기존 /Applications 및 ~/Applications MacDog.app, ~/bin/codex-usage, usage LaunchAgent, Downloads/Desktop MacDog installer 산출물 제거 확인 후 MacDog-1.0.0.dmg를 Finder로 열어 MacDog.app과 Applications symlink만 표시됨을 확인. Finder에서 MacDog.app을 Applications symlink로 실제 drag-and-drop 설치했고 /Applications/MacDog.app 생성 확인. /Applications/MacDog.app 첫 실행 후 verify_install_state --expect-installed 통과: active-app /Applications/MacDog.app, cli symlink 앱 내부 codex-usage, usage cache LaunchAgent present, widget mirror disabled."
+        "2026-06-02 clean 환경에서 기존 /Applications 및 ~/Applications MacDog.app, ~/bin/codex-usage, usage LaunchAgent, Downloads/Desktop MacDog installer 산출물 제거 확인 후 MacDog-1.0.0.dmg를 Finder로 열어 MacDog.app과 Applications symlink만 표시됨을 확인. Finder에서 MacDog.app을 Applications symlink로 실제 drag-and-drop 설치했고 /Applications/MacDog.app 생성 확인. /Applications/MacDog.app 첫 실행 후 verify_install_state --expect-installed 통과: active-app /Applications/MacDog.app, cli symlink 앱 내부 codex-usage, usage cache LaunchAgent present, widget mirror disabled.",
+        "2026-06-02 최신 dist 기준 MacDog-1.1.0.dmg를 --version 1.1.0으로 재생성했고 hdiutil verify와 dist/release 디렉터리 기준 shasum -a 256 -c를 통과했습니다. DMG Finder 창에서 MacDog.app과 Applications symlink만 표시되는 것을 확인한 뒤 MacDog.app을 Applications로 실제 drag-and-drop했고, Finder의 기존 MacDog 대치 확인에서 대치를 선택했습니다. 설치 후 /Applications/MacDog.app은 dist/MacDog.app과 일치했고 app-owned codex-usage symlink/cache LaunchAgent/login launch 상태가 유지됐으며, DMG 볼륨은 eject했습니다."
       ],
       "remainingVerification": [
         "없음"
