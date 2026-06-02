@@ -1,14 +1,14 @@
 # v1.1.0 보강 항목 검증
 
-상태: read-only/self-test 보강 구현 완료 / 실제 GUI, 장시간 덮개 닫힘, GitHub 서버 적용은 미수행 / 2026-06-02 live app-server smoke 별도 확인
+상태: read-only/self-test 보강 구현 완료 / 최신 설치본 GUI, Battery Settings, GitHub 서버 상태, live app-server smoke 별도 확인 / 장시간 덮개 닫힘은 물리 검증 대기
 
 이 문서는 `ROADMAP.md`의 `v1.1.0` 보강 항목 6개를 완료 증거 경계와 로컬 검증 스크립트에 연결합니다. 자동 self-test와 dry-run은 실제 UI, 장시간 관찰, Shortcuts helper 정상 환경, GitHub 서버 설정 적용을 대체하지 않습니다.
 
 공통 경계:
 
-- GUI 앱 실행, menu bar popover 확인, desktop pet 확인, Battery Settings 화면 확인은 이 문서나 verifier가 수행하지 않습니다.
+- GUI 앱 실행, menu bar popover 확인, desktop pet 확인, Battery Settings 화면 확인은 verifier가 수행하지 않으며, 별도 수동/GUI 증거로만 기록합니다.
 - 장시간 덮개 닫힘 회귀 검증은 자동으로 수행하지 않습니다. 실제 덮개 닫힘 유지 시간, 전원 상태, `SleepDisabled` before/after, 잠금/슬립 여부를 별도 증거로 기록해야 합니다.
-- GitHub 서버 설정은 변경하지 않습니다. repository public 전환, branch protection `--apply`, GitHub Actions dispatch, push는 수행하지 않습니다.
+- GitHub 서버 설정 verifier는 변경하지 않습니다. repository public 전환, branch protection `--apply`, GitHub Actions dispatch는 별도 승인 범위입니다. 2026-06-02에는 서버 상태를 읽기 전용으로 확인했습니다.
 - 이 문서의 verifier는 live Codex app-server 호출과 `~/.codex/auth.json` 접근을 수행하지 않습니다. protocol drift 점검은 redacted fixture, transport guard, failure guide를 확인합니다.
 - 2026-06-02 별도 live smoke는 sandbox 밖에서 제품 JSON만 확인했으며, raw app-server payload, auth token, cookie, session material은 출력하거나 저장하지 않았습니다.
 - Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 v1.1.0 구현 계획에서 제외합니다.
@@ -29,11 +29,13 @@
 
 - v1.1.0 최신 설치본 갱신 후 `script/verify_shortcuts_charge_limit.sh --allow-unavailable`를 실행했습니다.
 - Shortcuts 앱을 실행해 helper를 깨운 뒤 다시 probe했지만 `/usr/bin/shortcuts list`는 `Error: Couldn’t communicate with a helper application.`으로 실패했습니다.
+- 이후 sandbox 밖 사용자 세션에서 `/usr/bin/shortcuts list`를 직접 실행하자 정상 종료했고, `script/verify_shortcuts_charge_limit.sh`도 `shortcuts:available count=0`, `charge-limit-shortcuts:candidates count=0`을 출력했습니다.
+- 현재 Shortcuts library가 비어 있어 Charge Limit 후보 단축어/액션 이름과 입력 계약은 캡처하지 못했습니다.
 - 단축어 생성, 실행, 수정은 하지 않았고, native Charge Limit read-only 경로가 primary implementation으로 유지되는 것을 확인했습니다.
 
 남은 실제 증거:
 
-- Shortcuts CLI/helper가 정상인 환경에서 후보 액션 이름 확인
+- Charge Limit 후보 단축어/액션이 실제로 존재하는 환경에서 후보 이름 확인
 - 액션 입력값 전달 방식과 허용값 확인
 - 확인한 계약 JSON과 확인자/시각 기록
 
