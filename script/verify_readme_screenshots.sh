@@ -86,6 +86,7 @@ fi
 
 [[ -x "$XCRUN" ]] || die "xcrun not found at $XCRUN"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+export TZ="${MACDOG_README_SCREENSHOT_TZ:-Asia/Seoul}"
 
 render_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-readme-screenshots.XXXXXX")"
 trap 'rm -rf "$render_dir"' EXIT
