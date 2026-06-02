@@ -300,6 +300,17 @@ RUBY
   fi
 
   /bin/cp "$JSON_REPORT" "$json_path"
+  /usr/bin/ruby -rjson - "$json_path" <<'RUBY'
+json_path = ARGV.fetch(0)
+data = JSON.parse(File.read(json_path))
+item = data.fetch("items").find { |candidate| candidate.fetch("id") == "helper_button_click" }
+item["status"] = "unverified"
+item["statusLabel"] = "미확인"
+item["currentEvidence"] = ["self-test helper weak baseline"]
+item["remainingVerification"] = ["self-test helper verification pending"]
+data["overallStatus"] = "incomplete"
+File.write(json_path, JSON.pretty_generate(data) + "\n")
+RUBY
   "$ROOT_DIR/script/render_v110_manual_evidence.sh" --write --json "$json_path" --output "$markdown_path" >/dev/null
   if "$ROOT_DIR/script/record_v110_manual_evidence.sh" \
     --json "$json_path" \
