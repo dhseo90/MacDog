@@ -57,7 +57,9 @@ require_output_contains "$dry_run_output" "GitHub Release:"
 
 require_file_contains "$DRAFT_WORKFLOW" "UNSIGNED-DRAFT"
 require_file_contains "$DRAFT_WORKFLOW" "--draft"
-require_file_contains "$DRAFT_WORKFLOW" "--prerelease"
+if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
+  die "draft release workflow must not mark v1.1.0 releases as prerelease"
+fi
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_file_contains "$STABLE_WORKFLOW" "SIGNED-STABLE"
