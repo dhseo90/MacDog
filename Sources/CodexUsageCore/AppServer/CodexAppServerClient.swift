@@ -2,6 +2,8 @@ import Foundation
 
 public final class CodexAppServerClient {
     public static let defaultWorkingDirectoryURL = URL(fileURLWithPath: "/tmp", isDirectory: true)
+    public static let legacyArguments = ["app-server"]
+    public static let proxyArguments = ["app-server", "proxy"]
 
     private let codexURL: URL
     private let timeout: TimeInterval
@@ -24,9 +26,45 @@ public final class CodexAppServerClient {
     }
 
     public func readRateLimits() throws -> RateLimitsResponse {
+        var lastError: Error?
+        for arguments in appServerArgumentCandidates() {
+            do {
+                return try readRateLimits(arguments: arguments)
+            } catch {
+                lastError = error
+                guard Self.canRetryWithNextInvocation(after: error) else {
+                    throw error
+                }
+            }
+        }
+
+        throw lastError ?? CodexAppServerError.processLaunchFailed("No Codex app-server invocation was available.")
+    }
+
+    static func argumentCandidates(proxySubcommandAvailable: Bool, daemonAvailable: Bool) -> [[String]] {
+        (proxySubcommandAvailable && daemonAvailable) ? [proxyArguments, legacyArguments] : [legacyArguments]
+    }
+
+    static func canRetryWithNextInvocation(after error: Error) -> Bool {
+        guard let appServerError = error as? CodexAppServerError else {
+            return false
+        }
+        switch appServerError {
+        case .processLaunchFailed, .stdinClosed, .invalidJSONLine, .responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID):
+            return true
+        case .codexBinaryNotFound,
+             .codexBinaryNotExecutable,
+             .responseTimedOut,
+             .responseMissingResult,
+             .rpcError:
+            return false
+        }
+    }
+
+    private func readRateLimits(arguments: [String]) throws -> RateLimitsResponse {
         let process = Process()
         process.executableURL = codexURL
-        process.arguments = ["app-server"]
+        process.arguments = arguments
         process.currentDirectoryURL = workingDirectoryURL
 
         let stdin = Pipe()
@@ -73,6 +111,53 @@ public final class CodexAppServerClient {
             from: rateLimitData,
             id: CodexAppServerRequestFactory.rateLimitReadRequestID
         )
+    }
+
+    private func appServerArgumentCandidates() -> [[String]] {
+        let proxySubcommandAvailable = isProxySubcommandAvailable()
+        let daemonAvailable = proxySubcommandAvailable && isDaemonAvailable()
+        return Self.argumentCandidates(
+            proxySubcommandAvailable: proxySubcommandAvailable,
+            daemonAvailable: daemonAvailable
+        )
+    }
+
+    private func isProxySubcommandAvailable() -> Bool {
+        runCodexProbe(arguments: ["app-server", "proxy", "--help"])
+    }
+
+    private func isDaemonAvailable() -> Bool {
+        runCodexProbe(arguments: ["app-server", "daemon", "version"])
+    }
+
+    private func runCodexProbe(arguments: [String]) -> Bool {
+        let process = Process()
+        process.executableURL = codexURL
+        process.arguments = arguments
+        process.currentDirectoryURL = workingDirectoryURL
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            process.waitUntilExit()
+            group.leave()
+        }
+
+        let probeTimeout = min(max(timeout / 5, 1), 3)
+        if group.wait(timeout: .now() + probeTimeout) != .success {
+            process.terminate()
+            return false
+        }
+
+        return process.terminationStatus == 0
     }
 
     private func sendInitialize(to handle: FileHandle) throws {

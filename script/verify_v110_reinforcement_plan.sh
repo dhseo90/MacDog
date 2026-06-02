@@ -19,7 +19,7 @@ usage() {
 usage: $0 [--self-test]
 
 Verify v1.1.0 reinforcement item coverage and local read-only/self-test
-support. This script does not run GUI apps, close the display, change charge
+support. This verifier does not run GUI apps, close the display, change charge
 limits, install helpers, call live Codex app-server, apply GitHub settings, run
 GitHub Actions, push, or perform Apple Developer dependent work.
 
@@ -96,7 +96,7 @@ verify_plan() {
   verify_supporting_scripts
   echo "v1.1.0-reinforcement:documentation-ok"
   echo "v1.1.0-reinforcement:supporting-scripts-ok"
-  echo "v1.1.0-reinforcement:external-boundary-kept no GUI long-run GitHub apply live app-server or Apple Developer work performed"
+  echo "v1.1.0-reinforcement:external-boundary-kept this verifier did not perform GUI long-run GitHub apply live app-server or Apple Developer work"
 }
 
 run_self_test() {

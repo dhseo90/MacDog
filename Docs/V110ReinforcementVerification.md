@@ -1,6 +1,6 @@
 # v1.1.0 보강 항목 검증
 
-상태: read-only/self-test 보강 구현 완료 / 실제 GUI, 장시간 덮개 닫힘, GitHub 서버 적용, live app-server 호출은 미수행
+상태: read-only/self-test 보강 구현 완료 / 실제 GUI, 장시간 덮개 닫힘, GitHub 서버 적용은 미수행 / 2026-06-02 live app-server smoke 별도 확인
 
 이 문서는 `ROADMAP.md`의 `v1.1.0` 보강 항목 6개를 완료 증거 경계와 로컬 검증 스크립트에 연결합니다. 자동 self-test와 dry-run은 실제 UI, 장시간 관찰, Shortcuts helper 정상 환경, GitHub 서버 설정 적용을 대체하지 않습니다.
 
@@ -9,7 +9,8 @@
 - GUI 앱 실행, menu bar popover 확인, desktop pet 확인, Battery Settings 화면 확인은 이 문서나 verifier가 수행하지 않습니다.
 - 장시간 덮개 닫힘 회귀 검증은 자동으로 수행하지 않습니다. 실제 덮개 닫힘 유지 시간, 전원 상태, `SleepDisabled` before/after, 잠금/슬립 여부를 별도 증거로 기록해야 합니다.
 - GitHub 서버 설정은 변경하지 않습니다. repository public 전환, branch protection `--apply`, GitHub Actions dispatch, push는 수행하지 않습니다.
-- live Codex app-server 호출과 `~/.codex/auth.json` 접근은 수행하지 않습니다. protocol drift 점검은 redacted fixture와 failure guide만 확인합니다.
+- 이 문서의 verifier는 live Codex app-server 호출과 `~/.codex/auth.json` 접근을 수행하지 않습니다. protocol drift 점검은 redacted fixture, transport guard, failure guide를 확인합니다.
+- 2026-06-02 별도 live smoke는 sandbox 밖에서 제품 JSON만 확인했으며, raw app-server payload, auth token, cookie, session material은 출력하거나 저장하지 않았습니다.
 - Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 v1.1.0 구현 계획에서 제외합니다.
 
 ## 1. Shortcuts Charge Limit 입력 계약 확인
@@ -90,13 +91,19 @@
 로컬 보강:
 
 - `script/verify_codex_app_server_protocol_drift.sh --self-test`
-- `swift test --filter 'RateLimitModelsTests|CodexUsageFailureGuideTests'`
+- `swift test --filter 'RateLimitModelsTests|CodexUsageFailureGuideTests|CodexAppServerClientTests'`
 
-검증은 기본 bucket `rateLimitsByLimitId.codex`, 5시간 `300`, 주간 `10080`, 추가 bucket 허용, schema/protocol drift 안내, raw payload/token 비공개 안내를 확인합니다. live app-server는 호출하지 않습니다.
+검증은 기본 bucket `rateLimitsByLimitId.codex`, 5시간 `300`, 주간 `10080`, 추가 bucket 허용, schema/protocol drift 안내, raw payload/token 비공개 안내를 확인합니다. 또한 현재 Codex CLI가 `app-server proxy`와 daemon control socket을 제공할 수 있음을 감안해, daemon이 실제로 있을 때만 proxy를 우선하고 없으면 legacy `app-server` stdio 경로로 바로 조회하는 transport guard를 확인합니다. verifier는 live app-server를 호출하지 않습니다.
+
+2026-06-02 실제 drift 확인:
+
+- sandbox 내부 live smoke는 `~/.codex` SQLite state runtime 쓰기 제한으로 initialize timeout처럼 실패했습니다. 원인은 sandbox 파일 권한이며 제품 회귀로 단정하지 않습니다.
+- sandbox 밖 `.build/debug/codex-usage status --json --timeout 10`은 통과했습니다. 제품 JSON에서 `codex` primary `windowDurationMins=300`, secondary `windowDurationMins=10080`, 추가 bucket `codex_bengalfox`, `planType=pro`, `source=codex-app-server`가 확인됐습니다.
+- Codex CLI `0.136.0-alpha.2` schema generator에서 `account/rateLimits/read` 메서드와 `GetAccountRateLimitsResponse`가 유지되는 것을 확인했습니다. 생성 schema는 임시 디렉터리에만 두었고 repo fixture로 저장하지 않았습니다.
 
 남은 실제 증거:
 
-- live 응답이 바뀐 경우 민감정보를 제거한 redacted fixture 갱신
+- live 응답 shape이 바뀐 경우 민감정보를 제거한 redacted fixture 갱신
 - JSON schema/cache schema/API 해석 변경 여부를 README/ROADMAP/AGENTS와 함께 검토
 - auth token, cookie, session material 미포함 확인
 

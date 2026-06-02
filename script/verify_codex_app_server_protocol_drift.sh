@@ -78,6 +78,9 @@ validate_source_guards() {
   require_text 'schema may have changed' "$ROOT_DIR/Sources/CodexUsageCore/Usage/CodexUsageFailureGuide.swift" "schema drift guidance"
   require_text 'protocol may have changed' "$ROOT_DIR/Sources/CodexUsageCore/Usage/CodexUsageFailureGuide.swift" "protocol drift guidance"
   require_text 'Do not paste auth tokens or raw app-server payloads' "$ROOT_DIR/Sources/CodexUsageCore/Usage/CodexUsageFailureGuide.swift" "raw payload redaction guidance"
+  require_text 'proxyArguments = \["app-server", "proxy"\]' "$ROOT_DIR/Sources/CodexUsageCore/AppServer/CodexAppServerClient.swift" "Codex app-server proxy transport candidate"
+  require_text 'daemon", "version"' "$ROOT_DIR/Sources/CodexUsageCore/AppServer/CodexAppServerClient.swift" "Codex app-server daemon availability probe"
+  require_text 'daemonAvailable' "$ROOT_DIR/Tests/CodexUsageCoreTests/CodexAppServerClientTests.swift" "Codex app-server transport drift tests"
   require_text 'rate_limits_response' "$ROOT_DIR/Tests/CodexUsageCoreTests/RateLimitModelsTests.swift" "rate limit fixture test"
   require_text 'codex_bengalfox' "$ROOT_DIR/Tests/CodexUsageCoreTests/RateLimitModelsTests.swift" "advanced bucket fixture assertion"
   require_text 'without inspecting ~/.codex/auth.json' "$ROOT_DIR/Tests/CodexUsageCoreTests/CodexUsageFailureGuideTests.swift" "auth file avoidance test"
@@ -89,6 +92,7 @@ verify_drift_guards() {
   validate_fixture "$FIXTURE"
   validate_source_guards
   echo "app-server-protocol-drift:source-guards-ok"
+  echo "app-server-protocol-drift:transport-guards-ok legacy app-server and daemon-backed proxy are both accounted for"
   echo "app-server-protocol-drift:live-call-not-run"
   echo "app-server-protocol-drift:redaction-boundary no auth token, raw app-server payload, cookie, or session material is required"
 }
@@ -139,6 +143,7 @@ FIXTURE
   "$0" --fixture "$fixture" >"$output_file"
   require_text 'app-server-protocol-drift:fixture-ok codex-window-durations=300,10080 extraBuckets=codex_bengalfox' "$output_file" "additive fixture summary"
   require_text 'app-server-protocol-drift:source-guards-ok' "$output_file" "source guard summary"
+  require_text 'app-server-protocol-drift:transport-guards-ok' "$output_file" "transport guard summary"
   require_text 'app-server-protocol-drift:live-call-not-run' "$output_file" "live call boundary"
   require_text 'redaction-boundary' "$output_file" "redaction boundary"
 
