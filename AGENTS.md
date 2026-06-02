@@ -209,10 +209,10 @@ git diff --check
 가능하면 추가:
 
 ```bash
-markdownlint README.md ROADMAP.md AGENTS.md
+npx --yes markdownlint-cli2@0.22.1
 ```
 
-명령이 없으면 `명령 없음`으로 보고하고 임의로 통과 처리하지 않습니다.
+Node.js/npm 또는 `markdownlint-cli2` 실행 경로가 없으면 `명령 없음`으로 보고하고 임의로 통과 처리하지 않습니다.
 
 ### 7.2 CLI / parser / JSON schema 변경
 

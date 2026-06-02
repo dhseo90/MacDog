@@ -60,6 +60,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - macOS 14 이상
 - Xcode 또는 Xcode Command Line Tools
 - Codex 앱 또는 Codex CLI
+- 문서 lint 검증 시 Node.js/npm. 전역 설치 없이 `npx --yes markdownlint-cli2@0.22.1`로 실행합니다.
 
 전체 검증:
 
@@ -77,6 +78,12 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ```sh
 ./script/check.sh --no-run
+```
+
+문서 lint만 확인:
+
+```sh
+npx --yes markdownlint-cli2@0.22.1
 ```
 
 자주 쓰는 스크립트:

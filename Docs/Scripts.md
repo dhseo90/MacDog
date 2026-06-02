@@ -14,6 +14,16 @@
 | `script/configure_github_public_repo_settings.sh` | GitHub public release 서버 설정 적용 | 기본은 dry-run입니다. `--apply`는 Actions/security 설정을 변경하고, `--make-public`은 추가 확인값이 있을 때만 repo 공개 전환을 수행합니다. |
 | `script/configure_github_branch_protection.sh` | GitHub `main` 보호 규칙 적용 | 기본은 dry-run입니다. `--apply`는 GitHub repo 설정을 변경하며 public repo 또는 private branch protection 가능 plan이 필요합니다. |
 
+## 문서 lint
+
+Markdown 문서는 repo root의 `.markdownlint-cli2.yaml` 설정으로 검증합니다. Node.js/npm이 있으면 전역 설치 없이 아래 명령으로 실행합니다.
+
+```sh
+npx --yes markdownlint-cli2@0.22.1
+```
+
+Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전역 설치로 고정하려면 `npm install --global markdownlint-cli2@0.22.1`을 사용합니다.
+
 ## 설치/삭제
 
 릴리즈 또는 사용자 설치 검수는 아래 개발용 스크립트로 대체할 수 없습니다. 사용자가 설치하는 그대로 검수해야 하므로, 최종 DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 사용자 설치 검수로 기록합니다. `install.sh`, 직접 복사, hdiutil mount 후 파일 복사, 숨김 Finder 창/화면 밖 UI 조작은 drag-and-drop 설치 검수의 대체 수단으로 금지합니다.
