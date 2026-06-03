@@ -29,6 +29,16 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
     }
 }
 
+public struct CodexUsageDiagnosticReport: Equatable, Sendable {
+    public let report: CodexUsageReport
+    public let fieldInventory: CodexUsageFieldInventory
+
+    public init(report: CodexUsageReport, fieldInventory: CodexUsageFieldInventory) {
+        self.report = report
+        self.fieldInventory = fieldInventory
+    }
+}
+
 public struct UsageLimitReport: Codable, Equatable, Sendable {
     public let limitId: String?
     public let limitName: String?
@@ -117,6 +127,16 @@ public struct CodexUsageReportBuilder: Sendable {
         )
     }
 
+    public func buildDiagnosticReport(
+        from response: RateLimitsResponse,
+        fieldInventory: CodexUsageFieldInventory
+    ) -> CodexUsageDiagnosticReport {
+        CodexUsageDiagnosticReport(
+            report: build(from: response),
+            fieldInventory: fieldInventory
+        )
+    }
+
     private static func makeLimitReport(from snapshot: RateLimitSnapshot) -> UsageLimitReport {
         UsageLimitReport(
             limitId: snapshot.limitId,
@@ -139,4 +159,3 @@ public struct CodexUsageReportBuilder: Sendable {
         )
     }
 }
-

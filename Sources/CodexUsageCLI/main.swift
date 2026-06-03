@@ -134,12 +134,16 @@ struct CLI {
             output("Codex CLI: \(codexURL.path)")
 
             let service = CodexUsageService(client: CodexAppServerClient(codexURL: codexURL))
-            let report = try service.readReport()
+            let diagnostic = try service.readDiagnosticReport()
+            let report = diagnostic.report
             let codex = report.codexLimit
             output("App-server: ok")
             output("Plan: \(codex?.planType ?? report.planType ?? "unknown")")
             output("5h window: \(codex?.fiveHour == nil ? "missing" : "ok")")
             output("Weekly window: \(codex?.weekly == nil ? "missing" : "ok")")
+            CodexUsageDoctorFormatter()
+                .bucketInventoryLines(from: diagnostic.fieldInventory)
+                .forEach(output)
             return .success
         } catch {
             errorOutput(CodexUsageFailureGuide().message(for: error, context: .doctor))
