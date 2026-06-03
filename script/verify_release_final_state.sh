@@ -149,6 +149,7 @@ run_self_test() {
   mkdir -p "$tmp/Applications" "$tmp/UserApplications" "$tmp/dist" "$tmp/Volumes" "$tmp/bin" "$tmp/LaunchAgents"
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9"
   write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
+  write_fixture_launchctl "$tmp/launchctl" "missing" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
 
   env \
     MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
@@ -157,6 +158,8 @@ run_self_test() {
     MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
     MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
     MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
     "$0" --version 9.9.9 >/dev/null
 
   write_fixture_app "$tmp/UserApplications/$APP_NAME.app" "9.9.9"

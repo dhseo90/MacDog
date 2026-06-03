@@ -69,4 +69,17 @@ final class CodexUsageFailureGuideTests: XCTestCase {
         XCTAssertTrue(message.contains("schema may have changed"))
         XCTAssertTrue(message.contains("codex-usage doctor"))
     }
+
+    func testMissingCodexWindowGuideExplainsUsageWindowDrift() {
+        let message = CodexUsageFailureGuide().message(
+            for: CodexUsageReportValidationError.missingRequiredCodexWindows([.fiveHour, .weekly]),
+            context: .status
+        )
+
+        XCTAssertTrue(message.contains("missing required codex usage windows"))
+        XCTAssertTrue(message.contains("5-hour"))
+        XCTAssertTrue(message.contains("weekly"))
+        XCTAssertTrue(message.contains("usage window"))
+        XCTAssertTrue(message.contains("0%"))
+    }
 }

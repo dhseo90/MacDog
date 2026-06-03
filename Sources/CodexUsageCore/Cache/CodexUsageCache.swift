@@ -142,6 +142,7 @@ public struct CodexUsageCacheStore {
         report: CodexUsageReport,
         staleAfterSeconds: Int = Self.defaultStaleAfterSeconds
     ) throws {
+        try report.validateRequiredCodexUsageWindows()
         let now = Int(dateProvider().timeIntervalSince1970)
         let snapshot = CodexUsageCacheSnapshot(
             cachedAt: now,
@@ -164,7 +165,7 @@ public struct CodexUsageCacheStore {
         staleAfterSeconds: Int = Self.defaultStaleAfterSeconds
     ) throws {
         let now = Int(dateProvider().timeIntervalSince1970)
-        let existingReport = try? read().report
+        let existingReport = Self.validReportForFailureSnapshot(from: try? read().report)
         let snapshot = CodexUsageCacheSnapshot(
             cachedAt: now,
             staleAfterSeconds: staleAfterSeconds,
@@ -172,6 +173,16 @@ public struct CodexUsageCacheStore {
             error: CodexUsageCacheError(message: Self.redactedErrorMessage(message), recordedAt: now)
         )
         try write(snapshot)
+    }
+
+    private static func validReportForFailureSnapshot(from report: CodexUsageReport?) -> CodexUsageReport? {
+        guard let report else { return nil }
+        do {
+            try report.validateRequiredCodexUsageWindows()
+            return report
+        } catch {
+            return nil
+        }
     }
 
     private func write(_ snapshot: CodexUsageCacheSnapshot) throws {

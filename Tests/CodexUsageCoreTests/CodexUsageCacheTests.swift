@@ -175,6 +175,45 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertTrue(snapshot.isStale(now: Date(timeIntervalSince1970: 1_779_800_011)))
     }
 
+    func testFailureSnapshotDropsInvalidExistingReport() throws {
+        let fileURL = temporaryFileURL()
+        var now = 1_779_800_000
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+        let invalidSnapshot = CodexUsageCacheSnapshot(
+            cachedAt: now,
+            staleAfterSeconds: 60,
+            report: Self.incompleteCodexReport(),
+            error: nil
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try encoder.encode(invalidSnapshot).write(to: fileURL)
+
+        now += 10
+        try store.writeFailure(message: "codex usage windows unavailable", staleAfterSeconds: 60)
+        let snapshot = try store.read()
+
+        XCTAssertNil(snapshot.report)
+        XCTAssertEqual(snapshot.error?.message, "codex usage windows unavailable")
+        XCTAssertTrue(snapshot.isStale(now: Date(timeIntervalSince1970: 1_779_800_011)))
+    }
+
+    func testWriteSuccessRejectsInvalidCodexReport() throws {
+        let fileURL = temporaryFileURL()
+        let store = CodexUsageCacheStore(fileURL: fileURL)
+
+        XCTAssertThrowsError(try store.writeSuccess(report: Self.incompleteCodexReport())) { error in
+            XCTAssertTrue(error.localizedDescription.contains("missing required codex usage windows"))
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
     func testFailureSnapshotRedactsSensitiveSessionMaterial() throws {
         let fileURL = temporaryFileURL()
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
@@ -229,7 +268,7 @@ final class CodexUsageCacheTests: XCTestCase {
         ))
         let data = try Data(contentsOf: url)
         let response = try JSONDecoder().decode(RateLimitsResponse.self, from: data)
-        return CodexUsageReportBuilder(dateProvider: {
+        return try CodexUsageReportBuilder(dateProvider: {
             Date(timeIntervalSince1970: 1_779_700_000)
         }).build(from: response)
     }
@@ -264,6 +303,13 @@ final class CodexUsageCacheTests: XCTestCase {
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int
     ) -> CodexUsageReport {
+        let fiveHour = UsageWindowReport(
+            kind: .fiveHour,
+            usedPercent: 12,
+            remainingPercent: 88,
+            windowDurationMins: 300,
+            resetsAt: nil
+        )
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -274,7 +320,7 @@ final class CodexUsageCacheTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: nil,
+            primary: fiveHour,
             secondary: weekly,
             credits: nil,
             planType: "pro",
@@ -285,6 +331,32 @@ final class CodexUsageCacheTests: XCTestCase {
             source: "test",
             planType: "pro",
             credits: nil,
+            rateLimitReachedType: nil,
+            limits: ["codex": limit]
+        )
+    }
+
+    private static func incompleteCodexReport() -> CodexUsageReport {
+        let limit = UsageLimitReport(
+            limitId: "codex",
+            limitName: nil,
+            primary: UsageWindowReport(
+                kind: .other,
+                usedPercent: 0,
+                remainingPercent: 100,
+                windowDurationMins: nil,
+                resetsAt: nil
+            ),
+            secondary: nil,
+            credits: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0"),
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        return CodexUsageReport(
+            generatedAt: 1_779_800_000,
+            source: "codex-app-server",
+            planType: "pro",
+            credits: limit.credits,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
         )

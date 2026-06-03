@@ -190,7 +190,7 @@ struct UsageMonitorState: Equatable {
         if cacheSnapshot != nil {
             return isStale ? "오래된 캐시" : "캐시"
         }
-        if report != nil {
+        if codexLimit != nil {
             return "실시간"
         }
         return "확인 불가"
