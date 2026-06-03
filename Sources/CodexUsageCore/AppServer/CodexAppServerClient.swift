@@ -1,5 +1,15 @@
 import Foundation
 
+public struct CodexAppServerRateLimitDiagnostic: Equatable, Sendable {
+    public let response: RateLimitsResponse
+    public let fieldInventory: CodexUsageFieldInventory
+
+    public init(response: RateLimitsResponse, fieldInventory: CodexUsageFieldInventory) {
+        self.response = response
+        self.fieldInventory = fieldInventory
+    }
+}
+
 public final class CodexAppServerClient {
     public static let defaultWorkingDirectoryURL = URL(fileURLWithPath: "/tmp", isDirectory: true)
     public static let legacyArguments = ["app-server"]
@@ -41,6 +51,32 @@ public final class CodexAppServerClient {
         throw lastError ?? CodexAppServerError.processLaunchFailed("No Codex app-server invocation was available.")
     }
 
+    public func readRateLimitDiagnostic() throws -> CodexAppServerRateLimitDiagnostic {
+        var lastError: Error?
+        for arguments in appServerArgumentCandidates() {
+            do {
+                let responseData = try readRateLimitResponseData(arguments: arguments)
+                let response = try decodeResponse(
+                    RateLimitsResponse.self,
+                    from: responseData,
+                    id: CodexAppServerRequestFactory.rateLimitReadRequestID
+                )
+                let fieldInventory = try CodexUsageFieldInventory.make(fromJSONRPCResponseData: responseData)
+                return CodexAppServerRateLimitDiagnostic(
+                    response: response,
+                    fieldInventory: fieldInventory
+                )
+            } catch {
+                lastError = error
+                guard Self.canRetryWithNextInvocation(after: error) else {
+                    throw error
+                }
+            }
+        }
+
+        throw lastError ?? CodexAppServerError.processLaunchFailed("No Codex app-server invocation was available.")
+    }
+
     static func argumentCandidates(proxySubcommandAvailable: Bool, daemonAvailable: Bool) -> [[String]] {
         (proxySubcommandAvailable && daemonAvailable) ? [proxyArguments, legacyArguments] : [legacyArguments]
     }
@@ -62,6 +98,15 @@ public final class CodexAppServerClient {
     }
 
     private func readRateLimits(arguments: [String]) throws -> RateLimitsResponse {
+        let rateLimitData = try readRateLimitResponseData(arguments: arguments)
+        return try decodeResponse(
+            RateLimitsResponse.self,
+            from: rateLimitData,
+            id: CodexAppServerRequestFactory.rateLimitReadRequestID
+        )
+    }
+
+    private func readRateLimitResponseData(arguments: [String]) throws -> Data {
         let process = Process()
         process.executableURL = codexURL
         process.arguments = arguments
@@ -106,11 +151,7 @@ public final class CodexAppServerClient {
             id: CodexAppServerRequestFactory.rateLimitReadRequestID,
             timeout: timeout
         )
-        return try decodeResponse(
-            RateLimitsResponse.self,
-            from: rateLimitData,
-            id: CodexAppServerRequestFactory.rateLimitReadRequestID
-        )
+        return rateLimitData
     }
 
     private func appServerArgumentCandidates() -> [[String]] {

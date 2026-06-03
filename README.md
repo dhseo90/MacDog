@@ -116,6 +116,8 @@ codex-usage doctor
 
 `status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history도 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
+`doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름과 필드 목록을 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
+
 ## 로컬 설치
 
 개발용 설치 스크립트는 release build를 만들고 `~/Applications/MacDog.app`에 설치합니다. 앱 번들 내부 `codex-usage`를 `~/bin/codex-usage` symlink로 연결하고, usage cache LaunchAgent를 등록합니다. 로그인 자동 실행은 앱이 macOS 로그인 항목으로 직접 등록합니다.
@@ -261,6 +263,7 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md): v1.1.0 실제 수동/외부 검수 증거 현황
 - [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
 - [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 보강 항목 read-only/self-test 검증 경계
+- [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 범위와 Apple Developer 제외 경계
 - `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
 - `./script/verify_v110_reinforcement_plan.sh --self-test`: v1.1.0 보강 항목 문서 연결과 로컬 self-test 확인
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과

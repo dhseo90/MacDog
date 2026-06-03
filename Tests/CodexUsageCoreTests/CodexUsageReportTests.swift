@@ -19,6 +19,25 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertNotNil(report.limits["codex_bengalfox"])
     }
 
+    func testBuildsDiagnosticReportWithoutChangingUsageReport() throws {
+        let fixtureData = try loadFixtureData()
+        let response = try JSONDecoder().decode(RateLimitsResponse.self, from: fixtureData)
+        let fixtureObject = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData) as? [String: Any])
+        let fieldInventory = CodexUsageFieldInventory.make(fromRateLimitsObject: fixtureObject)
+        let builder = CodexUsageReportBuilder(dateProvider: {
+            Date(timeIntervalSince1970: 1_779_700_000)
+        })
+
+        let diagnostic = builder.buildDiagnosticReport(
+            from: response,
+            fieldInventory: fieldInventory
+        )
+
+        XCTAssertEqual(diagnostic.report.generatedAt, 1_779_700_000)
+        XCTAssertEqual(diagnostic.report.codexLimit?.fiveHour?.remainingPercent, 85)
+        XCTAssertEqual(diagnostic.fieldInventory.buckets.map(\.key), ["codex", "codex_bengalfox"])
+    }
+
     func testFormatsTextReport() throws {
         let response = try loadFixture()
         let report = CodexUsageReportBuilder(dateProvider: {
@@ -52,12 +71,14 @@ final class CodexUsageReportTests: XCTestCase {
     }
 
     private func loadFixture() throws -> RateLimitsResponse {
+        try JSONDecoder().decode(RateLimitsResponse.self, from: loadFixtureData())
+    }
+
+    private func loadFixtureData() throws -> Data {
         let url = try XCTUnwrap(Bundle.module.url(
             forResource: "rate_limits_response",
             withExtension: "json"
         ))
-        let data = try Data(contentsOf: url)
-        return try JSONDecoder().decode(RateLimitsResponse.self, from: data)
+        return try Data(contentsOf: url)
     }
 }
-

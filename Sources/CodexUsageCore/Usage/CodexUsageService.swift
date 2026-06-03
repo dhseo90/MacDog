@@ -16,5 +16,12 @@ public struct CodexUsageService {
         let response = try client.readRateLimits()
         return reportBuilder.build(from: response)
     }
-}
 
+    public func readDiagnosticReport() throws -> CodexUsageDiagnosticReport {
+        let diagnostic = try client.readRateLimitDiagnostic()
+        return reportBuilder.buildDiagnosticReport(
+            from: diagnostic.response,
+            fieldInventory: diagnostic.fieldInventory
+        )
+    }
+}
