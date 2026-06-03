@@ -121,6 +121,59 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.first?.windowDurationMins, 10_080)
     }
 
+    func testWriteSuccessReturnsStoredWeeklyHistoryDiagnostic() throws {
+        let fileURL = temporaryFileURL()
+        let now = 1_800_000_000
+        let resetsAt = now + 345_600
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+
+        let result = try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        XCTAssertEqual(result.cachedAt, now)
+        XCTAssertEqual(result.cacheFileURL, fileURL)
+        XCTAssertEqual(result.weeklyHistory.disposition, .stored)
+        XCTAssertEqual(result.weeklyHistory.recordedAt, now)
+        XCTAssertEqual(result.weeklyHistory.recordingStartedAt, now)
+        XCTAssertEqual(result.weeklyHistory.remainingPercent, 62)
+        XCTAssertEqual(result.weeklyHistory.resetsAt, resetsAt)
+        XCTAssertEqual(
+            result.weeklyHistory.fileURL,
+            CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        )
+    }
+
+    func testWriteSuccessReturnsSkippedWeeklyHistoryDiagnosticForDenseUnchangedSample() throws {
+        let fileURL = temporaryFileURL()
+        let resetsAt = 1_800_345_600
+        var now = 1_800_000_000
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+        _ = try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+        now += 60
+
+        let result = try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38.1, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        XCTAssertEqual(result.weeklyHistory.disposition, .skipped)
+        XCTAssertEqual(result.weeklyHistory.recordedAt, now)
+        XCTAssertEqual(result.weeklyHistory.recordingStartedAt, now - 60)
+        XCTAssertEqual(result.weeklyHistory.remainingPercent, 61.9)
+        XCTAssertEqual(try CodexUsageWeeklyHistoryStore(
+            fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        ).read().samples.count, 1)
+    }
+
     func testWeeklyHistorySkipsDenseUnchangedSamplesButKeepsMaterialChanges() throws {
         let fileURL = temporaryHistoryFileURL()
         let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)

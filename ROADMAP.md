@@ -260,6 +260,7 @@ codex-usage doctor
 - CLI가 `--write-cache`로 snapshot을 저장합니다.
 - cache가 오래되면 stale 상태로 표시됩니다.
 - Codex 탭은 현재 주간 reset window의 history를 왼쪽 reset 직후 100%, 오른쪽 reset 직전 기준으로 표시합니다.
+- 같은 주간 reset window 안에서는 그래프 표시 잔여율이 증가하지 않으며, `resetsAt`이 바뀐 경우에만 새 100% 타임라인으로 분리합니다.
 - 민감 정보가 cache에 저장되지 않습니다.
 
 ## Milestone 3: Menu Bar App MVP

@@ -11,7 +11,8 @@ usage: $0 [--cli PATH] [--timeout SECONDS]
 
 Run codex-usage against the live Codex app-server and verify its cache result
 cannot be mistaken for a valid success when the required 5-hour or weekly
-windows are missing.
+windows are missing, and that successful cache writes also append weekly
+history diagnostics.
 
 This smoke accepts either:
   - a successful fetch with both 5-hour and weekly codex windows
@@ -54,6 +55,7 @@ done
 tmp_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-usage-fetch.XXXXXX")"
 trap 'rm -rf "$tmp_dir"' EXIT
 cache_path="$tmp_dir/usage.json"
+history_path="$tmp_dir/usage-weekly-history.json"
 stdout_path="$tmp_dir/stdout.txt"
 stderr_path="$tmp_dir/stderr.txt"
 
@@ -97,6 +99,26 @@ set -e
     puts "usage-fetch:source-unavailable"
   end
 ' "$status" "$cache_path"
+
+if [[ "$status" == "0" ]]; then
+  [[ -f "$history_path" ]] || {
+    cat "$stderr_path" >&2 || true
+    die "successful fetch wrote cache but did not write adjacent weekly history: $history_path"
+  }
+  /usr/bin/ruby -rjson -e '
+    history = JSON.parse(File.read(ARGV.fetch(0)))
+    samples = history["samples"]
+    abort("weekly history must contain at least one sample after successful fetch") unless samples.is_a?(Array) && samples.length.positive?
+    sample = samples.last
+    abort("weekly history sample is missing recordedAt") unless sample["recordedAt"].is_a?(Integer)
+    abort("weekly history sample is missing remainingPercent") unless sample["remainingPercent"].is_a?(Numeric)
+    abort("weekly history sample is missing resetsAt") unless sample["resetsAt"].is_a?(Integer)
+  ' "$history_path"
+  /usr/bin/grep -Eq 'history append: stored recordedAt=[^[:space:]]+ recordingStartedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ path=.*usage-weekly-history\.json' "$stderr_path" || {
+    cat "$stderr_path" >&2 || true
+    die "successful fetch did not emit weekly history append diagnostic"
+  }
+fi
 
 if [[ "$status" != "0" ]]; then
   /usr/bin/tail -n 20 "$stderr_path" >&2 || true

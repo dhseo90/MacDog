@@ -292,6 +292,73 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 99)
     }
 
+    func testWeeklyHistoryChartStartsNewTimelineWhenResetTimestampChanges() throws {
+        let calendar = Self.utcCalendar
+        let oldStartDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0
+        )))
+        let oldStart = Int(oldStartDate.timeIntervalSince1970)
+        let oldReset = oldStart + 604_800
+        let newStart = oldStart + 2 * 86_400
+        let newReset = newStart + 604_800
+        let currentSample = Self.weeklySample(recordedAt: newStart + 3_600, remainingPercent: 99, resetsAt: newReset)
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: oldStart + 86_400, remainingPercent: 82, resetsAt: oldReset),
+            Self.weeklySample(recordedAt: oldStart + 2 * 86_400 - 60, remainingPercent: 74, resetsAt: oldReset)
+        ])
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 99, resetsAt: newReset),
+            currentSample: currentSample,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(chart.resetStartAt, newStart)
+        XCTAssertEqual(chart.actualSampleCount, 1)
+        XCTAssertEqual(chart.points.first?.recordedAt, newStart)
+        XCTAssertEqual(chart.points.first?.remainingPercent, 100)
+        XCTAssertEqual(chart.points.first?.xPosition, 0)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 99)
+        XCTAssertEqual(chart.dayMarkers.map(\.hoverLabel), ["6/3 수 · 99%"])
+        XCTAssertFalse(chart.points.contains { $0.recordedAt < newStart })
+    }
+
+    func testWeeklyHistoryChartDoesNotDrawUpwardRemainingSegmentsWithinSameResetWindow() {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let currentSample = Self.weeklySample(recordedAt: start + 18_000, remainingPercent: 85, resetsAt: reset)
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 3_600, remainingPercent: 93, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 7_200, remainingPercent: 88, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 10_800, remainingPercent: 91, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 14_400, remainingPercent: 80, resetsAt: reset)
+        ])
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 85, resetsAt: reset),
+            currentSample: currentSample
+        )
+
+        XCTAssertEqual(
+            chart.points.map { UsageMonitorState.percent($0.remainingPercent) },
+            ["100", "93", "88", "88", "80", "80"]
+        )
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 80)
+        XCTAssertTrue(
+            zip(chart.points, chart.points.dropFirst()).allSatisfy { previous, next in
+                next.remainingPercent <= previous.remainingPercent
+            },
+            "Weekly remaining graph should never rise inside one reset window"
+        )
+    }
+
     func testWeeklyHistoryChartUsesCurrentSampleBeforePersistedHistoryCatchesUp() throws {
         let start = 1_800_000_000
         let reset = start + 604_800
@@ -306,6 +373,106 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.actualSampleCount, 1)
         XCTAssertEqual(try XCTUnwrap(chart.latestActualPoint?.xPosition), 0.25, accuracy: 0.001)
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 82)
+    }
+
+    func testWeeklyHistoryChartShowsCompletedAndCurrentDayMarkers() throws {
+        let calendar = Self.utcCalendar
+        let startDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0,
+            minute: 0
+        )))
+        let start = Int(startDate.timeIntervalSince1970)
+        let reset = start + 604_800
+        let currentSample = Self.weeklySample(recordedAt: start + 2 * 86_400 + 10 * 3_600, remainingPercent: 66, resetsAt: reset)
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 8 * 3_600, remainingPercent: 93, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 23 * 3_600 + 50 * 60, remainingPercent: 88, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 86_400 + 20 * 3_600, remainingPercent: 74, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 2 * 86_400 + 9 * 3_600, remainingPercent: 68, resetsAt: reset)
+        ])
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 66, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(chart.dayMarkers.map(\.id), [0, 1, 2])
+        XCTAssertEqual(chart.dayMarkers.map { UsageMonitorState.percent($0.point.remainingPercent) }, ["88", "74", "66"])
+        XCTAssertEqual(chart.dayMarkers.first?.hoverLabel, "6/1 월 종료 · 88%")
+        XCTAssertEqual(chart.dayMarkers[1].hoverLabel, "6/2 화 종료 · 74%")
+        XCTAssertEqual(chart.dayMarkers.last?.hoverLabel, "6/3 수 · 66%")
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 66)
+    }
+
+    func testWeeklyHistoryChartCarriesForwardCompletedDayMarkersAcrossResetBoundary() throws {
+        let calendar = Self.utcCalendar
+        let startDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0,
+            minute: 21,
+            second: 23
+        )))
+        let start = Int(startDate.timeIntervalSince1970)
+        let reset = start + 604_800
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 86_400 + 18 * 3_600, remainingPercent: 87, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 2 * 86_400 - 5 * 60, remainingPercent: 83, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 2 * 86_400 + 17 * 3_600, remainingPercent: 64, resetsAt: reset)
+        ])
+        let currentSample = Self.weeklySample(
+            recordedAt: start + 2 * 86_400 + 17 * 3_600 + 2 * 60,
+            remainingPercent: 64,
+            resetsAt: reset
+        )
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 64, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(chart.dayMarkers.map(\.id), [0, 1, 2])
+        XCTAssertEqual(chart.dayMarkers.map(\.hoverLabel), ["6/1 월 종료 · 100%", "6/2 화 종료 · 83%", "6/3 수 · 64%"])
+        XCTAssertEqual(chart.recordingStartLabel, "기록 시작 6/2 화 18:21")
+        XCTAssertEqual(chart.dayMarkers[0].point.recordedAt, start + 86_400)
+        XCTAssertEqual(chart.dayMarkers[1].point.recordedAt, start + 2 * 86_400)
+        XCTAssertEqual(chart.dayMarkers[2].point.recordedAt, currentSample.recordedAt)
+        XCTAssertEqual(try XCTUnwrap(chart.dayMarkers[0].point.xPosition), 1.0 / 7.0, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(chart.dayMarkers[1].point.xPosition), 2.0 / 7.0, accuracy: 0.001)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 64)
+        XCTAssertEqual(chart.points.last, chart.latestActualPoint)
+        XCTAssertEqual(chart.points.map(\.xPosition), chart.points.map(\.xPosition).sorted())
+        XCTAssertFalse(chart.points.contains { $0.recordedAt > currentSample.recordedAt })
+    }
+
+    func testWeeklyHistoryChartStartsAtHundredPercentWithoutExtendingPastCurrentSample() {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let currentSample = Self.weeklySample(recordedAt: start + 2 * 86_400 + 10 * 3_600, remainingPercent: 66, resetsAt: reset)
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: .empty,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 66, resetsAt: reset),
+            currentSample: currentSample
+        )
+
+        XCTAssertEqual(chart.points.first?.isResetAnchor, true)
+        XCTAssertEqual(chart.points.first?.remainingPercent, 100)
+        XCTAssertEqual(chart.points.last, chart.latestActualPoint)
+        XCTAssertEqual(chart.points.last?.remainingPercent, 66)
+        XCTAssertFalse(chart.points.contains { $0.recordedAt > currentSample.recordedAt })
     }
 
     func testWeeklyHistoryHoverLabelAvoidsCurrentPercentLabelWhenMarkersAreClose() {
@@ -335,6 +502,55 @@ final class UsageMonitorStateTests: XCTestCase {
             hoverRect.intersects(currentRect.insetBy(dx: -4, dy: -3)),
             "Hover tooltip should not cover the current percent label for adjacent weekday markers"
         )
+    }
+
+    func testWeeklyHistoryMarkerHitTestingUsesTouchFriendlyRadius() {
+        let size = CGSize(width: 244, height: 74)
+        let marker = WeeklyRemainingHistoryDayMarker(
+            id: 1,
+            point: WeeklyRemainingHistoryPoint(
+                recordedAt: 1_800_000_000,
+                remainingPercent: 83,
+                xPosition: 0.25,
+                isResetAnchor: false
+            ),
+            hoverLabel: "6/2 화 · 83%"
+        )
+        let markerPoint = WeeklyRemainingHistoryInteraction.point(for: marker.point, in: size)
+
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: markerPoint.x + 18, y: markerPoint.y),
+                markers: [marker],
+                in: size
+            ),
+            1
+        )
+        XCTAssertNil(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: markerPoint.x + 30, y: markerPoint.y),
+                markers: [marker],
+                in: size
+            )
+        )
+    }
+
+    func testWeeklyHistoryLineEndpointStopsBeforeCurrentMarkerCenter() {
+        let lineStart = CGPoint(x: 82, y: 22)
+        let markerCenter = CGPoint(x: 96, y: 36)
+        let endpoint = WeeklyRemainingHistoryInteraction.lineEndpointBeforeLatestMarker(
+            from: lineStart,
+            to: markerCenter
+        )
+
+        XCTAssertLessThan(endpoint.x, markerCenter.x)
+        XCTAssertLessThan(endpoint.y, markerCenter.y)
+        XCTAssertEqual(
+            hypot(markerCenter.x - endpoint.x, markerCenter.y - endpoint.y),
+            WeeklyRemainingHistoryInteraction.latestMarkerLineClearance,
+            accuracy: 0.001
+        )
+        XCTAssertGreaterThanOrEqual(WeeklyRemainingHistoryInteraction.latestMarkerLineClearance, 12)
     }
 
     func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {
