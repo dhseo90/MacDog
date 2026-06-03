@@ -25,6 +25,8 @@ jobs:
         run: xcodebuild -version
 
       - name: Verify
+        env:
+          MACDOG_RELEASE_VERSION: ${{ inputs.version }}
         run: ./script/check.sh --no-run
 
       - name: Package DMG

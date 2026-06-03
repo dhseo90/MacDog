@@ -40,6 +40,26 @@ require_guardrails_match() {
   /usr/bin/grep -Eq -- "$pattern" "$GUARDRAILS_WORKFLOW" || die "missing expected guardrails workflow pattern: $pattern"
 }
 
+require_verify_step_version_env() {
+  local workflow="$1"
+  local label="$2"
+  /usr/bin/awk '
+    /^[[:space:]]+- name: Verify[[:space:]]*$/ {
+      in_verify = 1
+      next
+    }
+    in_verify && /^[[:space:]]+- name:/ {
+      in_verify = 0
+    }
+    in_verify && /MACDOG_RELEASE_VERSION:[[:space:]]*\$\{\{ inputs\.version \}\}/ {
+      found = 1
+    }
+    END {
+      exit found ? 0 : 1
+    }
+  ' "$workflow" || die "$label Verify step must pass MACDOG_RELEASE_VERSION from workflow inputs"
+}
+
 [[ -f "$WORKFLOW" ]] || die "release candidate workflow missing: $WORKFLOW"
 [[ -f "$DRAFT_WORKFLOW" ]] || die "draft release workflow missing: $DRAFT_WORKFLOW"
 [[ -f "$CI_WORKFLOW" ]] || die "ci workflow missing: $CI_WORKFLOW"
@@ -68,6 +88,8 @@ require_guardrails_match 'name: guardrails'
 
 require_match 'workflow_dispatch'
 require_match 'MACDOG_RELEASE_VERSION'
+require_match 'MACDOG_RELEASE_VERSION: \$\{\{ inputs\.version \}\}'
+require_verify_step_version_env "$WORKFLOW" "release candidate"
 require_match './script/check\.sh --no-run'
 require_match './script/package_release\.sh --skip-build'
 require_match 'hdiutil verify'
@@ -79,6 +101,8 @@ require_match '\.dmg\.sha256'
 require_draft_match 'workflow_dispatch'
 require_draft_match 'contents: write'
 require_draft_match 'UNSIGNED-DRAFT'
+require_draft_match 'MACDOG_RELEASE_VERSION: \$\{\{ inputs\.version \}\}'
+require_verify_step_version_env "$DRAFT_WORKFLOW" "draft release"
 require_draft_match './script/check\.sh --no-run'
 require_draft_match './script/package_release\.sh --skip-build'
 require_draft_match 'hdiutil verify'
@@ -97,6 +121,8 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_stable_match 'contents: write'
   require_stable_match 'SIGNED-STABLE'
   require_stable_match 'public-stable-release'
+  require_stable_match 'MACDOG_RELEASE_VERSION: \$\{\{ inputs\.version \}\}'
+  require_verify_step_version_env "$STABLE_WORKFLOW" "stable release"
   require_stable_match './script/check\.sh --no-run'
   require_stable_match './script/build_and_run\.sh --no-run'
   require_stable_match 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
