@@ -104,3 +104,27 @@ Codex 데이터 탐색 관문이 끝나면 아래 중 하나로 결정합니다.
 
 - 유용한 추가 사용량 묶음/필드가 있으면 고급 Codex UI 또는 CLI debug 옵션을 별도 계획으로 설계합니다.
 - 새 데이터가 없거나 의미가 작으면 `MenuBarController`와 `UsagePopoverView`를 작은 책임 단위로 나누는 유틸리티 코어 정리 계획을 작성합니다.
+
+## 2026-06-03 live 결정
+
+2026-06-03에 설치된 `codex-usage doctor`를 실행해 live app-server 구조 요약을 확인했습니다. sandbox 안에서는 app-server 응답 대기 timeout이 발생했지만, sandbox 밖 실행에서는 정상 응답했습니다.
+
+확인된 live 구조:
+
+- 사용량 묶음: `codex`, `codex_bengalfox`
+- 두 묶음 모두 같은 field shape:
+  - bucket fields: `credits`, `limitId`, `limitName`, `planType`, `primary`, `rateLimitReachedType`, `secondary`
+  - primary fields: `resetsAt`, `usedPercent`, `windowDurationMins`
+  - secondary fields: `resetsAt`, `usedPercent`, `windowDurationMins`
+  - credits fields: `balance`, `hasCredits`, `unlimited`
+
+결정:
+
+- `codex_bengalfox`는 현재 기본 UI에 추가할 만큼 별도 의미가 확인되지 않았습니다.
+- 추가 bucket은 `doctor` 고급 진단에 유지하고, 기본 runner 속도 계산, popover 기본 행, cache schema에는 섞지 않습니다.
+- 다음 v1.2.0 작업은 유틸리티 코어 정리 계획으로 이동합니다.
+
+후속 문서:
+
+- `Docs/V120UtilityCoreRefactor.md`
+- `Docs/superpowers/plans/2026-06-03-macdog-utility-core-refactor-plan.md`
