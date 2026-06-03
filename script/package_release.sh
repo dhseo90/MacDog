@@ -48,6 +48,27 @@ clean_bundle_xattrs() {
   /usr/bin/find "$bundle" -exec /usr/bin/xattr -d com.apple.FinderInfo {} \; >/dev/null 2>&1 || true
 }
 
+plist_value() {
+  local plist="$1"
+  local key="$2"
+  /usr/libexec/PlistBuddy -c "Print :$key" "$plist" 2>/dev/null
+}
+
+verify_app_bundle_version() {
+  local bundle="$1"
+  local expected_version="$2"
+  local plist="$bundle/Contents/Info.plist"
+  local actual_version
+
+  [[ -d "$bundle" ]] || die "app bundle missing: $bundle"
+  [[ -f "$plist" ]] || die "app Info.plist missing: $plist"
+  actual_version="$(plist_value "$plist" CFBundleShortVersionString || true)"
+  [[ -n "$actual_version" ]] || die "app bundle version missing: $plist"
+  if [[ "$actual_version" != "$expected_version" ]]; then
+    die "app bundle version mismatch: expected $expected_version, got $actual_version ($bundle)"
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
@@ -386,12 +407,13 @@ cd "$ROOT_DIR"
 
 if [[ "$SKIP_BUILD" != "1" ]]; then
   if [[ "$WITH_WIDGET" == "1" ]]; then
-    ./script/build_and_run.sh --no-run --with-widget >/dev/null
+    MACDOG_RELEASE_VERSION="$VERSION" MACDOG_APP_VERSION="$VERSION" ./script/build_and_run.sh --no-run --with-widget >/dev/null
   else
-    ./script/build_and_run.sh --no-run >/dev/null
+    MACDOG_RELEASE_VERSION="$VERSION" MACDOG_APP_VERSION="$VERSION" ./script/build_and_run.sh --no-run >/dev/null
   fi
 fi
 
+verify_app_bundle_version "$APP_BUNDLE" "$VERSION"
 clean_bundle_xattrs "$APP_BUNDLE"
 if [[ "$WITH_WIDGET" == "1" ]]; then
   ./script/verify_app_bundle.sh "$APP_BUNDLE" --with-widget >/dev/null

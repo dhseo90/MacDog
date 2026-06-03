@@ -7,10 +7,10 @@
 | Script | 의미 | 영향 |
 | --- | --- | --- |
 | `script/check.sh` | 표준 로컬 검증 전체 실행 | Swift test, build, packaging dry-run, 일부 상태 조회. 기본 모드는 앱을 실행할 수 있고 `--no-run`은 실행하지 않습니다. |
-| `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행합니다. |
+| `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행합니다. `MACDOG_RELEASE_VERSION` 또는 `MACDOG_APP_VERSION`이 있으면 앱 번들 버전 메타데이터에 반영합니다. |
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, 앱 cache 경로를 만듭니다. helper 설치 옵션은 관리자 권한이 필요합니다. |
 | `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, cache/history 파일을 제거합니다. 기본값은 UserDefaults와 optional helper를 유지합니다. |
-| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop 배경이 포함된 DMG 후보와 checksum을 만듭니다. staging 폴더는 검증 후 남기지 않습니다. signing/notarization은 별도 workflow gate입니다. |
+| `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `dist/release`에 drag-and-drop 배경이 포함된 DMG 후보와 checksum을 만듭니다. 앱 번들 버전이 release version과 다르면 실패합니다. staging 폴더는 검증 후 남기지 않습니다. signing/notarization은 별도 workflow gate입니다. |
 | `script/configure_github_public_repo_settings.sh` | GitHub public release 서버 설정 적용 | 기본은 dry-run입니다. `--apply`는 Actions/security 설정을 변경하고, `--make-public`은 추가 확인값이 있을 때만 repo 공개 전환을 수행합니다. |
 | `script/configure_github_branch_protection.sh` | GitHub `main` 보호 규칙 적용 | 기본은 dry-run입니다. `--apply`는 GitHub repo 설정을 변경하며 public repo 또는 private branch protection 가능 plan이 필요합니다. |
 
@@ -70,6 +70,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인합니다. |
 | `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. GitHub Actions에서는 SwiftUI PNG rasterization 차이를 피하기 위해 렌더 산출물과 이미지 크기까지 확인하고, byte 일치는 로컬 또는 `MACDOG_README_SCREENSHOT_STRICT=1`에서 강제합니다. |
 | `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인합니다. |
+| `script/verify_release_final_state.sh --version <version>` | 릴리즈 smoke 종료 상태 검증 | `/Applications/MacDog.app` 버전, `~/Applications` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`, `/Volumes/MacDog*` 잔여 마운트를 읽기 전용으로 확인합니다. |
 | `script/verify_runner_baseline.sh` | 메뉴바 runner 기준선 검증 | runner frame count, size, 상태 mapping을 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
@@ -117,6 +118,8 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만들고 숨김 DMG 배경 이미지를 포함합니다. |
 | `script/package_release.sh` | DMG와 checksum 생성 | drag-and-drop 배경이 적용된 `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. Finder layout 적용이 실패하면 plain DMG로 대체합니다. |
 | `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, legacy command payload 미포함, release note, checksum, DMG 무결성을 확인합니다. |
+| `script/cleanup_release_smoke_state.sh --apply` | release smoke 잔여물 정리 | 마운트된 MacDog DMG를 eject하고, `~/Applications/MacDog.app`, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`을 `/private/tmp/macdog-duplicate-app-cleanup` 아래로 격리하거나 unload합니다. `/Applications/MacDog.app`은 이동하지 않습니다. |
+| `script/verify_release_final_state.sh --version <version>` | release smoke 최종 상태 확인 | Finder 검색 중복을 유발하는 앱 번들/DMG 마운트가 남아 있으면 실패합니다. |
 | `script/configure_github_public_repo_settings.sh --dry-run` | GitHub public release 서버 설정 계획 출력 | GitHub repo를 변경하지 않고 Actions/security/public/branch protection 적용 순서를 출력합니다. |
 | `script/verify_public_repo_branch_protection_plan.sh --self-test` | public repo/branch protection 적용 준비 검증 | GitHub 서버 설정을 바꾸지 않고 public repo policy, guardrail workflow, required checks, branch protection dry-run payload를 확인합니다. |
 | `script/configure_github_public_repo_settings.sh --check` | GitHub 서버 설정 조회 | Actions 권한, workflow token 권한, vulnerability alerts, Dependabot security updates, public fork PR approval 상태를 읽습니다. |
@@ -130,6 +133,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 - 앱을 실행하거나 종료할 수 있음: `build_and_run.sh`, `check.sh`, `install.sh`
 - 이미 실행 중인 앱만 읽음: `sample_existing_runtime_resources.sh`
 - 사용자 홈의 앱/LaunchAgent/cache를 바꿈: `install.sh`, `uninstall.sh`, `package_release.sh` staging/DMG 생성
+- release smoke 잔여물을 정리함: `cleanup_release_smoke_state.sh --apply`
 - `/Library` helper를 바꿀 수 있음: `install.sh --with-helper`, `install.sh --helper-only`, `uninstall.sh --with-helper`, `uninstall.sh --helper-only`
 - 시스템 배터리 충전 한도를 바꿀 수 있음: `verify_charge_limit.sh`의 쓰기 옵션
 - widget live/shared cache를 바꿀 수 있음: `write_widget_cache_fixture.sh --shared-cache`

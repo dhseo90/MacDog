@@ -40,7 +40,7 @@ Checks:
   26. Shortcuts Charge Limit fallback availability is probed without changing settings.
   27. The current app/helper install state and dist freshness delta can be reported without changing the system.
   28. Install freshness delta reporting is self-tested with local fixtures.
-  29. Release packaging dry-run is stable.
+  29. Release packaging, version metadata, and release smoke cleanup guardrails are stable.
   30. Public repository guardrails are present and consistent.
   31. GitHub release candidate workflow contains the expected unsigned artifact gates.
   32. Public stable release remains gated behind signing/notarization/Gatekeeper checks.

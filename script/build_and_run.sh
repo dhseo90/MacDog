@@ -7,6 +7,8 @@ WITH_WIDGET="${MACDOG_INCLUDE_WIDGET:-0}"
 APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 MIN_SYSTEM_VERSION="14.0"
+APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-1.0.0}}"
+APP_BUILD="${MACDOG_APP_BUILD:-1}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -183,9 +185,9 @@ build_bundle() {
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>$APP_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$APP_BUILD</string>
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>LSUIElement</key>

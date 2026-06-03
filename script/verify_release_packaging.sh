@@ -3,7 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_BUNDLE="$ROOT_DIR/dist/MacDog.app"
+BUILD_SCRIPT="$ROOT_DIR/script/build_and_run.sh"
 PACKAGE_SCRIPT="$ROOT_DIR/script/package_release.sh"
+FINAL_STATE_SCRIPT="$ROOT_DIR/script/verify_release_final_state.sh"
+CLEANUP_SCRIPT="$ROOT_DIR/script/cleanup_release_smoke_state.sh"
 
 die() {
   echo "error: $*" >&2
@@ -63,10 +66,20 @@ assert_no_legacy_payload() {
 }
 
 script_source="$(cat "$PACKAGE_SCRIPT")"
+build_script_source="$(cat "$BUILD_SCRIPT")"
 require_not_contains "$script_source" "stagingBounds"
 require_not_contains "$script_source" "-12000"
 require_not_contains "$script_source" "-11240"
 require_not_contains "$script_source" "-11570"
+require_contains "$build_script_source" 'APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-1.0.0}}"'
+require_contains "$build_script_source" '<string>$APP_VERSION</string>'
+require_contains "$build_script_source" '<string>$APP_BUILD</string>'
+require_contains "$script_source" 'MACDOG_RELEASE_VERSION="$VERSION" MACDOG_APP_VERSION="$VERSION"'
+require_contains "$script_source" 'verify_app_bundle_version "$APP_BUNDLE" "$VERSION"'
+[[ -x "$FINAL_STATE_SCRIPT" ]] || die "release final state verifier missing or not executable: $FINAL_STATE_SCRIPT"
+[[ -x "$CLEANUP_SCRIPT" ]] || die "release smoke cleanup script missing or not executable: $CLEANUP_SCRIPT"
+"$FINAL_STATE_SCRIPT" --self-test
+"$CLEANUP_SCRIPT" --self-test
 
 output="$("$PACKAGE_SCRIPT" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
@@ -99,7 +112,11 @@ require_not_contains "$output" "RELEASE_NOTES_DRAFT.md"
 require_not_contains "$output" "Privileged Helper.command"
 
 if [[ -d "$APP_BUNDLE" ]]; then
-  version="verify"
+  version="${MACDOG_RELEASE_VERSION:-}"
+  if [[ -z "$version" ]]; then
+    version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true)"
+  fi
+  [[ -n "$version" ]] || die "could not determine dist app version for release packaging verification"
   stage="$ROOT_DIR/dist/release/MacDog-$version"
   dmg_path="$ROOT_DIR/dist/release/MacDog-$version.dmg"
   checksum_path="$dmg_path.sha256"

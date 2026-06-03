@@ -287,6 +287,62 @@ Apple Developer Program이 필요한 단계는 현재 구현 계획에서 제외
 이 절차를 직접 수행하지 않았다면 `drag-and-drop 설치 검수: 실행하지 않음`으로 보고하고 완료 처리하지 않습니다.
 Finder나 설치 UI를 화면 밖으로 이동하거나 숨겨서 검수하지 않습니다.
 
+#### 7.6.1 릴리즈 준비/종료 필수 절차
+
+사용자가 `vX.Y.Z 릴리즈 준비`, `릴리즈 종료`, `PR부터 릴리즈까지 진행`처럼 특정 버전 릴리즈를 지시하면 아래 순서를 릴리즈 완료 조건으로 봅니다.
+문서, PR, GitHub Actions, draft/publish, DMG smoke, 설치 smoke, 브랜치 정리 중 일부만 수행했다면 릴리즈 완료로 보고하지 않습니다.
+
+1. 릴리즈 대상 브랜치와 현재 브랜치를 확인합니다.
+2. 이전 릴리즈 브랜치가 로컬 또는 원격에 남아 있는지 확인합니다.
+3. 이전 릴리즈 브랜치가 이미 `main`에 포함된 것이 확인되면 릴리즈 준비 전에 정리 대상으로 보고합니다.
+4. 이전 릴리즈 브랜치가 `main`에 포함되지 않았으면 즉시 중단하고 원인과 필요한 결정을 보고합니다.
+5. 릴리즈 PR을 생성하기 전에 `git diff --check`와 해당 변경 범위의 필수 테스트를 통과시킵니다.
+6. 릴리즈 PR을 `<release-branch> -> main`으로 생성합니다.
+7. PR CI와 리뷰 상태를 확인합니다.
+8. 리뷰 반영이 필요하면 같은 브랜치에서 수정, 테스트, 커밋, 푸시를 반복합니다.
+9. PR이 통과하면 `main`에 merge합니다.
+10. merge 후 `origin/main` 최신 SHA를 릴리즈 head로 기록합니다.
+11. 기존 `vX.Y.Z` GitHub draft release가 있으면 target commit이 최신 릴리즈 head인지 확인하고, stale draft면 publish하지 않고 삭제 대상으로 보고합니다.
+12. 원격 tag `vX.Y.Z`가 없는지 확인합니다.
+13. `Release Candidate` workflow를 최신 release head 기준으로 실행합니다.
+14. release candidate artifact와 checksum 생성을 확인합니다.
+15. `Draft Release` workflow를 최신 release head 기준으로 실행합니다.
+16. draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+17. draft asset을 다운로드해 checksum과 `hdiutil verify`를 확인합니다.
+18. GitHub Releases 화면에서 stale draft가 아님을 확인한 뒤 publish합니다.
+19. publish 후 `isDraft: false`와 원격 tag `vX.Y.Z` 생성을 확인합니다.
+20. published release에서 DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
+21. Finder에서 published DMG를 열고 `MacDog.app`과 `Applications` symlink만 보이는지 확인합니다.
+22. 설치 검수가 필요한 릴리즈 종료 작업이면 Finder에서 `MacDog.app`을 `Applications`로 실제 드래그앤드롭합니다.
+23. 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중인 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
+24. `./script/cleanup_release_smoke_state.sh --apply`로 release smoke 잔여물을 정리합니다.
+25. `./script/verify_release_final_state.sh --version X.Y.Z`가 통과해야 release smoke 종료로 봅니다.
+26. 릴리즈 publish와 final smoke가 끝난 뒤 로컬/원격 `<release-branch>`를 정리합니다.
+27. 브랜치 정리 후 `git branch -a`에서 `<release-branch>`와 `origin/<release-branch>`가 없는지 확인합니다.
+
+브랜치 정리 전에는 반드시 아래 조건을 확인합니다.
+
+```bash
+git merge-base --is-ancestor <release-branch> main
+git merge-base --is-ancestor origin/<release-branch> origin/main
+```
+
+둘 중 하나라도 실패하면 브랜치를 삭제하지 않고 중단합니다.
+브랜치 정리는 릴리즈 종료 작업에 포함되지만, `git push origin --delete <release-branch>`는 원격 변경이므로 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 실행합니다.
+
+브랜치 정리 명령 예시:
+
+```bash
+git switch main
+git pull --ff-only
+git branch -d <release-branch>
+git push origin --delete <release-branch>
+git branch -a
+```
+
+Apple Developer Program, Developer ID signing, notarization, App Group provisioning이 필요한 stable release 단계는 사용자가 해당 권한 사용 가능 상태를 명시하고 별도 milestone으로 승인하기 전까지 릴리즈 준비/종료 완료 조건에 넣지 않습니다.
+`Stable Release` workflow는 이 조건이 충족되기 전까지 실행하지 않습니다.
+
 ### 7.7 장시간 테스트
 
 아래 테스트는 명시 요청이 있을 때만 실행합니다.
