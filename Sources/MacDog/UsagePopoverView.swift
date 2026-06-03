@@ -1627,6 +1627,14 @@ private struct WeeklyRemainingHistoryBlock: View {
                 startLabel: chart.resetStartLabel,
                 endLabel: chart.resetEndLabel
             )
+
+            if let recordingStartLabel = chart.recordingStartLabel {
+                Text(recordingStartLabel)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary.opacity(0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("주간 잔여량 그래프")
@@ -1739,7 +1747,7 @@ private struct WeeklyRemainingHistoryPlot: View {
                     .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
 
                 chartLine(in: geometry.size)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+                    .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt, lineJoin: .round))
 
                 ForEach(chart.dayMarkers) { marker in
                     let markerPoint = point(for: marker.point, in: geometry.size)
@@ -1752,8 +1760,11 @@ private struct WeeklyRemainingHistoryPlot: View {
                                 height: marker.id == hoveredMarkerID ? 6 : 4
                             )
                     }
-                    .frame(width: 18, height: 18)
-                    .contentShape(Circle())
+                    .frame(
+                        width: WeeklyRemainingHistoryInteraction.markerHitDiameter,
+                        height: WeeklyRemainingHistoryInteraction.markerHitDiameter
+                    )
+                    .contentShape(Rectangle())
                     .onHover { isHovering in
                         if isHovering {
                             hoveredMarkerID = marker.id
@@ -1771,9 +1782,16 @@ private struct WeeklyRemainingHistoryPlot: View {
                     let latestPoint = point(for: latest, in: geometry.size)
 
                     Circle()
-                        .fill(tint)
-                        .frame(width: 5, height: 5)
+                        .fill(Color(nsColor: .windowBackgroundColor))
+                        .frame(width: 11, height: 11)
                         .position(latestPoint)
+                        .allowsHitTesting(false)
+
+                    Circle()
+                        .fill(tint)
+                        .frame(width: 6, height: 6)
+                        .position(latestPoint)
+                        .allowsHitTesting(false)
 
                     if hoveredMarker?.point != latest {
                         Text("\(UsageMonitorState.percent(latest.remainingPercent))%")
@@ -1786,6 +1804,7 @@ private struct WeeklyRemainingHistoryPlot: View {
                                     in: geometry.size
                                 )
                             )
+                            .allowsHitTesting(false)
                     }
                 }
 
@@ -1804,6 +1823,7 @@ private struct WeeklyRemainingHistoryPlot: View {
                                 in: geometry.size
                             )
                         )
+                        .allowsHitTesting(false)
                 }
             }
             .contentShape(Rectangle())
@@ -1847,6 +1867,13 @@ private struct WeeklyRemainingHistoryPlot: View {
                 let cgPoint = self.point(for: point, in: size)
                 if index == 0 {
                     path.move(to: cgPoint)
+                } else if index == chart.points.count - 1,
+                          chart.latestActualPoint == point {
+                    let previousPoint = self.point(for: chart.points[index - 1], in: size)
+                    path.addLine(to: WeeklyRemainingHistoryInteraction.lineEndpointBeforeLatestMarker(
+                        from: previousPoint,
+                        to: cgPoint
+                    ))
                 } else {
                     path.addLine(to: cgPoint)
                 }
@@ -1855,10 +1882,7 @@ private struct WeeklyRemainingHistoryPlot: View {
     }
 
     private func point(for point: WeeklyRemainingHistoryPoint, in size: CGSize) -> CGPoint {
-        CGPoint(
-            x: size.width * CGFloat(point.xPosition),
-            y: size.height * CGFloat(1 - point.yPosition)
-        )
+        WeeklyRemainingHistoryInteraction.point(for: point, in: size)
     }
 
     private func latestLabelPositionToAvoid(
@@ -1878,19 +1902,11 @@ private struct WeeklyRemainingHistoryPlot: View {
     }
 
     private func nearestMarkerID(to location: CGPoint, in size: CGSize) -> Int? {
-        var nearestID: Int?
-        var nearestDistance: CGFloat = 12
-
-        for marker in chart.dayMarkers {
-            let markerPoint = point(for: marker.point, in: size)
-            let distance = hypot(markerPoint.x - location.x, markerPoint.y - location.y)
-            if distance <= nearestDistance {
-                nearestID = marker.id
-                nearestDistance = distance
-            }
-        }
-
-        return nearestID
+        WeeklyRemainingHistoryInteraction.nearestMarkerID(
+            to: location,
+            markers: chart.dayMarkers,
+            in: size
+        )
     }
 }
 
@@ -1987,10 +2003,12 @@ struct WeeklyRemainingHistoryChart: Equatable {
     let dayGridPositions: [Double]
     let dayMarkers: [WeeklyRemainingHistoryDayMarker]
     let actualSampleCount: Int
+    let latestActualPoint: WeeklyRemainingHistoryPoint?
     let resetStartAt: Int?
     let resetsAt: Int?
     let resetStartLabel: String
     let resetEndLabel: String
+    let recordingStartLabel: String?
 
     init(
         history: CodexUsageWeeklyHistory,
@@ -2005,10 +2023,12 @@ struct WeeklyRemainingHistoryChart: Equatable {
             self.dayGridPositions = []
             self.dayMarkers = []
             self.actualSampleCount = 0
+            self.latestActualPoint = nil
             self.resetStartAt = nil
             self.resetsAt = nil
             self.resetStartLabel = "시작"
             self.resetEndLabel = "종료"
+            self.recordingStartLabel = nil
             return
         }
 
@@ -2032,10 +2052,12 @@ struct WeeklyRemainingHistoryChart: Equatable {
         samples.sort { $0.recordedAt < $1.recordedAt }
 
         let dayGridPositions = Self.dayGridPositions(durationSeconds: durationSeconds)
+        var displayedRemainingPercent = 100.0
         let actualPoints = samples.map {
-            WeeklyRemainingHistoryPoint(
+            displayedRemainingPercent = min(displayedRemainingPercent, $0.remainingPercent)
+            return WeeklyRemainingHistoryPoint(
                 recordedAt: $0.recordedAt,
-                remainingPercent: $0.remainingPercent,
+                remainingPercent: displayedRemainingPercent,
                 xPosition: Self.xPosition(
                     recordedAt: $0.recordedAt,
                     resetStartAt: resetStartAt,
@@ -2044,31 +2066,46 @@ struct WeeklyRemainingHistoryChart: Equatable {
                 isResetAnchor: false
             )
         }
+        let resetAnchor = WeeklyRemainingHistoryPoint(
+            recordedAt: resetStartAt,
+            remainingPercent: 100,
+            xPosition: 0,
+            isResetAnchor: true
+        )
+        let latestActualPoint = actualPoints.last
+        let completedMarkers = Self.completedDayMarkers(
+            from: actualPoints,
+            resetAnchor: resetAnchor,
+            resetStartAt: resetStartAt,
+            durationSeconds: durationSeconds,
+            currentSampleRecordedAt: currentSample?.recordedAt,
+            calendar: calendar
+        )
 
-        self.points = [
-            WeeklyRemainingHistoryPoint(
-                recordedAt: resetStartAt,
-                remainingPercent: 100,
-                xPosition: 0,
-                isResetAnchor: true
-            )
-        ] + actualPoints
+        self.points = Self.linePoints(
+            resetAnchor: resetAnchor,
+            completedMarkers: completedMarkers,
+            actualPoints: actualPoints,
+            currentSampleRecordedAt: currentSample?.recordedAt
+        )
         self.dayGridPositions = dayGridPositions
         self.dayMarkers = Self.dayMarkers(
             from: actualPoints,
+            completedMarkers: completedMarkers,
             resetStartAt: resetStartAt,
             durationSeconds: durationSeconds,
+            currentSampleRecordedAt: currentSample?.recordedAt,
             calendar: calendar
         )
         self.actualSampleCount = actualPoints.count
+        self.latestActualPoint = latestActualPoint
         self.resetStartAt = resetStartAt
         self.resetsAt = resetsAt
         self.resetStartLabel = Self.resetDayLabel(timestamp: resetStartAt, calendar: calendar)
         self.resetEndLabel = Self.resetDayLabel(timestamp: resetsAt, calendar: calendar)
-    }
-
-    var latestActualPoint: WeeklyRemainingHistoryPoint? {
-        points.last { !$0.isResetAnchor }
+        self.recordingStartLabel = actualPoints.first.map {
+            "기록 시작 \(Self.resetDayTimeLabel(timestamp: $0.recordedAt, calendar: calendar))"
+        }
     }
 
     var summaryText: String {
@@ -2105,30 +2142,177 @@ struct WeeklyRemainingHistoryChart: Equatable {
 
     private static func dayMarkers(
         from actualPoints: [WeeklyRemainingHistoryPoint],
+        completedMarkers: [WeeklyRemainingHistoryDayMarker],
         resetStartAt: Int,
         durationSeconds: Int,
+        currentSampleRecordedAt: Int?,
         calendar: Calendar
     ) -> [WeeklyRemainingHistoryDayMarker] {
         let daySeconds = 86_400
         let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
         let maxDayIndex = max(0, dayCount - 1)
-        var latestByDay: [Int: WeeklyRemainingHistoryPoint] = [:]
+        let currentDayIndex = currentSampleRecordedAt.map {
+            dayIndex(
+                recordedAt: $0,
+                resetStartAt: resetStartAt,
+                durationSeconds: durationSeconds,
+                daySeconds: daySeconds,
+                maxDayIndex: maxDayIndex
+            )
+        }
 
-        for point in actualPoints {
-            let elapsed = min(max(point.recordedAt - resetStartAt, 0), max(durationSeconds - 1, 0))
-            let dayIndex = min(max(Int(Double(elapsed) / Double(daySeconds)), 0), maxDayIndex)
-            latestByDay[dayIndex] = point
+        guard let currentDayIndex,
+              let currentRecordedAt = currentSampleRecordedAt,
+              let currentPoint = actualPoints.last(where: { $0.recordedAt == currentRecordedAt }) ?? actualPoints.last
+        else {
+            return measuredDayMarkers(
+                from: actualPoints,
+                resetStartAt: resetStartAt,
+                durationSeconds: durationSeconds,
+                daySeconds: daySeconds,
+                calendar: calendar
+            )
+        }
+
+        let currentDayLabel = resetDayLabel(timestamp: resetStartAt + currentDayIndex * daySeconds, calendar: calendar)
+        let currentMarker = WeeklyRemainingHistoryDayMarker(
+            id: currentDayIndex,
+            point: currentPoint,
+            hoverLabel: "\(currentDayLabel) · \(UsageMonitorState.percent(currentPoint.remainingPercent))%"
+        )
+
+        return completedMarkers + [currentMarker]
+    }
+
+    private static func measuredDayMarkers(
+        from actualPoints: [WeeklyRemainingHistoryPoint],
+        resetStartAt: Int,
+        durationSeconds: Int,
+        daySeconds: Int,
+        calendar: Calendar
+    ) -> [WeeklyRemainingHistoryDayMarker] {
+        var latestByDay: [Int: WeeklyRemainingHistoryPoint] = [:]
+        let maxDayIndex = max(0, Int(ceil(Double(durationSeconds) / Double(daySeconds))) - 1)
+
+        for point in actualPoints.sorted(by: { $0.recordedAt < $1.recordedAt }) {
+            let pointDayIndex = dayIndex(
+                recordedAt: point.recordedAt,
+                resetStartAt: resetStartAt,
+                durationSeconds: durationSeconds,
+                daySeconds: daySeconds,
+                maxDayIndex: maxDayIndex
+            )
+            latestByDay[pointDayIndex] = point
         }
 
         return latestByDay.keys.sorted().compactMap { dayIndex in
             guard let point = latestByDay[dayIndex] else { return nil }
-            let dayLabel = resetDayLabel(timestamp: point.recordedAt, calendar: calendar)
+            let dayLabel = resetDayLabel(timestamp: resetStartAt + dayIndex * daySeconds, calendar: calendar)
             return WeeklyRemainingHistoryDayMarker(
                 id: dayIndex,
                 point: point,
                 hoverLabel: "\(dayLabel) · \(UsageMonitorState.percent(point.remainingPercent))%"
             )
         }
+    }
+
+    private static func completedDayMarkers(
+        from actualPoints: [WeeklyRemainingHistoryPoint],
+        resetAnchor: WeeklyRemainingHistoryPoint,
+        resetStartAt: Int,
+        durationSeconds: Int,
+        currentSampleRecordedAt: Int?,
+        calendar: Calendar
+    ) -> [WeeklyRemainingHistoryDayMarker] {
+        guard let currentSampleRecordedAt else { return [] }
+
+        let daySeconds = 86_400
+        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
+        let maxDayIndex = max(0, dayCount - 1)
+        let currentDayIndex = dayIndex(
+            recordedAt: currentSampleRecordedAt,
+            resetStartAt: resetStartAt,
+            durationSeconds: durationSeconds,
+            daySeconds: daySeconds,
+            maxDayIndex: maxDayIndex
+        )
+        let maxCompletedDayIndex = min(currentDayIndex - 1, maxDayIndex)
+        guard maxCompletedDayIndex >= 0 else { return [] }
+
+        let sortedPoints = actualPoints.sorted { $0.recordedAt < $1.recordedAt }
+        var latestPoint = resetAnchor
+        var nextPointIndex = 0
+        var markers: [WeeklyRemainingHistoryDayMarker] = []
+
+        for dayIndex in 0...maxCompletedDayIndex {
+            let slotStartAt = resetStartAt + dayIndex * daySeconds
+            let slotEndAt = min(resetStartAt + (dayIndex + 1) * daySeconds, resetStartAt + durationSeconds)
+
+            while nextPointIndex < sortedPoints.count,
+                  sortedPoints[nextPointIndex].recordedAt <= slotEndAt {
+                latestPoint = sortedPoints[nextPointIndex]
+                nextPointIndex += 1
+            }
+
+            let markerPoint = WeeklyRemainingHistoryPoint(
+                recordedAt: slotEndAt,
+                remainingPercent: latestPoint.remainingPercent,
+                xPosition: xPosition(
+                    recordedAt: slotEndAt,
+                    resetStartAt: resetStartAt,
+                    durationSeconds: durationSeconds
+                ),
+                isResetAnchor: false
+            )
+            let dayLabel = resetDayLabel(timestamp: slotStartAt, calendar: calendar)
+            markers.append(WeeklyRemainingHistoryDayMarker(
+                id: dayIndex,
+                point: markerPoint,
+                hoverLabel: "\(dayLabel) 종료 · \(UsageMonitorState.percent(markerPoint.remainingPercent))%"
+            ))
+        }
+
+        return markers
+    }
+
+    private static func linePoints(
+        resetAnchor: WeeklyRemainingHistoryPoint,
+        completedMarkers: [WeeklyRemainingHistoryDayMarker],
+        actualPoints: [WeeklyRemainingHistoryPoint],
+        currentSampleRecordedAt: Int?
+    ) -> [WeeklyRemainingHistoryPoint] {
+        let currentRecordedAt = currentSampleRecordedAt ?? actualPoints.last?.recordedAt
+        let markerPoints = completedMarkers.map(\.point)
+        let actualLinePoints = actualPoints.filter {
+            guard let currentRecordedAt else { return true }
+            return $0.recordedAt <= currentRecordedAt
+        }
+        let combined = [resetAnchor] + markerPoints + actualLinePoints
+        let sorted = combined.sorted {
+            if $0.recordedAt == $1.recordedAt {
+                return !$0.isResetAnchor && $1.isResetAnchor
+            }
+            return $0.recordedAt < $1.recordedAt
+        }
+
+        return sorted.reduce(into: [WeeklyRemainingHistoryPoint]()) { result, point in
+            if result.last?.recordedAt == point.recordedAt {
+                result[result.count - 1] = point
+            } else {
+                result.append(point)
+            }
+        }
+    }
+
+    private static func dayIndex(
+        recordedAt: Int,
+        resetStartAt: Int,
+        durationSeconds: Int,
+        daySeconds: Int,
+        maxDayIndex: Int
+    ) -> Int {
+        let elapsed = min(max(recordedAt - resetStartAt, 0), max(durationSeconds - 1, 0))
+        return min(max(Int(Double(elapsed) / Double(daySeconds)), 0), maxDayIndex)
     }
 
     private static func resetDayLabel(timestamp: Int, calendar inputCalendar: Calendar) -> String {
@@ -2138,6 +2322,14 @@ struct WeeklyRemainingHistoryChart: Equatable {
         let day = components.day ?? 0
         let weekday = weekdaySymbol(for: components.weekday)
         return "\(month)/\(day) \(weekday)"
+    }
+
+    private static func resetDayTimeLabel(timestamp: Int, calendar inputCalendar: Calendar) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+        let components = inputCalendar.dateComponents([.hour, .minute], from: date)
+        let hour = components.hour ?? 0
+        let minute = components.minute ?? 0
+        return "\(resetDayLabel(timestamp: timestamp, calendar: inputCalendar)) \(String(format: "%02d:%02d", hour, minute))"
     }
 
     private static func weekdaySymbol(for weekday: Int?) -> String {
@@ -2162,6 +2354,59 @@ struct WeeklyRemainingHistoryDayMarker: Equatable, Identifiable {
     let id: Int
     let point: WeeklyRemainingHistoryPoint
     let hoverLabel: String
+}
+
+struct WeeklyRemainingHistoryInteraction {
+    static let markerHitDiameter: CGFloat = 32
+    static let latestMarkerLineClearance: CGFloat = 12
+    private static let markerHitRadius: CGFloat = 24
+
+    static func point(for point: WeeklyRemainingHistoryPoint, in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: size.width * CGFloat(point.xPosition),
+            y: size.height * CGFloat(1 - point.yPosition)
+        )
+    }
+
+    static func nearestMarkerID(
+        to location: CGPoint,
+        markers: [WeeklyRemainingHistoryDayMarker],
+        in size: CGSize,
+        hitRadius: CGFloat = markerHitRadius
+    ) -> Int? {
+        var nearestID: Int?
+        var nearestDistance = hitRadius
+
+        for marker in markers {
+            let markerPoint = point(for: marker.point, in: size)
+            let distance = hypot(markerPoint.x - location.x, markerPoint.y - location.y)
+            if distance <= nearestDistance {
+                nearestID = marker.id
+                nearestDistance = distance
+            }
+        }
+
+        return nearestID
+    }
+
+    static func lineEndpointBeforeLatestMarker(
+        from lineStart: CGPoint,
+        to markerCenter: CGPoint,
+        clearance: CGFloat = latestMarkerLineClearance
+    ) -> CGPoint {
+        let dx = markerCenter.x - lineStart.x
+        let dy = markerCenter.y - lineStart.y
+        let distance = hypot(dx, dy)
+        guard distance.isFinite, distance > clearance else {
+            return lineStart
+        }
+
+        let scale = (distance - clearance) / distance
+        return CGPoint(
+            x: lineStart.x + dx * scale,
+            y: lineStart.y + dy * scale
+        )
+    }
 }
 
 private struct PressureBanner: View {

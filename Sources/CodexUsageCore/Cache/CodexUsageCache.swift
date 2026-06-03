@@ -40,6 +40,53 @@ public struct CodexUsageCacheError: Codable, Equatable, Sendable {
     }
 }
 
+public enum CodexUsageWeeklyHistoryWriteDisposition: String, Equatable, Sendable {
+    case stored
+    case skipped
+    case unavailable
+}
+
+public struct CodexUsageWeeklyHistoryWriteResult: Equatable, Sendable {
+    public let disposition: CodexUsageWeeklyHistoryWriteDisposition
+    public let fileURL: URL
+    public let recordedAt: Int?
+    public let recordingStartedAt: Int?
+    public let remainingPercent: Double?
+    public let resetsAt: Int?
+
+    public init(
+        disposition: CodexUsageWeeklyHistoryWriteDisposition,
+        fileURL: URL,
+        recordedAt: Int?,
+        recordingStartedAt: Int?,
+        remainingPercent: Double?,
+        resetsAt: Int?
+    ) {
+        self.disposition = disposition
+        self.fileURL = fileURL
+        self.recordedAt = recordedAt
+        self.recordingStartedAt = recordingStartedAt
+        self.remainingPercent = remainingPercent
+        self.resetsAt = resetsAt
+    }
+}
+
+public struct CodexUsageCacheWriteResult: Equatable, Sendable {
+    public let cachedAt: Int
+    public let cacheFileURL: URL
+    public let weeklyHistory: CodexUsageWeeklyHistoryWriteResult
+
+    public init(
+        cachedAt: Int,
+        cacheFileURL: URL,
+        weeklyHistory: CodexUsageWeeklyHistoryWriteResult
+    ) {
+        self.cachedAt = cachedAt
+        self.cacheFileURL = cacheFileURL
+        self.weeklyHistory = weeklyHistory
+    }
+}
+
 public struct CodexUsageCacheStore {
     public static let defaultAppGroupIdentifier = "group.com.dhseo.macdog.MacDog"
     public static let cacheAgentRefreshIntervalSeconds = 60
@@ -138,10 +185,11 @@ public struct CodexUsageCacheStore {
         return try decoder.decode(CodexUsageCacheSnapshot.self, from: data)
     }
 
+    @discardableResult
     public func writeSuccess(
         report: CodexUsageReport,
         staleAfterSeconds: Int = Self.defaultStaleAfterSeconds
-    ) throws {
+    ) throws -> CodexUsageCacheWriteResult {
         try report.validateRequiredCodexUsageWindows()
         let now = Int(dateProvider().timeIntervalSince1970)
         let snapshot = CodexUsageCacheSnapshot(
@@ -151,13 +199,37 @@ public struct CodexUsageCacheStore {
             error: nil
         )
         try write(snapshot)
+        let historyFileURL = CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        let weeklyHistory: CodexUsageWeeklyHistoryWriteResult
         if let sample = CodexUsageWeeklyHistorySample(report: report, recordedAt: now) {
-            try CodexUsageWeeklyHistoryStore(
-                fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL),
+            let historyStore = CodexUsageWeeklyHistoryStore(
+                fileURL: historyFileURL,
                 fileManager: fileManager,
                 dateProvider: dateProvider
-            ).append(sample)
+            )
+            let stored = try historyStore.append(sample)
+            let recordingStartedAt = try? historyStore.read().samples
+                .first { $0.resetsAt == sample.resetsAt }?
+                .recordedAt
+            weeklyHistory = CodexUsageWeeklyHistoryWriteResult(
+                disposition: stored ? .stored : .skipped,
+                fileURL: historyFileURL,
+                recordedAt: sample.recordedAt,
+                recordingStartedAt: recordingStartedAt,
+                remainingPercent: sample.remainingPercent,
+                resetsAt: sample.resetsAt
+            )
+        } else {
+            weeklyHistory = CodexUsageWeeklyHistoryWriteResult(
+                disposition: .unavailable,
+                fileURL: historyFileURL,
+                recordedAt: nil,
+                recordingStartedAt: nil,
+                remainingPercent: nil,
+                resetsAt: nil
+            )
         }
+        return CodexUsageCacheWriteResult(cachedAt: now, cacheFileURL: fileURL, weeklyHistory: weeklyHistory)
     }
 
     public func writeFailure(

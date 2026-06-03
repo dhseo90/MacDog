@@ -70,6 +70,28 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(json.contains("\"remainingPercent\" : 85"))
     }
 
+    func testFormatsCacheWriteHistoryDiagnosticLine() {
+        let result = CodexUsageCacheWriteResult(
+            cachedAt: 1_800_000_000,
+            cacheFileURL: URL(fileURLWithPath: "/tmp/MacDog/usage.json"),
+            weeklyHistory: CodexUsageWeeklyHistoryWriteResult(
+                disposition: .stored,
+                fileURL: URL(fileURLWithPath: "/tmp/MacDog/usage-weekly-history.json"),
+                recordedAt: 1_800_000_000,
+                recordingStartedAt: 1_800_000_000,
+                remainingPercent: 62,
+                resetsAt: 1_800_345_600
+            )
+        )
+
+        let line = CodexUsageCacheWriteDiagnosticFormatter().line(from: result)
+
+        XCTAssertEqual(
+            line,
+            "history append: stored recordedAt=2027-01-15T08:00:00Z recordingStartedAt=2027-01-15T08:00:00Z remaining=62% resetsAt=2027-01-19T08:00:00Z path=/tmp/MacDog/usage-weekly-history.json"
+        )
+    }
+
     func testRejectsCodexBucketWithoutFiveHourAndWeeklyWindows() throws {
         let incompleteCodexBucket = RateLimitSnapshot(
             limitId: "codex",

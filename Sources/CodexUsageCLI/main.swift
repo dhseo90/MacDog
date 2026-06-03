@@ -104,9 +104,10 @@ struct CLI {
         do {
             let formatter = CodexUsageFormatter()
             let report = try makeService(timeout: timeout).readReport()
+            var cacheWriteResults: [CodexUsageCacheWriteResult] = []
 
             if writeCache {
-                try cacheStores.forEach { try $0.writeSuccess(report: report) }
+                cacheWriteResults = try cacheStores.map { try $0.writeSuccess(report: report) }
             }
 
             if json {
@@ -114,6 +115,12 @@ struct CLI {
                 output(String(decoding: data, as: UTF8.self))
             } else {
                 output(formatter.text(from: report))
+            }
+            if writeCache {
+                let diagnosticFormatter = CodexUsageCacheWriteDiagnosticFormatter()
+                cacheWriteResults
+                    .map { diagnosticFormatter.line(from: $0) }
+                    .forEach(errorOutput)
             }
             return .success
         } catch {

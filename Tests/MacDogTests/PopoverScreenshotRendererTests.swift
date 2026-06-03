@@ -1,4 +1,5 @@
 import AppKit
+import CodexUsageCore
 import SwiftUI
 import XCTest
 @testable import MacDog
@@ -82,6 +83,47 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             try FileManager.default.removeItem(at: petDestination)
         }
         try FileManager.default.copyItem(at: petSource, to: petDestination)
+    }
+
+    func testRenderLiveCodexPopoverScreenshotWhenRequested() throws {
+        guard ProcessInfo.processInfo.environment["MACDOG_RENDER_LIVE_CODEX_POPOVER"] == "1" else {
+            throw XCTSkip("Live Codex popover rendering is opt-in.")
+        }
+
+        let outputDirectory = ProcessInfo.processInfo.environment["MACDOG_RENDER_LIVE_CODEX_POPOVER_OUTPUT_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("macdog-live-popover", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let cacheSnapshot = try CodexUsageCacheStore().read()
+        let weeklyHistory = (try? CodexUsageWeeklyHistoryStore().read()) ?? .empty
+        guard let report = cacheSnapshot.report else {
+            XCTFail("Live cache snapshot has no usage report.")
+            return
+        }
+
+        let defaults = UserDefaults.standard
+        let previousModule = defaults.object(forKey: RunnerPreferences.popoverModuleKey)
+        defer {
+            if let previousModule {
+                defaults.set(previousModule, forKey: RunnerPreferences.popoverModuleKey)
+            } else {
+                defaults.removeObject(forKey: RunnerPreferences.popoverModuleKey)
+            }
+        }
+        defaults.set(MacDogPopoverModule.codex.rawValue, forKey: RunnerPreferences.popoverModuleKey)
+
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: cacheSnapshot,
+            weeklyUsageHistory: weeklyHistory,
+            errorMessage: cacheSnapshot.error?.message,
+            systemMetrics: .unavailable
+        )
+        let view = UsagePopoverView(state: state)
+        let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
+        try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-live-codex.png"))
     }
 
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {

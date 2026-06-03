@@ -64,3 +64,33 @@ public struct CodexUsageFormatter: Sendable {
     }
 }
 
+public struct CodexUsageCacheWriteDiagnosticFormatter: Sendable {
+    public init() {}
+
+    public func line(from result: CodexUsageCacheWriteResult) -> String {
+        let history = result.weeklyHistory
+        return [
+            "history append:",
+            history.disposition.rawValue,
+            "recordedAt=\(history.recordedAt.map(formatEpoch) ?? "unavailable")",
+            "recordingStartedAt=\(history.recordingStartedAt.map(formatEpoch) ?? "unavailable")",
+            "remaining=\(history.remainingPercent.map(formatPercent) ?? "unavailable")",
+            "resetsAt=\(history.resetsAt.map(formatEpoch) ?? "unavailable")",
+            "path=\(history.fileURL.path)"
+        ].joined(separator: " ")
+    }
+
+    private func formatPercent(_ value: Double) -> String {
+        if value.rounded() == value {
+            return "\(Int(value))%"
+        }
+        return "\(String(format: "%.1f", value))%"
+    }
+
+    private func formatEpoch(_ epoch: Int) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(epoch)))
+    }
+}
