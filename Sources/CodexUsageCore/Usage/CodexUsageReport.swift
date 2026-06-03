@@ -25,7 +25,48 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
     }
 
     public var codexLimit: UsageLimitReport? {
-        limits["codex"] ?? limits.values.first
+        if let preferred = limits["codex"] {
+            return preferred.hasRequiredCodexUsageWindows ? preferred : nil
+        }
+
+        return limits.values.first { $0.hasRequiredCodexUsageWindows }
+    }
+
+    public func validateRequiredCodexUsageWindows() throws {
+        guard let candidate = limits["codex"] ?? limits.values.first else {
+            throw CodexUsageReportValidationError.missingRequiredCodexWindows([
+                .fiveHour,
+                .weekly
+            ])
+        }
+
+        let missing = candidate.missingRequiredCodexUsageWindows
+        if !missing.isEmpty {
+            throw CodexUsageReportValidationError.missingRequiredCodexWindows(missing)
+        }
+    }
+}
+
+public enum CodexUsageReportValidationError: LocalizedError, Equatable, Sendable {
+    case missingRequiredCodexWindows([UsageWindowKind])
+
+    public var errorDescription: String? {
+        switch self {
+        case .missingRequiredCodexWindows(let missing):
+            let labels = missing.map(Self.label).joined(separator: ", ")
+            return "missing required codex usage windows: \(labels)"
+        }
+    }
+
+    private static func label(for kind: UsageWindowKind) -> String {
+        switch kind {
+        case .fiveHour:
+            return "5-hour"
+        case .weekly:
+            return "weekly"
+        case .other:
+            return "other"
+        }
     }
 }
 
@@ -79,6 +120,21 @@ public struct UsageLimitReport: Codable, Equatable, Sendable {
             .compactMap(\.self)
             .max() ?? 0
     }
+
+    public var missingRequiredCodexUsageWindows: [UsageWindowKind] {
+        var missing: [UsageWindowKind] = []
+        if fiveHour == nil {
+            missing.append(.fiveHour)
+        }
+        if weekly == nil {
+            missing.append(.weekly)
+        }
+        return missing
+    }
+
+    public var hasRequiredCodexUsageWindows: Bool {
+        missingRequiredCodexUsageWindows.isEmpty
+    }
 }
 
 public struct UsageWindowReport: Codable, Equatable, Sendable {
@@ -110,14 +166,14 @@ public struct CodexUsageReportBuilder: Sendable {
         self.dateProvider = dateProvider
     }
 
-    public func build(from response: RateLimitsResponse) -> CodexUsageReport {
+    public func build(from response: RateLimitsResponse) throws -> CodexUsageReport {
         let buckets = response.rateLimitsByLimitId ?? [
             response.rateLimits.limitId ?? "codex": response.rateLimits
         ]
         let limits = buckets.mapValues(Self.makeLimitReport)
         let codex = limits["codex"] ?? limits.values.first
 
-        return CodexUsageReport(
+        let report = CodexUsageReport(
             generatedAt: Int(dateProvider().timeIntervalSince1970),
             source: "codex-app-server",
             planType: codex?.planType,
@@ -125,14 +181,17 @@ public struct CodexUsageReportBuilder: Sendable {
             rateLimitReachedType: codex?.rateLimitReachedType,
             limits: limits
         )
+        try report.validateRequiredCodexUsageWindows()
+        return report
     }
 
     public func buildDiagnosticReport(
         from response: RateLimitsResponse,
         fieldInventory: CodexUsageFieldInventory
-    ) -> CodexUsageDiagnosticReport {
-        CodexUsageDiagnosticReport(
-            report: build(from: response),
+    ) throws -> CodexUsageDiagnosticReport {
+        let report = try build(from: response)
+        return CodexUsageDiagnosticReport(
+            report: report,
             fieldInventory: fieldInventory
         )
     }

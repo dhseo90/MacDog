@@ -43,6 +43,20 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
+    func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {
+        let state = UsageMonitorState(
+            report: Self.incompleteCodexReport(),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            displayBasis: .weekly
+        )
+
+        XCTAssertNil(state.codexLimit)
+        XCTAssertNil(state.selectedWindowStatus)
+        XCTAssertEqual(state.sourceLabel, "확인 불가")
+        XCTAssertEqual(state.toolTip, "코덱스 사용량 확인 불가")
+    }
+
     func testResetSummaryShowsRemainingTimeAndCompactSameDayTime() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let calendar = Self.utcCalendar
@@ -456,6 +470,32 @@ final class UsageMonitorStateTests: XCTestCase {
             limitName: "Codex",
             primary: fiveHour,
             secondary: weekly,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        return CodexUsageReport(
+            generatedAt: 0,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: ["codex": limit]
+        )
+    }
+
+    private static func incompleteCodexReport() -> CodexUsageReport {
+        let limit = UsageLimitReport(
+            limitId: "codex",
+            limitName: "Codex",
+            primary: UsageWindowReport(
+                kind: .other,
+                usedPercent: 0,
+                remainingPercent: 100,
+                windowDurationMins: nil,
+                resetsAt: nil
+            ),
+            secondary: nil,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: nil

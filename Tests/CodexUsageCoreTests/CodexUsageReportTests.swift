@@ -8,7 +8,7 @@ final class CodexUsageReportTests: XCTestCase {
             Date(timeIntervalSince1970: 1_779_700_000)
         })
 
-        let report = builder.build(from: response)
+        let report = try builder.build(from: response)
 
         XCTAssertEqual(report.generatedAt, 1_779_700_000)
         XCTAssertEqual(report.source, "codex-app-server")
@@ -28,7 +28,7 @@ final class CodexUsageReportTests: XCTestCase {
             Date(timeIntervalSince1970: 1_779_700_000)
         })
 
-        let diagnostic = builder.buildDiagnosticReport(
+        let diagnostic = try builder.buildDiagnosticReport(
             from: response,
             fieldInventory: fieldInventory
         )
@@ -40,7 +40,7 @@ final class CodexUsageReportTests: XCTestCase {
 
     func testFormatsTextReport() throws {
         let response = try loadFixture()
-        let report = CodexUsageReportBuilder(dateProvider: {
+        let report = try CodexUsageReportBuilder(dateProvider: {
             Date(timeIntervalSince1970: 1_779_700_000)
         }).build(from: response)
         let formatter = CodexUsageFormatter(
@@ -59,7 +59,7 @@ final class CodexUsageReportTests: XCTestCase {
 
     func testFormatsJSONReport() throws {
         let response = try loadFixture()
-        let report = CodexUsageReportBuilder(dateProvider: {
+        let report = try CodexUsageReportBuilder(dateProvider: {
             Date(timeIntervalSince1970: 1_779_700_000)
         }).build(from: response)
         let data = try CodexUsageFormatter().json(from: report)
@@ -68,6 +68,28 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(json.contains("\"generatedAt\" : 1779700000"))
         XCTAssertTrue(json.contains("\"codex\""))
         XCTAssertTrue(json.contains("\"remainingPercent\" : 85"))
+    }
+
+    func testRejectsCodexBucketWithoutFiveHourAndWeeklyWindows() throws {
+        let incompleteCodexBucket = RateLimitSnapshot(
+            limitId: "codex",
+            limitName: nil,
+            primary: RateLimitWindow(usedPercent: 0, windowDurationMins: nil, resetsAt: nil),
+            secondary: nil,
+            credits: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0"),
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let response = RateLimitsResponse(
+            rateLimits: incompleteCodexBucket,
+            rateLimitsByLimitId: ["codex": incompleteCodexBucket]
+        )
+
+        XCTAssertThrowsError(try CodexUsageReportBuilder().build(from: response)) { error in
+            XCTAssertTrue(error.localizedDescription.contains("missing required codex usage windows"))
+            XCTAssertTrue(error.localizedDescription.contains("5-hour"))
+            XCTAssertTrue(error.localizedDescription.contains("weekly"))
+        }
     }
 
     private func loadFixture() throws -> RateLimitsResponse {

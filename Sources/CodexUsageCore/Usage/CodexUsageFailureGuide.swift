@@ -39,6 +39,14 @@ public struct CodexUsageFailureGuide: Sendable {
             ]
         }
 
+        if error is CodexUsageReportValidationError {
+            return [
+                "Codex app-server returned a response without the required usage window fields; MacDog refused to cache it as 0% usage.",
+                "Restart Codex and retry; if it persists, update MacDog because the internal app-server contract may have changed.",
+                doctorStep(context)
+            ]
+        }
+
         return [
             "Check that Codex is installed, opens normally, and the network is available.",
             doctorStep(context)

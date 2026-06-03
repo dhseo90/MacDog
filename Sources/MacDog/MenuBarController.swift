@@ -362,6 +362,22 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
+                if let validationError = Self.validationError(for: report) {
+                    return UsageMonitorState(
+                        report: nil,
+                        cacheSnapshot: snapshot,
+                        weeklyUsageHistory: weeklyUsageHistory,
+                        errorMessage: errorMessage ?? snapshot.error?.message ?? validationError.localizedDescription,
+                        displayBasis: preferences.displayBasis,
+                        reducedMotion: preferences.reducedMotion,
+                        animationPaused: preferences.animationPaused,
+                        systemMetrics: systemMetrics,
+                        systemMetricsHistory: systemMetricsHistory,
+                        sleepPreventionStatus: sleepPreventionController.status,
+                        sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                        privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                    )
+                }
                 return UsageMonitorState(
                     report: report,
                     cacheSnapshot: snapshot,
@@ -408,6 +424,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
         )
+    }
+
+    private nonisolated static func validationError(for report: CodexUsageReport) -> Error? {
+        do {
+            try report.validateRequiredCodexUsageWindows()
+            return nil
+        } catch {
+            return error
+        }
     }
 
     private func privilegedHelperInstallSnapshot() -> PrivilegedHelperInstallSnapshot {

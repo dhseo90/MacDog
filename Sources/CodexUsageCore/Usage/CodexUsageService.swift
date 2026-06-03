@@ -14,12 +14,12 @@ public struct CodexUsageService {
 
     public func readReport() throws -> CodexUsageReport {
         let response = try client.readRateLimits()
-        return reportBuilder.build(from: response)
+        return try reportBuilder.build(from: response)
     }
 
     public func readDiagnosticReport() throws -> CodexUsageDiagnosticReport {
         let diagnostic = try client.readRateLimitDiagnostic()
-        return reportBuilder.buildDiagnosticReport(
+        return try reportBuilder.buildDiagnosticReport(
             from: diagnostic.response,
             fieldInventory: diagnostic.fieldInventory
         )
