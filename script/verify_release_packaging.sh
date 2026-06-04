@@ -71,6 +71,8 @@ require_not_contains "$script_source" "stagingBounds"
 require_not_contains "$script_source" "-12000"
 require_not_contains "$script_source" "-11240"
 require_not_contains "$script_source" "-11570"
+require_not_contains "$script_source" "create_plain_dmg"
+require_not_contains "$script_source" "if ! create_styled_dmg"
 require_contains "$build_script_source" 'APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-1.0.0}}"'
 require_contains "$build_script_source" '<string>$APP_VERSION</string>'
 require_contains "$build_script_source" '<string>$APP_BUILD</string>'

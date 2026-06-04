@@ -394,13 +394,23 @@ APPLESCRIPT
   rm -f "$rw_dmg"
 }
 
-create_plain_dmg() {
-  /usr/bin/hdiutil create \
-    -volname "$APP_NAME $VERSION" \
-    -srcfolder "$STAGE_DIR" \
-    -ov \
-    -format UDZO \
-    "$DMG_PATH" >/dev/null
+create_required_styled_dmg() {
+  local max_attempts=3
+  local attempt=1
+
+  while (( attempt <= max_attempts )); do
+    if create_styled_dmg; then
+      return 0
+    fi
+    rm -f "$DMG_PATH" "$RELEASE_ROOT/$APP_NAME-$VERSION-rw.dmg"
+    echo "warning: styled DMG creation failed (attempt $attempt/$max_attempts)" >&2
+    if (( attempt < max_attempts )); then
+      /bin/sleep 2
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  return 1
 }
 
 cd "$ROOT_DIR"
@@ -474,10 +484,7 @@ NOTES
 
 if [[ "$CREATE_DMG" == "1" ]]; then
   rm -f "$DMG_PATH" "$CHECKSUM_PATH"
-  if ! create_styled_dmg; then
-    rm -f "$DMG_PATH"
-    create_plain_dmg
-  fi
+  create_required_styled_dmg || die "styled drag-and-drop DMG creation failed"
   (
     cd "$RELEASE_ROOT"
     /usr/bin/shasum -a 256 "$(basename "$DMG_PATH")" >"$(basename "$CHECKSUM_PATH")"

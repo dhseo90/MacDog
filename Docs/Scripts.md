@@ -116,7 +116,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | --- | --- | --- |
 | `script/package_release.sh --dry-run` | release packaging 계획 출력 | 파일을 만들지 않고 DMG 구성과 gate를 보여줍니다. |
 | `script/package_release.sh --skip-build --no-dmg` | staging 폴더만 생성 | `dist/release/MacDog-<version>`을 만들고 숨김 DMG 배경 이미지를 포함합니다. |
-| `script/package_release.sh` | DMG와 checksum 생성 | drag-and-drop 배경이 적용된 `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. Finder layout 적용이 실패하면 plain DMG로 대체합니다. |
+| `script/package_release.sh` | DMG와 checksum 생성 | drag-and-drop 배경과 Finder icon layout이 적용된 `dist/release/MacDog-<version>.dmg`와 `.sha256`을 만듭니다. styled DMG 생성이 실패하면 plain DMG로 대체하지 않고 실패합니다. |
 | `script/verify_release_packaging.sh` | release packaging 구조 검증 | staging payload, Applications symlink, legacy command payload 미포함, release note, checksum, DMG 무결성을 확인합니다. |
 | `script/cleanup_release_smoke_state.sh --apply` | release smoke 잔여물 정리 | 마운트된 MacDog DMG를 eject하고, `~/Applications/MacDog.app`, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`을 `/private/tmp/macdog-duplicate-app-cleanup` 아래로 격리하거나 unload합니다. `/Applications/MacDog.app`은 이동하지 않습니다. |
 | `script/verify_release_final_state.sh --version <version>` | release smoke 최종 상태 확인 | Finder 검색 중복을 유발하는 앱 번들/DMG 마운트가 남아 있으면 실패합니다. |
