@@ -191,12 +191,12 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 
 Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning이 필요한 signed/notarized public 배포와 WidgetKit 실제 UI 검수는 현재 구현 계획에서 제외합니다.
 
-v1.2.3 릴리즈 진행 메모:
+v1.2.3 릴리즈 완료 메모:
 
 - v1.2.3은 `UsagePopoverView`와 `MenuBarController`의 유틸리티 코어 정리 범위입니다.
-- 현재 로컬 HEAD는 `v1.2.2`이며, v1.2.3 변경은 릴리즈 전 미커밋 작업으로 남아 있습니다.
-- v1.2.1/v1.2.2의 GitHub Release package/download 완료 증거는 이 README에서 완료로 다루지 않습니다.
-- v1.2.3을 실제 release로 닫으려면 release PR부터 published asset download, checksum, `hdiutil verify`, 필요 시 Finder drag-and-drop 설치 smoke까지 별도 release 절차를 완료해야 합니다.
+- v1.2.3 release head는 `595a118`이며 GitHub Release `v1.2.3`은 published 상태입니다.
+- Release Candidate workflow, Draft Release workflow, published asset download, checksum, `hdiutil verify`, Finder drag-and-drop 설치 smoke, 설치본 cache contract, release final-state 검증을 완료했습니다.
+- stable signed/notarized release와 WidgetKit 실제 UI 검수는 Apple Developer Program 의존 범위이므로 현재 완료 조건에서 제외합니다.
 
 세부 배포 경계는 [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md)에 정리합니다.
 

@@ -56,13 +56,14 @@
 ## v1.2.3 운영 메모
 
 - 2026-06-04 로컬 점검에서 `dist/release`에는 `MacDog-1.1.0`과 `MacDog-1.2.0` DMG/checksum만 확인됐습니다. 이 로컬 점검은 v1.2.1/v1.2.2 GitHub Release asset, download URL, published 상태를 확인하지 않습니다.
-- v1.2.3 코어 정리 완료는 릴리즈 완료와 다릅니다. release로 닫으려면 PR/CI/merge head, release candidate artifact, draft release, draft asset checksum, published release asset download, checksum, `hdiutil verify`, final-state 검증을 별도 증거로 기록해야 합니다.
-- 설치 검수가 필요한 release 종료 작업이면 published DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
+- v1.2.3 코어 정리 완료와 별도로 release 운영 절차를 수행했고, `v1.2.3` GitHub Release는 release head `595a118` 기준 published 상태입니다.
+- Release Candidate run `26954573104`, Draft Release run `26954777833`, published release asset download, checksum, `hdiutil verify`, Finder drag-and-drop 설치 smoke, 설치본 cache contract, final-state 검증을 완료했습니다.
+- 설치 검수가 필요한 release 종료 작업은 published DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
 - signed/notarized stable release는 Apple Developer Program, Developer ID 인증서, notarization credential이 필요한 범위이므로 별도 승인 전까지 v1.2.3 완료 조건에 넣지 않습니다.
 
 ## 후속 release smoke
 
-- GitHub Release에서 실제로 내려받은 `.dmg`의 checksum과 `hdiutil verify`는 v1.1.0 published asset 기준으로 확인했습니다. 같은 다운로드본을 Finder에서 drag-and-drop 설치하는 최종 smoke는 필요 시 후속 release smoke로 수행합니다.
+- GitHub Release에서 실제로 내려받은 `.dmg`의 checksum과 `hdiutil verify`는 v1.1.0과 v1.2.3 published asset 기준으로 확인했습니다. v1.2.3은 같은 다운로드본을 Finder에서 drag-and-drop 설치하는 최종 smoke까지 수행했습니다.
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
 - Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 현재 unsigned 릴리즈에서 제외합니다.
 

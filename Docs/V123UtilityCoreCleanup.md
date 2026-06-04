@@ -44,10 +44,19 @@ v1.2.3은 v1.2.0에서 문서화한 유틸리티 코어 정리 계획을 실제 
 - `swift test`: 253 tests executed, 2 skipped, 0 failures
 - `xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO`: `BUILD SUCCEEDED`
 
-GUI 실행, 설치 검수, GitHub release asset download 검증은 이 문서에서 완료 증거로 기록하지 않습니다.
+코어 정리 구현 단계의 GUI 실행, 설치 검수, GitHub release asset download 검증은 이 문서에서 완료 증거로 기록하지 않습니다. v1.2.3 release 종료 증거는 아래 릴리즈 운영 메모에 별도로 분리해 기록합니다.
 
 ## v1.2.3 릴리즈 운영 메모
 
-v1.2.3을 실제 GitHub Release로 닫으려면 코어 정리 완료와 별도로 release 운영 절차를 수행해야 합니다. 릴리즈 완료 판단은 release branch 확인, PR/CI, 최신 `main` merge head 기록, release candidate/draft workflow, draft asset checksum, published asset download, `hdiutil verify`, 필요 시 Finder drag-and-drop 설치 검수, release smoke cleanup/final-state 검증을 모두 분리해서 기록할 때만 가능합니다.
+v1.2.3 GitHub Release는 코어 정리 완료와 별도로 release 운영 절차를 수행해 닫았습니다. 확인한 release 종료 증거는 다음과 같습니다.
+
+- PR #5 `codex-v1.2.3-utility-core-cleanup`과 PR #6 `codex-v1.2.3-release-dmg-fix`를 `main`에 merge했습니다.
+- 최신 release head는 `595a118`입니다.
+- Release Candidate workflow run `26954573104`와 Draft Release workflow run `26954777833`이 success였습니다.
+- GitHub Release `v1.2.3`은 `isDraft=false`, `isPrerelease=false`, `targetCommitish=595a1182f7fe20b60bfbac4f3fb61df6fba7138a` 상태입니다.
+- published asset `MacDog-1.2.3.dmg`와 `MacDog-1.2.3.dmg.sha256`를 다운로드해 checksum과 `hdiutil verify`를 확인했습니다.
+- Finder에서 published DMG를 열어 `MacDog.app`과 `Applications` symlink만 표시되는 것을 확인했고, 실제 drag-and-drop 설치 smoke를 수행했습니다.
+- 설치본 `/Applications/MacDog.app`은 `CFBundleShortVersionString=1.2.3`이고 실행 프로세스는 `/Applications/MacDog.app/Contents/MacOS/MacDog` 기준입니다.
+- 설치본 `codex-usage`로 `verify_usage_fetch_cache_contract.sh`를 통과했고, release smoke cleanup/final-state 검증도 통과했습니다.
 
 signed/notarized stable release와 WidgetKit App Group 검수는 Apple Developer Program 사용 가능 상태가 별도 milestone으로 승인되기 전까지 v1.2.3 완료 조건에 넣지 않습니다.
