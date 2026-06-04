@@ -58,13 +58,13 @@ require_output_contains "$dry_run_output" "GitHub Release:"
 require_file_contains "$DRAFT_WORKFLOW" "UNSIGNED-DRAFT"
 require_file_contains "$DRAFT_WORKFLOW" "--draft"
 if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
-  die "draft release workflow must not mark v1.1.0 releases as prerelease"
+  die "draft release workflow must not mark unsigned draft releases as prerelease"
 fi
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_file_contains "$STABLE_WORKFLOW" "SIGNED-STABLE"
   require_file_contains "$RELEASE_DOC" "release-stable.yml"
-  require_file_match "$RELEASE_DOC" 'release-stable\.yml.*v1\.1\.0.*제외|signed stable.*v1\.1\.0.*제외'
+  require_file_match "$RELEASE_DOC" 'release-stable\.yml.*unsigned.*제외|signed stable.*unsigned.*제외|signed stable.*Apple Developer.*제외'
 fi
 
 echo "Distribution gate verification ok"

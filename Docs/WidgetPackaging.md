@@ -1,6 +1,6 @@
 # WidgetKit 패키징 설계
 
-이 문서는 MacDog WidgetKit 작업의 패키징 경계를 기록합니다. WidgetKit은 현재 구현 코드를 삭제하지 않고 보존하지만, App Group provisioning이 필요한 실제 위젯 UI 검수는 Apple Developer Program이 필요하므로 v1.1.0 구현 계획에서 제외합니다.
+이 문서는 MacDog WidgetKit 작업의 패키징 경계를 기록합니다. WidgetKit은 현재 구현 코드를 삭제하지 않고 보존하지만, App Group provisioning이 필요한 실제 위젯 UI 검수는 Apple Developer Program이 필요하므로 기본 릴리즈 범위에서 제외합니다.
 
 ## 현재 상태
 
@@ -18,7 +18,7 @@
 
 ## 패키징 결정
 
-실제 macOS widget은 opt-in 앱 번들 안에 포함된 Widget Extension target으로 배포합니다. SwiftPM widget library는 공유 구현으로 유지하고, `MacDog.xcodeproj`가 WidgetKit host/extension 패키징 검증을 담당합니다. `v1.1.0` 기본 배포물은 App Group provisioning blocker 때문에 WidgetKit을 포함하지 않습니다. 이 blocker는 현재 구현 계획에서 해결 대상이 아니며, Apple Developer Program 사용 가능 상태가 별도 milestone으로 승인될 때만 다시 다룹니다.
+실제 macOS widget은 opt-in 앱 번들 안에 포함된 Widget Extension target으로 배포합니다. SwiftPM widget library는 공유 구현으로 유지하고, `MacDog.xcodeproj`가 WidgetKit host/extension 패키징 검증을 담당합니다. 기본 배포물은 App Group provisioning blocker 때문에 WidgetKit을 포함하지 않습니다. 이 blocker는 현재 구현 계획에서 해결 대상이 아니며, Apple Developer Program 사용 가능 상태가 별도 milestone으로 승인될 때만 다시 다룹니다.
 
 `--with-widget`을 준 경우의 예상 bundle 구조는 다음과 같습니다.
 
@@ -128,7 +128,7 @@ Apple Developer 문서 기준 capability는 platform, program membership, signin
 
 미확인/제외:
 
-- 기본 `v1.1.0` DMG와 기본 설치 경로에서는 WidgetKit을 설치하지 않습니다.
+- 기본 DMG와 기본 설치 경로에서는 WidgetKit을 설치하지 않습니다.
 - 여기까지 확인된 뒤 실제 위젯 UI 단계는 확인하지 못했습니다.
 - 실제 위젯 UI가 shared cache의 updated/stale/error fixture를 읽어 표시하는지는 아직 완료로 볼 수 없습니다.
 - 위젯 클릭이 `macdog://open`으로 MacDog popover를 여는 실제 UI 동작은 아직 완료로 볼 수 없습니다.

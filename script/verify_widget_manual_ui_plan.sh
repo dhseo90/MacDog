@@ -80,7 +80,7 @@ Scope: optional WidgetKit build, widget gallery addition, widget click deep link
 Preflight evidence:
 - Run: ./script/verify_widget_manual_ui_plan.sh
 - Confirm the read-only prerequisite gate passes before any GUI clicking.
-- Confirm MacDog was built and installed with --with-widget; default v1.1.0 builds intentionally omit WidgetKit.
+- Confirm MacDog was built and installed with --with-widget; default release builds intentionally omit WidgetKit.
 - If it reports an installed app freshness mismatch, reinstall MacDog first, then rerun the preflight.
 - If it reports ad-hoc Widget extension signing, build/install a development or distribution signed app with a provisioning profile that grants group.com.dhseo.macdog.MacDog before judging shared cache UI.
 

@@ -9,7 +9,7 @@
 - 앱을 `Applications`에서 처음 실행하면 MacDog가 사용자 영역 설치 마무리를 직접 수행합니다.
 - 첫 실행 후 설치 디스크와 다운로드한 설치 파일을 정리할지 묻습니다.
 - optional 권한 도우미 설치/제거는 MacDog UI에서 처리합니다. 권한이 필요하면 MacDog 이름의 관리자 승인창을 띄웁니다.
-- Apple Developer Program이 필요한 signed/notarized public 배포는 현재 구현 계획에서 제외합니다. v1.1.0은 로컬 ad-hoc DMG와 unsigned GitHub candidate/draft 경로까지만 다룹니다.
+- Apple Developer Program이 필요한 signed/notarized public 배포는 현재 구현 계획에서 제외합니다. 현재 기본 릴리즈는 로컬 ad-hoc DMG와 unsigned GitHub candidate/draft 경로까지만 다룹니다.
 
 ## 현재 구현 범위
 
@@ -29,12 +29,12 @@
 - `.github/workflows/ci.yml`은 PR과 `main` push에서 `./script/check.sh --no-run`을 실행하는 기본 release readiness check입니다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관합니다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부합니다.
-- `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 v1.1.0 구현 계획과 완료 조건에서 제외합니다.
+- `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
 - `script/cleanup_release_smoke_state.sh --apply`는 release smoke 뒤 남은 MacDog DMG 마운트, `~/Applications/MacDog.app`, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`을 정리합니다. 중복 앱과 stale plist는 삭제하지 않고 `/private/tmp/macdog-duplicate-app-cleanup` 아래로 격리하며, stale loaded job은 unload합니다.
 - `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 마운트된 MacDog DMG, 남은 `dist/MacDog.app`을 확인합니다.
-- `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않고 Apple Developer 의존 항목이 v1.1.0 계획에서 제외됐는지 검증합니다.
+- `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않고 Apple Developer 의존 항목이 현재 unsigned 릴리즈 계획에서 제외됐는지 검증합니다.
 - PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리합니다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용합니다.
 
 ## 확인됨
@@ -46,18 +46,25 @@
 - `MacDog-1.1.0.dmg`는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
 - mounted DMG의 `MacDog.app`을 `/Applications/MacDog.app`으로 복사한 뒤 설치본 실행, popover 열기, app-owned `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 상태를 확인했습니다.
 - 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일이 제거되는 것을 확인했습니다.
-- release workflow는 unsigned candidate/draft 경로를 v1.1.0 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.
+- release workflow는 unsigned candidate/draft 경로를 현재 기본 릴리즈 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.
 - optional helper 설치/제거는 앱 UI에서 처리합니다.
 - GitHub PR 보호 준비물은 repo 안에 포함되어 있습니다.
 - 2026-06-02 v1.1.0 최신 dist 기준 `MacDog-1.1.0.dmg`를 재생성하고, checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` freshness, 첫 실행 user component 상태를 확인했습니다.
 - 2026-06-02 GitHub Actions `release-candidate`와 unsigned `release-draft` workflow 실제 실행이 success였고, artifact/checksum/draft release asset 검증을 완료했습니다.
 - 2026-06-02 최신 설치본 UI에서 optional helper 제거/설치 버튼을 실제 클릭해 관리자 승인창 주체, 안내 문구, helper 상태 전환을 확인했습니다.
 
+## v1.2.3 운영 메모
+
+- 2026-06-04 로컬 점검에서 `dist/release`에는 `MacDog-1.1.0`과 `MacDog-1.2.0` DMG/checksum만 확인됐습니다. 이 로컬 점검은 v1.2.1/v1.2.2 GitHub Release asset, download URL, published 상태를 확인하지 않습니다.
+- v1.2.3 코어 정리 완료는 릴리즈 완료와 다릅니다. release로 닫으려면 PR/CI/merge head, release candidate artifact, draft release, draft asset checksum, published release asset download, checksum, `hdiutil verify`, final-state 검증을 별도 증거로 기록해야 합니다.
+- 설치 검수가 필요한 release 종료 작업이면 published DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
+- signed/notarized stable release는 Apple Developer Program, Developer ID 인증서, notarization credential이 필요한 범위이므로 별도 승인 전까지 v1.2.3 완료 조건에 넣지 않습니다.
+
 ## 후속 release smoke
 
 - GitHub Release에서 실제로 내려받은 `.dmg`의 checksum과 `hdiutil verify`는 v1.1.0 published asset 기준으로 확인했습니다. 같은 다운로드본을 Finder에서 drag-and-drop 설치하는 최종 smoke는 필요 시 후속 release smoke로 수행합니다.
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
-- Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 v1.1.0에서 제외합니다.
+- Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 현재 unsigned 릴리즈에서 제외합니다.
 
 ## 아직 하지 않는 것
 
@@ -83,7 +90,7 @@
 11. `./script/verify_release_final_state.sh --version <version>`가 통과해야 release smoke 종료로 기록합니다.
 12. 제거 검증이 필요하면 앱 UI에서 optional helper를 먼저 제거하고 앱과 user LaunchAgent/cache를 삭제합니다.
 13. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다.
-14. signed stable 공개 배포는 Apple Developer 의존 항목이므로 v1.1.0 완료 조건에서 제외합니다.
+14. signed stable 공개 배포는 Apple Developer 의존 항목이므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 
 ## GitHub 릴리즈 완료 기준
 

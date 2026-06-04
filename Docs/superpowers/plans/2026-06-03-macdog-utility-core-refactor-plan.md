@@ -1064,7 +1064,7 @@ Expected:
 
 ```text
 working tree clean
-latest commits are on v1.2.0
+latest commits are on the active v1.2.x branch
 ```
 
 Do not run `gh pr create` and do not create a GitHub PR in this step.
