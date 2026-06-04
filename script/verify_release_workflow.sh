@@ -113,7 +113,7 @@ require_draft_match '--notes-file'
 require_draft_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
 require_draft_match '\.dmg\.sha256'
 if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
-  die "draft release workflow must not mark v1.1.0 releases as prerelease"
+  die "draft release workflow must not mark unsigned draft releases as prerelease"
 fi
 
 if [[ -f "$STABLE_WORKFLOW" ]]; then

@@ -190,12 +190,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func requestUsageCacheRefresh(force: Bool) {
         guard usageCacheRefreshTask == nil else { return }
-        guard force || shouldAttemptUsageCacheRefresh() else { return }
-        guard let codexUsageURL = bundledCodexUsageURL() else { return }
+        guard shouldAttemptUsageCacheRefresh(force: force) else { return }
+        guard let codexUsageURL = UsageCacheRefreshBundleLocator.bundledCodexUsageURL() else { return }
 
         lastUsageCacheRefreshAttempt = Date()
+        let command = UsageCacheRefreshCommand(
+            codexUsageURL: codexUsageURL,
+            widgetBundled: UsageCacheRefreshBundleLocator.isWidgetBundled(relativeTo: codexUsageURL)
+        )
         usageCacheRefreshTask = Task { [weak self] in
-            await Self.runUsageCacheRefresh(codexUsageURL: codexUsageURL)
+            await UsageCacheRefreshRunner.run(command: command)
             await MainActor.run {
                 guard let self else { return }
                 self.usageCacheRefreshTask = nil
@@ -204,61 +208,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func shouldAttemptUsageCacheRefresh(now: Date = Date()) -> Bool {
-        guard let lastUsageCacheRefreshAttempt else { return true }
-        return now.timeIntervalSince(lastUsageCacheRefreshAttempt) >= CodexUsageCacheRefreshPolicy.minimumRetryInterval
-    }
-
-    private func bundledCodexUsageURL() -> URL? {
-        let url = Bundle.main.bundleURL
-            .appendingPathComponent("Contents", isDirectory: true)
-            .appendingPathComponent("MacOS", isDirectory: true)
-            .appendingPathComponent("codex-usage")
-        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
-    }
-
-    private nonisolated static func runUsageCacheRefresh(codexUsageURL: URL) async {
-        await Task.detached(priority: .utility) {
-            let process = Process()
-            process.executableURL = codexUsageURL
-            var arguments = [
-                "status",
-                "--write-cache",
-                "--timeout",
-                String(Int(CodexUsageCacheRefreshPolicy.requestTimeout))
-            ]
-            if Self.isWidgetBundled(relativeTo: codexUsageURL) {
-                arguments.insert("--mirror-cache", at: 2)
-            }
-            process.arguments = arguments
-            process.standardOutput = Pipe()
-            process.standardError = Pipe()
-
-            do {
-                try process.run()
-                let deadline = Date().addingTimeInterval(CodexUsageCacheRefreshPolicy.processTimeout)
-                while process.isRunning && Date() < deadline {
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                }
-                if process.isRunning {
-                    process.terminate()
-                }
-            } catch {
-                return
-            }
-        }.value
-    }
-
-    private nonisolated static func isWidgetBundled(relativeTo codexUsageURL: URL) -> Bool {
-        let bundleURL = codexUsageURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let widgetURL = bundleURL
-            .appendingPathComponent("Contents", isDirectory: true)
-            .appendingPathComponent("PlugIns", isDirectory: true)
-            .appendingPathComponent("MacDogWidgetExtension.appex", isDirectory: true)
-        return FileManager.default.fileExists(atPath: widgetURL.path)
+    private func shouldAttemptUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
+        UsageCacheRefreshThrottle.shouldAttempt(
+            lastAttempt: lastUsageCacheRefreshAttempt,
+            now: now,
+            force: force
+        )
     }
 
     private func applyState(_ newState: UsageMonitorState) {
@@ -822,17 +777,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func popoverAnchorRect(in sourceView: NSView, placement: UsagePopoverPlacement) -> NSRect {
-        guard placement == .menuBar else {
-            return sourceView.bounds
-        }
-
-        let width = min(sourceView.bounds.width, 24)
-        return NSRect(
-            x: (sourceView.bounds.width - width) / 2,
-            y: sourceView.bounds.minY,
-            width: width,
-            height: sourceView.bounds.height
-        )
+        UsagePopoverPlacementResolver.anchorRect(sourceBounds: sourceView.bounds, placement: placement)
     }
 
     private func installOutsideClickMonitors() {
@@ -900,7 +845,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         let sourceFrame = sourceWindow.convertToScreen(sourceView.convert(sourceView.bounds, to: nil))
         let screenFrame = (sourceWindow.screen ?? NSScreen.main)?.visibleFrame ?? sourceFrame
-        return shouldShowDesktopPopoverOnRight(sourceFrame: sourceFrame, screenFrame: screenFrame) ? .maxX : .minX
+        return UsagePopoverPlacementResolver.preferredEdge(
+            sourceFrame: sourceFrame,
+            screenFrame: screenFrame,
+            placement: placement
+        )
     }
 
     private func positionPopoverWindow(relativeTo sourceView: NSView, placement: UsagePopoverPlacement) {
@@ -912,26 +861,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         let sourceFrame = sourceWindow.convertToScreen(sourceView.convert(sourceView.bounds, to: nil))
         let screenFrame = screen.visibleFrame
-        var frame = popoverWindow.frame
-        switch placement {
-        case .menuBar:
-            frame.origin.x = sourceFrame.midX - frame.width / 2
-            frame.origin.y = max(screenFrame.minY + 8, sourceFrame.minY - frame.height - 4)
-        case .desktopPet:
-            let padding: CGFloat = 8
-            let showOnRight = shouldShowDesktopPopoverOnRight(sourceFrame: sourceFrame, screenFrame: screenFrame)
-            frame.origin.x = showOnRight
-                ? sourceFrame.maxX + padding
-                : sourceFrame.minX - frame.width - padding
-            frame.origin.y = sourceFrame.midY - frame.height / 2
-        }
-        frame.origin.x = min(max(frame.origin.x, screenFrame.minX + 8), screenFrame.maxX - frame.width - 8)
-        frame.origin.y = min(max(frame.origin.y, screenFrame.minY + 8), screenFrame.maxY - frame.height - 8)
+        let frame = UsagePopoverPlacementResolver.resolvedWindowFrame(
+            currentPopoverFrame: popoverWindow.frame,
+            sourceFrame: sourceFrame,
+            screenFrame: screenFrame,
+            placement: placement
+        )
         popoverWindow.setFrame(frame, display: true)
-    }
-
-    private func shouldShowDesktopPopoverOnRight(sourceFrame: NSRect, screenFrame: NSRect) -> Bool {
-        sourceFrame.midX <= screenFrame.midX
     }
 }
 
@@ -940,19 +876,5 @@ private final class PetMenuActionBox: NSObject {
 
     init(_ action: PetAction) {
         self.action = action
-    }
-}
-
-private enum UsagePopoverPlacement {
-    case menuBar
-    case desktopPet
-
-    var defaultPreferredEdge: NSRectEdge {
-        switch self {
-        case .menuBar:
-            return .maxY
-        case .desktopPet:
-            return .maxX
-        }
     }
 }

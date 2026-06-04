@@ -21,7 +21,7 @@ sandbox 안에서는 app-server 응답 대기 timeout이 발생했지만, 같은
 
 현재 `codex_bengalfox`는 기본 사용자 UI에 새 표면으로 추가할 만큼 별도 의미가 확인되지 않았습니다. 따라서 v1.2.0에서 추가 Codex UI를 만들지 않고, bucket 구조 요약은 `doctor` 고급 진단에만 유지합니다.
 
-이후 v1.2.0 PR 전 단계의 주 작업은 `MenuBarController`와 `UsagePopoverView`를 작은 책임 단위로 나누는 유틸리티 코어 정리 계획입니다.
+이 결정은 v1.2.0에서 계획으로 기록했고, 실제 `MenuBarController`와 `UsagePopoverView` 책임 분리 구현은 v1.2.3 범위로 이동했습니다.
 
 ## 근거
 
@@ -30,9 +30,9 @@ sandbox 안에서는 app-server 응답 대기 timeout이 발생했지만, 같은
 - 추가 bucket을 기본 runner 속도, popover 기본 행, cache schema에 섞으면 사용자가 공식 잔여 한도와 보조 bucket을 혼동할 수 있습니다.
 - 이미 구현된 `doctor` field inventory는 숨은 구조 변화 탐지에는 충분합니다.
 
-## 다음 구현 방향
+## 이후 구현 방향
 
-유틸리티 코어 정리는 동작 변경이 아니라 유지보수 표면 축소입니다.
+유틸리티 코어 정리는 동작 변경이 아니라 유지보수 표면 축소입니다. 아래 방향은 v1.2.3 실행 문서에서 실제 구현과 검증 기록으로 이어집니다.
 
 1. `UsagePopoverView.swift`의 module별 panel과 chart/helper view를 파일 단위로 분리합니다.
 2. `MenuBarController.swift`의 usage cache refresh 조율과 popover placement 계산을 작은 타입으로 추출합니다.
@@ -54,10 +54,12 @@ sandbox 안에서는 app-server 응답 대기 timeout이 발생했지만, 같은
 
 ## PR 전 완료 기준
 
-PR 생성 전에는 아래 상태까지만 준비합니다.
+v1.2.0 PR 생성 전에는 아래 상태까지만 준비했습니다.
 
 - live doctor 근거를 바탕으로 추가 Codex UI 미진행 결정을 기록합니다.
 - 유틸리티 코어 refactor 구현 계획을 한국어 문서로 작성합니다.
 - 문서 검증을 통과합니다.
 - 변경이 있으면 커밋하고 원격 브랜치에 푸시합니다.
 - PR은 생성하지 않습니다.
+
+v1.2.3에서 이어진 실제 코어 정리 범위와 릴리즈 전 미수행 검증은 `Docs/V123UtilityCoreCleanup.md`에 기록합니다.

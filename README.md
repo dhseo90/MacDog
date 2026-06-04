@@ -6,7 +6,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 스크린샷
 
-아래 이미지는 현재 SwiftUI popover를 README용 v1.1.0 demo snapshot으로 렌더링한 화면입니다. 실제 사용량 값은 사용자 환경에 따라 달라집니다.
+아래 이미지는 현재 SwiftUI popover를 README용 demo snapshot으로 렌더링한 화면입니다. 실제 사용량 값은 사용자 환경에 따라 달라집니다.
 
 <table>
   <tr>
@@ -181,7 +181,7 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 - Finder 창을 숨기거나 화면 밖에서 조작하지 않습니다.
 - 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하지 못했으면 설치 검수는 미수행으로 기록합니다.
 
-현재 v1.1.0 배포 gate:
+확인된 v1.1.0 배포 gate:
 
 - 로컬 ad-hoc DMG 생성과 checksum 검증
 - 실제 DMG Finder 창에서 `MacDog.app`을 `Applications`로 drag-and-drop하는 설치 검수
@@ -190,6 +190,13 @@ GitHub Release용 로컬 후보는 `.dmg`와 checksum을 만듭니다.
 - 기존 설치본 대치가 포함된 clean release payload drag-and-drop 설치 검수
 
 Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning이 필요한 signed/notarized public 배포와 WidgetKit 실제 UI 검수는 현재 구현 계획에서 제외합니다.
+
+v1.2.3 릴리즈 진행 메모:
+
+- v1.2.3은 `UsagePopoverView`와 `MenuBarController`의 유틸리티 코어 정리 범위입니다.
+- 현재 로컬 HEAD는 `v1.2.2`이며, v1.2.3 변경은 릴리즈 전 미커밋 작업으로 남아 있습니다.
+- v1.2.1/v1.2.2의 GitHub Release package/download 완료 증거는 이 README에서 완료로 다루지 않습니다.
+- v1.2.3을 실제 release로 닫으려면 release PR부터 published asset download, checksum, `hdiutil verify`, 필요 시 Finder drag-and-drop 설치 smoke까지 별도 release 절차를 완료해야 합니다.
 
 세부 배포 경계는 [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md)에 정리합니다.
 
@@ -264,6 +271,8 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
 - [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 보강 항목 read-only/self-test 검증 경계
 - [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 범위와 Apple Developer 제외 경계
+- [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 범위와 실제 구현 점검
+- [Docs/V123NextDesignPlan.md](Docs/V123NextDesignPlan.md): v1.2.3 이후 module/release/product 설계 작업 순서
 - `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
 - `./script/verify_v110_reinforcement_plan.sh --self-test`: v1.1.0 보강 항목 문서 연결과 로컬 self-test 확인
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과
