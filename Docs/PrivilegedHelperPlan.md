@@ -30,7 +30,7 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - executable의 기본 실행은 도움말/버전/설치 계획 출력만 수행합니다.
 - 개발용 `--handle-json-stdin`은 JSON request를 받아 allowlist command만 처리합니다.
 - `--run-xpc-service` 모드는 Mach service listener를 열고 같은 JSON request/response contract를 XPC로 처리합니다.
-- `install.sh --dry-run --with-helper`와 `uninstall.sh --dry-run --with-helper`는 helper 설치/삭제 계획을 보여줍니다.
+- `MACDOG_APP_VERSION=<version> install.sh --dry-run --with-helper`와 `uninstall.sh --dry-run --with-helper`는 helper 설치/삭제 계획을 보여줍니다.
 - XPC listener는 연결 process id로 SecCode requirement를 검사한 뒤 host app만 받습니다.
 - 기본 runtime requirement는 `com.dhseo.macdog.MacDog` bundle id와 Apple generic anchor를 요구합니다.
 - 실제 배포 signing team id가 있으면 `MACDOG_HELPER_HOST_TEAM_ID`로 team requirement를 추가합니다.
@@ -41,17 +41,17 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - 앱 내부 helper 설치 버튼은 앱 번들의 embedded helper executable과 생성된 LaunchDaemon plist를 관리자 승인 후 `/Library/PrivilegedHelperTools`와 `/Library/LaunchDaemons`에 설치합니다.
 - 앱 내부 helper 제거 버튼은 관리자 승인 후 system LaunchDaemon을 bootout하고 helper executable/plist만 삭제하며 앱, CLI, user LaunchAgent는 건드리지 않습니다.
 - 앱 내부 helper 설치 script builder는 signed 배포 빌드의 team id requirement와 unsigned/ad-hoc 개발 빌드의 host designated requirement 경계를 분리합니다.
-- `build_and_run.sh --no-run`은 helper executable을 앱 번들의 `Contents/Library/LaunchServices/MacDogPrivilegedHelper`에 포함합니다.
+- `MACDOG_APP_VERSION=<version> build_and_run.sh --no-run`은 helper executable을 앱 번들의 `Contents/Library/LaunchServices/MacDogPrivilegedHelper`에 포함합니다.
 - 앱 번들은 helper LaunchDaemon plist를 `Contents/Library/LaunchDaemons/com.dhseo.macdog.helper.plist`에 포함합니다.
 - helper LaunchDaemon plist는 설치 후 `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper --run-xpc-service`로 실행되도록 작성됩니다.
 - `verify_app_bundle.sh`는 helper executable, LaunchDaemon plist, Mach service, helper code signature를 확인합니다.
-- `install.sh --with-helper`는 관리자 승인 후 helper executable과 LaunchDaemon plist를 `/Library` 위치에 설치하고 system LaunchDaemon으로 bootstrap합니다.
-- `install.sh --with-helper`는 터미널이 있으면 `sudo`, 비대화형/GUI 흐름이면 macOS administrator dialog를 사용합니다.
-- `install.sh --helper-only`는 host signing requirement 산출에 `dist/MacDog.app`을 사용하고, 전체 install의 `--with-helper`는 설치된 앱 bundle을 사용합니다.
+- `MACDOG_APP_VERSION=<version> install.sh --with-helper`는 관리자 승인 후 helper executable과 LaunchDaemon plist를 `/Library` 위치에 설치하고 system LaunchDaemon으로 bootstrap합니다.
+- `MACDOG_APP_VERSION=<version> install.sh --with-helper`는 터미널이 있으면 `sudo`, 비대화형/GUI 흐름이면 macOS administrator dialog를 사용합니다.
+- `MACDOG_APP_VERSION=<version> install.sh --helper-only`는 host signing requirement 산출에 `dist/MacDog.app`을 사용하고, 전체 install의 `--with-helper`는 설치된 앱 bundle을 사용합니다.
 - unsigned/ad-hoc 개발 빌드에서는 LaunchDaemon environment에 `MACDOG_HELPER_HOST_REQUIREMENT`를 넣어 현재 host 앱 서명 requirement에만 helper 연결을 허용합니다.
 - signed 배포 빌드에서 team id가 확인되면 `MACDOG_HELPER_HOST_TEAM_ID` requirement로 host app을 제한합니다.
 - `uninstall.sh --with-helper`는 관리자 승인 후 system LaunchDaemon을 bootout하고 helper executable/plist를 삭제합니다.
-- `install.sh --helper-only`와 `uninstall.sh --helper-only`는 실행 중인 앱과 user LaunchAgent를 건드리지 않고 helper만 설치/삭제합니다.
+- `MACDOG_APP_VERSION=<version> install.sh --helper-only`와 `uninstall.sh --helper-only`는 실행 중인 앱과 user LaunchAgent를 건드리지 않고 helper만 설치/삭제합니다.
 - install/uninstall/update 흐름에서 MacDog가 `SleepDisabled=1`을 소유한 상태라면 정상 종료 대신 강제 종료해 종료 정리 루틴이 전역 값을 `0`으로 되돌리지 않게 합니다.
 - release staging은 helper 설치/제거 command를 따로 만들지 않고, MacDog 설정 탭의 앱 내부 helper 설치/제거 UI로 안내합니다.
 - GitHub Release DMG는 `MacDog.app`과 `Applications` symlink만 포함합니다. 앱을 `Applications`에서 처음 실행하면 user component 설치 마무리와 optional helper 설치 안내를 MacDog UI가 처리합니다.
@@ -78,7 +78,7 @@ MacDog의 `pmset disablesleep` 제어와 macOS `screenLock` 지연 설정 제어
 - 2026-05-28 23:50 KST에 전원 연결 기준 슬립 방지, `SleepDisabled=1`, Charge Limit `90%`, 배터리 `95%`, AC 연결, `not charging` 상태로 장시간 에이징을 시작했습니다.
 - 2026-05-29 사용자 실사용 확인에서 덮개 닫힘 상태가 슬립/락으로 떨어지지 않았고, 배터리가 `95%`에서 `90%`로 내려갔습니다.
 - 2026-05-29에 권한 도우미 설치 상태별 popover 버튼 계약을 자동 테스트로 고정했습니다. 미설치는 `도우미 설치`, 부분 설치는 `제거` 후 `다시 설치`, 설치 완료는 `도우미 제거`만 노출합니다.
-- 2026-05-29에 실제 UI 클릭 검수 전 read-only prerequisite gate를 추가해 이전 설치본, helper preflight 누락을 먼저 잡도록 했다. WidgetKit readiness는 이후 기본 v1.1.0 gate에서 제외하고 opt-in 검수로 분리했다.
+- 실제 UI 클릭 검수 전 read-only prerequisite gate를 추가해 stale 설치본과 helper preflight 누락을 먼저 잡도록 했다. WidgetKit readiness는 기본 gate에서 제외하고 opt-in 검수로 분리했다.
 
 검증 시 주의:
 

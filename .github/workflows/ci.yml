@@ -23,4 +23,6 @@ jobs:
         run: xcodebuild -version
 
       - name: Verify
+        env:
+          MACDOG_APP_VERSION: 9.9.9
         run: ./script/check.sh --no-run

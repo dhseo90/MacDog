@@ -11,7 +11,7 @@
 ## 검증
 
 - [ ] `git diff --check`
-- [ ] `./script/check.sh --no-run`
+- [ ] `MACDOG_APP_VERSION=<version> ./script/check.sh --no-run`
 - [ ] `./script/verify_public_repo_guardrails.sh`
 - [ ] UI 직접 검수 필요 없음 / 실행함:
 - [ ] 설치 또는 LaunchAgent 변경 없음 / 실행함:

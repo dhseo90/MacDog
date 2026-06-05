@@ -13,7 +13,7 @@ final class CodexAppServerRequestFactoryTests: XCTestCase {
         let clientInfo = try XCTUnwrap(params["clientInfo"] as? [String: Any])
         XCTAssertEqual(clientInfo["name"] as? String, "codex-usage")
         XCTAssertEqual(clientInfo["title"] as? String, "Codex Usage")
-        XCTAssertEqual(clientInfo["version"] as? String, "1.0.0")
+        XCTAssertEqual(clientInfo["version"] as? String, "codex-usage-client")
 
         let capabilities = try XCTUnwrap(params["capabilities"] as? [String: Any])
         XCTAssertEqual(capabilities["experimentalApi"] as? Bool, true)

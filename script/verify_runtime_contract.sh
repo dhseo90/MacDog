@@ -45,8 +45,8 @@ require_contains "$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift" "requiresSys
 require_contains "$ROOT_DIR/Sources/MacDog/MenuBarController.swift" "shouldCaptureBackgroundSystemMetrics" "menu bar skips unnecessary background system metrics capture"
 require_contains "$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift" "systemMetrics: .unavailable" "empty usage monitor state avoids implicit system metrics capture"
 
-require_contains "$RUNTIME_DOC" "./script/build_and_run.sh --verify-runtime 10" "runtime smoke command is documented"
-require_contains "$RUNTIME_DOC" "./script/build_and_run.sh --verify-floating-pet-runtime 10" "floating pet runtime smoke command is documented"
+require_contains "$RUNTIME_DOC" "MACDOG_APP_VERSION=<version> ./script/build_and_run.sh --verify-runtime 10" "runtime smoke command is documented"
+require_contains "$RUNTIME_DOC" "MACDOG_APP_VERSION=<version> ./script/build_and_run.sh --verify-floating-pet-runtime 10" "floating pet runtime smoke command is documented"
 require_contains "$RUNTIME_DOC" "./script/sample_existing_runtime_resources.sh --samples 5 --interval 1" "read-only existing runtime sampler is documented"
 require_contains "$RUNTIME_DOC" "CPU max가 50%를 넘으면 실패" "CPU threshold is documented"
 require_contains "$RUNTIME_DOC" "RSS max가 250MB를 넘으면 실패" "RSS threshold is documented"
@@ -56,7 +56,7 @@ require_contains "$RUNTIME_DOC" "popover 1초 local metrics timer는 Mac/Sleep/B
 require_contains "$RUNTIME_DOC" "60초 usage cache refresh에서 새 system metrics snapshot을 만들지 않습니다." "background system metrics capture policy is documented"
 require_contains "$RUNTIME_DOC" "calm 20fps, active 24fps, fast/sprint 30fps" "floating pet adaptive tick policy is documented"
 
-require_contains "$ROADMAP" "script/build_and_run.sh --verify-floating-pet-runtime" "roadmap records floating pet runtime command"
+require_contains "$ROADMAP" "MACDOG_APP_VERSION=<version> script/build_and_run.sh --verify-floating-pet-runtime" "roadmap records floating pet runtime command"
 require_contains "$ROADMAP" "runtime 계약은 script/verify_runtime_contract.sh로 자동 검증합니다." "roadmap records static runtime guard"
 
 echo "Runtime verification contract ok"

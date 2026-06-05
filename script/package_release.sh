@@ -3,14 +3,14 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
-VERSION="${MACDOG_RELEASE_VERSION:-1.0.0}"
+VERSION="${MACDOG_RELEASE_VERSION:-}"
 APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 RELEASE_ROOT="$ROOT_DIR/dist/release"
-STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"
-DMG_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION.dmg"
-CHECKSUM_PATH="$DMG_PATH.sha256"
-NOTES_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION-release-notes.md"
-BACKGROUND_PATH="$STAGE_DIR/.background/background.png"
+STAGE_DIR=""
+DMG_PATH=""
+CHECKSUM_PATH=""
+NOTES_PATH=""
+BACKGROUND_PATH=""
 DRY_RUN=0
 SKIP_BUILD=0
 CREATE_DMG=1
@@ -42,10 +42,38 @@ die() {
   exit 1
 }
 
+configure_release_paths() {
+  STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"
+  DMG_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION.dmg"
+  CHECKSUM_PATH="$DMG_PATH.sha256"
+  NOTES_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION-release-notes.md"
+  BACKGROUND_PATH="$STAGE_DIR/.background/background.png"
+}
+
+require_release_version() {
+  [[ -n "$VERSION" ]] || die "release version required; pass --version VERSION or set MACDOG_RELEASE_VERSION"
+}
+
 clean_bundle_xattrs() {
   local bundle="$1"
   /usr/bin/xattr -cr "$bundle" >/dev/null 2>&1 || true
   /usr/bin/find "$bundle" -exec /usr/bin/xattr -d com.apple.FinderInfo {} \; >/dev/null 2>&1 || true
+}
+
+wait_for_dmg_finder_metadata() {
+  local ds_store="$1"
+  local attempt=1
+  local max_attempts=20
+
+  while (( attempt <= max_attempts )); do
+    if [[ -f "$ds_store" ]] && /usr/bin/strings -a "$ds_store" | /usr/bin/grep -Fq ".icvp"; then
+      return 0
+    fi
+    /bin/sleep 0.25
+    attempt=$((attempt + 1))
+  done
+
+  return 1
 }
 
 plist_value() {
@@ -79,11 +107,6 @@ while [[ $# -gt 0 ]]; do
       shift
       [[ $# -gt 0 ]] || die "--version requires a value"
       VERSION="$1"
-      STAGE_DIR="$RELEASE_ROOT/$APP_NAME-$VERSION"
-      DMG_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION.dmg"
-      CHECKSUM_PATH="$DMG_PATH.sha256"
-      NOTES_PATH="$RELEASE_ROOT/$APP_NAME-$VERSION-release-notes.md"
-      BACKGROUND_PATH="$STAGE_DIR/.background/background.png"
       ;;
     -h|--help|help)
       usage
@@ -97,8 +120,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+require_release_version
+configure_release_paths
+
 if [[ "$DRY_RUN" == "1" ]]; then
-  build_plan="$ROOT_DIR/script/build_and_run.sh --no-run"
+  build_plan="MACDOG_RELEASE_VERSION=$VERSION $ROOT_DIR/script/build_and_run.sh --no-run"
   if [[ "$WITH_WIDGET" == "1" ]]; then
     build_plan="$build_plan --with-widget"
   fi
@@ -362,6 +388,14 @@ tell application "Finder"
 end tell
 APPLESCRIPT
   then
+    /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
+    rm -f "$rw_dmg"
+    rm -rf "$mountpoint"
+    return 1
+  fi
+
+  /bin/sync
+  if ! wait_for_dmg_finder_metadata "$mountpoint/.DS_Store"; then
     /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
     rm -f "$rw_dmg"
     rm -rf "$mountpoint"

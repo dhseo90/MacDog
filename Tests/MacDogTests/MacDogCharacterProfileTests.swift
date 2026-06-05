@@ -2,16 +2,27 @@ import XCTest
 @testable import MacDog
 
 final class MacDogCharacterProfileTests: XCTestCase {
-    func testCodexPupConnectsRunnerDesktopPetAndTabArtwork() {
+    func testCodexPupConnectsMenuBarImageDesktopPetAndTabArtwork() {
         let profile = MacDogCharacterProfile.codexPup
 
         XCTAssertEqual(profile.id, "codex-pup")
         XCTAssertEqual(profile.displayName, "Codex Pup")
-        XCTAssertEqual(profile.runner.resourceDirectory, "Runner")
-        XCTAssertEqual(profile.runner.framePrefix, "pup-runner")
-        XCTAssertEqual(profile.runner.frameCount, RunnerIconRenderer.frameCount)
+        XCTAssertEqual(profile.menuBarImage.sourcePose, .runRight)
+        XCTAssertEqual(
+            profile.desktopPet.asset(for: profile.menuBarImage.sourcePose).frameCount,
+            MenuBarIconRenderer.frameCount
+        )
         XCTAssertEqual(profile.desktopPet.resourceDirectory, "DesktopPet")
         XCTAssertEqual(profile.popoverTabs.resourceDirectory, "PopoverTabs")
+    }
+
+    func testMenuBarIconRendererCreatesImageFromCurrentCharacterFrames() {
+        let renderer = MenuBarIconRenderer()
+        let image = renderer.image(frame: 0, phase: .calm)
+
+        XCTAssertEqual(image.size.width, 28)
+        XCTAssertEqual(image.size.height, 24)
+        XCTAssertFalse(image.isTemplate)
     }
 
     func testCodexPupDefinesEveryDesktopPose() {

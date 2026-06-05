@@ -10,12 +10,12 @@ final class InstallerCleanupControllerTests: XCTestCase {
         try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
 
         let expectedFiles = [
-            downloads.appendingPathComponent("MacDog-1.0.0.dmg"),
-            downloads.appendingPathComponent("MacDog-1.0.0.dmg.sha256"),
-            desktop.appendingPathComponent("MacDog-1.0.0-release-notes.md")
+            downloads.appendingPathComponent("MacDog-9.9.9.dmg"),
+            downloads.appendingPathComponent("MacDog-9.9.9.dmg.sha256"),
+            desktop.appendingPathComponent("MacDog-9.9.9-release-notes.md")
         ]
         let ignoredFiles = [
-            downloads.appendingPathComponent("Other-1.0.0.dmg"),
+            downloads.appendingPathComponent("Other-9.9.9.dmg"),
             downloads.appendingPathComponent("MacDog-preview.png"),
             desktop.appendingPathComponent("MacDog-notes.txt")
         ]
@@ -40,9 +40,9 @@ final class InstallerCleanupControllerTests: XCTestCase {
 
     func testCleanupPlanIncludesOnlyMountedMacDogInstallerVolumes() throws {
         let root = try temporaryDirectory()
-        let validVolume = root.appendingPathComponent("MacDog 1.0.0", isDirectory: true)
+        let validVolume = root.appendingPathComponent("MacDog 9.9.9", isDirectory: true)
         let invalidVolume = root.appendingPathComponent("MacDog Broken", isDirectory: true)
-        let otherVolume = root.appendingPathComponent("Other 1.0.0", isDirectory: true)
+        let otherVolume = root.appendingPathComponent("Other 9.9.9", isDirectory: true)
 
         try FileManager.default.createDirectory(
             at: validVolume.appendingPathComponent("MacDog.app", isDirectory: true),
@@ -73,9 +73,9 @@ final class InstallerCleanupControllerTests: XCTestCase {
         let home = try temporaryDirectory()
         let downloads = home.appendingPathComponent("Downloads", isDirectory: true)
         try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
-        let installer = downloads.appendingPathComponent("MacDog-1.0.0.dmg")
+        let installer = downloads.appendingPathComponent("MacDog-9.9.9.dmg")
         try Data("installer".utf8).write(to: installer)
-        let volume = home.appendingPathComponent("MacDog 1.0.0", isDirectory: true)
+        let volume = home.appendingPathComponent("MacDog 9.9.9", isDirectory: true)
         var detachedVolumes: [URL] = []
         let controller = InstallerCleanupController(
             homeDirectory: home,
@@ -93,7 +93,7 @@ final class InstallerCleanupControllerTests: XCTestCase {
         XCTAssertEqual(detachedVolumes, [volume])
     }
 
-    func testLegacyDismissedFlagDoesNotSuppressNewInstallerArtifacts() throws {
+    func testDismissedFlagDoesNotSuppressNewInstallerArtifacts() throws {
         let defaults = try temporaryDefaults()
         defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
 
@@ -111,10 +111,10 @@ final class InstallerCleanupControllerTests: XCTestCase {
         let defaults = try temporaryDefaults()
         let previousPlan = InstallerCleanupPlan(
             mountedInstallerVolumes: [
-                URL(fileURLWithPath: "/Volumes/MacDog 1.2.3", isDirectory: true)
+                URL(fileURLWithPath: "/Volumes/MacDog 9.9.8", isDirectory: true)
             ],
             downloadedInstallerFiles: [
-                URL(fileURLWithPath: "/Users/test/Downloads/MacDog-1.2.3.dmg")
+                URL(fileURLWithPath: "/Users/test/Downloads/MacDog-9.9.8.dmg")
             ]
         )
         let currentPlan = InstallerCleanupPlan(

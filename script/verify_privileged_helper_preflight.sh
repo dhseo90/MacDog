@@ -48,11 +48,11 @@ done
 cd "$ROOT_DIR"
 
 if [[ "$BUILD" == "1" ]]; then
-  ./script/build_and_run.sh --no-run >/dev/null
+  MACDOG_APP_VERSION=9.9.9 ./script/build_and_run.sh --no-run >/dev/null
 fi
 
 echo "==> Checking helper-only install dry-run"
-./script/install.sh --dry-run --helper-only >/dev/null
+MACDOG_APP_VERSION=9.9.9 ./script/install.sh --dry-run --helper-only >/dev/null
 
 echo "==> Checking app helper install UI path"
 /usr/bin/grep -Fq "PrivilegedHelperPopoverAction.actions" "$POPOVER_SETTINGS_SOURCE" || die "popover helper action model missing"
@@ -91,7 +91,7 @@ cat <<NEXT
 Privileged helper preflight ok.
 
 Next approved install sequence:
-  ./script/install.sh --helper-only
+  MACDOG_APP_VERSION=<version> ./script/install.sh --helper-only
   ./script/verify_privileged_helper_state.sh --expect-installed
   ./script/verify_privileged_helper_xpc.sh --expect-installed
 NEXT

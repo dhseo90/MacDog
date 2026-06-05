@@ -7,7 +7,7 @@ WITH_WIDGET="${MACDOG_INCLUDE_WIDGET:-0}"
 APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 MIN_SYSTEM_VERSION="14.0"
-APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-1.0.0}}"
+APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-}}"
 APP_BUILD="${MACDOG_APP_BUILD:-1}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -45,7 +45,7 @@ configure_app_bundle_paths
 
 usage() {
   cat <<USAGE
-usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--verify-floating-pet-runtime [SECONDS]|--logs|--telemetry|--debug] [--with-widget|--help]
+usage: $0 [run|--no-run|--verify|--verify-deeplink|--verify-runtime [SECONDS]|--verify-floating-pet-runtime [SECONDS]|--logs|--telemetry|--debug] [--version VERSION] [--with-widget|--help]
 
 Build and run the MacDog SwiftPM macOS app.
 
@@ -60,11 +60,13 @@ Commands:
   --logs                      Build, launch, and stream app logs.
   --telemetry                 Build, launch, and stream subsystem logs.
   --debug                     Build and launch the executable under lldb.
+  --version VERSION           Required app bundle version label.
   --with-widget               Embed the WidgetKit extension. Default builds omit it.
   --help                      Show this help.
 
 Environment:
   DEVELOPER_DIR defaults to /Applications/Xcode.app/Contents/Developer.
+  MACDOG_APP_VERSION or MACDOG_RELEASE_VERSION is required unless --version is passed.
   MACDOG_INCLUDE_WIDGET=1 also enables the WidgetKit extension.
 
 Output:
@@ -77,11 +79,20 @@ die() {
   exit 1
 }
 
+require_app_version() {
+  [[ -n "$APP_VERSION" ]] || die "app version required; pass --version VERSION or set MACDOG_APP_VERSION/MACDOG_RELEASE_VERSION"
+}
+
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --with-widget)
         WITH_WIDGET=1
+        ;;
+      --version)
+        shift
+        [[ $# -gt 0 ]] || die "--version requires a value"
+        APP_VERSION="$1"
         ;;
       -h|--help|help)
         MODE="help"
@@ -469,49 +480,58 @@ case "$MODE" in
     usage
     ;;
   run)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     open_app
     ;;
   --no-run|no-run)
+    require_app_version
     build_bundle
     echo "$APP_BUNDLE"
     ;;
   --verify|verify)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_app
     ;;
   --verify-deeplink|verify-deeplink)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_app
     verify_deeplink
     ;;
   --verify-runtime|verify-runtime)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_app
     verify_runtime "${RUN_DURATION:-10}"
     ;;
   --verify-floating-pet-runtime|verify-floating-pet-runtime)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     verify_floating_pet_runtime "${RUN_DURATION:-10}"
     ;;
   --logs|logs)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     open_app
     /usr/bin/log stream --info --style compact --predicate "process == \"$APP_NAME\""
     ;;
   --telemetry|telemetry)
+    require_app_version
     pkill -x "$APP_NAME" >/dev/null 2>&1 || true
     build_bundle
     open_app
     /usr/bin/log stream --info --style compact --predicate "subsystem == \"$BUNDLE_ID\""
     ;;
   --debug|debug)
+    require_app_version
     build_bundle
     /usr/bin/lldb -- "$APP_BINARY"
     ;;

@@ -29,6 +29,14 @@ require_matches() {
   fi
 }
 
+require_not_matches() {
+  local output="$1"
+  local unexpected="$2"
+  if /usr/bin/grep -Eq "$unexpected" <<<"$output"; then
+    die "unexpected release packaging pattern: $unexpected"
+  fi
+}
+
 require_dmg_background_dimensions() {
   local image_path="$1"
   local info width height
@@ -73,18 +81,23 @@ require_not_contains "$script_source" "-11240"
 require_not_contains "$script_source" "-11570"
 require_not_contains "$script_source" "create_plain_dmg"
 require_not_contains "$script_source" "if ! create_styled_dmg"
-require_contains "$build_script_source" 'APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-1.0.0}}"'
+require_contains "$build_script_source" 'APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-}}"'
 require_contains "$build_script_source" '<string>$APP_VERSION</string>'
 require_contains "$build_script_source" '<string>$APP_BUILD</string>'
+require_contains "$build_script_source" 'app version required; pass --version VERSION or set MACDOG_APP_VERSION/MACDOG_RELEASE_VERSION'
+require_not_matches "$script_source" 'MACDOG_RELEASE_VERSION:-[^}]'
+require_contains "$script_source" 'release version required; pass --version VERSION or set MACDOG_RELEASE_VERSION'
 require_contains "$script_source" 'MACDOG_RELEASE_VERSION="$VERSION" MACDOG_APP_VERSION="$VERSION"'
 require_contains "$script_source" 'verify_app_bundle_version "$APP_BUNDLE" "$VERSION"'
+require_contains "$script_source" 'wait_for_dmg_finder_metadata "$mountpoint/.DS_Store"'
 [[ -x "$FINAL_STATE_SCRIPT" ]] || die "release final state verifier missing or not executable: $FINAL_STATE_SCRIPT"
 [[ -x "$CLEANUP_SCRIPT" ]] || die "release smoke cleanup script missing or not executable: $CLEANUP_SCRIPT"
 "$FINAL_STATE_SCRIPT" --self-test
 "$CLEANUP_SCRIPT" --self-test
 
-output="$("$PACKAGE_SCRIPT" --dry-run)"
+output="$(MACDOG_RELEASE_VERSION=9.9.9 "$PACKAGE_SCRIPT" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
+require_contains "$output" "Version: 9.9.9"
 require_contains "$output" "Docker-style drag-and-drop app installer"
 require_contains "$output" "MacDog.app (includes bundled codex-usage)"
 require_contains "$output" "Applications symlink"
@@ -113,12 +126,8 @@ require_not_contains "$output" "README_FIRST.txt"
 require_not_contains "$output" "RELEASE_NOTES_DRAFT.md"
 require_not_contains "$output" "Privileged Helper.command"
 
-if [[ -d "$APP_BUNDLE" ]]; then
-  version="${MACDOG_RELEASE_VERSION:-}"
-  if [[ -z "$version" ]]; then
-    version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true)"
-  fi
-  [[ -n "$version" ]] || die "could not determine dist app version for release packaging verification"
+if [[ -d "$APP_BUNDLE" && -n "${MACDOG_RELEASE_VERSION:-}" ]]; then
+  version="$MACDOG_RELEASE_VERSION"
   stage="$ROOT_DIR/dist/release/MacDog-$version"
   dmg_path="$ROOT_DIR/dist/release/MacDog-$version.dmg"
   checksum_path="$dmg_path.sha256"
@@ -189,7 +198,11 @@ done
   cleanup_mount
   trap 'rm -rf "$stage"; rm -f "$dmg_path" "$checksum_path" "$notes_path"' EXIT
 else
-  echo "Release packaging stage verification skipped: dist/MacDog.app missing"
+  if [[ -d "$APP_BUNDLE" ]]; then
+    echo "Release packaging artifact verification skipped: MACDOG_RELEASE_VERSION is not set"
+  else
+    echo "Release packaging stage verification skipped: dist/MacDog.app missing"
+  fi
 fi
 
 echo "Release packaging verification ok"
