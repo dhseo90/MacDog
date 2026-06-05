@@ -19,7 +19,9 @@
 10. 사용자가 설치, 패키징 설치, DMG 설치, drag-and-drop 설치 검수를 요청하면 최종 사용자가 받는 DMG를 실제로 열고 Finder에서 `MacDog.app`을 `Applications`로 드래그앤드롭하는 방식만 설치 검수로 인정합니다.
 11. `install.sh`, `cp`, `ditto`, `rsync`, Finder 숨김 조작, 화면 밖 Finder 창, hdiutil mount 후 직접 복사, 앱 번들 직접 교체는 사용자 설치 검수의 대체 수단으로 사용할 수 없습니다. 사용 가능한 도구로 실제 drag-and-drop을 수행할 수 없으면 즉시 중단하고 `미수행`으로 보고합니다.
 12. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획에서 전면 제외합니다. 이러한 항목은 사용자가 Apple Developer Program 사용 가능 상태를 명시하고 별도 milestone으로 승인하기 전까지 ROADMAP/README/검증 ledger의 구현 대상, 완료 조건, 후속 이슈로 넣지 않습니다.
-13. 현재 남아 있는 WidgetKit 코드는 보존 대상일 뿐 기본 v1.1.0 구현 범위가 아닙니다. source/test/opt-in build 경계까지만 확인된 것으로 기록하고, App Group provisioning 이후 필요한 실제 위젯 shared cache 표시, stale/error 반영, 클릭 deep link 검수는 확인하지 못했다고 명시합니다.
+13. 신규 ROADMAP/README/검증 ledger를 작성하거나 갱신할 때 Apple Developer 계정이 필요한 기능은 기능명, 후보, 완료 조건, 후속 이슈로 추가하거나 나열하지 않습니다.
+14. 현재 남아 있는 WidgetKit 코드는 보존 대상일 뿐 기본 v1.1.0 구현 범위가 아닙니다. source/test/opt-in build 경계까지만 확인된 것으로 기록하고, App Group provisioning 이후 필요한 실제 위젯 shared cache 표시, stale/error 반영, 클릭 deep link 검수는 확인하지 못했다고 명시합니다.
+15. 모든 사용자 응답, 진행 보고, 최종 보고는 한국어로 작성합니다. 명령어, 파일 경로, 코드 식별자, 외부 원문 제목처럼 원문 유지가 필요한 항목만 예외로 둡니다.
 
 ---
 
@@ -112,6 +114,17 @@ Milestone 2 진행
 1번 완료 후 2번까지 진행
 0~3번 순서대로 진행
 ```
+
+### 3.3 로드맵 스텝 완료 후 커밋과 후속 이슈
+
+사용자가 로드맵을 작성하고 중요도/우선순위를 고려한 스텝 진행을 요구한 뒤, 그 순서에 따라 개별 스텝 개발을 지시하면 아래 규칙을 따릅니다.
+
+1. 현재 지시된 개별 스텝 범위 안에서만 개발, 테스트, 문서 갱신을 수행합니다.
+2. 해당 스텝이 완료 조건을 통과하면 그 스텝의 변경만 커밋합니다.
+3. 커밋 뒤 후속 이슈를 제시하되, 현재 완료한 스텝 안에서 실제로 남은 이슈만 제시합니다.
+4. 로드맵상 다음 스텝에 해당하는 이슈, 다음 milestone 후보, 새 제품 범위는 후속 이슈로 제안하지 않습니다.
+5. 현재 스텝 안에 남은 후속 이슈가 없으면 `후속 이슈: 없음`으로 보고합니다.
+6. `후속 이슈: 없음`으로 보고한 뒤에도 다음 스텝을 자동 착수하지 않습니다. 사용자가 다음 스텝으로 넘어가겠다고 명시하면 그때 다음 스텝을 진행합니다.
 
 ---
 
