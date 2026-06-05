@@ -74,6 +74,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_runner_baseline.sh` | 메뉴바 runner 기준선 검증 | runner frame count, size, 상태 mapping을 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |
 | `script/verify_v130_local_notification_boundary.sh --self-test` | v1.3.0 로컬 알림 경계 자체검증 | 실제 알림 권한 요청이나 앱 실행 없이 README/ROADMAP/AGENTS와 v1.3.0 문서가 `UserNotifications` 로컬 알림, 사용자 opt-in, 계정 의존 기능명 미나열 경계를 지키는지 확인합니다. |
+| `script/verify_v130_release_readiness.sh --self-test` | v1.3.0 릴리즈 준비 감사 자체검증 | 릴리즈 workflow나 GUI 실행 없이 v1.3.0 잔여 이슈 분류, 수동 smoke 경계, 릴리즈 실행 스텝 문서화를 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_v110_priority_plan.sh --self-test` | v1.1.0 우선 항목 계획 자체검증 | 로드맵의 우선 항목 7개와 수동/외부 증거 경계를 확인합니다. |
 | `script/verify_v110_manual_runbook.sh --self-test` | v1.1.0 수동/외부 runbook 자체검증 | 실제 검수를 실행하지 않고 7개 항목의 evidence id, 순서, 기록 명령, 금지 경계를 확인합니다. |

@@ -110,6 +110,7 @@ v1.2.3 제외 경계:
 목표는 MacDog를 열지 않아도 Codex 사용량 위험 구간을 놓치지 않고, popover를 열었을 때 각 탭의 현재 상태와 다음 행동이 더 빨리 읽히게 만드는 것입니다.
 
 세부 구현 범위와 검증 경계는 [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md)에 둡니다.
+릴리즈 준비 감사와 릴리즈 실행 스텝은 [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md)에 둡니다.
 이 문서는 `v.1.3.0` 브랜치의 알림/탭 UI 작업 범위, 제외 경계, 검증 기준을 고정합니다.
 
 v1.3.0 구현 범위:
@@ -171,6 +172,7 @@ v1.3.0 완료 기준:
 - `git diff --check`, 관련 focused `swift test`, 전체 `swift test`, 필요한 경우 Xcode Debug build가 통과합니다.
 - UI를 직접 열지 않았다면 `UI 확인 미수행`으로 보고합니다.
 - `./script/verify_v130_local_notification_boundary.sh --self-test`가 통과합니다.
+- `./script/verify_v130_release_readiness.sh --self-test`가 v1.3.0 잔여 이슈 정리와 릴리즈 실행 스텝을 확인합니다.
 
 ## v1.1.0 완료 증거와 재검수 경계
 

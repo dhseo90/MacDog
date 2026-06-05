@@ -281,6 +281,7 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 결정과 제외 경계
 - [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 구현/검증 기록
 - [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md): v1.3.0 알림과 탭 UI 개선 범위
+- [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md): v1.3.0 릴리즈 준비 감사와 릴리즈 실행 스텝
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

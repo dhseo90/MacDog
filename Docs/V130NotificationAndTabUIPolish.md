@@ -6,6 +6,8 @@
 기준 릴리즈: v1.2.3
 작업 브랜치: `v.1.3.0`
 
+릴리즈 준비 감사와 릴리즈 실행 스텝은 [V130ReleaseReadiness.md](V130ReleaseReadiness.md)에 둡니다.
+
 ## 목적
 
 v1.3.0은 MacDog가 단순히 사용량을 보여주는 앱에서, 위험 구간을 먼저 알려주는 개발 도구로 한 단계 나아가는 범위입니다.
@@ -43,12 +45,12 @@ v1.3.0은 MacDog가 단순히 사용량을 보여주는 앱에서, 위험 구간
 
 - Apple Developer Documentation: `UserNotifications` local notification scheduling과 permission request
 
-## 알림 정책 초안
+## 알림 정책
 
 알림 이벤트는 기본 `rateLimitsByLimitId.codex`의 5시간/주간 window를 기준으로 판단합니다.
 러너 속도와 동일하게 `max(fiveHour.usedPercent, weekly.usedPercent)`를 기본 위험도로 사용하되, 알림 문구에는 실제로 threshold를 넘긴 window 이름을 함께 표시합니다.
 
-| 이벤트 | 조건 초안 | 예시 문구 방향 | 반복 방지 |
+| 이벤트 | 조건 | 예시 문구 방향 | 반복 방지 |
 | --- | --- | --- | --- |
 | 사용량 높음 | 5시간 또는 주간 사용률 80% 이상 | `Codex 사용량 80% 이상` | 같은 window/reset 안에서 1회 |
 | 한도 임박 | 5시간 또는 주간 사용률 95% 이상 | `한도 임박 · reset까지 ...` | 같은 window/reset 안에서 1회 |
@@ -65,7 +67,7 @@ v1.3.0은 MacDog가 단순히 사용량을 보여주는 앱에서, 위험 구간
 - 테스트 알림 버튼: v1.3.0 MVP에 포함하지 않음
 - dedupe 저장 위치: `UserDefaults` 기반 앱 설정으로 시작하고 cache schema에는 넣지 않음
 
-## 탭별 UI 개선 초안
+## 탭별 UI 개선
 
 ### 1. Codex 사용량 탭
 
