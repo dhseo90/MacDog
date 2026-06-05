@@ -93,10 +93,56 @@ final class InstallerCleanupControllerTests: XCTestCase {
         XCTAssertEqual(detachedVolumes, [volume])
     }
 
+    func testLegacyDismissedFlagDoesNotSuppressNewInstallerArtifacts() throws {
+        let defaults = try temporaryDefaults()
+        defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
+
+        let plan = InstallerCleanupPlan(
+            mountedInstallerVolumes: [
+                URL(fileURLWithPath: "/Volumes/MacDog 1.3.0", isDirectory: true)
+            ],
+            downloadedInstallerFiles: []
+        )
+
+        XCTAssertTrue(InstallerCleanupController.shouldShowPrompt(for: plan, defaults: defaults))
+    }
+
+    func testPromptDismissalIsScopedToInstallerArtifactSignature() throws {
+        let defaults = try temporaryDefaults()
+        let previousPlan = InstallerCleanupPlan(
+            mountedInstallerVolumes: [
+                URL(fileURLWithPath: "/Volumes/MacDog 1.2.3", isDirectory: true)
+            ],
+            downloadedInstallerFiles: [
+                URL(fileURLWithPath: "/Users/test/Downloads/MacDog-1.2.3.dmg")
+            ]
+        )
+        let currentPlan = InstallerCleanupPlan(
+            mountedInstallerVolumes: [
+                URL(fileURLWithPath: "/Volumes/MacDog 1.3.0", isDirectory: true)
+            ],
+            downloadedInstallerFiles: [
+                URL(fileURLWithPath: "/Users/test/Downloads/MacDog-1.3.0.dmg")
+            ]
+        )
+
+        InstallerCleanupController.recordPromptDismissed(for: previousPlan, defaults: defaults)
+
+        XCTAssertFalse(InstallerCleanupController.shouldShowPrompt(for: previousPlan, defaults: defaults))
+        XCTAssertTrue(InstallerCleanupController.shouldShowPrompt(for: currentPlan, defaults: defaults))
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("MacDogInstallerCleanupTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    private func temporaryDefaults() throws -> UserDefaults {
+        let suiteName = "MacDogInstallerCleanupTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
     }
 }
