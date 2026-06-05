@@ -246,23 +246,51 @@ swift test --filter PopoverScreenshotRendererTests
 - `install.sh`, `cp`, `ditto`, `rsync`, Finder 숨김 조작, 화면 밖 Finder 창, hdiutil mount 후 직접 복사, 앱 번들 직접 교체는 사용자 설치 검수의 대체 수단으로 금지합니다.
 - 실제 drag-and-drop을 수행하거나 관찰할 수 없으면 즉시 `미수행`으로 보고합니다.
 
-릴리즈 준비/종료 요청이 있을 때는 아래 조건을 모두 완료해야 릴리즈 완료로 봅니다.
+릴리즈 준비/종료 요청이 있을 때는 버전별 세부 문서와 별개로 아래 공용 순서를 따릅니다.
+아래 조건을 모두 완료해야 릴리즈 완료로 봅니다.
 
-1. 대상 브랜치, 이전 릴리즈 브랜치, `main` 포함 여부를 확인합니다.
-2. PR 생성 전 `git diff --check`와 범위별 필수 테스트를 통과시킵니다.
-3. 릴리즈 PR을 생성하고 CI/리뷰를 확인합니다.
-4. 필요한 리뷰 반영은 같은 브랜치에서 수정, 테스트, 커밋, 푸시로 반복합니다.
-5. PR merge 후 `origin/main` 최신 SHA를 release head로 기록합니다.
-6. stale draft release와 원격 tag 중복을 확인합니다.
-7. `Release Candidate`와 `Draft Release` workflow를 최신 release head 기준으로 실행하고 asset/checksum을 확인합니다.
-8. draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
-9. stale draft가 아님을 확인한 뒤 publish하고, publish 후 tag와 `isDraft=false`를 확인합니다.
-10. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
-11. 설치 검수가 필요한 릴리즈 종료라면 Finder에서 실제 drag-and-drop 설치를 수행합니다.
-12. 설치본 기준 `codex-usage`, usage cache LaunchAgent, 실행 중인 app path, cache contract를 확인합니다.
-13. live fetch 성공 시 5시간/주간 window와 weekly history append diagnostic을 확인하고, 실패 시 error snapshot으로 분리합니다.
-14. `./script/cleanup_release_smoke_state.sh --apply`와 `./script/verify_release_final_state.sh --version X.Y.Z`로 smoke 잔여물을 닫습니다.
-15. 브랜치 정리는 release branch가 `main`과 `origin/main`에 포함된 것을 확인한 뒤에만 수행합니다.
+1. 커밋 준비
+   - `git status --short --branch`와 `git diff --stat`로 현재 변경 범위와 브랜치를 확인합니다.
+   - 새 파일은 `??` 또는 staged `A` 항목까지 확인하고, 버전별 로드맵/릴리즈 문서가 요구하는 핵심 source, test, docs가 누락되지 않았는지 확인합니다.
+   - PR 생성 전 `git diff --check`, 범위별 focused test, 전체 `swift test`를 통과시킵니다.
+   - macOS 앱 변경이 있으면 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO` 또는 현재 repo의 공식 Xcode build 명령을 통과시킵니다.
+   - 검증 실패 시 즉시 중단하고 커밋하지 않습니다.
+   - 검증 통과 후에만 릴리즈 범위 변경을 커밋합니다.
+2. 릴리즈 브랜치와 PR
+   - 현재 변경이 `main`에 직접 있으면 릴리즈용 브랜치로 분리합니다.
+   - `<release-branch>`를 push하고 `<release-branch> -> main` PR을 생성합니다.
+   - PR CI와 리뷰를 확인합니다.
+   - 리뷰 또는 CI 실패 시 같은 브랜치에서 수정, 테스트, 커밋, push를 반복합니다.
+   - merge 후 `origin/main` 최신 SHA를 `<version>` release head로 기록합니다.
+3. 패키징과 GitHub Release
+   - GitHub Release 업데이트와 패키징은 릴리즈 준비의 필수 단계입니다.
+   - 원격 tag `v<version>`이 없는지 확인합니다.
+   - `Release Candidate` workflow 또는 로컬 packaging script를 최신 release head 기준으로 실행합니다.
+   - 생성된 `.dmg`와 `.dmg.sha256` artifact를 확인하고, 다운로드 후 checksum과 `hdiutil verify`를 확인합니다.
+   - `Draft Release` workflow는 승인된 unsigned/stable 입력값으로 실행합니다.
+   - draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+   - draft asset에는 `MacDog-<version>.dmg`와 `MacDog-<version>.dmg.sha256`가 포함되어야 합니다.
+   - stale draft가 아니고 `targetCommitish`가 최신 release head일 때만 publish합니다.
+   - publish 후 `isDraft=false`, tag `v<version>` 생성, published asset download URL을 확인합니다.
+   - published asset을 다시 다운로드해 checksum과 `hdiutil verify`를 재확인합니다.
+4. 릴리즈 tag 기준
+   - release tag `v<version>`은 반드시 최종 release head, 즉 릴리즈에 포함될 마지막 커밋을 가리켜야 합니다.
+   - 마지막 커밋 이후 tag가 생성됐는지 확인합니다.
+   - tag가 최신 release head가 아닌 다른 SHA를 가리키면 publish하지 않고 중단합니다.
+5. 실제 설치와 GUI smoke
+   - 설치 검수는 published DMG를 Finder에서 열고, Finder 창에 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 인정합니다.
+   - `install.sh`, `cp`, `ditto`, `rsync`, `hdiutil mount` 후 직접 복사는 설치 검수 대체 수단으로 인정하지 않습니다.
+   - `/Applications/MacDog.app` 기준으로 앱 실행, menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
+   - `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
+   - `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`로 cache 계약을 확인합니다.
+   - live fetch 성공 시 weekly history append diagnostic과 history sample을 확인합니다.
+   - live fetch 실패 시 stale/error snapshot인지 분리해서 보고합니다.
+6. Release smoke 종료
+   - `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.
+   - `./script/verify_release_final_state.sh --version <version>`을 실행합니다.
+   - release branch가 `main`과 `origin/main`에 포함됐는지 확인한 뒤에만 브랜치 정리를 진행합니다.
+   - 로컬/원격 release branch 삭제는 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 수행합니다.
+   - 정리 후 `git branch -a`로 release branch 잔여 여부를 확인합니다.
 
 브랜치 삭제 전 필수 확인:
 
