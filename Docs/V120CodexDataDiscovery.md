@@ -4,10 +4,7 @@
 
 v1.2.0은 Codex 사용량 쪽에서 MacDog가 아직 보여주지 않는 안전하고 유용한 데이터가 있는지 확인하는 관문입니다. 첫 구현은 `codex-usage doctor`에 사용량 묶음과 필드 목록을 구조 요약으로 보여주는 고급 진단을 추가하는 것입니다.
 
-이 문서는 `ROADMAP.md`의 v1.2.0 계획을 보조합니다. 세부 설계와 단계별 구현 계획은 아래 문서에 둡니다.
-
-- `Docs/superpowers/specs/2026-06-03-codex-data-discovery-macdog-utility-core-design.md`
-- `Docs/superpowers/plans/2026-06-03-codex-data-discovery-plan.md`
+이 문서는 `ROADMAP.md`의 v1.2.0 계획과 완료 결정을 보조합니다. 구현이 끝난 뒤 남은 긴 실행 계획 문서는 제거하고, 실제 유지해야 하는 경계와 결정만 이 문서에 남깁니다.
 
 ## 현재 확인된 Codex 데이터
 
@@ -124,7 +121,7 @@ Codex 데이터 탐색 관문이 끝나면 아래 중 하나로 결정합니다.
 - 추가 bucket은 `doctor` 고급 진단에 유지하고, 기본 runner 속도 계산, popover 기본 행, cache schema에는 섞지 않습니다.
 - 다음 v1.2.0 작업은 유틸리티 코어 정리 계획으로 이동합니다.
 
-후속 문서:
+후속 결정:
 
-- `Docs/V120UtilityCoreRefactor.md`
-- `Docs/superpowers/plans/2026-06-03-macdog-utility-core-refactor-plan.md`
+- 추가 Codex UI를 만들지 않고, `doctor` 고급 진단만 유지합니다.
+- `MenuBarController`와 `UsagePopoverView` 책임 분리 구현은 v1.2.3 범위에서 완료했고, 실제 구현/검증 기록은 `Docs/V123UtilityCoreCleanup.md`에 남깁니다.

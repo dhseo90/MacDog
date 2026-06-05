@@ -261,25 +261,19 @@ Docs/                                   보조 설계/검증 문서
 ## 문서
 
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 잔여 이슈
-- [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
-- [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 경계
-- [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
 - [Docs/Scripts.md](Docs/Scripts.md): `script/*.sh` 용도와 영향 범위
-- [Docs/V110PriorityVerification.md](Docs/V110PriorityVerification.md): v1.1.0 우선 항목 완료 증거와 수동/외부 gate 경계
-- [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md): v1.1.0 실제 수동/외부 검수 순서
-- [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md): v1.1.0 실제 수동/외부 검수 증거 현황
-- [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
-- [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 보강 항목 read-only/self-test 검증 경계
-- [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 범위와 Apple Developer 제외 경계
-- [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 범위와 실제 구현 점검
-- [Docs/V123NextDesignPlan.md](Docs/V123NextDesignPlan.md): v1.2.3 이후 module/release/product 설계 작업 순서
-- `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
-- `./script/verify_v110_reinforcement_plan.sh --self-test`: v1.1.0 보강 항목 문서 연결과 로컬 self-test 확인
+- [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release, DMG, release smoke, 브랜치 정리 경계
+- [Docs/GitHubReleaseChecklist.md](Docs/GitHubReleaseChecklist.md): PR 보호 규칙과 GitHub Release 체크리스트
+- [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
+- [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
+- [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): optional WidgetKit 패키징 경계
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과
 - [Docs/PrivilegedHelperPlan.md](Docs/PrivilegedHelperPlan.md): 권한 도우미 설치와 IPC contract
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 연동 조사 결과
-- [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release와 DMG 배포 계획
-- [Docs/GitHubReleaseChecklist.md](Docs/GitHubReleaseChecklist.md): PR 보호 규칙과 GitHub Release 체크리스트
+- [Docs/V110PriorityVerification.md](Docs/V110PriorityVerification.md), [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md), [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md), [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json), [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 수동/외부 검수 ledger와 보강 검증 경계
+- [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 결정과 제외 경계
+- [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 구현/검증 기록
+- [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md): v1.3.0 알림과 탭 UI 개선 범위
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
