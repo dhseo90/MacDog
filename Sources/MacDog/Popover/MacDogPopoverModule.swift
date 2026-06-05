@@ -49,8 +49,10 @@ enum MacDogPopoverModule: String, CaseIterable, Identifiable {
 
     var usesScrollableContent: Bool {
         switch self {
-        case .codex, .mac, .sleep, .battery, .settings:
+        case .codex, .mac, .sleep, .battery:
             false
+        case .settings:
+            true
         }
     }
 }

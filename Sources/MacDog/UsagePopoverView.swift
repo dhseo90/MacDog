@@ -4,17 +4,20 @@ struct UsagePopoverView: View {
     let state: UsageMonitorState
     let onPreferencesChanged: () -> Void
     let onAction: (PetAction) -> Void
+    let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
 
     @AppStorage(RunnerPreferences.popoverModuleKey) private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
 
     init(
         state: UsageMonitorState,
         onPreferencesChanged: @escaping () -> Void = {},
-        onAction: @escaping (PetAction) -> Void = { _ in }
+        onAction: @escaping (PetAction) -> Void = { _ in },
+        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
     ) {
         self.state = state
         self.onPreferencesChanged = onPreferencesChanged
         self.onAction = onAction
+        self.notificationAuthorizationClient = notificationAuthorizationClient
     }
 
     var body: some View {
@@ -124,7 +127,8 @@ struct UsagePopoverView: View {
             SettingsPanel(
                 privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
                 onAction: onAction,
-                onPreferencesChanged: onPreferencesChanged
+                onPreferencesChanged: onPreferencesChanged,
+                notificationAuthorizationClient: notificationAuthorizationClient
             )
         }
     }

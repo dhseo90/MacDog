@@ -558,7 +558,7 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(MacDogPopoverModule.mac.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
-        XCTAssertFalse(MacDogPopoverModule.settings.usesScrollableContent)
+        XCTAssertTrue(MacDogPopoverModule.settings.usesScrollableContent)
         XCTAssertGreaterThan(CodexUsagePanelLayout.weeklyGraphHeight, 0)
         XCTAssertLessThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 90)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphYAxisWidth, 28)

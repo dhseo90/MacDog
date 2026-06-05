@@ -6,14 +6,30 @@ struct SettingsPanel: View {
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
+    let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
 
     @AppStorage(RunnerPreferences.desktopPetEnabledKey) private var desktopPetEnabled = false
     @AppStorage(RunnerPreferences.reducedMotionKey) private var reducedMotion = false
     @AppStorage(RunnerPreferences.animationPausedKey) private var animationPaused = false
     @AppStorage(RunnerPreferences.loginLaunchEnabledKey) private var loginLaunchEnabled = RunnerPreferences.defaultLoginLaunchEnabled
+    @AppStorage(RunnerPreferences.usageNotificationsEnabledKey) private var usageNotificationsEnabled = RunnerPreferences.defaultUsageNotificationsEnabled
+    @AppStorage(RunnerPreferences.usageResetSoonNotificationsEnabledKey) private var usageResetSoonNotificationsEnabled = RunnerPreferences.defaultUsageResetSoonNotificationsEnabled
     @State private var loginLaunchErrorMessage: String?
+    @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
 
     private let loginLaunchController = LoginLaunchController()
+
+    init(
+        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot,
+        onAction: @escaping (PetAction) -> Void,
+        onPreferencesChanged: @escaping () -> Void,
+        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
+    ) {
+        self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
+        self.onAction = onAction
+        self.onPreferencesChanged = onPreferencesChanged
+        self.notificationAuthorizationClient = notificationAuthorizationClient
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -31,6 +47,16 @@ struct SettingsPanel: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+            }
+
+            Divider()
+
+            PopoverFormSection(title: "알림", systemImage: "bell.badge") {
+                UsageNotificationSettingsContent(
+                    snapshot: notificationSettingsSnapshot,
+                    usageNotificationsEnabled: $usageNotificationsEnabled,
+                    resetSoonNotificationsEnabled: $usageResetSoonNotificationsEnabled
+                )
             }
 
             Divider()
@@ -56,6 +82,9 @@ struct SettingsPanel: View {
                 }
             }
         }
+        .task {
+            await refreshNotificationAuthorizationStatus()
+        }
         .onChange(of: desktopPetEnabled) { _, enabled in
             RunnerPreferences.setDesktopPetEnabled(enabled)
             deferredPreferencesChanged()
@@ -78,6 +107,31 @@ struct SettingsPanel: View {
             }
             deferredPreferencesChanged()
         }
+        .onChange(of: usageNotificationsEnabled) { _, enabled in
+            RunnerPreferences.setUsageNotificationsEnabled(enabled)
+            if enabled {
+                Task {
+                    await requestNotificationAuthorization()
+                }
+            } else {
+                Task {
+                    await refreshNotificationAuthorizationStatus()
+                }
+            }
+            deferredPreferencesChanged()
+        }
+        .onChange(of: usageResetSoonNotificationsEnabled) { _, enabled in
+            RunnerPreferences.setUsageResetSoonNotificationsEnabled(enabled)
+            deferredPreferencesChanged()
+        }
+    }
+
+    private var notificationSettingsSnapshot: UsageNotificationSettingsSnapshot {
+        UsageNotificationSettingsSnapshot(
+            usageNotificationsEnabled: usageNotificationsEnabled,
+            resetSoonNotificationsEnabled: usageResetSoonNotificationsEnabled,
+            authorizationStatus: notificationAuthorizationStatus
+        )
     }
 
     private func settingsToggle(_ title: String, isOn: Binding<Bool>) -> some View {
@@ -93,6 +147,75 @@ struct SettingsPanel: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
             onPreferencesChanged()
         }
+    }
+
+    @MainActor
+    private func refreshNotificationAuthorizationStatus() async {
+        notificationAuthorizationStatus = await notificationAuthorizationClient.authorizationStatus()
+    }
+
+    @MainActor
+    private func requestNotificationAuthorization() async {
+        notificationAuthorizationStatus = await notificationAuthorizationClient.requestAuthorization()
+    }
+}
+
+private struct UsageNotificationSettingsContent: View {
+    let snapshot: UsageNotificationSettingsSnapshot
+    @Binding var usageNotificationsEnabled: Bool
+    @Binding var resetSoonNotificationsEnabled: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 7, height: 7)
+                Text(snapshot.deliveryStatusTitle)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text(snapshot.permissionSummary)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            }
+
+            Text(snapshot.deliveryStatusDetail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Toggle("Codex 사용량 알림", isOn: $usageNotificationsEnabled)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                Toggle("Reset 30분 전 알림", isOn: $resetSoonNotificationsEnabled)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .disabled(!usageNotificationsEnabled)
+            }
+        }
+    }
+
+    private var statusColor: Color {
+        if snapshot.canDeliverNotifications {
+            return Color.green
+        }
+
+        if snapshot.usageNotificationsEnabled {
+            return Color.orange
+        }
+
+        return Color.secondary
     }
 }
 

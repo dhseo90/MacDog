@@ -28,6 +28,8 @@ struct RunnerPreferences: Equatable {
     static let sleepPreventionPreventClosedLidSleepKey = "sleepPreventionPreventClosedLidSleep"
     static let sleepPreventionDisableScreenLockKey = "sleepPreventionDisableScreenLock"
     static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
+    static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
+    static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
@@ -46,6 +48,8 @@ struct RunnerPreferences: Equatable {
     static let defaultSleepPreventionPreventClosedLidSleep = true
     static let defaultSleepPreventionDisableScreenLock = true
     static let defaultLoginLaunchEnabled = true
+    static let defaultUsageNotificationsEnabled = false
+    static let defaultUsageResetSoonNotificationsEnabled = true
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -80,7 +84,9 @@ struct RunnerPreferences: Equatable {
             sleepPreventionPreventDisplaySleepKey: defaultSleepPreventionPreventDisplaySleep,
             sleepPreventionPreventClosedLidSleepKey: defaultSleepPreventionPreventClosedLidSleep,
             sleepPreventionDisableScreenLockKey: defaultSleepPreventionDisableScreenLock,
-            chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent
+            chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent,
+            usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
+            usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled
         ])
     }
 
@@ -109,6 +115,8 @@ struct RunnerPreferences: Equatable {
     let sleepPreventionPreventClosedLidSleep: Bool
     let sleepPreventionDisableScreenLock: Bool
     let chargeLimitTargetPercent: Int
+    let usageNotificationsEnabled: Bool
+    let usageResetSoonNotificationsEnabled: Bool
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -182,6 +190,8 @@ struct RunnerPreferences: Equatable {
         self.sleepPreventionPreventClosedLidSleep = Self.sleepPreventionPreventClosedLidSleep(defaults: defaults)
         self.sleepPreventionDisableScreenLock = Self.sleepPreventionDisableScreenLock(defaults: defaults)
         self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
+        self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
+        self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -364,6 +374,28 @@ struct RunnerPreferences: Equatable {
 
     static func setLoginLaunchEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: loginLaunchEnabledKey)
+    }
+
+    static func usageNotificationsEnabled(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: usageNotificationsEnabledKey) != nil else {
+            return defaultUsageNotificationsEnabled
+        }
+        return defaults.bool(forKey: usageNotificationsEnabledKey)
+    }
+
+    static func setUsageNotificationsEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: usageNotificationsEnabledKey)
+    }
+
+    static func usageResetSoonNotificationsEnabled(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: usageResetSoonNotificationsEnabledKey) != nil else {
+            return defaultUsageResetSoonNotificationsEnabled
+        }
+        return defaults.bool(forKey: usageResetSoonNotificationsEnabledKey)
+    }
+
+    static func setUsageResetSoonNotificationsEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: usageResetSoonNotificationsEnabledKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
