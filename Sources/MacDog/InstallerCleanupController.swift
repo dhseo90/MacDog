@@ -19,10 +19,21 @@ struct InstallerCleanupPlan: Equatable {
         }
         return parts.isEmpty ? "정리할 설치 파일이 없습니다." : parts.joined(separator: ", ")
     }
+
+    fileprivate var promptSignature: String {
+        let volumeParts = mountedInstallerVolumes
+            .map { "volume:\($0.standardizedFileURL.path)" }
+            .sorted()
+        let fileParts = downloadedInstallerFiles
+            .map { "file:\($0.standardizedFileURL.path)" }
+            .sorted()
+        return (volumeParts + fileParts).joined(separator: "\n")
+    }
 }
 
 struct InstallerCleanupController {
     static let promptDismissedKey = "installerCleanupPromptDismissed"
+    private static let promptDismissedPlanSignatureKey = "installerCleanupPromptDismissedPlanSignature"
 
     private let homeDirectory: URL
     private let fileManager: FileManager
@@ -51,6 +62,32 @@ struct InstallerCleanupController {
             mountedInstallerVolumes: mountedInstallerVolumes(),
             downloadedInstallerFiles: downloadedInstallerFiles()
         )
+    }
+
+    static func shouldShowPrompt(
+        for plan: InstallerCleanupPlan,
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        guard !plan.isEmpty else { return false }
+        return defaults.string(forKey: promptDismissedPlanSignatureKey) != plan.promptSignature
+    }
+
+    static func recordPromptDismissed(
+        for plan: InstallerCleanupPlan,
+        defaults: UserDefaults = .standard
+    ) {
+        guard !plan.isEmpty else {
+            clearPromptDismissal(defaults: defaults)
+            return
+        }
+
+        defaults.set(true, forKey: promptDismissedKey)
+        defaults.set(plan.promptSignature, forKey: promptDismissedPlanSignatureKey)
+    }
+
+    static func clearPromptDismissal(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: promptDismissedKey)
+        defaults.removeObject(forKey: promptDismissedPlanSignatureKey)
     }
 
     func cleanup(_ plan: InstallerCleanupPlan) throws {

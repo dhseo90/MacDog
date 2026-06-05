@@ -259,13 +259,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func showInstallerCleanupPromptIfNeeded() {
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: InstallerCleanupController.promptDismissedKey) else { return }
-
         let plan = installerCleanupController.cleanupPlan()
+
         guard !plan.isEmpty else {
-            defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
+            InstallerCleanupController.clearPromptDismissal(defaults: defaults)
             return
         }
+        guard InstallerCleanupController.shouldShowPrompt(for: plan, defaults: defaults) else { return }
 
         let alert = NSAlert()
         alert.messageText = "설치 파일 정리"
@@ -278,11 +278,14 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         alert.addButton(withTitle: "정리")
         alert.addButton(withTitle: "나중에")
 
-        defaults.set(true, forKey: InstallerCleanupController.promptDismissedKey)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            InstallerCleanupController.recordPromptDismissed(for: plan, defaults: defaults)
+            return
+        }
 
         do {
             try installerCleanupController.cleanup(plan)
+            InstallerCleanupController.clearPromptDismissal(defaults: defaults)
         } catch {
             showPrivilegedHelperAlert(
                 title: "설치 파일 정리 실패",
