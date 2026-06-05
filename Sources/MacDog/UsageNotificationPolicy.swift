@@ -101,14 +101,14 @@ struct UsageNotificationCandidate: Equatable, Sendable {
     }
 }
 
-enum UsageNotificationEvent: String, Equatable, Sendable {
+enum UsageNotificationEvent: String, Codable, Equatable, Sendable {
     case highUsage
     case approachingLimit
     case limitReached
     case resetSoon
 }
 
-enum UsageNotificationWindow: String, Equatable, Sendable {
+enum UsageNotificationWindow: String, Codable, Equatable, Sendable {
     case fiveHour
     case weekly
 
@@ -122,7 +122,7 @@ enum UsageNotificationWindow: String, Equatable, Sendable {
     }
 }
 
-struct UsageNotificationDedupeKey: Hashable, Sendable {
+struct UsageNotificationDedupeKey: Codable, Hashable, Sendable {
     let event: UsageNotificationEvent
     let window: UsageNotificationWindow
     let resetsAt: Int?
