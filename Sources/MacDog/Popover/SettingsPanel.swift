@@ -33,13 +33,22 @@ struct SettingsPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            PopoverStatusSummary(
+                content: SettingsPanelSummaryContent(
+                    notificationSettings: notificationSettingsSnapshot,
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
+                    loginLaunchEnabled: loginLaunchEnabled,
+                    desktopPetEnabled: desktopPetEnabled,
+                    reducedMotion: reducedMotion,
+                    animationPaused: animationPaused
+                ).popoverSummary
+            )
+
+            Divider()
+
             PopoverFormSection(title: "앱 실행", systemImage: "power") {
                 VStack(alignment: .leading, spacing: 5) {
                     settingsToggle("로그인 시 MacDog 실행", isOn: $loginLaunchEnabled)
-                    Text("끄면 재부팅 후 로그인해도 MacDog가 자동으로 실행되지 않습니다.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                     if let loginLaunchErrorMessage {
                         Text(loginLaunchErrorMessage)
                             .font(.caption2)
@@ -67,6 +76,8 @@ struct SettingsPanel: View {
                     onAction: onAction
                 )
             }
+
+            Color.clear.frame(height: 12)
 
             Divider()
 

@@ -11,14 +11,12 @@ struct BatteryPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ResourceMetricBlock(
-                title: "배터리",
-                systemImage: "battery.100percent",
-                value: snapshot.battery.summary,
-                details: [
-                    snapshot.battery.powerSummary
-                ],
-                progress: snapshot.battery.percent.map { Double($0) / 100 }
+            PopoverStatusSummary(
+                content: BatteryPanelSummaryContent(
+                    snapshot: snapshot,
+                    effectiveTargetPercent: effectiveChargeLimitTargetPercent,
+                    chargeLimitErrorMessage: chargeLimitErrorMessage
+                ).popoverSummary
             )
 
             Divider()

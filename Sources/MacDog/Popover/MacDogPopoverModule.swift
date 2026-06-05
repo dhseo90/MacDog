@@ -89,17 +89,19 @@ enum CodexUsagePanelLayout {
 }
 
 enum MacResourcesPanelLayout {
-    static let verticalSpacing: CGFloat = 8
-    static let sparklineHeight: CGFloat = 30
-    static let trendBlockHeight: CGFloat = 68
-    static let storageBlockHeight: CGFloat = 54
-    static let networkBlockHeight: CGFloat = 56
+    static let verticalSpacing: CGFloat = 5
+    static let sparklineHeight: CGFloat = 22
+    static let summaryBlockHeight: CGFloat = 46
+    static let trendBlockHeight: CGFloat = 58
+    static let storageBlockHeight: CGFloat = 48
+    static let networkBlockHeight: CGFloat = 50
 
     static var estimatedContentHeight: CGFloat {
-        (trendBlockHeight * 2)
+        summaryBlockHeight
+            + (trendBlockHeight * 2)
             + storageBlockHeight
             + networkBlockHeight
-            + (MacDogPopoverLayout.dividerHeight * 3)
-            + (verticalSpacing * 6)
+            + (MacDogPopoverLayout.dividerHeight * 4)
+            + (verticalSpacing * 7)
     }
 }
