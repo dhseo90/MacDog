@@ -287,7 +287,8 @@ git merge-base --is-ancestor origin/<release-branch> origin/main
 4. RunCat 참고 범위가 과장되거나 asset 복제로 오해되지 않는지
 5. Apple Developer Program이 필요한 항목이 현재 구현 계획, 완료 조건, 후속 이슈에 들어가지 않았는지
 6. `구현 완료`, `MVP 완료`, `1차 구현`, `후속 예정`, `실험 기능`, `검증 미수행`이 구분되는지
-7. 실행하지 않은 검증을 완료처럼 쓰지 않았는지
+7. 알림 문서가 `UserNotifications` 로컬 알림, 기본 꺼짐, 설정 탭 opt-in, macOS 알림 권한 승인, JSON/cache/app-server 계약 유지와 일치하는지
+8. 실행하지 않은 검증을 완료처럼 쓰지 않았는지
 
 문서가 스크립트의 검증 대상이면 삭제/병합 전에 참조를 확인하고, 필요한 경우 검증 스크립트 또는 상위 문서를 함께 갱신합니다.
 

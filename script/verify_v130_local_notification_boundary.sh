@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROADMAP="$ROOT_DIR/ROADMAP.md"
+README="$ROOT_DIR/README.md"
 DOC="$ROOT_DIR/Docs/V130NotificationAndTabUIPolish.md"
+AGENTS="$ROOT_DIR/AGENTS.md"
 SCRIPTS_DOC="$ROOT_DIR/Docs/Scripts.md"
 SELF_TEST=0
 
@@ -59,15 +61,26 @@ require_absent() {
 extract_v130_roadmap_section() {
   local output="$1"
   /usr/bin/awk '
-    /^## v1\.3\.0 / { capture = 1; print; next }
+    /^## v1\.3\.0([ :]|$)/ { capture = 1; print; next }
     capture && /^## / { exit }
     capture { print }
   ' "$ROADMAP" >"$output"
 }
 
+extract_readme_notification_section() {
+  local output="$1"
+  /usr/bin/awk '
+    /^## 알림 경계/ { capture = 1; print; next }
+    capture && /^## / { exit }
+    capture { print }
+  ' "$README" >"$output"
+}
+
 verify_local_notification_boundary() {
   require_file "$ROADMAP"
+  require_file "$README"
   require_file "$DOC"
+  require_file "$AGENTS"
   require_file "$SCRIPTS_DOC"
   require_executable "$ROOT_DIR/script/verify_v130_local_notification_boundary.sh"
 
@@ -76,10 +89,13 @@ verify_local_notification_boundary() {
   trap 'rm -rf "$temp_dir"' RETURN
 
   local roadmap_section="$temp_dir/roadmap-v130.md"
+  local readme_section="$temp_dir/readme-notification-boundary.md"
   extract_v130_roadmap_section "$roadmap_section"
+  extract_readme_notification_section "$readme_section"
   [[ -s "$roadmap_section" ]] || die "missing v1.3.0 section in ROADMAP.md"
+  [[ -s "$readme_section" ]] || die "missing notification boundary section in README.md"
 
-  local scoped_files=("$roadmap_section" "$DOC")
+  local scoped_files=("$roadmap_section" "$readme_section" "$DOC")
   local file
   for file in "${scoped_files[@]}"; do
     require_text 'v1\.3\.0.*알림|알림.*v1\.3\.0' "$file" "v1.3.0 notification scope"
@@ -94,6 +110,8 @@ verify_local_notification_boundary() {
     require_absent 'APNs|Apple Push Notification service|Push Notifications|push token|App ID|provisioning profile|App Group|WidgetKit|Developer ID|notarization|App Store Connect|Stable Release' "$file" "$file"
   done
 
+  require_text '알림.*UserNotifications.*로컬 알림|UserNotifications.*로컬 알림.*알림' "$AGENTS" "AGENTS notification documentation boundary"
+  require_text 'README, ROADMAP, AGENTS' "$AGENTS" "AGENTS documentation terminology checklist"
   require_text 'verify_v130_local_notification_boundary\.sh --self-test' "$SCRIPTS_DOC" "Scripts doc reference"
 
   echo "v1.3.0 local notification boundary ok"
