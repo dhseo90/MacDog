@@ -43,7 +43,9 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.sleepPreventionPreventClosedLidSleepKey,
             RunnerPreferences.sleepPreventionDisableScreenLockKey,
             RunnerPreferences.chargeLimitTargetPercentKey,
-            RunnerPreferences.loginLaunchEnabledKey
+            RunnerPreferences.loginLaunchEnabledKey,
+            RunnerPreferences.usageNotificationsEnabledKey,
+            RunnerPreferences.usageResetSoonNotificationsEnabledKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -67,7 +69,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 preferences: preferences,
                 now: MacDogDemoData.readmeScreenshotTimestamp
             )
-            let view = UsagePopoverView(state: state)
+            let view = UsagePopoverView(
+                state: state,
+                notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+            )
             let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
             try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-\(module.rawValue).png"))
         }
@@ -121,7 +126,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             errorMessage: cacheSnapshot.error?.message,
             systemMetrics: .unavailable
         )
-        let view = UsagePopoverView(state: state)
+        let view = UsagePopoverView(
+            state: state,
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+        )
         let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
         try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-live-codex.png"))
     }
@@ -158,6 +166,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.setReducedMotion(false, defaults: defaults)
             RunnerPreferences.setAnimationPaused(false, defaults: defaults)
             RunnerPreferences.setLoginLaunchEnabled(true, defaults: defaults)
+            RunnerPreferences.setUsageNotificationsEnabled(false, defaults: defaults)
+            RunnerPreferences.setUsageResetSoonNotificationsEnabled(true, defaults: defaults)
         }
 
         if module == .battery {

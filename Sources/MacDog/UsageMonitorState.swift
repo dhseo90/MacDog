@@ -159,24 +159,24 @@ struct UsageMonitorState: Equatable {
         }
     }
 
-    var highUsageMessage: String? {
-        if phase == .limit {
-            if let status = selectedWindowStatus {
-                return "한도 도달 · \(status.summary)"
-            }
-            return "한도 도달"
-        }
-
-        guard let status = selectedWindowStatus else { return nil }
-
-        switch phase {
-        case .fast:
-            return "사용량 높음 · \(status.summary)"
-        case .sprint:
-            return "한도 임박 · \(status.remainingSummary)"
-        case .calm, .active, .limit:
+    func codexPanelSummary(
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> CodexUsagePanelSummary? {
+        guard let limit = codexLimit,
+              let status = selectedWindowStatus else {
             return nil
         }
+
+        return CodexUsagePanelSummary(
+            statusTitle: phase.statusLabel,
+            statusDetail: "기준 \(status.summary)",
+            notificationThresholdSummary: Self.notificationThresholdSummary,
+            resetCountdowns: [
+                resetCountdown(label: "5시간", window: limit.fiveHour, now: now, calendar: calendar),
+                resetCountdown(label: "주간", window: limit.weekly, now: now, calendar: calendar)
+            ]
+        )
     }
 
     var isStale: Bool {
@@ -222,6 +222,59 @@ struct UsageMonitorState: Equatable {
         }
         return String(format: "%.1f", value)
     }
+
+    private static var notificationThresholdSummary: String {
+        let resetSoonMinutes = Int(UsageNotificationPolicy.resetSoonLeadTime / 60)
+        let thresholds = [
+            percent(UsageNotificationPolicy.highUsageThresholdPercent),
+            percent(UsageNotificationPolicy.approachingLimitThresholdPercent),
+            percent(UsageNotificationPolicy.limitReachedThresholdPercent)
+        ].joined(separator: "/")
+        return "알림 기준 \(thresholds)% · reset \(resetSoonMinutes)분 전"
+    }
+
+    private func resetCountdown(
+        label: String,
+        window: UsageWindowReport?,
+        now: Date,
+        calendar: Calendar
+    ) -> CodexUsagePanelSummary.ResetCountdown {
+        CodexUsagePanelSummary.ResetCountdown(
+            label: "\(label) reset",
+            value: Self.resetCountdownValue(window, now: now, calendar: calendar)
+        )
+    }
+
+    private static func resetCountdownValue(
+        _ window: UsageWindowReport?,
+        now: Date,
+        calendar: Calendar
+    ) -> String {
+        let summary = UsageWindowStatus.resetSummary(
+            resetsAt: window?.resetsAt,
+            now: now,
+            calendar: calendar
+        )
+        if summary.hasPrefix("초기화까지 ") {
+            return String(summary.dropFirst("초기화까지 ".count))
+        }
+        if summary.hasPrefix("초기화 ") {
+            return String(summary.dropFirst("초기화 ".count))
+        }
+        return summary
+    }
+}
+
+struct CodexUsagePanelSummary: Equatable {
+    struct ResetCountdown: Equatable {
+        let label: String
+        let value: String
+    }
+
+    let statusTitle: String
+    let statusDetail: String
+    let notificationThresholdSummary: String
+    let resetCountdowns: [ResetCountdown]
 }
 
 enum PetStatusReaction: Equatable {

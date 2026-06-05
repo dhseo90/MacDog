@@ -38,12 +38,13 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 ## 주요 기능
 
 - Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태와 주간 잔여량 그래프를 표시합니다.
+- Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80~100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
-- 설정: 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리합니다.
+- 설정: Codex 사용량 알림, 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리합니다.
 - WidgetKit: small/medium 위젯 코드는 남겨두되 기본 앱/DMG에는 포함하지 않습니다. `--with-widget` opt-in build에서만 설치하며, App Group provisioning이 되는 환경에서 별도 검수합니다.
 
 ## 갱신 주기
@@ -52,6 +53,12 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
 - 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행해 앱 cache를 갱신합니다. 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 별도로 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다. WidgetKit timeline은 60초 뒤 갱신을 요청하지만 macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있습니다.
+
+## 알림 경계
+
+v1.3.0 알림은 Apple Developer 계정 없이 가능한 `UserNotifications` 기반 로컬 알림입니다. MacDog는 app-owned usage cache를 읽어 80%, 95%, 한도 도달, reset 30분 전 이벤트를 판단하고, raw app-server 응답이나 auth/session material은 다루지 않습니다.
+
+알림은 기본 꺼짐이며 사용자가 설정 탭에서 켜고 macOS 알림 권한을 승인한 뒤에만 발송합니다. 테스트 알림 버튼은 v1.3.0 범위에 넣지 않습니다. `codex-usage status --json`을 포함한 JSON/cache/app-server 계약은 변경하지 않습니다. Apple Developer 계정이 필요한 기능명은 v1.3.0 완료 조건과 후속 이슈에 나열하지 않습니다.
 
 ## 빠른 시작
 
@@ -261,25 +268,20 @@ Docs/                                   보조 설계/검증 문서
 ## 문서
 
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 잔여 이슈
-- [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
-- [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): WidgetKit 패키징 경계
-- [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
 - [Docs/Scripts.md](Docs/Scripts.md): `script/*.sh` 용도와 영향 범위
-- [Docs/V110PriorityVerification.md](Docs/V110PriorityVerification.md): v1.1.0 우선 항목 완료 증거와 수동/외부 gate 경계
-- [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md): v1.1.0 실제 수동/외부 검수 순서
-- [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md): v1.1.0 실제 수동/외부 검수 증거 현황
-- [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json): v1.1.0 수동/외부 검수 증거의 구조화 원본
-- [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 보강 항목 read-only/self-test 검증 경계
-- [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 범위와 Apple Developer 제외 경계
-- [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 범위와 실제 구현 점검
-- [Docs/V123NextDesignPlan.md](Docs/V123NextDesignPlan.md): v1.2.3 이후 module/release/product 설계 작업 순서
-- `./script/verify_v110_manual_execution_readiness.sh --allow-incomplete`: v1.1.0 실제 검수 착수 가능 상태를 read-only로 요약
-- `./script/verify_v110_reinforcement_plan.sh --self-test`: v1.1.0 보강 항목 문서 연결과 로컬 self-test 확인
+- [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release, DMG, release smoke, 브랜치 정리 경계
+- [Docs/GitHubReleaseChecklist.md](Docs/GitHubReleaseChecklist.md): PR 보호 규칙과 GitHub Release 체크리스트
+- [Docs/RuntimeVerification.md](Docs/RuntimeVerification.md): CPU/RSS runtime 검증 절차
+- [Docs/RunnerBaseline.md](Docs/RunnerBaseline.md): 메뉴바 러너 asset 기준선
+- [Docs/WidgetPackaging.md](Docs/WidgetPackaging.md): optional WidgetKit 패키징 경계
 - [Docs/ClosedDisplayResearch.md](Docs/ClosedDisplayResearch.md): 덮개 닫힘 보호 조사와 검증 결과
 - [Docs/PrivilegedHelperPlan.md](Docs/PrivilegedHelperPlan.md): 권한 도우미 설치와 IPC contract
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 연동 조사 결과
-- [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release와 DMG 배포 계획
-- [Docs/GitHubReleaseChecklist.md](Docs/GitHubReleaseChecklist.md): PR 보호 규칙과 GitHub Release 체크리스트
+- [Docs/V110PriorityVerification.md](Docs/V110PriorityVerification.md), [Docs/V110ManualRunbook.md](Docs/V110ManualRunbook.md), [Docs/V110ManualEvidence.md](Docs/V110ManualEvidence.md), [Docs/V110ManualEvidence.json](Docs/V110ManualEvidence.json), [Docs/V110ReinforcementVerification.md](Docs/V110ReinforcementVerification.md): v1.1.0 수동/외부 검수 ledger와 보강 검증 경계
+- [Docs/V120CodexDataDiscovery.md](Docs/V120CodexDataDiscovery.md): v1.2.0 Codex 데이터 탐색 결정과 제외 경계
+- [Docs/V123UtilityCoreCleanup.md](Docs/V123UtilityCoreCleanup.md): v1.2.3 유틸리티 코어 정리 구현/검증 기록
+- [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md): v1.3.0 알림과 탭 UI 개선 범위
+- [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md): v1.3.0 릴리즈 준비 감사와 릴리즈 실행 스텝
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

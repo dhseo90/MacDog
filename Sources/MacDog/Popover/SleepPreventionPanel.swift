@@ -26,16 +26,18 @@ struct SleepPreventionPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
+            PopoverStatusSummary(
+                content: SleepPreventionPanelSummaryContent(
+                    controlMode: currentControlMode,
+                    status: sleepPreventionStatus,
+                    triggerStatus: sleepPreventionTriggerStatus
+                ).popoverSummary
+            )
+
+            Divider()
+
             PopoverFormSection(title: "제어 방식", systemImage: "power") {
                 controlModeButtons
-
-                Text(controlModeSummary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, currentControlMode == .condition ? 2 : 0)
             }
 
             if currentControlMode == .time {
@@ -273,20 +275,6 @@ struct SleepPreventionPanel: View {
 
     private var showsThresholdSettings: Bool {
         chargingBelowThresholdTriggerEnabled || cpuThresholdTriggerEnabled || memoryThresholdTriggerEnabled
-    }
-
-    private var controlModeSummary: String {
-        switch currentControlMode {
-        case .off:
-            return "꺼짐"
-        case .time:
-            return sleepPreventionStatus.summary
-        case .condition:
-            if sleepPreventionTriggerStatus.isMatched {
-                return sleepPreventionTriggerStatus.summary
-            }
-            return "대기 중 · 기준을 선택하세요"
-        }
     }
 
     private var sleepPreventionErrorMessage: String? {

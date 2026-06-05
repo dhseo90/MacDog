@@ -93,6 +93,42 @@
 13. unsigned 검증용 GitHub draft release가 필요하면 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다.
 14. signed stable 공개 배포는 Apple Developer 의존 항목이므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 
+## 릴리즈 종료 체크리스트
+
+사용자가 `vX.Y.Z 릴리즈 준비`, `릴리즈 종료`, `PR부터 릴리즈까지 진행`처럼 버전 릴리즈를 지시하면 아래 흐름을 완료해야 릴리즈 완료로 기록합니다.
+
+1. 릴리즈 대상 브랜치, 현재 브랜치, 이전 릴리즈 브랜치의 존재 여부를 확인합니다.
+2. 이전 릴리즈 브랜치가 `main`에 포함되지 않았으면 중단하고 사용자 결정을 받습니다.
+3. PR 생성 전 `git diff --check`와 변경 범위의 필수 테스트를 통과시킵니다.
+4. 릴리즈 PR을 생성하고 CI와 리뷰 상태를 확인합니다.
+5. 리뷰 반영은 같은 브랜치에서 수정, 테스트, 커밋, 푸시로 반복합니다.
+6. PR merge 후 `origin/main` 최신 SHA를 release head로 기록합니다.
+7. 기존 draft release가 stale target이면 publish하지 않고 삭제 대상으로 보고합니다.
+8. 원격 tag `vX.Y.Z`가 없는지 확인합니다.
+9. `Release Candidate` workflow와 `Draft Release` workflow를 최신 release head 기준으로 실행합니다.
+10. artifact, checksum, draft `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+11. GitHub Releases 화면에서 stale draft가 아님을 확인한 뒤 publish합니다.
+12. publish 후 `isDraft=false`와 원격 tag 생성을 확인합니다.
+13. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
+14. 설치 검수가 필요한 릴리즈 종료 작업이면 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
+15. 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중인 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
+16. 설치된 CLI 또는 빌드된 CLI로 `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`를 실행합니다.
+17. live fetch 성공 시 5시간/주간 window가 모두 있는 success cache와 `usage-weekly-history.json` sample, `history append: stored ... recordingStartedAt=...` diagnostic을 확인합니다.
+18. live fetch 실패 시 error snapshot인지 확인합니다.
+19. 5시간/주간 window가 없는 `0% 사용 / 100% 남음` 형태의 success cache가 생성되면 실패로 봅니다.
+20. `./script/cleanup_release_smoke_state.sh --apply`로 release smoke 잔여물을 정리합니다.
+21. `./script/verify_release_final_state.sh --version X.Y.Z`가 통과해야 release smoke 종료로 봅니다.
+22. 릴리즈 publish와 final smoke가 끝난 뒤 release branch를 정리합니다.
+
+브랜치 정리 전에는 반드시 아래 조건을 확인합니다.
+
+```sh
+git merge-base --is-ancestor <release-branch> main
+git merge-base --is-ancestor origin/<release-branch> origin/main
+```
+
+둘 중 하나라도 실패하면 브랜치를 삭제하지 않습니다. 원격 브랜치 삭제는 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 수행합니다.
+
 ## GitHub 릴리즈 완료 기준
 
 - GitHub Actions 또는 로컬 release script가 `.dmg`를 재현 가능하게 생성합니다.

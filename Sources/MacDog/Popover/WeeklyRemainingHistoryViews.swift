@@ -863,6 +863,17 @@ struct PressureBanner: View {
 struct UsageRow: View {
     let title: String
     let window: UsageWindowReport?
+    let resetSummary: String?
+
+    init(
+        title: String,
+        window: UsageWindowReport?,
+        resetSummary: String? = nil
+    ) {
+        self.title = title
+        self.window = window
+        self.resetSummary = resetSummary
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -878,6 +889,14 @@ struct UsageRow: View {
             RemainingUsageBar(value: progressValue, tint: tint)
                 .accessibilityLabel("\(title) 남은 사용량")
                 .accessibilityValue(summary)
+
+            if let resetSummary {
+                Text("reset \(resetSummary)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
 
         }
     }

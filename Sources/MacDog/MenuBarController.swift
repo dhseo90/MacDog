@@ -17,6 +17,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let userComponentInstaller = UserComponentInstaller()
     private let installerCleanupController = InstallerCleanupController()
     private let sleepPreventionController = SleepPreventionController()
+    private let usageNotificationDispatcher = UsageNotificationDispatcher()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
@@ -179,6 +180,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             requestUsageCacheRefresh(force: allowLiveRefresh)
         }
         applyState(loadedState.withRefreshing(usageCacheRefreshTask != nil))
+        scheduleUsageNotificationsIfNeeded(for: loadedState)
 
         if previousPhase != state.phase || previousPreferences != preferences {
             restartAnimationTimer()
@@ -221,6 +223,14 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         updatePopoverController()
         statusItem.button?.toolTip = state.toolTip
         renderCurrentFrame()
+    }
+
+    private func scheduleUsageNotificationsIfNeeded(for loadedState: UsageMonitorState) {
+        let settings = UsageNotificationDeliverySettings(preferences: preferences)
+        Task { @MainActor [weak self, loadedState, settings] in
+            guard let self else { return }
+            _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+        }
     }
 
     private func scheduleInstalledAppSetup() {

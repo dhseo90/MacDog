@@ -34,18 +34,20 @@ Checks:
   20. v1.1.0 manual/external evidence ledger is checked without claiming completion.
   21. v1.1.0 manual/external execution readiness is summarized without running it.
   22. v1.1.0 reinforcement item read-only/self-test coverage is checked.
-  23. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
-  24. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
-  25. Shortcuts Charge Limit fallback parser is tested with a local fixture.
-  26. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  27. The current app/helper install state and dist freshness delta can be reported without changing the system.
-  28. Install freshness delta reporting is self-tested with local fixtures.
-  29. Release packaging, version metadata, and release smoke cleanup guardrails are stable.
-  30. Public repository guardrails are present and consistent.
-  31. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  32. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  33. Privileged helper reinstall test plan is safe to stage before actual approval.
-  34. Unless --no-run is passed, the app launches and its process is detected.
+  23. v1.3.0 local notification scope excludes developer-account-only planning items.
+  24. v1.3.0 release readiness separates implementation closure from manual release smoke.
+  25. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
+  26. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
+  27. Shortcuts Charge Limit fallback parser is tested with a local fixture.
+  28. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  29. The current app/helper install state and dist freshness delta can be reported without changing the system.
+  30. Install freshness delta reporting is self-tested with local fixtures.
+  31. Release packaging, version metadata, and release smoke cleanup guardrails are stable.
+  32. Public repository guardrails are present and consistent.
+  33. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  34. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  35. Privileged helper reinstall test plan is safe to stage before actual approval.
+  36. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -160,6 +162,12 @@ echo "==> Verifying v1.1.0 manual execution readiness"
 
 echo "==> Verifying v1.1.0 reinforcement plan"
 ./script/verify_v110_reinforcement_plan.sh --self-test
+
+echo "==> Verifying v1.3.0 local notification boundary"
+./script/verify_v130_local_notification_boundary.sh --self-test
+
+echo "==> Verifying v1.3.0 release readiness"
+./script/verify_v130_release_readiness.sh --self-test
 
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test

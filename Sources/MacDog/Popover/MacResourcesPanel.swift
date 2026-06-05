@@ -6,6 +6,11 @@ struct MacResourcesPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MacResourcesPanelLayout.verticalSpacing) {
+            PopoverStatusSummary(
+                content: MacResourcesPanelSummaryContent(snapshot: snapshot).popoverSummary
+            )
+            Divider()
+
             ResourceTrendBlock(
                 title: "CPU",
                 systemImage: "cpu",
@@ -70,13 +75,13 @@ private struct ResourceTrendBlock: View {
     let tint: Color
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .medium))
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(title)
                         .font(.caption.weight(.semibold))
@@ -98,7 +103,7 @@ private struct ResourceTrendBlock: View {
 
                 SparklineView(values: values, tint: tint)
                     .frame(height: MacResourcesPanelLayout.sparklineHeight)
-                    .padding(.top, 2)
+                    .padding(.top, 1)
             }
         }
     }
@@ -112,13 +117,13 @@ private struct CompactResourceMetricBlock: View {
     let progress: Double?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 19, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(title)
                         .font(.caption.weight(.semibold))
