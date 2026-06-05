@@ -6,10 +6,21 @@ struct CodexUsagePanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let limit = state.codexLimit {
-                VStack(alignment: .leading, spacing: 12) {
-                    UsageRow(title: "5시간", window: limit.fiveHour)
-                    UsageRow(title: "주간", window: limit.weekly)
+            if let limit = state.codexLimit,
+               let summary = state.codexPanelSummary(now: resetSummaryNow) {
+                CodexUsageSummaryBlock(summary: summary, phase: state.phase)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    UsageRow(
+                        title: "5시간",
+                        window: limit.fiveHour,
+                        resetSummary: resetSummary(at: 0, in: summary)
+                    )
+                    UsageRow(
+                        title: "주간",
+                        window: limit.weekly,
+                        resetSummary: resetSummary(at: 1, in: summary)
+                    )
                 }
 
                 Divider()
@@ -20,18 +31,6 @@ struct CodexUsagePanel: View {
                     currentReport: state.report,
                     currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
                 )
-
-                if let message = state.highUsageMessage {
-                    PressureBanner(message: message, phase: state.phase)
-                }
-
-                Divider()
-
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                    metadataRow("플랜", limit.planType ?? "알 수 없음")
-                    metadataRow("갱신", state.lastUpdatedSummary)
-                    resetMetadataRow(limit.weekly)
-                }
             } else if state.isRefreshing {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -56,33 +55,9 @@ struct CodexUsagePanel: View {
         }
     }
 
-    private func metadataRow(_ key: String, _ value: String) -> some View {
-        GridRow {
-            Text(key)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .font(.caption)
-    }
-
-    private func resetMetadataRow(_ window: UsageWindowReport?) -> some View {
-        metadataRow("초기화", resetMetadataValue(window))
-    }
-
-    private func resetMetadataValue(_ window: UsageWindowReport?) -> String {
-        let summary = UsageWindowStatus.resetSummary(
-            resetsAt: window?.resetsAt,
-            now: resetSummaryNow
-        )
-        if summary.hasPrefix("초기화까지 ") {
-            return String(summary.dropFirst("초기화까지 ".count))
-        }
-        if summary.hasPrefix("초기화 ") {
-            return String(summary.dropFirst("초기화 ".count))
-        }
-        return summary
+    private func resetSummary(at index: Int, in summary: CodexUsagePanelSummary) -> String? {
+        guard summary.resetCountdowns.indices.contains(index) else { return nil }
+        return summary.resetCountdowns[index].value
     }
 
     private var resetSummaryNow: Date {
@@ -92,5 +67,71 @@ struct CodexUsagePanel: View {
             return Date()
         }
         return Date(timeIntervalSince1970: TimeInterval(report.generatedAt))
+    }
+}
+
+private struct CodexUsageSummaryBlock: View {
+    let summary: CodexUsagePanelSummary
+    let phase: UsagePressurePhase
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .frame(width: 14)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(summary.statusTitle)
+                    .font(.caption.weight(.semibold))
+                Text(summary.statusDetail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Text(summary.notificationThresholdSummary)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(tint.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(tint.opacity(0.24), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    private var systemImage: String {
+        switch phase {
+        case .limit:
+            "exclamationmark.octagon.fill"
+        case .fast, .sprint:
+            "exclamationmark.triangle.fill"
+        case .calm, .active:
+            "gauge.with.dots.needle.33percent"
+        }
+    }
+
+    private var tint: Color {
+        switch phase {
+        case .calm:
+            .secondary
+        case .active:
+            .accentColor
+        case .fast:
+            .orange
+        case .sprint, .limit:
+            .red
+        }
     }
 }

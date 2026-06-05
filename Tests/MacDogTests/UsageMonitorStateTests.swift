@@ -103,6 +103,55 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
+    func testCodexPanelSummaryConnectsRiskResetsAndNotificationThresholds() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let state = UsageMonitorState(
+            report: Self.report(
+                fiveHourUsedPercent: 83.5,
+                weeklyUsedPercent: 36,
+                fiveHourResetsAt: 1_800_007_200,
+                weeklyResetsAt: 1_800_345_600
+            ),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            displayBasis: .max
+        )
+
+        let summary = try XCTUnwrap(state.codexPanelSummary(now: now, calendar: Self.utcCalendar))
+
+        XCTAssertEqual(summary.statusTitle, "사용량 높음")
+        XCTAssertEqual(summary.statusDetail, "기준 5시간 83.5% 사용 / 16.5% 남음")
+        XCTAssertEqual(summary.notificationThresholdSummary, "알림 기준 80/95/100% · reset 30분 전")
+        XCTAssertEqual(
+            summary.resetCountdowns,
+            [
+                CodexUsagePanelSummary.ResetCountdown(label: "5시간 reset", value: "2시간 남음 · 10:00"),
+                CodexUsagePanelSummary.ResetCountdown(label: "주간 reset", value: "4일 남음 · 1/19 08:00")
+            ]
+        )
+    }
+
+    func testCodexPanelSummaryUsesLimitTitleWhenReportMarksLimitReached() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let state = UsageMonitorState(
+            report: Self.report(
+                fiveHourUsedPercent: 68,
+                weeklyUsedPercent: 42,
+                fiveHourResetsAt: 1_800_003_600,
+                weeklyResetsAt: 1_800_604_800,
+                rateLimitReachedType: "primary"
+            ),
+            cacheSnapshot: nil,
+            errorMessage: nil
+        )
+
+        let summary = try XCTUnwrap(state.codexPanelSummary(now: now, calendar: Self.utcCalendar))
+
+        XCTAssertEqual(summary.statusTitle, "한도 도달")
+        XCTAssertEqual(summary.statusDetail, "기준 5시간 68% 사용 / 32% 남음")
+        XCTAssertEqual(summary.resetCountdowns.first?.value, "1시간 남음 · 09:00")
+    }
+
     func testRefreshingPreservesPrivilegedHelperInstallSnapshot() {
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: false)
         let state = UsageMonitorState(
@@ -666,20 +715,26 @@ final class UsageMonitorStateTests: XCTestCase {
         return calendar
     }
 
-    private static func report(fiveHourUsedPercent: Double, weeklyUsedPercent: Double) -> CodexUsageReport {
+    private static func report(
+        fiveHourUsedPercent: Double,
+        weeklyUsedPercent: Double,
+        fiveHourResetsAt: Int? = nil,
+        weeklyResetsAt: Int? = nil,
+        rateLimitReachedType: String? = nil
+    ) -> CodexUsageReport {
         let fiveHour = UsageWindowReport(
             kind: .fiveHour,
             usedPercent: fiveHourUsedPercent,
             remainingPercent: 100 - fiveHourUsedPercent,
             windowDurationMins: 300,
-            resetsAt: nil
+            resetsAt: fiveHourResetsAt
         )
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
             remainingPercent: 100 - weeklyUsedPercent,
             windowDurationMins: 10_080,
-            resetsAt: nil
+            resetsAt: weeklyResetsAt
         )
         let limit = UsageLimitReport(
             limitId: "codex",
@@ -688,14 +743,14 @@ final class UsageMonitorStateTests: XCTestCase {
             secondary: weekly,
             credits: nil,
             planType: "pro",
-            rateLimitReachedType: nil
+            rateLimitReachedType: rateLimitReachedType
         )
         return CodexUsageReport(
             generatedAt: 0,
             source: "test",
             planType: "pro",
             credits: nil,
-            rateLimitReachedType: nil,
+            rateLimitReachedType: rateLimitReachedType,
             limits: ["codex": limit]
         )
     }
