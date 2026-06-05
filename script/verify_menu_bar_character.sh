@@ -24,7 +24,7 @@ require_text() {
   local pattern="$1"
   local file="$2"
   local description="$3"
-  rg -q -- "$pattern" "$file" || die "missing menu bar character baseline: $description"
+  /usr/bin/grep -Eq -- "$pattern" "$file" || die "missing menu bar character baseline: $description"
 }
 
 png_property() {
