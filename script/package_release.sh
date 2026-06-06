@@ -490,7 +490,7 @@ cat >"$NOTES_PATH" <<NOTES
 - DMG를 엽니다.
 - \`MacDog.app\`을 \`Applications\`로 드래그합니다.
 - Applications에서 MacDog를 실행합니다.
-- 첫 실행 시 MacDog가 터미널용 \`codex-usage\` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
+- Finder 복사 자체는 앱을 실행하지 않습니다. \`/Applications/MacDog.app\` 첫 실행 시 MacDog가 터미널용 \`codex-usage\` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
 - 첫 실행 시 MacDog가 설치 디스크를 추출하고 다운로드한 설치 파일을 정리할지 물어볼 수 있습니다.
 - 첫 실행 시 MacDog가 덮개 닫힘 보호용 optional 권한 도우미 설치 여부를 물어봅니다. 동의하면 macOS가 MacDog 주체의 관리자 승인창을 표시합니다.
 - optional 권한 도우미는 나중에 MacDog 설정 탭에서도 설치하거나 제거할 수 있습니다.

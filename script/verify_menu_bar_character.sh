@@ -39,7 +39,7 @@ require_file "$MENU_BAR_BASELINE_DOC"
 
 require_text 'menuBarImage: MenuBarImageAssetCatalog\(sourcePose: \.runRight\)' "$PROFILE_SOURCE" "profile maps menu bar to the current desktop pet run-right pose"
 require_text 'profile\.menuBarImage\.sourcePose' "$RENDERER_SOURCE" "renderer reads the menu bar source pose from the profile"
-require_text 'profile\.desktopPet\.asset\(for: sourcePose\)' "$RENDERER_SOURCE" "renderer uses desktop pet frames"
+require_text 'profile\.desktopPet\.asset\(for: profile\.menuBarImage\.sourcePose\)' "$RENDERER_SOURCE" "renderer uses desktop pet frames"
 require_text 'DesktopPet/pup-run-right-0\.png' "$MENU_BAR_BASELINE_DOC" "baseline documents the current desktop pet source"
 require_text '현재 데스크톱 펫 프레임을 직접 축소해 사용합니다' "$MENU_BAR_BASELINE_DOC" "baseline documents the current menu bar source"
 

@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
+BUNDLE_ID="com.dhseo.macdog.MacDog"
+LOGIN_LAUNCH_KEY="loginLaunchEnabled"
 VERSION=""
 SELF_TEST=0
 SELF_TEST_TMP=""
@@ -69,6 +71,40 @@ validate_cache_executable() {
   fi
 }
 
+login_launch_enabled() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
+  [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
+}
+
+login_item_status_from_output() {
+  local output="$1"
+  local status
+  status="$(printf '%s\n' "$output" | /usr/bin/awk '/^login-item:status / { print $2; exit }')"
+  if [[ -n "$status" ]]; then
+    printf '%s' "$status"
+  else
+    printf 'unknown'
+  fi
+}
+
+login_item_status_for() {
+  local app_binary="$1"
+  if [[ ! -x "$app_binary" ]]; then
+    printf 'unavailable'
+    return 0
+  fi
+
+  local output
+  local status
+  set +e
+  output="$("$app_binary" --verify-login-item-status 2>&1)"
+  status=$?
+  set -e
+  login_item_status_from_output "$output"
+  return 0
+}
+
 resource_name_is_allowed() {
   case "$1" in
     CharacterProfiles|DesktopPet|MacDog.icns|PopoverTabs)
@@ -124,6 +160,7 @@ validate_installed_resources() {
 write_fixture_app() {
   local app="$1"
   local version="$2"
+  local login_status="${3:-enabled}"
   mkdir -p "$app/Contents/MacOS"
   mkdir -p "$app/Contents/Resources/CharacterProfiles" "$app/Contents/Resources/DesktopPet" "$app/Contents/Resources/PopoverTabs"
   cat >"$app/Contents/Info.plist" <<PLIST
@@ -138,6 +175,14 @@ write_fixture_app() {
 PLIST
   printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/codex-usage"
   chmod +x "$app/Contents/MacOS/codex-usage"
+  cat >"$app/Contents/MacOS/$APP_NAME" <<SCRIPT
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "\${1:-}" == "--verify-login-item-status" ]]; then
+  echo "login-item:status $login_status"
+fi
+SCRIPT
+  chmod +x "$app/Contents/MacOS/$APP_NAME"
   printf '{}\n' >"$app/Contents/Resources/CharacterProfiles/codex-pup-tab-art.json"
   printf 'icon\n' >"$app/Contents/Resources/MacDog.icns"
   for tab in codex mac sleep battery settings; do
@@ -212,6 +257,16 @@ run_self_test() {
   write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
   write_fixture_launchctl "$tmp/launchctl" "missing" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
 
+  local parsed_status
+  parsed_status="$(login_item_status_from_output $'login-item:status enabled\n')"
+  [[ "$parsed_status" == "enabled" ]] || die "self-test missing release login item enabled parser"
+
+  parsed_status="$(login_item_status_from_output $'login-item:status notFound\n')"
+  [[ "$parsed_status" == "notFound" ]] || die "self-test missing release login item notFound parser"
+
+  parsed_status="$(login_item_status_from_output 'login-item:error unavailable')"
+  [[ "$parsed_status" == "unknown" ]] || die "self-test missing release login item unknown fallback"
+
   env \
     MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
     MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
@@ -222,6 +277,19 @@ run_self_test() {
     MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
     MACDOG_RELEASE_FINAL_USER_ID=501 \
     "$0" --version 9.9.9 >/dev/null
+
+  write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9" "notFound"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    "$0" --version 9.9.9
+  write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9"
 
   write_fixture_app "$tmp/UserApplications/$APP_NAME.app" "9.9.9"
   expect_failure env \
@@ -356,6 +424,7 @@ fi
 
 installed_app="$APPLICATIONS_DIR/$APP_NAME.app"
 installed_plist="$installed_app/Contents/Info.plist"
+installed_binary="$installed_app/Contents/MacOS/$APP_NAME"
 failures=()
 
 if [[ ! -d "$installed_app" ]]; then
@@ -368,6 +437,17 @@ else
     failures+=("installed app version mismatch: expected $VERSION, got ${actual_version:-missing}")
   fi
   validate_installed_resources "$installed_app/Contents/Resources"
+fi
+
+if [[ -d "$installed_app" ]]; then
+  if [[ ! -x "$installed_binary" ]]; then
+    failures+=("installed app binary is not runnable: $installed_binary")
+  elif login_launch_enabled; then
+    login_item_status="$(login_item_status_for "$installed_binary")"
+    if [[ "$login_item_status" != "enabled" ]]; then
+      failures+=("login item status mismatch: expected enabled because $LOGIN_LAUNCH_KEY is true, got $login_item_status")
+    fi
+  fi
 fi
 
 if [[ "$USER_APPLICATIONS_DIR" != "$APPLICATIONS_DIR" && -d "$USER_APPLICATIONS_DIR/$APP_NAME.app" ]]; then

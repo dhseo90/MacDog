@@ -102,7 +102,7 @@ require_text_match 'popoverTabs: PopoverTabAssetCatalog' "$PROFILE_SOURCE" "prof
 
 require_text_match 'MacDogCharacterProfile\.codexPup\.menuBarImage\.sourcePose' "$MENU_BAR_RENDERER_SOURCE" "menu bar frame count comes from the profile source pose"
 require_text_match 'profile\.menuBarImage\.sourcePose' "$MENU_BAR_RENDERER_SOURCE" "menu bar source pose comes from the profile"
-require_text_match 'profile\.desktopPet\.asset\(for: sourcePose\)' "$MENU_BAR_RENDERER_SOURCE" "menu bar image uses desktop pet frames"
+require_text_match 'profile\.desktopPet\.asset\(for: profile\.menuBarImage\.sourcePose\)' "$MENU_BAR_RENDERER_SOURCE" "menu bar image uses desktop pet frames"
 require_text_match 'profile\.desktopPet\.asset\(for: pose\)' "$DESKTOP_SOURCE" "desktop pet poses come from the profile"
 require_text_match 'MacDogCharacterProfile\.codexPup\.popoverTabs\.artwork\(for: self\)' "$POPOVER_MODULE_SOURCE" "tab modules come from the profile"
 require_text_match 'resourceDirectory: MacDogCharacterProfile\.codexPup\.popoverTabs\.resourceDirectory' "$POPOVER_SOURCE" "tab buttons use the profile resource directory"
