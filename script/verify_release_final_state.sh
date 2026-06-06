@@ -69,10 +69,63 @@ validate_cache_executable() {
   fi
 }
 
+resource_name_is_allowed() {
+  case "$1" in
+    CharacterProfiles|DesktopPet|MacDog.icns|PopoverTabs)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+validate_installed_resources() {
+  local resources_dir="$1"
+  local resource
+  local resource_name
+  local required
+  local index
+
+  if [[ ! -d "$resources_dir" ]]; then
+    failures+=("installed app resources missing: $resources_dir")
+    return
+  fi
+
+  while IFS= read -r resource; do
+    resource_name="${resource##*/}"
+    if ! resource_name_is_allowed "$resource_name"; then
+      failures+=("unexpected installed app resource remains: $resource")
+    fi
+  done < <(/usr/bin/find "$resources_dir" -mindepth 1 -maxdepth 1 -print | /usr/bin/sort)
+
+  for required in \
+    "CharacterProfiles/codex-pup-tab-art.json" \
+    "MacDog.icns" \
+    "PopoverTabs/codex-tab.png" \
+    "PopoverTabs/mac-tab.png" \
+    "PopoverTabs/sleep-tab.png" \
+    "PopoverTabs/battery-tab.png" \
+    "PopoverTabs/settings-tab.png"
+  do
+    if [[ ! -e "$resources_dir/$required" ]]; then
+      failures+=("installed app current resource missing: $resources_dir/$required")
+    fi
+  done
+
+  for index in 0 1 2 3 4 5 6 7; do
+    required="DesktopPet/pup-run-right-$index.png"
+    if [[ ! -e "$resources_dir/$required" ]]; then
+      failures+=("installed app current resource missing: $resources_dir/$required")
+    fi
+  done
+}
+
 write_fixture_app() {
   local app="$1"
   local version="$2"
   mkdir -p "$app/Contents/MacOS"
+  mkdir -p "$app/Contents/Resources/CharacterProfiles" "$app/Contents/Resources/DesktopPet" "$app/Contents/Resources/PopoverTabs"
   cat >"$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -85,6 +138,14 @@ write_fixture_app() {
 PLIST
   printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/codex-usage"
   chmod +x "$app/Contents/MacOS/codex-usage"
+  printf '{}\n' >"$app/Contents/Resources/CharacterProfiles/codex-pup-tab-art.json"
+  printf 'icon\n' >"$app/Contents/Resources/MacDog.icns"
+  for tab in codex mac sleep battery settings; do
+    printf 'tab\n' >"$app/Contents/Resources/PopoverTabs/$tab-tab.png"
+  done
+  for index in 0 1 2 3 4 5 6 7; do
+    printf 'pet\n' >"$app/Contents/Resources/DesktopPet/pup-run-right-$index.png"
+  done
 }
 
 write_fixture_cache_plist() {
@@ -200,6 +261,17 @@ run_self_test() {
     "$0" --version 9.9.9
   write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
 
+  mkdir -p "$tmp/Applications/$APP_NAME.app/Contents/Resources/Unexpected"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    "$0" --version 9.9.9
+  rm -rf "$tmp/Applications/$APP_NAME.app/Contents/Resources/Unexpected"
+
   write_fixture_launchctl "$tmp/launchctl" "stale" "$tmp/UserApplications/$APP_NAME.app/Contents/MacOS/codex-usage"
   expect_failure env \
     MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
@@ -295,6 +367,7 @@ else
   if [[ "$actual_version" != "$VERSION" ]]; then
     failures+=("installed app version mismatch: expected $VERSION, got ${actual_version:-missing}")
   fi
+  validate_installed_resources "$installed_app/Contents/Resources"
 fi
 
 if [[ "$USER_APPLICATIONS_DIR" != "$APPLICATIONS_DIR" && -d "$USER_APPLICATIONS_DIR/$APP_NAME.app" ]]; then
