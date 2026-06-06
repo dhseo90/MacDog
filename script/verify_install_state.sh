@@ -109,6 +109,34 @@ login_launch_enabled() {
   [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
 }
 
+login_item_status_from_output() {
+  local output="$1"
+  local status
+  status="$(printf '%s\n' "$output" | /usr/bin/awk '/^login-item:status / { print $2; exit }')"
+  if [[ -n "$status" ]]; then
+    printf '%s' "$status"
+  else
+    printf 'unknown'
+  fi
+}
+
+login_item_status_for() {
+  local app_binary="$1"
+  if [[ ! -x "$app_binary" ]]; then
+    printf 'unavailable'
+    return 0
+  fi
+
+  local output
+  local status
+  set +e
+  output="$("$app_binary" --verify-login-item-status 2>&1)"
+  status=$?
+  set -e
+  login_item_status_from_output "$output"
+  return 0
+}
+
 bundle_manifest() {
   local bundle="$1"
   (
@@ -302,6 +330,7 @@ print_state() {
     fi
   fi
   if login_launch_enabled; then echo "login-launch-enabled:true"; else echo "login-launch-enabled:false"; fi
+  echo "login-item-status:$(login_item_status_for "$app_binary")"
   if present "$MONITOR_PLIST"; then echo "legacy-monitor-plist:present $MONITOR_PLIST"; else echo "legacy-monitor-plist:absent $MONITOR_PLIST"; fi
   if [[ -d "$DIST_APP" && -d "$app_dest" ]]; then
     if compare_app_bundles "$DIST_APP" "$app_dest" "app-freshness" quiet; then
@@ -360,6 +389,14 @@ expect_installed() {
   else
     ! plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
       echo "expected default cache LaunchAgent to omit WidgetKit mirror argument" >&2
+      return 1
+    }
+  fi
+  if login_launch_enabled; then
+    local login_item_status
+    login_item_status="$(login_item_status_for "$app_binary")"
+    [[ "$login_item_status" == "enabled" ]] || {
+      echo "expected login item status enabled because $LOGIN_LAUNCH_KEY is true: got $login_item_status" >&2
       return 1
     }
   fi
@@ -424,6 +461,32 @@ run_self_test() {
 
   output="$(explain_app_bundle_difference "$expected" "$temp_dir/missing/MacDog.app" "self-test")"
   printf '%s\n' "$output" | /usr/bin/grep -Fq 'self-test:missing-installed' || die "self-test missing installed output"
+
+  output="$(login_item_status_from_output $'noise\nlogin-item:status enabled\n')"
+  [[ "$output" == "enabled" ]] || die "self-test missing login item enabled status parser"
+
+  output="$(login_item_status_from_output $'login-item:status requiresApproval\n')"
+  [[ "$output" == "requiresApproval" ]] || die "self-test missing login item requiresApproval status parser"
+
+  output="$(login_item_status_from_output 'login-item:error unavailable')"
+  [[ "$output" == "unknown" ]] || die "self-test missing login item unknown fallback"
+
+  local login_probe="$temp_dir/login-probe"
+  cat >"$login_probe" <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--verify-login-item-status" ]]; then
+  echo "login-item:status enabled"
+  exit 0
+fi
+exit 64
+SCRIPT
+  chmod +x "$login_probe"
+  output="$(login_item_status_for "$login_probe")"
+  [[ "$output" == "enabled" ]] || die "self-test missing login item status probe"
+
+  output="$(login_item_status_for "$temp_dir/missing-probe")"
+  [[ "$output" == "unavailable" ]] || die "self-test missing unavailable login item status"
 
   echo "Install state freshness detail self-test ok"
 }

@@ -59,7 +59,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | --- | --- | --- |
 | `script/verify_app_bundle.sh` | app bundle 구조 검증 | 지정 앱 번들의 실행 파일, helper, signature 구조를 읽고 기본 번들에 widget extension이 없는지 확인합니다. `--with-widget`은 opt-in `.appex` 포함을 확인합니다. |
 | `script/verify_app_privacy_boundaries.sh` | 앱 privacy boundary 검증 | menu bar UI가 live Codex app-server나 shared cache fallback을 직접 열지 않는지 코드 기준으로 확인합니다. |
-| `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정과 macOS 로그인 항목 등록 규칙을 확인합니다. |
+| `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정, 실제 로그인 항목 status 조회, macOS 로그인 항목 등록 규칙을 확인합니다. |
 | `script/verify_cache_contract.sh` | cache schema와 stale/error/history 계약 검증 | cache 모델, 주간 잔여량 history, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | menu bar image, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
 | `script/verify_character_asset_polish.sh --self-test` | 캐릭터 asset polish 점검 | 캐릭터 프로필, menu bar 기준선, README 이미지 hygiene/freshness, PNG 크기/alpha 계약을 확인합니다. 실제 UI는 열지 않습니다. |
@@ -70,7 +70,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인합니다. |
 | `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. GitHub Actions에서는 SwiftUI PNG rasterization 차이를 피하기 위해 렌더 산출물과 이미지 크기까지 확인하고, byte 일치는 로컬 또는 `MACDOG_README_SCREENSHOT_STRICT=1`에서 강제합니다. |
 | `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인합니다. |
-| `script/verify_release_final_state.sh --version <version>` | 릴리즈 smoke 종료 상태 검증 | `/Applications/MacDog.app` 버전, `~/Applications` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`, `/Volumes/MacDog*` 잔여 마운트를 읽기 전용으로 확인합니다. |
+| `script/verify_release_final_state.sh --version <version>` | 릴리즈 smoke 종료 상태 검증 | `/Applications/MacDog.app` 버전, `~/Applications` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 status, `dist/MacDog.app`, `/Volumes/MacDog*` 잔여 마운트를 읽기 전용으로 확인합니다. |
 | `script/verify_menu_bar_character.sh` | 메뉴바 캐릭터 기준선 검증 | menu bar image가 현재 desktop pet run-right 프레임에서 파생되는지 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |
 | `script/verify_explicit_version_contract.sh` | 명시 버전 계약 검증 | `check.sh`, `build_and_run.sh`, `install.sh`, `package_release.sh`가 버전 없이 실행될 때 실패하고, 명시 버전이 있을 때 dry-run 문구가 맞는지 확인합니다. |
@@ -86,7 +86,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 
 | Script | 의미 | 영향 |
 | --- | --- | --- |
-| `script/verify_install_state.sh` | 현재 설치 상태 조회 | 설치된 앱, CLI symlink, LaunchAgent, WidgetKit mirror 인자, 실행 중인 앱 경로, payload freshness를 읽습니다. `--explain-current-dist`는 설치본과 `dist/MacDog.app`이 다를 때 변경/추가/삭제 payload 경로를 요약하고, `--self-test`는 이 요약 경로를 fixture로 검증합니다. |
+| `script/verify_install_state.sh` | 현재 설치 상태 조회 | 설치된 앱, CLI symlink, LaunchAgent, WidgetKit mirror 인자, 실행 중인 앱 경로, 실제 로그인 항목 status, payload freshness를 읽습니다. `--explain-current-dist`는 설치본과 `dist/MacDog.app`이 다를 때 변경/추가/삭제 payload 경로를 요약하고, `--expect-installed`는 기본 로그인 실행 설정이 켜져 있으면 실제 status가 `enabled`인지 확인합니다. `--self-test`는 이 요약/상태 조회 경로를 fixture로 검증합니다. |
 | `script/verify_privileged_helper_state.sh` | helper 설치/로드 상태 조회 | `/Library` helper 파일, LaunchDaemon plist, launchd load 상태를 읽습니다. |
 | `script/verify_privileged_helper_xpc.sh` | helper 연결 진단 | 기본은 read-only 조회입니다. `--set 0` 또는 `--set 1`과 `--restore`를 주면 `SleepDisabled` 변경 후 복구합니다. |
 | `script/verify_privileged_helper_preflight.sh` | helper 설치 전 안전 점검 | helper dry-run, bundle 상태, 현재 helper 상태, 연결 진단 경로를 묶어 확인합니다. |

@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import MacDog
 
@@ -20,9 +21,41 @@ final class MacDogCharacterProfileTests: XCTestCase {
         let renderer = MenuBarIconRenderer()
         let image = renderer.image(frame: 0, phase: .calm)
 
-        XCTAssertEqual(image.size.width, 28)
-        XCTAssertEqual(image.size.height, 24)
+        XCTAssertEqual(MenuBarIconRenderer.imageSize.width, 32)
+        XCTAssertEqual(MenuBarIconRenderer.imageSize.height, 21)
+        XCTAssertEqual(image.size.width, MenuBarIconRenderer.imageSize.width)
+        XCTAssertEqual(image.size.height, MenuBarIconRenderer.imageSize.height)
         XCTAssertFalse(image.isTemplate)
+    }
+
+    func testMenuBarIconRendererFillsMenuBarWithVisibleCharacterPixels() throws {
+        let renderer = MenuBarIconRenderer()
+
+        for frame in 0..<MenuBarIconRenderer.frameCount {
+            let image = renderer.image(frame: frame, phase: .calm)
+            let visibleRect = try XCTUnwrap(visibleContentRect(in: image), "frame \(frame) has visible menu bar pixels")
+
+            XCTAssertGreaterThanOrEqual(visibleRect.width, 20, "frame \(frame) visible width")
+            XCTAssertGreaterThanOrEqual(visibleRect.height, 14, "frame \(frame) visible height")
+            XCTAssertLessThanOrEqual(visibleRect.height, MenuBarIconRenderer.imageSize.height, "frame \(frame) visible height")
+            XCTAssertGreaterThan(visibleRect.minY, 0, "frame \(frame) top padding")
+            XCTAssertLessThan(visibleRect.maxY, image.size.height, "frame \(frame) bottom padding")
+        }
+    }
+
+    func testMenuBarIconRendererKeepsFramePositionStableAcrossAnimation() throws {
+        let renderer = MenuBarIconRenderer()
+        let visibleRects = try (0..<MenuBarIconRenderer.frameCount).map { frame in
+            let image = renderer.image(frame: frame, phase: .calm)
+            return try XCTUnwrap(visibleContentRect(in: image), "frame \(frame) has visible menu bar pixels")
+        }
+        let heights = visibleRects.map(\.height)
+        let centerXs = visibleRects.map(\.midX)
+        let centerYs = visibleRects.map(\.midY)
+
+        XCTAssertLessThanOrEqual((centerXs.max() ?? 0) - (centerXs.min() ?? 0), 1.5, "visible horizontal center range")
+        XCTAssertLessThanOrEqual((heights.max() ?? 0) - (heights.min() ?? 0), 3, "visible height range")
+        XCTAssertLessThanOrEqual((centerYs.max() ?? 0) - (centerYs.min() ?? 0), 3, "visible vertical center range")
     }
 
     func testCodexPupDefinesEveryDesktopPose() {
@@ -87,6 +120,46 @@ final class MacDogCharacterProfileTests: XCTestCase {
             .appendingPathComponent("codex-pup-tab-art.json")
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(TabArtworkManifestFixture.self, from: data)
+    }
+
+    private func visibleContentRect(in image: NSImage) -> NSRect? {
+        guard
+            let tiff = image.tiffRepresentation,
+            let bitmap = NSBitmapImageRep(data: tiff)
+        else {
+            return nil
+        }
+
+        var minX = bitmap.pixelsWide
+        var minY = bitmap.pixelsHigh
+        var maxX = -1
+        var maxY = -1
+
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                guard let color = bitmap.colorAt(x: x, y: y), color.alphaComponent > 0.02 else {
+                    continue
+                }
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+        }
+
+        guard maxX >= minX, maxY >= minY else {
+            return nil
+        }
+
+        let scaleX = image.size.width / CGFloat(bitmap.pixelsWide)
+        let scaleY = image.size.height / CGFloat(bitmap.pixelsHigh)
+
+        return NSRect(
+            x: CGFloat(minX) * scaleX,
+            y: CGFloat(minY) * scaleY,
+            width: CGFloat(maxX - minX + 1) * scaleX,
+            height: CGFloat(maxY - minY + 1) * scaleY
+        )
     }
 }
 

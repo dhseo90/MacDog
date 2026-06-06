@@ -20,6 +20,7 @@
 - staging 폴더에는 `MacDog.app`, `Applications` symlink, 숨김 `.background/background.png`가 포함됩니다.
 - release note draft는 DMG 안이 아니라 `dist/release/MacDog-<version>-release-notes.md`로 따로 생성됩니다.
 - 앱 첫 실행 마무리는 `Applications` 또는 `~/Applications`에 복사된 앱에서만 동작합니다. 개발용 `dist/MacDog.app` 실행에는 적용하지 않습니다.
+- Finder drag-and-drop 복사 자체는 앱 코드를 실행하지 않습니다. `/Applications/MacDog.app`을 처음 실행한 뒤에만 사용자 영역 설치 마무리와 로그인 항목 등록이 수행됩니다.
 - 첫 실행 마무리는 `~/bin/codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 설치/복구합니다.
 - 첫 실행 마무리 이후 `Downloads`/`Desktop`의 `MacDog-*.dmg`, checksum, release note 후보와 마운트된 MacDog 설치 디스크를 정리할지 묻습니다.
 - optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻습니다. 사용자가 동의하면 앱 UI가 helper 설치 흐름을 열고, macOS 관리자 승인은 MacDog 주체로 표시됩니다.
@@ -33,7 +34,7 @@
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
 - `script/cleanup_release_smoke_state.sh --apply`는 release smoke 뒤 남은 MacDog DMG 마운트, `~/Applications/MacDog.app`, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`을 정리합니다. 중복 앱과 stale plist는 삭제하지 않고 `/private/tmp/macdog-duplicate-app-cleanup` 아래로 격리하며, stale loaded job은 unload합니다.
-- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 마운트된 MacDog DMG, 남은 `dist/MacDog.app`을 확인합니다.
+- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 상태, 마운트된 MacDog DMG, 남은 `dist/MacDog.app`을 확인합니다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않고 Apple Developer 의존 항목이 현재 unsigned 릴리즈 계획에서 제외됐는지 검증합니다.
 - PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리합니다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용합니다.
 
@@ -74,7 +75,7 @@
 4. Finder에서 `MacDog.app`을 `Applications`로 드래그해 설치합니다.
 5. `Applications`의 MacDog를 실행하고 첫 실행 마무리가 진행되는지 확인합니다.
 6. 설치 파일 정리 안내가 뜨고, 사용자가 동의하면 설치 디스크와 다운로드한 설치 파일이 정리되는지 확인합니다.
-7. Codex 사용량 cache, 터미널용 `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 설정을 확인합니다.
+7. Codex 사용량 cache, 터미널용 `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 실제 상태를 확인합니다.
 8. optional helper 설치 안내가 MacDog UI로 표시되는지 확인하고, 승인 시 관리자 승인창 주체가 MacDog인지 확인합니다.
 9. `shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256`로 checksum을 확인합니다.
 10. release smoke가 끝나면 `./script/cleanup_release_smoke_state.sh --apply`로 Finder 검색 중복을 유발하는 잔여 DMG/앱 번들을 정리합니다.
