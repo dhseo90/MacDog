@@ -61,7 +61,7 @@ if [[ "$WITH_WIDGET" == "1" ]]; then
   ./script/write_widget_cache_fixture.sh --self-test >/dev/null
 else
   echo "==> Skipping WidgetKit preflight"
-  echo "WidgetKit is opt-in and not part of the default v1.1.0 manual UI gate."
+  echo "WidgetKit is opt-in and not part of the default manual UI gate."
 fi
 
 echo "==> Checking helper UI/install preflight"

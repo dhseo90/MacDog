@@ -9,7 +9,7 @@ usage() {
 usage: $0 [--self-test]
 
 Verify Codex Pup character asset polish boundaries without launching the GUI.
-This checks profile ownership, runner baseline, desktop-pet/tab PNG dimensions
+This checks profile ownership, menu bar character baseline, desktop-pet/tab PNG dimensions
 and alpha channels, tab artwork manifest linkage, and README image hygiene/freshness.
 
 Options:
@@ -31,18 +31,18 @@ require_text() {
 
 verify_polish() {
   "$ROOT_DIR/script/verify_character_profile.sh" >/dev/null
-  "$ROOT_DIR/script/verify_runner_baseline.sh" >/dev/null
+  "$ROOT_DIR/script/verify_menu_bar_character.sh" >/dev/null
   "$ROOT_DIR/script/verify_readme_screenshots.sh" >/dev/null
 
   require_text 'Codex Pup' "$ROOT_DIR/README.md" "Codex Pup README identity"
-  require_text 'MacDogCharacterProfile\.codexPup' "$ROOT_DIR/Docs/RunnerBaseline.md" "runner baseline profile identity"
+  require_text 'MacDogCharacterProfile\.codexPup' "$ROOT_DIR/Docs/MenuBarCharacterBaseline.md" "menu bar baseline profile identity"
   require_text '같은 캐릭터 세트|하나의 캐릭터 프로필' "$ROOT_DIR/ROADMAP.md" "roadmap one-character-set boundary"
   require_text 'RunCat의 고양이 캐릭터를 그대로 복제하지 않습니다' "$ROOT_DIR/ROADMAP.md" "RunCat asset non-copy boundary"
 
-  echo "character-asset-polish:profile-ok Codex Pup owns runner desktop-pet and popover tab assets"
-  echo "character-asset-polish:png-contract-ok runner=8x80x48 desktop=40x192x204 tabs=5x256x256 alpha=yes"
+  echo "character-asset-polish:profile-ok Codex Pup owns menu-bar desktop-pet and popover tab assets"
+  echo "character-asset-polish:png-contract-ok menu-bar-source=8x192x204 desktop=40x192x204 tabs=5x256x256 alpha=yes"
   echo "character-asset-polish:readme-image-hygiene-ok"
-  echo "character-asset-polish:ui-not-run menu bar runner desktop pet popover tabs and settings preview were not opened by this verifier"
+  echo "character-asset-polish:ui-not-run menu bar image desktop pet popover tabs and settings preview were not opened by this verifier"
 }
 
 run_self_test() {

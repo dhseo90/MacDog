@@ -3,14 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROFILE_SOURCE="$ROOT_DIR/Sources/MacDog/MacDogCharacterProfile.swift"
-RUNNER_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerIconRenderer.swift"
+MENU_BAR_RENDERER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarIconRenderer.swift"
 DESKTOP_SOURCE="$ROOT_DIR/Sources/MacDog/DesktopPetSpriteSet.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 POPOVER_MODULE_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/MacDogPopoverModule.swift"
 TAB_RENDERER="$ROOT_DIR/script/render_popover_tab_art.swift"
 TAB_MANIFEST="$ROOT_DIR/Sources/MacDog/Resources/CharacterProfiles/codex-pup-tab-art.json"
 RESOURCE_ROOT="$ROOT_DIR/Sources/MacDog/Resources"
-RUNNER_DIR="$RESOURCE_ROOT/Runner"
 DESKTOP_DIR="$RESOURCE_ROOT/DesktopPet"
 TAB_DIR="$RESOURCE_ROOT/PopoverTabs"
 EXPECTED_PNGS="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-expected-pngs.XXXXXX")"
@@ -89,7 +88,7 @@ require_png_series() {
 }
 
 require_file "$PROFILE_SOURCE"
-require_file "$RUNNER_SOURCE"
+require_file "$MENU_BAR_RENDERER_SOURCE"
 require_file "$DESKTOP_SOURCE"
 require_file "$POPOVER_SOURCE"
 require_file "$POPOVER_MODULE_SOURCE"
@@ -97,12 +96,13 @@ require_file "$TAB_RENDERER"
 require_file "$TAB_MANIFEST"
 
 require_text_match 'static let codexPup' "$PROFILE_SOURCE" "Codex Pup is the active character profile"
-require_text_match 'runner: RunnerAssetCatalog' "$PROFILE_SOURCE" "profile owns runner assets"
+require_text_match 'menuBarImage: MenuBarImageAssetCatalog\(sourcePose: \.runRight\)' "$PROFILE_SOURCE" "profile maps menu bar image to current desktop pet frames"
 require_text_match 'desktopPet: DesktopPetAssetCatalog' "$PROFILE_SOURCE" "profile owns desktop pet assets"
 require_text_match 'popoverTabs: PopoverTabAssetCatalog' "$PROFILE_SOURCE" "profile owns popover tab artwork"
 
-require_text_match 'MacDogCharacterProfile\.codexPup\.runner\.frameCount' "$RUNNER_SOURCE" "menu bar runner frame count comes from the profile"
-require_text_match 'profile\.runner\.framePrefix' "$RUNNER_SOURCE" "menu bar runner frame prefix comes from the profile"
+require_text_match 'MacDogCharacterProfile\.codexPup\.menuBarImage\.sourcePose' "$MENU_BAR_RENDERER_SOURCE" "menu bar frame count comes from the profile source pose"
+require_text_match 'profile\.menuBarImage\.sourcePose' "$MENU_BAR_RENDERER_SOURCE" "menu bar source pose comes from the profile"
+require_text_match 'profile\.desktopPet\.asset\(for: sourcePose\)' "$MENU_BAR_RENDERER_SOURCE" "menu bar image uses desktop pet frames"
 require_text_match 'profile\.desktopPet\.asset\(for: pose\)' "$DESKTOP_SOURCE" "desktop pet poses come from the profile"
 require_text_match 'MacDogCharacterProfile\.codexPup\.popoverTabs\.artwork\(for: self\)' "$POPOVER_MODULE_SOURCE" "tab modules come from the profile"
 require_text_match 'resourceDirectory: MacDogCharacterProfile\.codexPup\.popoverTabs\.resourceDirectory' "$POPOVER_SOURCE" "tab buttons use the profile resource directory"
@@ -122,7 +122,6 @@ require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*0' "$TAB_MANIFEST
 require_text_match '"sourceFrameIndex"[[:space:]]*:[[:space:]]*2' "$TAB_MANIFEST" "tab artwork manifest records an active resources frame"
 require_text_match '"outputDirectory"[[:space:]]*:[[:space:]]*"PopoverTabs"' "$TAB_MANIFEST" "tab artwork manifest records the tab output directory"
 
-require_png_series "$RUNNER_DIR" "pup-runner" 8 80 48
 require_png_series "$DESKTOP_DIR" "pup-run-right" 8 192 204
 require_png_series "$DESKTOP_DIR" "pup-run-up" 8 192 204
 require_png_series "$DESKTOP_DIR" "pup-run-down" 8 192 204
@@ -142,4 +141,4 @@ if ! diff -u "$EXPECTED_PNGS" "$ACTUAL_PNGS" >/dev/null; then
   die "unexpected PNG resource detected; remove unused images or register them in MacDogCharacterProfile"
 fi
 
-echo "Character profile ok: Codex Pup links runner, desktop pet, and popover tab assets"
+echo "Character profile ok: Codex Pup links menu bar image, desktop pet, and popover tab assets"

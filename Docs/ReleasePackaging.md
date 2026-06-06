@@ -13,9 +13,9 @@
 
 ## 현재 구현 범위
 
-- `script/package_release.sh --dry-run`은 release artifact 계획과 설치 경계를 출력합니다.
-- `script/package_release.sh`는 앱 번들 내부 CLI가 포함된 `dist/MacDog.app`을 `dist/release/MacDog-<version>`에 staging합니다.
-- `script/build_and_run.sh`는 `MACDOG_RELEASE_VERSION` 또는 `MACDOG_APP_VERSION`을 앱 번들의 `CFBundleShortVersionString`에 반영합니다.
+- `script/package_release.sh --dry-run`은 release artifact 계획과 설치 경계를 출력합니다. `MACDOG_RELEASE_VERSION` 또는 `--version`이 없으면 실패합니다.
+- `script/package_release.sh`는 앱 번들 내부 CLI가 포함된 `dist/MacDog.app`을 `dist/release/MacDog-<version>`에 staging합니다. release version은 반드시 명시해야 합니다.
+- `script/build_and_run.sh`는 `--version`, `MACDOG_RELEASE_VERSION`, `MACDOG_APP_VERSION` 중 하나로 지정한 값을 앱 번들의 `CFBundleShortVersionString`에 반영합니다. 버전이 없으면 실패합니다.
 - `script/package_release.sh --skip-build`는 기존 `dist/MacDog.app`의 `CFBundleShortVersionString`이 release version과 다르면 실패합니다.
 - staging 폴더에는 `MacDog.app`, `Applications` symlink, 숨김 `.background/background.png`가 포함됩니다.
 - release note draft는 DMG 안이 아니라 `dist/release/MacDog-<version>-release-notes.md`로 따로 생성됩니다.
@@ -26,7 +26,7 @@
 - 예전 monitor LaunchAgent가 남아 있으면 첫 실행 마무리에서 제거하고, 메뉴바 앱 자동 실행은 `SMAppService.mainApp`으로 등록합니다.
 - 생성된 `.dmg`는 GitHub Release에 올릴 수 있는 ad-hoc signed 빌드이며, 아직 Developer ID signing/notarization을 수행하지 않습니다.
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만듭니다.
-- `.github/workflows/ci.yml`은 PR과 `main` push에서 `./script/check.sh --no-run`을 실행하는 기본 release readiness check입니다.
+- `.github/workflows/ci.yml`은 PR과 `main` push에서 `MACDOG_APP_VERSION=9.9.9 ./script/check.sh --no-run`을 실행하는 기본 release readiness check입니다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관합니다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부합니다.
 - `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
@@ -42,28 +42,18 @@
 - `script/package_release.sh --dry-run` 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build --no-dmg` staging 검증 경로가 있습니다.
 - `script/package_release.sh --skip-build`는 `dist/release/MacDog-<version>.dmg`와 checksum을 생성합니다.
-- `MacDog-1.1.0.dmg`는 `~/Downloads`에서 Finder로 열었을 때 drag-and-drop 배경, `MacDog.app`, `Applications` symlink가 보이는 것을 확인했습니다.
-- `MacDog-1.1.0.dmg`는 checksum, `hdiutil verify`, mounted app의 `codesign --deep --strict`, 금지된 `com.apple.FinderInfo` xattr 부재를 확인했습니다.
-- mounted DMG의 `MacDog.app`을 `/Applications/MacDog.app`으로 복사한 뒤 설치본 실행, popover 열기, app-owned `codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목 상태를 확인했습니다.
-- 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일이 제거되는 것을 확인했습니다.
+- 생성된 DMG는 `hdiutil verify`, checksum, mounted app `codesign --deep --strict`, Finder icon view metadata 검증 대상입니다.
+- 사용자 설치 검수는 published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 완료로 기록합니다.
+- 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일을 정리하는 흐름이 있습니다.
 - release workflow는 unsigned candidate/draft 경로를 현재 기본 릴리즈 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.
 - optional helper 설치/제거는 앱 UI에서 처리합니다.
 - GitHub PR 보호 준비물은 repo 안에 포함되어 있습니다.
-- 2026-06-02 v1.1.0 최신 dist 기준 `MacDog-1.1.0.dmg`를 재생성하고, checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` freshness, 첫 실행 user component 상태를 확인했습니다.
-- 2026-06-02 GitHub Actions `release-candidate`와 unsigned `release-draft` workflow 실제 실행이 success였고, artifact/checksum/draft release asset 검증을 완료했습니다.
-- 2026-06-02 최신 설치본 UI에서 optional helper 제거/설치 버튼을 실제 클릭해 관리자 승인창 주체, 안내 문구, helper 상태 전환을 확인했습니다.
-
-## v1.2.3 운영 메모
-
-- 2026-06-04 로컬 점검에서 `dist/release`에는 `MacDog-1.1.0`과 `MacDog-1.2.0` DMG/checksum만 확인됐습니다. 이 로컬 점검은 v1.2.1/v1.2.2 GitHub Release asset, download URL, published 상태를 확인하지 않습니다.
-- v1.2.3 코어 정리 완료와 별도로 release 운영 절차를 수행했고, `v1.2.3` GitHub Release는 release head `595a118` 기준 published 상태입니다.
-- Release Candidate run `26954573104`, Draft Release run `26954777833`, published release asset download, checksum, `hdiutil verify`, Finder drag-and-drop 설치 smoke, 설치본 cache contract, final-state 검증을 완료했습니다.
-- 설치 검수가 필요한 release 종료 작업은 published DMG를 Finder에서 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
-- signed/notarized stable release는 Apple Developer Program, Developer ID 인증서, notarization credential이 필요한 범위이므로 별도 승인 전까지 v1.2.3 완료 조건에 넣지 않습니다.
 
 ## 후속 release smoke
 
-- GitHub Release에서 실제로 내려받은 `.dmg`의 checksum과 `hdiutil verify`는 v1.1.0과 v1.2.3 published asset 기준으로 확인했습니다. v1.2.3은 같은 다운로드본을 Finder에서 drag-and-drop 설치하는 최종 smoke까지 수행했습니다.
+- GitHub Release에서 실제로 내려받은 `.dmg`는 현재 release head 기준 published asset이어야 합니다.
+- published DMG는 checksum과 `hdiutil verify`를 다시 확인합니다.
+- 설치 검수가 필요한 릴리즈 종료 작업은 Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
 - 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
 - Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 현재 unsigned 릴리즈에서 제외합니다.
 
@@ -78,8 +68,8 @@
 
 ## 배포 흐름 후보
 
-1. `./script/check.sh --no-run`
-2. `./script/package_release.sh`
+1. `MACDOG_RELEASE_VERSION=<version> ./script/check.sh --no-run`
+2. `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh`
 3. 생성된 `dist/release/MacDog-<version>.dmg`를 열어 `MacDog.app`과 `Applications` symlink가 보이고 drag-and-drop 배경이 적용되는지 확인합니다.
 4. Finder에서 `MacDog.app`을 `Applications`로 드래그해 설치합니다.
 5. `Applications`의 MacDog를 실행하고 첫 실행 마무리가 진행되는지 확인합니다.

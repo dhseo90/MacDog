@@ -45,11 +45,11 @@ for file in "$README" "$ROADMAP" "$RELEASE_DOC"; do
   require_file_contains "$file" "현재 구현 계획에서 제외"
 done
 
-require_file_match "$ROADMAP" 'signed stable.*v1\.1\.0.*제외|signed stable.*현재 계획에서 삭제'
+require_file_match "$ROADMAP" 'signed/stable.*Apple Developer.*제외|signed stable.*Apple Developer.*제외|Apple Developer.*배포/권한.*제외'
 require_file_match "$ROADMAP" 'WidgetKit.*확인.*source|WidgetKit.*source.*확인'
 require_file_match "$ROADMAP" '실제.*위젯 UI.*확인하지 못했습니다'
 
-dry_run_output="$("$PACKAGE_SCRIPT" --dry-run)"
+dry_run_output="$(MACDOG_RELEASE_VERSION=9.9.9 "$PACKAGE_SCRIPT" --dry-run)"
 require_output_contains "$dry_run_output" "Signing: local ad-hoc build only; Developer ID signing and notarization are not performed"
 require_output_contains "$dry_run_output" "excluded from the current implementation plan"
 require_output_contains "$dry_run_output" "Gatekeeper: GitHub Release notes must clearly say this DMG is not notarized and may show a macOS warning."

@@ -20,7 +20,7 @@
 - screenshot renderer는 opt-in 증거입니다. 실제 렌더나 앱 화면을 보지 않았다면 UI 검수 완료로 기록하지 않습니다.
 - README/ROADMAP/AGENTS와 v1.3.0 문서는 `./script/verify_v130_local_notification_boundary.sh --self-test`로 같은 제외 경계를 확인합니다.
 - `codex-usage status --json`, app-owned cache schema, Codex app-server JSON-RPC 해석 계약은 v1.3.0에서 변경하지 않습니다.
-- Apple Developer 계정 의존 배포/권한 흐름, WidgetKit 실제 UI, custom runner import, 장기 history export, 자동 모델 전환 힌트는 v1.3.0 구현/완료/후속 이슈에서 제외합니다.
+- Apple Developer 계정 의존 배포/권한 흐름, WidgetKit 실제 UI, 장기 history export, 자동 모델 전환 힌트는 v1.3.0 구현/완료/후속 이슈에서 제외합니다.
 
 ## 잔여 이슈 정리
 
@@ -54,7 +54,7 @@ swift test --filter UsageMonitorStateTests
 swift test --filter PopoverTabSummaryTests
 swift test --filter PopoverScreenshotRendererTests
 swift test
-./script/check.sh --no-run
+MACDOG_RELEASE_VERSION=1.3.0 ./script/check.sh --no-run
 ```
 
 기본 `swift`가 Command Line Tools SDK와 맞지 않으면 Xcode toolchain을 명시합니다.
@@ -67,10 +67,10 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift te
 
 1. `git status -sb`로 `v.1.3.0` 브랜치가 깨끗하고 `origin/v.1.3.0`과 같은지 확인합니다.
 2. `git fetch origin` 후 `main`, `origin/main`, `v.1.3.0`, `origin/v.1.3.0`의 head를 기록합니다.
-3. `git merge-base --is-ancestor main v.1.3.0`으로 v1.2.3 release head가 v1.3.0에 포함됐는지 확인합니다.
+3. `git merge-base --is-ancestor main v.1.3.0`으로 현재 릴리즈 브랜치가 `main`을 기반으로 하는지 확인합니다.
 4. `git diff --check`, `markdownlint-cli2`, v1.3.0 boundary/readiness self-test를 실행합니다.
 5. `swift test --filter UsageNotification`, `swift test --filter UsageMonitorStateTests`, `swift test --filter PopoverTabSummaryTests`, `swift test --filter PopoverScreenshotRendererTests`, 전체 `swift test`를 실행합니다.
-6. `./script/check.sh --no-run`으로 GUI 실행 없이 전체 local gate를 통과시킵니다.
+6. `MACDOG_RELEASE_VERSION=1.3.0 ./script/check.sh --no-run`으로 GUI 실행 없이 전체 local gate를 통과시킵니다.
 7. 릴리즈 PR을 `v.1.3.0`에서 `main`으로 만들고 CI/리뷰를 확인합니다.
 8. 리뷰 수정이 있으면 같은 브랜치에서 수정, 검증, 커밋, 푸시를 반복합니다.
 9. PR merge 후 `origin/main` 최신 SHA를 v1.3.0 release head로 기록합니다.

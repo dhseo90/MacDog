@@ -31,17 +31,23 @@ CACHE_PRIME_TIMEOUT_SECONDS=12
 WITH_HELPER=0
 HELPER_ONLY=0
 WITH_WIDGET=0
+APP_VERSION="${MACDOG_APP_VERSION:-${MACDOG_RELEASE_VERSION:-}}"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 XCRUN="/usr/bin/xcrun"
 
 usage() {
   echo "usage: $0 [--dry-run] [--with-helper] [--helper-only] [--with-widget]"
+  echo "requires MACDOG_APP_VERSION or MACDOG_RELEASE_VERSION"
 }
 
 die() {
   echo "error: $*" >&2
   exit 1
+}
+
+require_app_version() {
+  [[ -n "$APP_VERSION" ]] || die "app version required; set MACDOG_APP_VERSION or MACDOG_RELEASE_VERSION"
 }
 
 clean_bundle_xattrs() {
@@ -313,9 +319,11 @@ done
 case "$MODE" in
   install) ;;
   dry-run)
+    require_app_version
     if [[ "$HELPER_ONLY" == "1" ]]; then
       echo "MacDog helper-only install dry run"
-      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+      echo "App version: $APP_VERSION"
+      echo "Build script: MACDOG_APP_VERSION=$APP_VERSION $ROOT_DIR/script/build_and_run.sh --no-run"
       echo "App source: $APP_SOURCE"
       echo "App install: skipped"
       echo "CLI install: skipped"
@@ -326,10 +334,11 @@ case "$MODE" in
     fi
 
     echo "MacDog install dry run"
+    echo "App version: $APP_VERSION"
     if [[ "$WITH_WIDGET" == "1" ]]; then
-      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run --with-widget"
+      echo "Build script: MACDOG_APP_VERSION=$APP_VERSION $ROOT_DIR/script/build_and_run.sh --no-run --with-widget"
     else
-      echo "Build script: $ROOT_DIR/script/build_and_run.sh --no-run"
+      echo "Build script: MACDOG_APP_VERSION=$APP_VERSION $ROOT_DIR/script/build_and_run.sh --no-run"
     fi
     echo "App source: $APP_SOURCE"
     echo "App destination: $APP_DEST"
@@ -370,6 +379,7 @@ case "$MODE" in
 esac
 
 if [[ "$HELPER_ONLY" == "1" ]]; then
+  require_app_version
   "$ROOT_DIR/script/build_and_run.sh" --no-run >/dev/null
   install_privileged_helper "$APP_SOURCE"
   echo "Installed MacDog privileged helper"
@@ -378,6 +388,7 @@ if [[ "$HELPER_ONLY" == "1" ]]; then
   exit 0
 fi
 
+require_app_version
 if [[ "$WITH_WIDGET" == "1" ]]; then
   "$ROOT_DIR/script/build_and_run.sh" --no-run --with-widget >/dev/null
 else

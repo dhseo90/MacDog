@@ -11,7 +11,7 @@ public enum MacDogPrivilegedHelperContract {
     public static let helperToolDestination = "/Library/PrivilegedHelperTools/\(label)"
     public static let launchDaemonDestination = "/Library/LaunchDaemons/\(launchDaemonPlistName)"
     public static let protocolVersion = 1
-    public static let helperVersion = "1.0.0"
+    public static let helperVersion = "helper-contract-1"
 }
 
 public struct PrivilegedHelperRequest: Codable, Equatable, Sendable {

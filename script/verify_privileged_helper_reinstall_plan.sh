@@ -16,7 +16,7 @@ require_contains() {
   fi
 }
 
-install_output="$("$ROOT_DIR/script/install.sh" --dry-run --helper-only)"
+install_output="$(MACDOG_APP_VERSION=9.9.9 "$ROOT_DIR/script/install.sh" --dry-run --helper-only)"
 require_contains "$install_output" "MacDog helper-only install dry run"
 require_contains "$install_output" "Running app process: left untouched"
 require_contains "$install_output" "Helper install status: implemented"
@@ -38,7 +38,7 @@ Current state:
 Approved manual sequence for a real reinstall test:
   ./script/uninstall.sh --helper-only
   ./script/verify_privileged_helper_state.sh --expect-missing
-  ./script/install.sh --helper-only
+  MACDOG_APP_VERSION=<version> ./script/install.sh --helper-only
   ./script/verify_privileged_helper_state.sh --expect-installed
   ./script/verify_privileged_helper_xpc.sh --expect-installed --set 0 --restore
 

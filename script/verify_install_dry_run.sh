@@ -21,8 +21,9 @@ require_not_contains() {
   fi
 }
 
-install_output="$("$ROOT_DIR/script/install.sh" --dry-run)"
+install_output="$(MACDOG_APP_VERSION=9.9.9 "$ROOT_DIR/script/install.sh" --dry-run)"
 require_contains "$install_output" "MacDog install dry run"
+require_contains "$install_output" "App version: 9.9.9"
 require_contains "$install_output" "App destination:"
 require_contains "$install_output" "CLI destination:"
 require_contains "$install_output" "Cache agent executable:"
@@ -38,11 +39,11 @@ require_contains "$install_output" "Widget extension: skipped by default; pass -
 require_contains "$install_output" "Widget cache mirror: disabled"
 require_contains "$install_output" "Privileged helper: skipped"
 
-widget_install_output="$("$ROOT_DIR/script/install.sh" --dry-run --with-widget)"
+widget_install_output="$(MACDOG_APP_VERSION=9.9.9 "$ROOT_DIR/script/install.sh" --dry-run --with-widget)"
 require_contains "$widget_install_output" "Widget extension: opt-in bundled in"
 require_contains "$widget_install_output" "Widget cache mirror: enabled"
 
-helper_install_output="$("$ROOT_DIR/script/install.sh" --dry-run --with-helper)"
+helper_install_output="$(MACDOG_APP_VERSION=9.9.9 "$ROOT_DIR/script/install.sh" --dry-run --with-helper)"
 require_contains "$helper_install_output" "Privileged helper: opt-in enabled"
 require_contains "$helper_install_output" "Helper label: com.dhseo.macdog.helper"
 require_contains "$helper_install_output" "Helper host app source:"
@@ -53,8 +54,9 @@ require_contains "$helper_install_output" "Helper host requirement: team id when
 require_contains "$helper_install_output" "Helper launch daemon plist validation: ok"
 require_not_contains "$helper_install_output" "not implemented"
 
-helper_only_install_output="$("$ROOT_DIR/script/install.sh" --dry-run --helper-only)"
+helper_only_install_output="$(MACDOG_APP_VERSION=9.9.9 "$ROOT_DIR/script/install.sh" --dry-run --helper-only)"
 require_contains "$helper_only_install_output" "MacDog helper-only install dry run"
+require_contains "$helper_only_install_output" "App version: 9.9.9"
 require_contains "$helper_only_install_output" "App install: skipped"
 require_contains "$helper_only_install_output" "Running app process: left untouched"
 require_contains "$helper_only_install_output" "Helper host app source:"

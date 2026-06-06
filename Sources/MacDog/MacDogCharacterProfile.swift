@@ -2,11 +2,7 @@ struct MacDogCharacterProfile: Equatable {
     static let codexPup = MacDogCharacterProfile(
         id: "codex-pup",
         displayName: "Codex Pup",
-        runner: RunnerAssetCatalog(
-            resourceDirectory: "Runner",
-            framePrefix: "pup-runner",
-            frameCount: 8
-        ),
+        menuBarImage: MenuBarImageAssetCatalog(sourcePose: .runRight),
         desktopPet: DesktopPetAssetCatalog(
             resourceDirectory: "DesktopPet",
             poses: [
@@ -63,15 +59,13 @@ struct MacDogCharacterProfile: Equatable {
 
     let id: String
     let displayName: String
-    let runner: RunnerAssetCatalog
+    let menuBarImage: MenuBarImageAssetCatalog
     let desktopPet: DesktopPetAssetCatalog
     let popoverTabs: PopoverTabAssetCatalog
 }
 
-struct RunnerAssetCatalog: Equatable {
-    let resourceDirectory: String
-    let framePrefix: String
-    let frameCount: Int
+struct MenuBarImageAssetCatalog: Equatable {
+    let sourcePose: DesktopPetPose
 }
 
 struct DesktopPetAssetCatalog: Equatable {

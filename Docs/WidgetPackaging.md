@@ -14,7 +14,7 @@
 - `script/write_widget_cache_fixture.sh --self-test`는 live cache를 건드리지 않고 수동 widget fixture writer만 검증합니다. 수동 UI 검수에서는 `--shared-cache`로 `updated`, `stale`, `error` fixture를 staged 상태로 만들 수 있습니다.
 - `script/verify_widget_manual_ui_plan.sh`는 WidgetKit 수동 UI 검수 전 read-only prerequisite, fixture dry-run target, 갤러리 추가/클릭/stale/error 확인 순서를 한 번에 출력합니다. `--self-test`는 live cache를 건드리지 않고 계획 문구와 fixture dry-run만 검증합니다.
 - `script/verify_manual_ui_prerequisites.sh`는 기본 검수에서 WidgetKit을 건너뜁니다. `--with-widget`을 준 경우에만 widget gallery/click 수동 검수 전 read-only prerequisite gate를 실행하고, 기본적으로 설치본이 최신 `dist/MacDog.app`과 다르면 실패합니다.
-- 기본 빌드/설치/DMG는 CLI와 `MacDog.app`만 포함합니다. 앱 번들에는 `Contents/PlugIns/MacDogWidgetExtension.appex`를 넣지 않습니다. `script/build_and_run.sh --with-widget`, `script/install.sh --with-widget`, `script/package_release.sh --with-widget`에서만 opt-in으로 포함합니다.
+- 기본 빌드/설치/DMG는 CLI와 `MacDog.app`만 포함합니다. 앱 번들에는 `Contents/PlugIns/MacDogWidgetExtension.appex`를 넣지 않습니다. `MACDOG_APP_VERSION=<version> script/build_and_run.sh --with-widget`, `MACDOG_APP_VERSION=<version> script/install.sh --with-widget`, `MACDOG_RELEASE_VERSION=<version> script/package_release.sh --with-widget`에서만 opt-in으로 포함합니다.
 
 ## 패키징 결정
 
@@ -92,7 +92,7 @@ Apple Developer 문서 기준 capability는 platform, program membership, signin
 - `xcodebuild -project MacDog.xcodeproj -scheme MacDogWidgetHost -destination 'platform=macOS' -derivedDataPath .build/xcode-widget CODE_SIGNING_ALLOWED=NO build`
 - 최종 host bundle에 `Contents/PlugIns/MacDogWidgetExtension.appex`가 있는지 확인합니다.
 - 기본 `dist/MacDog.app`에는 `Contents/PlugIns/MacDogWidgetExtension.appex`가 없는지 확인합니다.
-- `script/build_and_run.sh --with-widget`로 만든 opt-in `dist/MacDog.app`에는 `Contents/PlugIns/MacDogWidgetExtension.appex`가 있는지 확인합니다.
+- `MACDOG_APP_VERSION=<version> script/build_and_run.sh --with-widget`로 만든 opt-in `dist/MacDog.app`에는 `Contents/PlugIns/MacDogWidgetExtension.appex`가 있는지 확인합니다.
 - Widget extension이 shared cache만 읽는지 확인합니다.
 - `script/verify_widget_readiness.sh`를 실행합니다.
 - `script/verify_widget_manual_ui_plan.sh --self-test`를 실행합니다.
@@ -107,7 +107,7 @@ Apple Developer 문서 기준 capability는 platform, program membership, signin
 
 자동 검증은 실제 macOS WidgetKit surface를 대신하지 않습니다. 아래 항목은 `--with-widget` opt-in build와 App Group provisioning이 준비된 뒤 직접 화면을 보고 확인했을 때만 완료로 기록합니다.
 
-1. `script/build_and_run.sh --with-widget` 또는 `script/install.sh --with-widget`로 opt-in 위젯 빌드를 준비합니다.
+1. `MACDOG_APP_VERSION=<version> script/build_and_run.sh --with-widget` 또는 `MACDOG_APP_VERSION=<version> script/install.sh --with-widget`로 opt-in 위젯 빌드를 준비합니다.
 2. `script/verify_widget_manual_ui_plan.sh`를 실행해 read-only prerequisite가 통과하는지 확인합니다.
 3. macOS widget gallery에서 `MacDogStatusWidget` small/medium 위젯을 추가합니다.
 4. 위젯을 클릭해 `macdog://open` deep link가 MacDog popover를 여는지 확인합니다.

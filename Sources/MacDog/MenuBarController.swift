@@ -7,7 +7,7 @@ import SwiftUI
 final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
     private let popover = NSPopover()
-    private let runnerRenderer = RunnerIconRenderer()
+    private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
     private let weeklyHistoryStore = CodexUsageWeeklyHistoryStore(fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL())
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
@@ -143,12 +143,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func advanceFrame() {
-        frameIndex = (frameIndex + 1) % RunnerIconRenderer.frameCount
+        frameIndex = (frameIndex + 1) % MenuBarIconRenderer.frameCount
         renderCurrentFrame()
     }
 
     private func renderCurrentFrame() {
-        let image = runnerRenderer.image(
+        let image = menuBarIconRenderer.image(
             frame: frameIndex,
             phase: state.phase,
             reducedMotion: state.reducedMotion

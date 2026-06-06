@@ -210,15 +210,15 @@ codex-usage status --watch 60
 
 필수 원칙:
 
-- 기준 이미지는 menu bar runner이며, runner 승인 전 desktop pet/tab button 최종 리소스를 확정하지 않습니다.
+- 기준 이미지는 desktop pet이며, menu bar 이미지는 같은 desktop pet 현재 프레임에서만 파생합니다.
 - 모든 이미지는 같은 캐릭터, 같은 그림체, 투명 배경 PNG, 충분한 여백, 작은 크기에서 읽히는 실루엣을 유지합니다.
 - 임시 생성 이미지는 저장소에 넣지 않고, 최종 선택 후 임시 리소스를 삭제합니다.
-- fallback 아이콘은 로딩 실패 표시용으로만 둡니다.
+- 캐릭터 이미지는 현재 캐릭터 프로필이 지정한 리소스만 사용합니다.
 - 새 캐릭터 UI/manifest를 바꾸면 `MacDogCharacterProfile`, manifest, 검증 스크립트, screenshot test를 함께 갱신합니다.
 
 현재 기본 리소스 계약:
 
-- runner: `Sources/MacDog/Resources/Runner/pup-runner-0.png` ~ `pup-runner-7.png`
+- menu bar: 별도 전용 PNG 없음. `Sources/MacDog/Resources/DesktopPet/pup-run-right-0.png` ~ `pup-run-right-7.png`에서 파생
 - desktop pet: `Sources/MacDog/Resources/DesktopPet/` 아래 right/up/down 8프레임, idle/rest/alert 4프레임 세트
 - tab button: `Sources/MacDog/Resources/PopoverTabs/{codex,mac,sleep,battery,settings}-tab.png`
 - manifest: `Sources/MacDog/Resources/CharacterProfiles/codex-pup-tab-art.json`

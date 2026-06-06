@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "MacDog version label for the notarized DMG"
+        description: "Required MacDog version label for the notarized DMG"
         required: true
-        default: "0.1.0"
       tag:
-        description: "Git tag to create for the stable release"
+        description: "Required Git tag to create for the stable release"
         required: true
-        default: "v0.1.0"
       acknowledge_signed_stable:
         description: "Type SIGNED-STABLE to publish a signed, notarized public release"
         required: true
