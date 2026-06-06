@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "MacDog version label for the generated DMG"
+        description: "Required MacDog version label for the generated DMG"
         required: true
-        default: "0.1.0"
       tag:
-        description: "Git tag to create for the draft release"
+        description: "Required Git tag to create for the draft release"
         required: true
-        default: "v0.1.0"
       acknowledge_unsigned:
         description: "Type UNSIGNED-DRAFT to confirm this is not a notarized public stable release"
         required: true

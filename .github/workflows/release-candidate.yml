@@ -4,9 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "MacDog version label for the generated DMG"
+        description: "Required MacDog version label for the generated DMG"
         required: true
-        default: "0.1.0"
 
 permissions:
   contents: read

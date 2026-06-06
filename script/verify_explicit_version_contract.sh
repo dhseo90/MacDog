@@ -58,4 +58,8 @@ require_contains "$install_output" "App version: 9.9.9"
 package_output="$(MACDOG_RELEASE_VERSION=9.9.9 "$ROOT_DIR/script/package_release.sh" --dry-run)"
 require_contains "$package_output" "Version: 9.9.9"
 
+if /usr/bin/grep -R -n -E 'default: "v?0\.1\.0"|default: "v?1\.[0-9]+\.[0-9]+"' "$ROOT_DIR/.github/workflows"; then
+  die "release workflow must not provide a fallback release version or tag"
+fi
+
 echo "Explicit version contract verification ok"
