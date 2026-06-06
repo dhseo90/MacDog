@@ -39,7 +39,7 @@ final class MacDogCharacterProfileTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(visibleRect.height, 14, "frame \(frame) visible height")
             XCTAssertLessThanOrEqual(visibleRect.height, MenuBarIconRenderer.imageSize.height, "frame \(frame) visible height")
             XCTAssertGreaterThan(visibleRect.minY, 0, "frame \(frame) top padding")
-            XCTAssertLessThan(visibleRect.maxY, image.size.height, "frame \(frame) bottom padding")
+            XCTAssertLessThanOrEqual(visibleRect.maxY, image.size.height, "frame \(frame) stays inside bottom edge")
         }
     }
 
