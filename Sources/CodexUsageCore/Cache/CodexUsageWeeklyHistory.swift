@@ -17,6 +17,8 @@ public struct CodexUsageWeeklyHistory: Codable, Equatable, Sendable {
 }
 
 public struct CodexUsageWeeklyHistorySample: Codable, Equatable, Sendable {
+    public static let resetWindowTimestampToleranceSeconds = 5 * 60
+
     public let recordedAt: Int
     public let usedPercent: Double
     public let remainingPercent: Double
@@ -53,6 +55,15 @@ public struct CodexUsageWeeklyHistorySample: Codable, Equatable, Sendable {
             resetsAt: resetsAt,
             windowDurationMins: windowDurationMins
         )
+    }
+
+    public func matchesResetWindow(
+        resetsAt targetResetsAt: Int,
+        windowDurationMins targetWindowDurationMins: Int,
+        toleranceSeconds: Int = Self.resetWindowTimestampToleranceSeconds
+    ) -> Bool {
+        guard windowDurationMins == targetWindowDurationMins else { return false }
+        return abs(resetsAt - targetResetsAt) <= max(toleranceSeconds, 0)
     }
 
     private static func clampedPercent(_ value: Double) -> Double {
@@ -113,7 +124,15 @@ public struct CodexUsageWeeklyHistoryStore {
         let existing = (try? read()) ?? .empty
         var retained = existing.samples
             .filter { sample.recordedAt - $0.recordedAt <= Self.defaultRetentionSeconds }
-            .filter { !($0.recordedAt == sample.recordedAt && $0.resetsAt == sample.resetsAt) }
+            .filter {
+                !(
+                    $0.recordedAt == sample.recordedAt &&
+                        $0.matchesResetWindow(
+                            resetsAt: sample.resetsAt,
+                            windowDurationMins: sample.windowDurationMins
+                        )
+                )
+            }
 
         if shouldSkip(sample: sample, after: retained) {
             if retained != existing.samples {
@@ -131,7 +150,12 @@ public struct CodexUsageWeeklyHistoryStore {
         sample: CodexUsageWeeklyHistorySample,
         after retained: [CodexUsageWeeklyHistorySample]
     ) -> Bool {
-        guard let last = retained.last(where: { $0.resetsAt == sample.resetsAt }) else {
+        guard let last = retained.last(where: {
+            $0.matchesResetWindow(
+                resetsAt: sample.resetsAt,
+                windowDurationMins: sample.windowDurationMins
+            )
+        }) else {
             return false
         }
 

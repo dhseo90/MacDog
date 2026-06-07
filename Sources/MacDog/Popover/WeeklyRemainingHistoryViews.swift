@@ -445,16 +445,17 @@ struct WeeklyRemainingHistoryChart: Equatable {
         let durationMins = weeklyWindow.windowDurationMins ?? 10_080
         let durationSeconds = max(durationMins, 1) * 60
         let resetStartAt = resetsAt - durationSeconds
+        let resetWindowToleranceSeconds = CodexUsageWeeklyHistorySample.resetWindowTimestampToleranceSeconds
         var samples = history.samples.filter {
-            $0.resetsAt == resetsAt &&
+            $0.matchesResetWindow(resetsAt: resetsAt, windowDurationMins: durationMins) &&
                 $0.recordedAt >= resetStartAt &&
-                $0.recordedAt <= resetsAt
+                $0.recordedAt <= resetsAt + resetWindowToleranceSeconds
         }
 
         if let currentSample,
-           currentSample.resetsAt == resetsAt,
+           currentSample.matchesResetWindow(resetsAt: resetsAt, windowDurationMins: durationMins),
            currentSample.recordedAt >= resetStartAt,
-           currentSample.recordedAt <= resetsAt,
+           currentSample.recordedAt <= resetsAt + resetWindowToleranceSeconds,
            !samples.contains(where: { $0.recordedAt == currentSample.recordedAt }) {
             samples.append(currentSample)
         }

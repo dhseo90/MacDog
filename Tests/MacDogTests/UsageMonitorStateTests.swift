@@ -341,6 +341,35 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 99)
     }
 
+    func testWeeklyHistoryChartKeepsSamplesWhenResetTimestampJittersBySeconds() {
+        let start = 1_800_000_000
+        let stableReset = start + 604_800
+        let currentReset = stableReset - 1
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 86_400 - 120, remainingPercent: 90, resetsAt: stableReset),
+            Self.weeklySample(recordedAt: start + 2 * 86_400 - 120, remainingPercent: 80, resetsAt: stableReset),
+            Self.weeklySample(recordedAt: start + 3 * 86_400 - 120, remainingPercent: 64, resetsAt: stableReset)
+        ])
+        let currentSample = Self.weeklySample(
+            recordedAt: start + 3 * 86_400 + 120,
+            remainingPercent: 63,
+            resetsAt: currentReset
+        )
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 63, resetsAt: currentReset),
+            currentSample: currentSample
+        )
+
+        XCTAssertEqual(chart.actualSampleCount, 4)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 63)
+        XCTAssertEqual(
+            chart.dayMarkers.map { UsageMonitorState.percent($0.point.remainingPercent) },
+            ["90", "80", "64", "63"]
+        )
+    }
+
     func testWeeklyHistoryChartStartsNewTimelineWhenResetTimestampChanges() throws {
         let calendar = Self.utcCalendar
         let oldStartDate = try XCTUnwrap(calendar.date(from: DateComponents(

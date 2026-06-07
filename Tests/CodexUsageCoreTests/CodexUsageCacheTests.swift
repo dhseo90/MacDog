@@ -187,6 +187,19 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.map(\.remainingPercent), [80, 79.6])
     }
 
+    func testWeeklyHistorySkipsDenseUnchangedSamplesWhenResetTimestampJitters() throws {
+        let fileURL = temporaryHistoryFileURL()
+        let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)
+        let reset = 2_000
+
+        XCTAssertTrue(try store.append(Self.weeklySample(recordedAt: 1_000, remainingPercent: 80, resetsAt: reset)))
+        XCTAssertFalse(try store.append(Self.weeklySample(recordedAt: 1_060, remainingPercent: 79.9, resetsAt: reset - 1)))
+
+        let history = try store.read()
+        XCTAssertEqual(history.samples.count, 1)
+        XCTAssertEqual(history.samples.first?.resetsAt, reset)
+    }
+
     func testWeeklyHistoryKeepsNewResetWindowEvenWhenCloseTogether() throws {
         let fileURL = temporaryHistoryFileURL()
         let store = CodexUsageWeeklyHistoryStore(fileURL: fileURL)
