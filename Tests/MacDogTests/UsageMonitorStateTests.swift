@@ -613,22 +613,29 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
-    func testWeeklyHistoryLineEndpointStopsBeforeCurrentMarkerCenter() {
-        let lineStart = CGPoint(x: 82, y: 22)
-        let markerCenter = CGPoint(x: 96, y: 36)
-        let endpoint = WeeklyRemainingHistoryInteraction.lineEndpointBeforeLatestMarker(
-            from: lineStart,
-            to: markerCenter
+    func testWeeklyHistoryLineIncludesCurrentMarkerPoint() {
+        let start = 1_800_000_000
+        let reset = start + 604_800
+        let currentSample = Self.weeklySample(
+            recordedAt: start + 4 * 86_400 + 12 * 3_600,
+            remainingPercent: 58,
+            resetsAt: reset
+        )
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 2 * 86_400, remainingPercent: 83, resetsAt: reset),
+            Self.weeklySample(recordedAt: start + 3 * 86_400, remainingPercent: 74, resetsAt: reset),
+            currentSample
+        ])
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 58, resetsAt: reset),
+            currentSample: currentSample
         )
 
-        XCTAssertLessThan(endpoint.x, markerCenter.x)
-        XCTAssertLessThan(endpoint.y, markerCenter.y)
-        XCTAssertEqual(
-            hypot(markerCenter.x - endpoint.x, markerCenter.y - endpoint.y),
-            WeeklyRemainingHistoryInteraction.latestMarkerLineClearance,
-            accuracy: 0.001
-        )
-        XCTAssertGreaterThanOrEqual(WeeklyRemainingHistoryInteraction.latestMarkerLineClearance, 12)
+        XCTAssertEqual(chart.points.last, chart.latestActualPoint)
+        XCTAssertEqual(chart.points.last?.recordedAt, currentSample.recordedAt)
+        XCTAssertEqual(chart.points.last?.remainingPercent, 58)
     }
 
     func testMacResourcesTabStaysUnscrollableWithTrendGraphs() {

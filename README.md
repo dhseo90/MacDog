@@ -180,7 +180,7 @@ MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh --dry-run
 MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh
 ```
 
-릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. DMG는 드래그 앤 드롭 배경 화면을 포함합니다. Finder 복사 자체는 앱을 실행하지 않으며, `/Applications/MacDog.app`을 처음 실행하면 MacDog가 터미널용 `~/bin/codex-usage` symlink와 usage cache LaunchAgent를 사용자 영역에 마무리 설치하고 로그인 자동 실행을 macOS 로그인 항목으로 등록합니다. 첫 실행 후에는 설치 디스크와 다운로드한 설치 파일 정리를 물어봅니다. optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻고, 사용자가 동의하면 MacDog 이름의 관리자 승인창을 엽니다.
+릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. DMG는 드래그 앤 드롭 배경 화면을 포함하고, 복사 후 `Applications`에서 MacDog를 실행하라는 한글 안내를 표시합니다. Finder 복사 자체는 앱을 실행하지 않으며, `/Applications/MacDog.app`을 처음 실행하면 MacDog가 터미널용 `~/bin/codex-usage` symlink와 usage cache LaunchAgent를 사용자 영역에 마무리 설치하고 로그인 자동 실행을 macOS 로그인 항목으로 등록합니다. 첫 실행 후에는 설치 디스크와 다운로드한 설치 파일 정리를 물어봅니다. optional 권한 도우미가 없으면 첫 실행에서 설치 여부를 묻고, 사용자가 동의하면 MacDog 이름의 관리자 승인창을 엽니다.
 
 설치 검수 원칙:
 

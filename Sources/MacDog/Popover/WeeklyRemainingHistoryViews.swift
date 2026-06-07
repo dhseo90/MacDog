@@ -277,13 +277,6 @@ private struct WeeklyRemainingHistoryPlot: View {
                 let cgPoint = self.point(for: point, in: size)
                 if index == 0 {
                     path.move(to: cgPoint)
-                } else if index == chart.points.count - 1,
-                          chart.latestActualPoint == point {
-                    let previousPoint = self.point(for: chart.points[index - 1], in: size)
-                    path.addLine(to: WeeklyRemainingHistoryInteraction.lineEndpointBeforeLatestMarker(
-                        from: previousPoint,
-                        to: cgPoint
-                    ))
                 } else {
                     path.addLine(to: cgPoint)
                 }
@@ -769,7 +762,6 @@ struct WeeklyRemainingHistoryDayMarker: Equatable, Identifiable {
 
 struct WeeklyRemainingHistoryInteraction {
     static let markerHitDiameter: CGFloat = 32
-    static let latestMarkerLineClearance: CGFloat = 12
     private static let markerHitRadius: CGFloat = 24
 
     static func point(for point: WeeklyRemainingHistoryPoint, in size: CGSize) -> CGPoint {
@@ -798,25 +790,6 @@ struct WeeklyRemainingHistoryInteraction {
         }
 
         return nearestID
-    }
-
-    static func lineEndpointBeforeLatestMarker(
-        from lineStart: CGPoint,
-        to markerCenter: CGPoint,
-        clearance: CGFloat = latestMarkerLineClearance
-    ) -> CGPoint {
-        let dx = markerCenter.x - lineStart.x
-        let dy = markerCenter.y - lineStart.y
-        let distance = hypot(dx, dy)
-        guard distance.isFinite, distance > clearance else {
-            return lineStart
-        }
-
-        let scale = (distance - clearance) / distance
-        return CGPoint(
-            x: lineStart.x + dx * scale,
-            y: lineStart.y + dy * scale
-        )
     }
 }
 

@@ -5,7 +5,7 @@
 ## 목표
 
 - 사용자가 GitHub Release에서 `.dmg`를 내려받아 Finder에서 열 수 있게 합니다.
-- DMG의 보이는 항목은 `MacDog.app`과 `Applications` symlink만 두고, 숨김 배경 이미지를 사용해 Docker 설치 화면처럼 drag-and-drop 설치 경험을 제공합니다.
+- DMG의 보이는 항목은 `MacDog.app`과 `Applications` symlink만 두고, 숨김 배경 이미지를 사용해 Docker 설치 화면처럼 drag-and-drop 설치 경험을 제공합니다. 배경에는 드래그 후 `Applications`에서 MacDog를 실행하라는 한글 안내를 직접 표시합니다.
 - 앱을 `Applications`에서 처음 실행하면 MacDog가 사용자 영역 설치 마무리를 직접 수행합니다.
 - 첫 실행 후 설치 디스크와 다운로드한 설치 파일을 정리할지 묻습니다.
 - optional 권한 도우미 설치/제거는 MacDog UI에서 처리합니다. 권한이 필요하면 MacDog 이름의 관리자 승인창을 띄웁니다.
@@ -17,7 +17,7 @@
 - `script/package_release.sh`는 앱 번들 내부 CLI가 포함된 `dist/MacDog.app`을 `dist/release/MacDog-<version>`에 staging합니다. release version은 반드시 명시해야 합니다.
 - `script/build_and_run.sh`는 `--version`, `MACDOG_RELEASE_VERSION`, `MACDOG_APP_VERSION` 중 하나로 지정한 값을 앱 번들의 `CFBundleShortVersionString`에 반영합니다. 버전이 없으면 실패합니다.
 - `script/package_release.sh --skip-build`는 기존 `dist/MacDog.app`의 `CFBundleShortVersionString`이 release version과 다르면 실패합니다.
-- staging 폴더에는 `MacDog.app`, `Applications` symlink, 숨김 `.background/background.png`가 포함됩니다.
+- staging 폴더에는 `MacDog.app`, `Applications` symlink, 숨김 `.background/background.png`가 포함됩니다. 배경 이미지는 `MacDog를 Applications 폴더로 드래그하세요`, `드래그 후 Applications에서 MacDog를 실행하세요` 안내를 포함합니다.
 - release note draft는 DMG 안이 아니라 `dist/release/MacDog-<version>-release-notes.md`로 따로 생성됩니다.
 - 앱 첫 실행 마무리는 `Applications` 또는 `~/Applications`에 복사된 앱에서만 동작합니다. 개발용 `dist/MacDog.app` 실행에는 적용하지 않습니다.
 - Finder drag-and-drop 복사 자체는 앱 코드를 실행하지 않습니다. `/Applications/MacDog.app`을 처음 실행한 뒤에만 사용자 영역 설치 마무리와 로그인 항목 등록이 수행됩니다.
