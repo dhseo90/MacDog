@@ -90,6 +90,11 @@ require_contains "$script_source" 'release version required; pass --version VERS
 require_contains "$script_source" 'MACDOG_RELEASE_VERSION="$VERSION" MACDOG_APP_VERSION="$VERSION"'
 require_contains "$script_source" 'verify_app_bundle_version "$APP_BUNDLE" "$VERSION"'
 require_contains "$script_source" 'wait_for_dmg_finder_metadata "$mountpoint/.DS_Store"'
+require_contains "$script_source" 'mountpoint="/Volumes/$volume_name"'
+require_contains "$script_source" 'release DMG mountpoint already exists; eject it before packaging'
+require_contains "$script_source" 'LC_ALL=C /usr/bin/grep -aq "icvp" "$ds_store"'
+require_contains "$script_source" "MacDog를 Applications 폴더로 드래그하세요"
+require_contains "$script_source" "드래그 후 Applications에서 MacDog를 실행하세요"
 [[ -x "$FINAL_STATE_SCRIPT" ]] || die "release final state verifier missing or not executable: $FINAL_STATE_SCRIPT"
 [[ -x "$CLEANUP_SCRIPT" ]] || die "release smoke cleanup script missing or not executable: $CLEANUP_SCRIPT"
 "$FINAL_STATE_SCRIPT" --self-test
@@ -184,7 +189,7 @@ if [[ -d "$APP_BUNDLE" && -n "${MACDOG_RELEASE_VERSION:-}" ]]; then
   [[ -L "$mountpoint/Applications" ]] || die "release DMG Applications symlink missing after mount"
   [[ -f "$mountpoint/.background/background.png" ]] || die "release DMG background missing after mount"
   [[ ! -e "$mountpoint/MacDog.app/Contents/PlugIns/MacDogWidgetExtension.appex" ]] || die "default release DMG must not include WidgetKit extension"
-  /usr/bin/strings -a "$mountpoint/.DS_Store" | /usr/bin/grep -Fq ".icvp" || die "release DMG Finder icon view options missing"
+  LC_ALL=C /usr/bin/grep -aq "icvp" "$mountpoint/.DS_Store" || die "release DMG Finder icon view options missing"
   if /usr/bin/find "$mountpoint/MacDog.app" -exec /bin/sh -c '
 for path do
   if /usr/bin/xattr -p com.apple.FinderInfo "$path" >/dev/null 2>&1; then

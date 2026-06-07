@@ -66,7 +66,7 @@ wait_for_dmg_finder_metadata() {
   local max_attempts=20
 
   while (( attempt <= max_attempts )); do
-    if [[ -f "$ds_store" ]] && /usr/bin/strings -a "$ds_store" | /usr/bin/grep -Fq ".icvp"; then
+    if [[ -f "$ds_store" ]] && LC_ALL=C /usr/bin/grep -aq "icvp" "$ds_store"; then
       return 0
     fi
     /bin/sleep 0.25
@@ -277,7 +277,7 @@ drawSlot(
     strokeColor: NSColor(calibratedWhite: 1.0, alpha: 0.52)
 )
 
-let title = "Install MacDog"
+let title = "MacDog 설치"
 let titleAttributes: [NSAttributedString.Key: Any] = [
     .font: NSFont.systemFont(ofSize: 31, weight: .semibold),
     .foregroundColor: NSColor(calibratedWhite: 0.18, alpha: 0.86)
@@ -287,6 +287,22 @@ title.draw(
     at: NSPoint(x: (size.width - titleSize.width) / 2, y: size.height - 48 - titleSize.height),
     withAttributes: titleAttributes
 )
+
+let instructionLines = [
+    "1. MacDog를 Applications 폴더로 드래그하세요",
+    "2. 드래그 후 Applications에서 MacDog를 실행하세요"
+]
+let instructionParagraph = NSMutableParagraphStyle()
+instructionParagraph.alignment = .center
+instructionParagraph.lineSpacing = 3
+let instructionAttributes: [NSAttributedString.Key: Any] = [
+    .font: NSFont.systemFont(ofSize: 16, weight: .medium),
+    .foregroundColor: NSColor(calibratedWhite: 0.20, alpha: 0.88),
+    .paragraphStyle: instructionParagraph
+]
+let instructionText = instructionLines.joined(separator: "\n")
+let instructionRect = NSRect(x: 130, y: 26, width: size.width - 260, height: 48)
+instructionText.draw(in: instructionRect, withAttributes: instructionAttributes)
 
 let arrowStartFinder = NSPoint(x: appSlotCenter.x + slotWidth / 2 + 24, y: appFinderCenter.y + 8)
 let arrowEndFinder = NSPoint(x: applicationsSlotCenter.x - slotWidth / 2 - 24, y: appFinderCenter.y + 8)
@@ -339,7 +355,8 @@ create_styled_dmg() {
   local volume_name="$APP_NAME $VERSION"
 
   rm -f "$rw_dmg"
-  mountpoint="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-dmg-mount.XXXXXX")"
+  mountpoint="/Volumes/$volume_name"
+  [[ ! -e "$mountpoint" ]] || die "release DMG mountpoint already exists; eject it before packaging: $mountpoint"
 
   /usr/bin/hdiutil create \
     -volname "$volume_name" \
@@ -348,7 +365,6 @@ create_styled_dmg() {
     -format UDRW \
     -fs HFS+ \
     "$rw_dmg" >/dev/null || {
-      rm -rf "$mountpoint"
       return 1
     }
 
@@ -356,7 +372,7 @@ create_styled_dmg() {
     -mountpoint "$mountpoint" \
     -noautoopen >/dev/null || {
       rm -f "$rw_dmg"
-      rm -rf "$mountpoint"
+      rmdir "$mountpoint" >/dev/null 2>&1 || true
       return 1
     }
 
@@ -390,7 +406,7 @@ APPLESCRIPT
   then
     /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
     rm -f "$rw_dmg"
-    rm -rf "$mountpoint"
+    rmdir "$mountpoint" >/dev/null 2>&1 || true
     return 1
   fi
 
@@ -398,7 +414,7 @@ APPLESCRIPT
   if ! wait_for_dmg_finder_metadata "$mountpoint/.DS_Store"; then
     /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
     rm -f "$rw_dmg"
-    rm -rf "$mountpoint"
+    rmdir "$mountpoint" >/dev/null 2>&1 || true
     return 1
   fi
 
@@ -406,17 +422,17 @@ APPLESCRIPT
   /usr/bin/codesign --verify --deep --strict --verbose=2 "$mountpoint/$APP_NAME.app" >/dev/null || {
     /usr/bin/hdiutil detach "$mountpoint" >/dev/null 2>&1 || true
     rm -f "$rw_dmg"
-    rm -rf "$mountpoint"
+    rmdir "$mountpoint" >/dev/null 2>&1 || true
     return 1
   }
 
   /bin/sync
   /usr/bin/hdiutil detach "$mountpoint" >/dev/null || {
     rm -f "$rw_dmg"
-    rm -rf "$mountpoint"
+    rmdir "$mountpoint" >/dev/null 2>&1 || true
     return 1
   }
-  rm -rf "$mountpoint"
+  rmdir "$mountpoint" >/dev/null 2>&1 || true
 
   /usr/bin/hdiutil convert "$rw_dmg" \
     -format UDZO \
