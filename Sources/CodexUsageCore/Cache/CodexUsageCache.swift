@@ -209,7 +209,12 @@ public struct CodexUsageCacheStore {
             )
             let stored = try historyStore.append(sample)
             let recordingStartedAt = try? historyStore.read().samples
-                .first { $0.resetsAt == sample.resetsAt }?
+                .first {
+                    $0.matchesResetWindow(
+                        resetsAt: sample.resetsAt,
+                        windowDurationMins: sample.windowDurationMins
+                    )
+                }?
                 .recordedAt
             weeklyHistory = CodexUsageWeeklyHistoryWriteResult(
                 disposition: stored ? .stored : .skipped,
