@@ -69,6 +69,39 @@ final class InstallerCleanupControllerTests: XCTestCase {
         XCTAssertEqual(controller.cleanupPlan().mountedInstallerVolumes, [validVolume])
     }
 
+    func testCleanupPromptPlanDoesNotScanDownloadsOrDesktop() throws {
+        let home = try temporaryDirectory()
+        let downloads = home.appendingPathComponent("Downloads", isDirectory: true)
+        let desktop = home.appendingPathComponent("Desktop", isDirectory: true)
+        try FileManager.default.createDirectory(at: downloads, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: true)
+        try Data("installer".utf8).write(to: downloads.appendingPathComponent("MacDog-9.9.9.dmg"))
+        try Data("notes".utf8).write(to: desktop.appendingPathComponent("MacDog-9.9.9-release-notes.md"))
+
+        let validVolume = home.appendingPathComponent("MacDog 9.9.9", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: validVolume.appendingPathComponent("MacDog.app", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: validVolume.appendingPathComponent("Applications", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let fileManager = TrackingFileManager()
+        let controller = InstallerCleanupController(
+            homeDirectory: home,
+            fileManager: fileManager,
+            mountedVolumeProvider: { [validVolume] }
+        )
+
+        let plan = controller.cleanupPromptPlan()
+
+        XCTAssertEqual(plan.mountedInstallerVolumes, [validVolume])
+        XCTAssertTrue(plan.downloadedInstallerFiles.isEmpty)
+        XCTAssertEqual(fileManager.directoryEnumerationCount, 0)
+    }
+
     func testCleanupRemovesDownloadsAndDetachesVolumes() throws {
         let home = try temporaryDirectory()
         let downloads = home.appendingPathComponent("Downloads", isDirectory: true)
@@ -144,5 +177,22 @@ final class InstallerCleanupControllerTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+}
+
+private final class TrackingFileManager: FileManager, @unchecked Sendable {
+    private(set) var directoryEnumerationCount = 0
+
+    override func contentsOfDirectory(
+        at url: URL,
+        includingPropertiesForKeys keys: [URLResourceKey]?,
+        options mask: FileManager.DirectoryEnumerationOptions = []
+    ) throws -> [URL] {
+        directoryEnumerationCount += 1
+        return try super.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: keys,
+            options: mask
+        )
     }
 }

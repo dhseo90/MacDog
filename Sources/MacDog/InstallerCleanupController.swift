@@ -64,6 +64,13 @@ struct InstallerCleanupController {
         )
     }
 
+    func cleanupPromptPlan() -> InstallerCleanupPlan {
+        InstallerCleanupPlan(
+            mountedInstallerVolumes: mountedInstallerVolumes(),
+            downloadedInstallerFiles: []
+        )
+    }
+
     static func shouldShowPrompt(
         for plan: InstallerCleanupPlan,
         defaults: UserDefaults = .standard

@@ -259,32 +259,34 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func showInstallerCleanupPromptIfNeeded() {
         let defaults = UserDefaults.standard
-        let plan = installerCleanupController.cleanupPlan()
+        let promptPlan = installerCleanupController.cleanupPromptPlan()
 
-        guard !plan.isEmpty else {
+        guard !promptPlan.isEmpty else {
             InstallerCleanupController.clearPromptDismissal(defaults: defaults)
             return
         }
-        guard InstallerCleanupController.shouldShowPrompt(for: plan, defaults: defaults) else { return }
+        guard InstallerCleanupController.shouldShowPrompt(for: promptPlan, defaults: defaults) else { return }
 
         let alert = NSAlert()
         alert.messageText = "설치 파일 정리"
         alert.informativeText = """
         MacDog 설치가 끝났습니다.
 
-        \(plan.summary)를 정리할까요?
+        \(promptPlan.summary)를 정리할까요?
+        다운로드/바탕화면에 남은 MacDog 설치 파일도 함께 정리할 수 있습니다.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "정리")
         alert.addButton(withTitle: "나중에")
 
         guard alert.runModal() == .alertFirstButtonReturn else {
-            InstallerCleanupController.recordPromptDismissed(for: plan, defaults: defaults)
+            InstallerCleanupController.recordPromptDismissed(for: promptPlan, defaults: defaults)
             return
         }
 
+        let cleanupPlan = installerCleanupController.cleanupPlan()
         do {
-            try installerCleanupController.cleanup(plan)
+            try installerCleanupController.cleanup(cleanupPlan)
             InstallerCleanupController.clearPromptDismissal(defaults: defaults)
         } catch {
             showPrivilegedHelperAlert(
