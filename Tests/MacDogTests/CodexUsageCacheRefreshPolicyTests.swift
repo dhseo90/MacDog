@@ -2,15 +2,15 @@ import XCTest
 @testable import MacDog
 
 final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
-    func testBundledCacheRefreshUsesShortTimeouts() {
+    func testBundledCacheRefreshAllowsCodexAppServerStartupDelay() {
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.cacheReadInterval, 60)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.cacheReadTolerance, 6)
         XCTAssertLessThanOrEqual(
             CodexUsageCacheRefreshPolicy.cacheReadTolerance,
             CodexUsageCacheRefreshPolicy.cacheReadInterval * 0.1
         )
-        XCTAssertEqual(CodexUsageCacheRefreshPolicy.requestTimeout, 5)
-        XCTAssertEqual(CodexUsageCacheRefreshPolicy.processTimeout, 7)
+        XCTAssertEqual(CodexUsageCacheRefreshPolicy.requestTimeout, 15)
+        XCTAssertEqual(CodexUsageCacheRefreshPolicy.processTimeout, 17)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.minimumRetryInterval, 60)
     }
 
@@ -20,27 +20,27 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
         let commandWithoutWidget = UsageCacheRefreshCommand(
             codexUsageURL: codexUsageURL,
             widgetBundled: false,
-            requestTimeout: 5
+            requestTimeout: CodexUsageCacheRefreshPolicy.requestTimeout
         )
         XCTAssertEqual(commandWithoutWidget.executableURL, codexUsageURL)
         XCTAssertEqual(commandWithoutWidget.arguments, [
             "status",
             "--write-cache",
             "--timeout",
-            "5"
+            "15"
         ])
 
         let commandWithWidget = UsageCacheRefreshCommand(
             codexUsageURL: codexUsageURL,
             widgetBundled: true,
-            requestTimeout: 5
+            requestTimeout: CodexUsageCacheRefreshPolicy.requestTimeout
         )
         XCTAssertEqual(commandWithWidget.arguments, [
             "status",
             "--write-cache",
             "--mirror-cache",
             "--timeout",
-            "5"
+            "15"
         ])
     }
 

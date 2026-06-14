@@ -40,7 +40,7 @@ final class UserComponentInstallerTests: XCTestCase {
                 "status",
                 "--write-cache",
                 "--timeout",
-                "5",
+                "15",
                 "--watch",
                 "60"
             ]
@@ -67,7 +67,7 @@ final class UserComponentInstallerTests: XCTestCase {
                 "--write-cache",
                 "--mirror-cache",
                 "--timeout",
-                "5",
+                "15",
                 "--watch",
                 "60"
             ]

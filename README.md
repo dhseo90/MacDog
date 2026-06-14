@@ -51,7 +51,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 5`를 실행해 앱 cache를 갱신합니다. 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 별도로 샘플링되어 Codex 탭 그래프에 쓰입니다.
+- 개발용 설치 또는 DMG에서 복사한 앱의 첫 실행 마무리 과정이 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 15`를 실행해 앱 cache를 갱신합니다. 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 별도로 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다. WidgetKit timeline은 60초 뒤 갱신을 요청하지만 macOS 정책에 따라 실제 위젯 갱신 시각은 지연될 수 있습니다.
 
 ## 알림 경계
