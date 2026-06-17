@@ -32,7 +32,8 @@ final class UserComponentInstallerTests: XCTestCase {
 
         XCTAssertEqual(plist["Label"] as? String, "com.dhseo.macdog.usage-cache")
         XCTAssertEqual(plist["RunAtLoad"] as? Bool, true)
-        XCTAssertEqual(plist["KeepAlive"] as? Bool, true)
+        XCTAssertNil(plist["KeepAlive"])
+        XCTAssertEqual(plist["StartInterval"] as? Int, 60)
         XCTAssertEqual(
             plist["ProgramArguments"] as? [String],
             [
@@ -40,9 +41,7 @@ final class UserComponentInstallerTests: XCTestCase {
                 "status",
                 "--write-cache",
                 "--timeout",
-                "15",
-                "--watch",
-                "60"
+                "15"
             ]
         )
         XCTAssertEqual(plist["StandardOutPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.out.log")
@@ -67,9 +66,7 @@ final class UserComponentInstallerTests: XCTestCase {
                 "--write-cache",
                 "--mirror-cache",
                 "--timeout",
-                "15",
-                "--watch",
-                "60"
+                "15"
             ]
         )
     }

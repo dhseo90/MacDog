@@ -381,6 +381,14 @@ expect_installed() {
     echo "expected cache LaunchAgent to run bundled CLI: $app_cli_binary" >&2
     return 1
   }
+  [[ "$(plist_value ':StartInterval' "$CACHE_PLIST" 2>/dev/null || true)" == "60" ]] || {
+    echo "expected cache LaunchAgent StartInterval to be 60 seconds" >&2
+    return 1
+  }
+  ! plist_contains_argument "$CACHE_PLIST" "--watch" || {
+    echo "expected cache LaunchAgent to run one-shot writer without --watch" >&2
+    return 1
+  }
   if [[ "$EXPECT_WIDGET" == "1" ]]; then
     plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
       echo "expected cache LaunchAgent to mirror cache for WidgetKit" >&2

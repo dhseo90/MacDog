@@ -129,7 +129,10 @@ public final class CodexAppServerClient {
 
         defer {
             stdout.fileHandleForReading.readabilityHandler = nil
-            stdin.fileHandleForWriting.closeFile()
+            Self.closeQuietly(stdin.fileHandleForWriting)
+            Self.closeQuietly(stdin.fileHandleForReading)
+            Self.closeQuietly(stdout.fileHandleForReading)
+            Self.closeQuietly(stdout.fileHandleForWriting)
             if process.isRunning {
                 process.terminate()
             }
@@ -222,5 +225,9 @@ public final class CodexAppServerClient {
             throw CodexAppServerError.responseMissingResult(id: id)
         }
         return result
+    }
+
+    private static func closeQuietly(_ handle: FileHandle) {
+        try? handle.close()
     }
 }

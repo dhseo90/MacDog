@@ -60,16 +60,14 @@ struct UserComponentInstaller {
         }
         programArguments.append(contentsOf: [
             "--timeout",
-            String(Int(CodexUsageCacheRefreshPolicy.requestTimeout)),
-            "--watch",
-            String(CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds)
+            String(Int(CodexUsageCacheRefreshPolicy.requestTimeout))
         ])
 
         let plist: [String: Any] = [
             "Label": cacheLabel,
             "ProgramArguments": programArguments,
             "RunAtLoad": true,
-            "KeepAlive": true,
+            "StartInterval": CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds,
             "StandardOutPath": "\(logDirectoryPath)/cache.out.log",
             "StandardErrorPath": "\(logDirectoryPath)/cache.err.log"
         ]

@@ -434,13 +434,11 @@ fi
 cat >>"$CACHE_PLIST" <<PLIST
     <string>--timeout</string>
     <string>$CACHE_REQUEST_TIMEOUT_SECONDS</string>
-    <string>--watch</string>
-    <string>60</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
-  <key>KeepAlive</key>
-  <true/>
+  <key>StartInterval</key>
+  <integer>60</integer>
   <key>StandardOutPath</key>
   <string>$LOG_DIR/cache.out.log</string>
   <key>StandardErrorPath</key>
