@@ -50,12 +50,31 @@
 - optional helper 설치/제거는 앱 UI에서 처리합니다.
 - GitHub PR 보호 준비물은 repo 안에 포함되어 있습니다.
 
+## v1.3.0 완료 기록
+
+2026-06-24 기준 v1.3.0은 published GitHub Release와 실제 설치 smoke까지 완료했습니다.
+
+- Release tag: `v1.3.0`
+- Release head: `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
+- Published asset: `MacDog-1.3.0.dmg`, `MacDog-1.3.0.dmg.sha256`
+- Published DMG checksum: `99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
+- Published release metadata: `draft=false`, `prerelease=false`, `target_commitish=a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
+- Published DMG 재다운로드 후 checksum과 `hdiutil verify`를 확인했습니다.
+- 사용자가 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 drag-and-drop했습니다.
+- 설치된 `/Applications/MacDog.app`의 앱/CLI 바이너리가 mounted DMG 내부 앱/CLI 바이너리와 같은 checksum임을 확인했습니다.
+- `/Applications/MacDog.app` 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목, 실행 중인 app path가 설치본 기준임을 확인했습니다.
+- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
+- Popover 실제 UI에서 Codex 사용량, 활성 자원, 잠들지 않기, 배터리, 설정 탭 전환을 확인했습니다.
+- `./script/cleanup_release_smoke_state.sh --apply` 뒤 Finder 검색 중복 원인이 제거되어 `MacDog.app`는 `/Applications/MacDog.app` 하나만 남았습니다.
+- `./script/verify_release_final_state.sh --version 1.3.0`이 통과했습니다.
+- Notification Center 표시 검수는 수행하지 않았습니다. 설정 탭의 알림 상태와 로컬 알림 경계까지만 v1.3.0 smoke 증거로 기록합니다.
+
 ## 후속 release smoke
 
-- GitHub Release에서 실제로 내려받은 `.dmg`는 현재 release head 기준 published asset이어야 합니다.
-- published DMG는 checksum과 `hdiutil verify`를 다시 확인합니다.
+- 다음 릴리즈에서 GitHub Release `.dmg`는 해당 release head 기준 published asset이어야 합니다.
+- 다음 릴리즈에서도 published DMG는 checksum과 `hdiutil verify`를 다시 확인합니다.
 - 설치 검수가 필요한 릴리즈 종료 작업은 Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수로 인정합니다.
-- 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 후속 release smoke로 수행합니다.
+- 깨끗한 사용자 계정/다른 Mac에서 설치, LaunchAgent 동작 검증은 필요 시 추가 release smoke로 수행합니다.
 - Gatekeeper 동작 검증은 Developer ID signing/notarization이 필요한 signed stable 배포 범위이므로 현재 unsigned 릴리즈에서 제외합니다.
 
 ## 아직 하지 않는 것

@@ -1,12 +1,39 @@
 # v1.3.0 릴리즈 준비 감사
 
-상태: 릴리즈 준비 감사 / 실행 전 단계 정의
+상태: 릴리즈 완료 기록 포함
 작성일: 2026-06-05
-기준 브랜치: `v.1.3.0`
+최종 확인일: 2026-06-24
+기준 브랜치: `main`
 대상 버전: `1.3.0`
+Release tag: `v1.3.0`
+Release head: `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
 
 이 문서는 v1.3.0 구현 범위의 잔여 이슈를 릴리즈 관점에서 닫고, 실제 릴리즈를 시작할 때 따라야 할 순서를 고정합니다.
-릴리즈 실행 자체는 이 문서의 범위가 아니며, PR 생성, GitHub workflow 실행, DMG 설치 검수, publish는 사용자가 별도로 릴리즈 진행을 승인한 뒤 수행합니다.
+2026-06-24에는 사용자가 승인한 범위 안에서 tag, GitHub Release asset, published DMG 설치 smoke, 앱 UI smoke, release final-state까지 완료한 결과를 함께 기록합니다.
+
+## 릴리즈 완료 기록
+
+v1.3.0 GitHub Release는 현재 `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`를 가리킵니다.
+
+확인된 release metadata:
+
+- `tag_name`: `v1.3.0`
+- `target_commitish`: `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
+- `draft`: `false`
+- `prerelease`: `false`
+- `MacDog-1.3.0.dmg`: `sha256:99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
+- `MacDog-1.3.0.dmg.sha256`: `sha256:ae97d01d30e22e028f2db169e3ca6f2b0ee0ba9cde0ed027991bd77676f4b51d`
+
+확인된 release smoke:
+
+- published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인했습니다.
+- 사용자가 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop했습니다.
+- 설치된 `/Applications/MacDog.app`의 앱/CLI 바이너리가 mounted DMG 내부 앱/CLI 바이너리와 같은 checksum임을 확인했습니다.
+- `/Applications/MacDog.app` 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목, 실행 중인 app path가 `/Applications/MacDog.app` 기준임을 확인했습니다.
+- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
+- Popover 실제 UI에서 Codex 사용량, 활성 자원, 잠들지 않기, 배터리, 설정 탭 전환을 확인했습니다.
+- `./script/cleanup_release_smoke_state.sh --apply` 뒤 Finder 검색 중복 원인이 제거되어 `MacDog.app`는 `/Applications/MacDog.app` 하나만 남았습니다.
+- `./script/verify_release_final_state.sh --version 1.3.0`이 통과했습니다.
 
 ## 릴리즈 준비 판단
 
@@ -33,12 +60,13 @@
 | Codex 탭 위험/회복 요약 | 정리됨 | `UsageMonitorStateTests`, README screenshot hygiene 검증. 실제 popover 확인은 릴리즈 smoke 증거입니다. |
 | Mac, 잠들지 않기, 배터리, 설정 탭 요약 | 정리됨 | `PopoverTabSummaryTests`, `UsageMonitorStateTests`, README screenshot hygiene 검증. 실제 popover 확인은 릴리즈 smoke 증거입니다. |
 | 문서/제외 경계 | 정리됨 | README/ROADMAP/AGENTS/V130 문서와 `verify_v130_local_notification_boundary.sh` |
-| 실제 앱 화면 확인 | 릴리즈 smoke 증거로 남김 | 실제 앱을 열지 않았다면 `UI 확인 미수행`으로 보고합니다. |
-| 실제 macOS 알림 권한 prompt와 Notification Center 표시 | 릴리즈 smoke 증거로 남김 | 설정 탭에서 알림을 켠 뒤 OS prompt와 알림 표시를 직접 확인한 경우만 완료로 기록합니다. |
-| DMG Finder drag-and-drop 설치 | 릴리즈 smoke 증거로 남김 | published DMG 기준 Finder에서 실제 drag-and-drop한 경우만 설치 검수로 인정합니다. |
+| 실제 앱 화면 확인 | 릴리즈 smoke 증거로 남김, v1.3.0 완료 | 실제 앱을 열지 않았다면 `UI 확인 미수행`으로 보고합니다. 2026-06-24에는 `/Applications/MacDog.app` popover 주요 탭 전환을 확인했습니다. |
+| 실제 macOS 알림 권한 prompt와 Notification Center 표시 | 릴리즈 smoke 증거로 남김, 미수행 | Notification Center 표시까지 직접 확인한 경우만 완료로 기록합니다. v1.3.0 릴리즈 smoke에서는 앱 설정 탭의 알림 상태만 확인했고 OS 알림 표시 검수는 수행하지 않았습니다. |
+| DMG Finder drag-and-drop 설치 | 릴리즈 smoke 증거로 남김, v1.3.0 완료 | published DMG 기준 Finder에서 실제 drag-and-drop한 경우만 설치 검수로 인정합니다. 2026-06-24에 이 경로로 설치 검수를 수행했습니다. |
 
 릴리즈 전 자동검증이 통과하면 v1.3.0 구현 잔여 이슈는 닫힌 것으로 봅니다.
 다만 실제 화면, OS 알림, DMG 설치, live cache fetch는 릴리즈 실행 증거이며 자동검증이나 문서만으로 완료 처리하지 않습니다.
+v1.3.0에서는 실제 화면, DMG 설치, live cache fetch는 완료 증거가 있고, OS 알림 표시 검수는 미수행으로 남깁니다.
 
 ## 릴리즈 전 필수 자동검증
 
@@ -65,9 +93,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift te
 
 ## 릴리즈 실행 스텝
 
-1. `git status -sb`로 `v.1.3.0` 브랜치가 깨끗하고 `origin/v.1.3.0`과 같은지 확인합니다.
-2. `git fetch origin` 후 `main`, `origin/main`, `v.1.3.0`, `origin/v.1.3.0`의 head를 기록합니다.
-3. `git merge-base --is-ancestor main v.1.3.0`으로 현재 릴리즈 브랜치가 `main`을 기반으로 하는지 확인합니다.
+아래 절차는 다음 릴리즈에서도 재사용할 수 있는 기준 절차입니다. v1.3.0은 최종 release head가 `main`의 `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`인 상태로 종료했습니다.
+
+1. `git status -sb`로 릴리즈 대상 브랜치가 깨끗하고 원격과 같은지 확인합니다.
+2. `git fetch origin` 후 `main`, `origin/main`, 릴리즈 대상 브랜치, 원격 릴리즈 대상 브랜치의 head를 기록합니다.
+3. `git merge-base --is-ancestor main <release-branch>`으로 현재 릴리즈 브랜치가 `main`을 기반으로 하는지 확인합니다.
 4. `git diff --check`, `markdownlint-cli2`, v1.3.0 boundary/readiness self-test를 실행합니다.
 5. `swift test --filter UsageNotification`, `swift test --filter UsageMonitorStateTests`, `swift test --filter PopoverTabSummaryTests`, `swift test --filter PopoverScreenshotRendererTests`, 전체 `swift test`를 실행합니다.
 6. `MACDOG_RELEASE_VERSION=1.3.0 ./script/check.sh --no-run`으로 GUI 실행 없이 전체 local gate를 통과시킵니다.
