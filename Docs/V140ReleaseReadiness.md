@@ -1,6 +1,6 @@
 # v1.4.0 릴리즈 준비 감사
 
-상태: 릴리즈 잔여 이슈 정리 / 실행 전
+상태: 릴리즈 잔여 이슈 정리 / PR 검증 완료 / 리뷰 대기
 작성일: 2026-06-26
 기준 브랜치: `codex/v1.4.0-release`
 대상 버전: `1.4.0`
@@ -17,6 +17,20 @@ Release head: PR merge 후 `origin/main` 최신 SHA로 기록
 - `main` 직접 push 과정에서 GitHub ruleset bypass 로그가 발생했습니다. 릴리즈 감사에서는 해당 direct push bypass와 required checks 최종 상태를 별도 기록합니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.4.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
+
+## 현재 PR 게이트 기록
+
+기록 시각: 2026-06-26 21:08 KST
+
+- PR: `codex/v1.4.0-release -> main` [#16](https://github.com/dhseo90/MacDog/pull/16)
+- PR head: `53810268ccc9695c9374c3ad2697f29e4076c1e3`
+- Base head: `6dcf2c0297679dba188624a66de36cc1eeb2f1b6`
+- Required checks: `static-gates` 통과, `guardrails` 통과
+- Branch protection: approving review 1개 필요, code owner review 필요, stale review dismissal 켜짐
+- Merge state: `BLOCKED`
+- Review state: `REVIEW_REQUIRED`
+- 원격 tag `v1.4.0`: 미존재
+- Direct push/admin bypass: `enforce_admins=false`라 관리자 우회 가능성은 있지만, v1.4.0 release branch는 PR 경로로 검증 중이며 별도 승인 없이 direct push/admin bypass로 release head를 만들지 않습니다. 최종 release head는 PR merge 후 `origin/main` 최신 SHA로 다시 기록합니다.
 
 ## 릴리즈 잔여 이슈
 
