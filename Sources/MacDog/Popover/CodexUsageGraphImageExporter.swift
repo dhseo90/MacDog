@@ -58,17 +58,19 @@ enum CodexUsageGraphImageExporter {
         _ data: Data,
         suggestedFileName: String = "macdog-codex-usage-graph.png"
     ) {
+        NSApp.activate(ignoringOtherApps: true)
+
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.canCreateDirectories = true
         panel.nameFieldStringValue = suggestedFileName
-        panel.begin { response in
-            guard response == .OK,
-                  let url = panel.url
-            else {
-                return
-            }
-            try? writePNGData(data, to: url)
+        panel.isExtensionHidden = false
+
+        guard panel.runModal() == .OK,
+              let url = panel.url
+        else {
+            return
         }
+        try? writePNGData(data, to: url)
     }
 }
