@@ -8,7 +8,7 @@ Release tag: `v1.4.0`
 Published release head: `7327977bb82d41d8f0571e231865ba3251a178c9`
 Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`
 Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
-Replacement local DMG SHA-256: `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`
+Replacement local DMG SHA-256: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8042a9032a2b03152`
 
 이 문서는 v1.4.0 Usage Intelligence 구현 이후 실제 릴리즈까지 남은 이슈를 우선순위와 진행 순서 기준으로 고정합니다.
 구현 세부 범위와 데이터 경계는 [V140UsageIntelligence.md](V140UsageIntelligence.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
@@ -33,7 +33,7 @@ Replacement local DMG SHA-256: `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5d
 - Direct push/admin bypass: `main` direct push로 GitHub ruleset bypass가 기록됐습니다.
 - Required checks: `4ddb5ff` 기준 `CI` success, `Public Repo Guardrails` success.
 - Local replacement artifact: `dist/release/MacDog-1.4.0.dmg`, `dist/release/MacDog-1.4.0.dmg.sha256`
-- Local replacement checksum: `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`
+- Local replacement checksum: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8042a9032a2b03152`
 - Local verification: `git diff --check`, focused Swift tests, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`, `hdiutil verify`, checksum 검증, `./script/verify_release_final_state.sh --version 1.4.0` 통과.
 - UI evidence: source renderer와 README screenshot에서 하단 `기록 시작` 라벨이 popover 내부에 표시됨을 확인했습니다.
 - Remote release gap: `v1.4.0` tag와 published asset은 아직 `7327977` 기준입니다. `4ddb5ff` 기준 tag 이동과 asset 교체는 별도 승인 후 진행합니다.

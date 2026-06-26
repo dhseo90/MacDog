@@ -14,7 +14,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, live fetch/cache 계약, release final-state 검증.
 - Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`. 이 head에는 Codex 그래프 하단 라벨 클리핑 수정, `현재/지난/비교` UI 문구 정리, current reset timestamp drift 제외, README screenshot 갱신이 포함됩니다.
-- Replacement local DMG: `dist/release/MacDog-1.4.0.dmg`, SHA-256 `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`. 이 DMG와 remote `v1.4.0` tag/asset 교체는 아직 수행하지 않았습니다.
+- Replacement local DMG: `dist/release/MacDog-1.4.0.dmg`, SHA-256 `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8042a9032a2b03152`. 이 DMG와 remote `v1.4.0` tag/asset 교체는 아직 수행하지 않았습니다.
 
 ## 화면
 
