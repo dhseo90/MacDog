@@ -215,17 +215,110 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(model.overlaySeries?.finalUsageMarker.usedPercent, 74)
     }
 
+    func testCodexHistoryComparisonModelKeepsHistoryModesVisibleWithoutPastWindows() throws {
+        let currentReset = 1_800_604_800
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 12, weeklyUsedPercent: 32, weeklyResetsAt: currentReset),
+            cacheSnapshot: nil,
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: currentReset, finalUsedPercent: 32),
+                Self.resetWindowRecord(resetsAt: currentReset + 1, finalUsedPercent: 32)
+            ]),
+            errorMessage: nil
+        )
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(state: state, calendar: Self.utcCalendar))
+
+        XCTAssertEqual(model.availableModes, [.current, .past, .overlay])
+        XCTAssertTrue(model.pastWindows.isEmpty)
+        XCTAssertNil(model.defaultPastWindowKey)
+        XCTAssertNil(model.overlaySeries)
+    }
+
+    func testCodexHistoryComparisonModelBackfillsPastWindowsFromWeeklyHistory() throws {
+        let currentReset = 1_800_604_800
+        let pastReset = currentReset - 604_800
+        let pastStart = pastReset - 604_800
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: pastStart + 60 * 60, remainingPercent: 93, resetsAt: pastReset),
+            Self.weeklySample(recordedAt: pastStart + 86_400 + 120, remainingPercent: 82, resetsAt: pastReset),
+            Self.weeklySample(recordedAt: pastReset - 60, remainingPercent: 27, resetsAt: pastReset + 1),
+            Self.weeklySample(recordedAt: currentReset - 2 * 86_400, remainingPercent: 100, resetsAt: currentReset)
+        ])
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 87, resetsAt: currentReset),
+            currentReport: Self.report(fiveHourUsedPercent: 12, weeklyUsedPercent: 13, weeklyResetsAt: currentReset),
+            currentTimestamp: currentReset - 60,
+            calendar: Self.utcCalendar
+        ))
+
+        XCTAssertEqual(model.pastWindows.map(\.key.resetsAt), [pastReset])
+        XCTAssertEqual(model.defaultPastWindowKey?.resetsAt, pastReset)
+        XCTAssertEqual(model.overlaySeries?.finalUsageMarker.usedPercent, 73)
+        XCTAssertEqual(model.resetWindowHistory.records.first?.source, .backfill)
+    }
+
     func testCodexHistoryMarkerLabelShowsSevenDayEndUsage() throws {
+        let recordedAt = Self.timestamp(year: 2026, month: 6, day: 25, hour: 6, minute: 28)
         let marker = CodexUsageResetWindowOverlayMarker(
             id: "codex-7",
             kind: .sevenDayEnd,
             day: 7,
-            recordedAt: 1_800_604_800,
+            recordedAt: recordedAt,
             usedPercent: 74,
             remainingPercent: 26
         )
 
-        XCTAssertEqual(CodexUsageHistoryMarkerLabel.hoverText(for: marker), "7일 종료 · 사용 74%")
+        XCTAssertEqual(
+            CodexUsageHistoryMarkerLabel.hoverText(for: marker, calendar: Self.utcCalendar),
+            "6/25 목 종료 · 26%"
+        )
+    }
+
+    func testCodexHistoryPastTimelineLabelsUseActualDates() throws {
+        let resetStart = Self.timestamp(year: 2026, month: 6, day: 18, hour: 6, minute: 28)
+        let resetsAt = Self.timestamp(year: 2026, month: 6, day: 25, hour: 6, minute: 28)
+        let record = CodexUsageResetWindowHistoryRecord(
+            generatedAt: resetsAt - 60,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: resetsAt,
+            dailyEndSamples: [
+                CodexUsageResetWindowDailySample(
+                    dayIndex: 1,
+                    recordedAt: resetStart + 86_400,
+                    usedPercent: 20,
+                    remainingPercent: 80
+                )
+            ],
+            finalUsedPercent: 77,
+            finalRemainingPercent: 23,
+            sampleCount: 2,
+            source: .backfill
+        )
+        let series = CodexUsageResetWindowOverlayBuilder().series(for: record)
+        let window = CodexUsageResetWindowOverlayWindow(record: record)
+        let firstDayMarker = try XCTUnwrap(series.dayEndMarkers.first)
+
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.startLabel(for: series, calendar: Self.utcCalendar),
+            "기록 시작 6/18 목 06:28"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.endLabel(for: series, calendar: Self.utcCalendar),
+            "6/25 목"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.windowLabel(for: window, calendar: Self.utcCalendar),
+            "6/18-6/25"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryMarkerLabel.hoverText(for: firstDayMarker, calendar: Self.utcCalendar),
+            "6/19 금 종료 · 80%"
+        )
     }
 
     func testCodexHistoryModeLabelsDescribeComparisonIntent() {
@@ -913,6 +1006,24 @@ final class UsageMonitorStateTests: XCTestCase {
             resetsAt: resetsAt,
             windowDurationMins: 10_080
         )
+    }
+
+    private static func timestamp(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int = 0,
+        minute: Int = 0
+    ) -> Int {
+        let date = utcCalendar.date(from: DateComponents(
+            timeZone: TimeZone(secondsFromGMT: 0),
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute
+        ))!
+        return Int(date.timeIntervalSince1970)
     }
 
     private static func resetWindowRecord(

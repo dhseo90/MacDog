@@ -213,6 +213,34 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertEqual(record.dailyEndSamples.first?.dayIndex, 7)
     }
 
+    func testBackfillSummariesUseCompletedWeeklyHistoryAndExcludeCurrentFutureWindow() throws {
+        let pastReset = 1_800_604_800
+        let currentReset = pastReset + 604_800
+        let pastStart = pastReset - 604_800
+        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: pastStart + 60 * 60, remainingPercent: 92, resetsAt: pastReset),
+            Self.weeklySample(recordedAt: pastStart + 86_400 + 90, remainingPercent: 81, resetsAt: pastReset),
+            Self.weeklySample(recordedAt: pastStart + 2 * 86_400 + 120, remainingPercent: 63, resetsAt: pastReset + 1),
+            Self.weeklySample(recordedAt: pastReset - 60, remainingPercent: 26, resetsAt: pastReset),
+            Self.weeklySample(recordedAt: pastReset + 60, remainingPercent: 100, resetsAt: currentReset),
+            Self.weeklySample(recordedAt: pastReset + 120, remainingPercent: 100, resetsAt: currentReset + 1)
+        ])
+
+        let summaries = CodexUsageResetWindowBackfillBuilder().summaries(
+            from: weeklyHistory,
+            completedAtOrBefore: pastReset + 120,
+            excludingCurrentResetsAt: currentReset
+        )
+
+        let summary = try XCTUnwrap(summaries.first)
+        XCTAssertEqual(summaries.count, 1)
+        XCTAssertEqual(summary.resetsAt, pastReset)
+        XCTAssertEqual(summary.finalUsedPercent, 74)
+        XCTAssertEqual(summary.finalRemainingPercent, 26)
+        XCTAssertEqual(summary.sampleCount, 4)
+        XCTAssertEqual(summary.dailyEndSamples.map(\.dayIndex), [1, 2, 3, 7])
+    }
+
     func testBackfillSummaryJSONDoesNotStoreRawLogOrSessionMaterial() throws {
         let summary = CodexUsageResetWindowBackfillSummary(
             generatedAt: 1_800_604_740,
@@ -289,6 +317,20 @@ final class UsageResetWindowHistoryTests: XCTestCase {
             finalRemainingPercent: 72,
             sampleCount: sampleCount,
             source: source
+        )
+    }
+
+    private static func weeklySample(
+        recordedAt: Int,
+        remainingPercent: Double,
+        resetsAt: Int
+    ) -> CodexUsageWeeklyHistorySample {
+        CodexUsageWeeklyHistorySample(
+            recordedAt: recordedAt,
+            usedPercent: 100 - remainingPercent,
+            remainingPercent: remainingPercent,
+            resetsAt: resetsAt,
+            windowDurationMins: 10_080
         )
     }
 

@@ -52,7 +52,7 @@ struct WeeklyRemainingHistoryBlock: View {
                         .controlSize(.mini)
                         .labelsHidden()
 
-                        if mode != .current {
+                        if mode != .current, !comparisonModel.pastWindows.isEmpty {
                             Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
                                 ForEach(comparisonModel.pastWindows) { window in
                                     Text(windowLabel(for: window))
@@ -135,7 +135,7 @@ struct WeeklyRemainingHistoryBlock: View {
             return model.overlaySeries
         }
         return CodexUsageResetWindowOverlayBuilder().model(
-            history: resetWindowHistory,
+            history: model.resetWindowHistory,
             selectedKey: selectedWindow.key,
             excludingCurrentResetsAt: weeklyWindow?.resetsAt
         ).selectedSeries
@@ -163,10 +163,10 @@ struct WeeklyRemainingHistoryBlock: View {
         case .current:
             return model.currentChart.summaryText
         case .past:
-            guard let selectedSeries else { return "과거 기록 없음" }
+            guard let selectedSeries else { return "지난 기록 없음" }
             return "지난 window 최종 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))% 사용"
         case .overlay:
-            guard selectedSeries != nil else { return model.currentChart.summaryText }
+            guard selectedSeries != nil else { return "비교할 지난 기록 없음" }
             return "현재 pace와 지난 window 비교"
         }
     }
@@ -176,7 +176,12 @@ struct WeeklyRemainingHistoryBlock: View {
         model: CodexUsageHistoryComparisonModel,
         selectedSeries: CodexUsageResetWindowOverlaySeries?
     ) -> String {
-        mode == .current ? model.currentChart.timelineStartDisplayLabel : "0일"
+        switch mode {
+        case .current:
+            return model.currentChart.timelineStartDisplayLabel
+        case .past, .overlay:
+            return CodexUsageHistoryTimelineLabel.startLabel(for: selectedSeries)
+        }
     }
 
     private func timelineEndLabel(
@@ -184,7 +189,12 @@ struct WeeklyRemainingHistoryBlock: View {
         model: CodexUsageHistoryComparisonModel,
         selectedSeries: CodexUsageResetWindowOverlaySeries?
     ) -> String {
-        mode == .current ? model.currentChart.resetEndLabel : "7일"
+        switch mode {
+        case .current:
+            return model.currentChart.resetEndLabel
+        case .past, .overlay:
+            return CodexUsageHistoryTimelineLabel.endLabel(for: selectedSeries)
+        }
     }
 
     private func accessibilityValue(
@@ -196,17 +206,13 @@ struct WeeklyRemainingHistoryBlock: View {
         case .current:
             return model.currentChart.accessibilityValue
         case .past, .overlay:
-            guard let selectedSeries else { return "과거 기록 없음" }
+            guard let selectedSeries else { return mode == .past ? "지난 기록 없음" : "비교할 지난 기록 없음" }
             return "지난 window 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
         }
     }
 
     private func windowLabel(for window: CodexUsageResetWindowOverlayWindow) -> String {
-        let date = Date(timeIntervalSince1970: TimeInterval(window.resetsAt))
-        let components = Calendar.current.dateComponents([.month, .day], from: date)
-        let month = components.month ?? 0
-        let day = components.day ?? 0
-        return "\(month)/\(day)"
+        CodexUsageHistoryTimelineLabel.windowLabel(for: window)
     }
 
     private func copyVisibleGraph(
@@ -264,13 +270,13 @@ private struct CodexUsageGraphDisplay: View {
             if let selectedSeries {
                 ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
             } else {
-                WeeklyRemainingHistoryGraph(chart: currentChart)
+                ResetWindowHistoryUnavailableGraph(message: "지난 기록 없음")
             }
         case .overlay:
             if let selectedSeries {
                 ResetWindowOverlayGraph(currentChart: currentChart, series: selectedSeries)
             } else {
-                WeeklyRemainingHistoryGraph(chart: currentChart)
+                ResetWindowHistoryUnavailableGraph(message: "비교할 지난 기록 없음")
             }
         }
     }
@@ -289,11 +295,29 @@ private struct CodexUsageGraphSnapshotView: View {
                 selectedSeries: selectedSeries
             )
             WeeklyRemainingTimelineLabels(
-                startLabel: mode == .current ? currentChart.timelineStartDisplayLabel : "0일",
-                endLabel: mode == .current ? currentChart.resetEndLabel : "7일"
+                startLabel: snapshotStartLabel,
+                endLabel: snapshotEndLabel
             )
         }
         .padding(12)
+    }
+
+    private var snapshotStartLabel: String {
+        switch mode {
+        case .current:
+            return currentChart.timelineStartDisplayLabel
+        case .past, .overlay:
+            return CodexUsageHistoryTimelineLabel.startLabel(for: selectedSeries)
+        }
+    }
+
+    private var snapshotEndLabel: String {
+        switch mode {
+        case .current:
+            return currentChart.resetEndLabel
+        case .past, .overlay:
+            return CodexUsageHistoryTimelineLabel.endLabel(for: selectedSeries)
+        }
     }
 }
 
@@ -391,6 +415,38 @@ private struct WeeklyRemainingHistoryYAxisLabels: View {
         .foregroundStyle(.secondary.opacity(0.76))
         .lineLimit(1)
         .minimumScaleFactor(0.72)
+    }
+}
+
+private struct ResetWindowHistoryUnavailableGraph: View {
+    let message: String
+
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(alignment: .top, spacing: CodexUsagePanelLayout.weeklyGraphAxisSpacing) {
+                WeeklyRemainingHistoryYAxisLabels()
+                    .frame(width: CodexUsagePanelLayout.weeklyGraphYAxisWidth, height: geometry.size.height)
+
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(.secondary.opacity(0.24), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                    Text(message)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                        .padding(.horizontal, 8)
+                }
+                .frame(
+                    width: max(
+                        0,
+                        geometry.size.width -
+                            CodexUsagePanelLayout.weeklyGraphPlotStartX
+                    ),
+                    height: geometry.size.height
+                )
+            }
+        }
     }
 }
 
@@ -1318,7 +1374,7 @@ struct UsageRow: View {
 
             if let resetSummary {
                 Text("reset \(resetSummary)")
-                    .font(.caption2)
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)

@@ -91,6 +91,10 @@ public struct CodexUsageResetWindowBackfillSummary: Codable, Equatable, Sendable
 }
 
 public struct CodexUsageResetWindowBackfillBuilder: Sendable {
+    private static let resetTimestampToleranceSeconds = CodexUsageWeeklyHistorySample
+        .resetWindowTimestampToleranceSeconds
+    private static let weeklyWindowDurationMins = 10_080
+
     public init() {}
 
     public func record(
@@ -107,6 +111,116 @@ public struct CodexUsageResetWindowBackfillBuilder: Sendable {
             sampleCount: summary.sampleCount,
             source: .backfill
         )
+    }
+
+    public func summaries(
+        from weeklyHistory: CodexUsageWeeklyHistory,
+        completedAtOrBefore referenceTimestamp: Int,
+        excludingCurrentResetsAt currentResetsAt: Int? = nil,
+        limitId: String = "codex"
+    ) -> [CodexUsageResetWindowBackfillSummary] {
+        groupedCompletedWeeklySamples(
+            from: weeklyHistory,
+            completedAtOrBefore: referenceTimestamp,
+            excludingCurrentResetsAt: currentResetsAt
+        )
+        .compactMap { group in
+            summary(from: group, limitId: limitId)
+        }
+    }
+
+    private func groupedCompletedWeeklySamples(
+        from weeklyHistory: CodexUsageWeeklyHistory,
+        completedAtOrBefore referenceTimestamp: Int,
+        excludingCurrentResetsAt currentResetsAt: Int?
+    ) -> [[CodexUsageWeeklyHistorySample]] {
+        let candidates = weeklyHistory.samples
+            .filter { sample in
+                sample.windowDurationMins == Self.weeklyWindowDurationMins &&
+                    sample.resetsAt <= referenceTimestamp &&
+                    !Self.isCurrentReset(sample.resetsAt, currentResetsAt: currentResetsAt)
+            }
+            .sorted {
+                if $0.windowDurationMins != $1.windowDurationMins {
+                    return $0.windowDurationMins < $1.windowDurationMins
+                }
+                if $0.resetsAt != $1.resetsAt {
+                    return $0.resetsAt < $1.resetsAt
+                }
+                return $0.recordedAt < $1.recordedAt
+            }
+
+        return candidates.reduce(into: []) { groups, sample in
+            guard let lastGroup = groups.last,
+                  let representative = lastGroup.first,
+                  representative.windowDurationMins == sample.windowDurationMins,
+                  abs(representative.resetsAt - sample.resetsAt) <= Self.resetTimestampToleranceSeconds
+            else {
+                groups.append([sample])
+                return
+            }
+
+            groups[groups.count - 1].append(sample)
+        }
+    }
+
+    private func summary(
+        from group: [CodexUsageWeeklyHistorySample],
+        limitId: String
+    ) -> CodexUsageResetWindowBackfillSummary? {
+        guard let first = group.first else { return nil }
+
+        let resetsAt = canonicalResetsAt(in: group)
+        let resetStartAt = resetsAt - first.windowDurationMins * 60
+        let windowSamples = group
+            .filter { $0.recordedAt >= resetStartAt && $0.recordedAt <= resetsAt }
+            .sorted { $0.recordedAt < $1.recordedAt }
+        guard let finalSample = windowSamples.last else { return nil }
+
+        let daySeconds = max(first.windowDurationMins * 60 / 7, 1)
+        let dailySamples = (1...7).compactMap { dayIndex -> CodexUsageResetWindowDailySample? in
+            let dayStartAt = resetStartAt + (dayIndex - 1) * daySeconds
+            let dayEndAt = resetStartAt + dayIndex * daySeconds
+            guard let sample = windowSamples.last(where: {
+                $0.recordedAt >= dayStartAt && $0.recordedAt <= dayEndAt
+            }) else {
+                return nil
+            }
+
+            return CodexUsageResetWindowDailySample(
+                dayIndex: dayIndex,
+                recordedAt: sample.recordedAt,
+                usedPercent: sample.usedPercent,
+                remainingPercent: sample.remainingPercent
+            )
+        }
+
+        return CodexUsageResetWindowBackfillSummary(
+            generatedAt: finalSample.recordedAt,
+            limitId: limitId,
+            windowDurationMins: first.windowDurationMins,
+            resetsAt: resetsAt,
+            dailyEndSamples: dailySamples,
+            finalUsedPercent: finalSample.usedPercent,
+            finalRemainingPercent: finalSample.remainingPercent,
+            sampleCount: windowSamples.count
+        )
+    }
+
+    private func canonicalResetsAt(in group: [CodexUsageWeeklyHistorySample]) -> Int {
+        let counts = Dictionary(grouping: group, by: \.resetsAt)
+            .mapValues(\.count)
+        return counts.sorted {
+            if $0.value != $1.value {
+                return $0.value > $1.value
+            }
+            return $0.key < $1.key
+        }.first?.key ?? group[0].resetsAt
+    }
+
+    private static func isCurrentReset(_ resetsAt: Int, currentResetsAt: Int?) -> Bool {
+        guard let currentResetsAt else { return false }
+        return abs(resetsAt - currentResetsAt) <= resetTimestampToleranceSeconds
     }
 }
 
