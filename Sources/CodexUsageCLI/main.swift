@@ -145,7 +145,7 @@ struct CLI {
             let report = diagnostic.report
             let codex = report.codexLimit
             output("App-server: ok")
-            output("Plan: \(codex?.planType ?? report.planType ?? "unknown")")
+            output("Plan: \(CodexUsagePlanDisplay.displayLabel(rawPlanType: codex?.planType ?? report.planType))")
             output("5h window: \(codex?.fiveHour == nil ? "missing" : "ok")")
             output("Weekly window: \(codex?.weekly == nil ? "missing" : "ok")")
             CodexUsageDoctorFormatter()

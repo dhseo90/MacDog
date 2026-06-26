@@ -21,7 +21,7 @@ public struct CodexUsageFormatter: Sendable {
         lines.append(format(label: "5h", window: limit.fiveHour))
         lines.append(format(label: "Weekly", window: limit.weekly))
         lines.append("Credits: \(limit.credits?.balance ?? "unknown")")
-        lines.append("Plan: \(limit.planType ?? report.planType ?? "unknown")")
+        lines.append("Plan: \(CodexUsagePlanDisplay.displayLabel(rawPlanType: limit.planType ?? report.planType))")
 
         if let reached = limit.rateLimitReachedType ?? report.rateLimitReachedType {
             lines.append("Limit status: \(reached)")

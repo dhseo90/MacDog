@@ -7,7 +7,7 @@ do {
     let bucket = response.codexBucket
 
     print("Codex app-server usage probe")
-    print("Plan: \(bucket.planType ?? "unknown")")
+    print("Plan: \(CodexUsagePlanDisplay.displayLabel(rawPlanType: bucket.planType))")
 
     if let fiveHour = bucket.fiveHourWindow {
         print("5h used: \(format(fiveHour.usedPercent))%")
@@ -35,4 +35,3 @@ private func format(_ value: Double) -> String {
     }
     return String(format: "%.1f", value)
 }
-

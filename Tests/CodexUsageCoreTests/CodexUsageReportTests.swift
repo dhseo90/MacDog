@@ -57,6 +57,14 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Plan: pro"))
     }
 
+    func testPlanDisplayKeepsRawPlanTypeAndDoesNotInferPricingTier() {
+        XCTAssertEqual(CodexUsagePlanDisplay.displayLabel(rawPlanType: "pro"), "pro")
+        XCTAssertEqual(CodexUsagePlanDisplay.displayLabel(rawPlanType: "plus"), "plus")
+        XCTAssertEqual(CodexUsagePlanDisplay.displayLabel(rawPlanType: nil), "unknown")
+        XCTAssertNil(CodexUsagePlanDisplay.pricingTierLabel(rawPlanType: "pro"))
+        XCTAssertNil(CodexUsagePlanDisplay.pricingTierLabel(rawPlanType: "plus"))
+    }
+
     func testFormatsJSONReport() throws {
         let response = try loadFixture()
         let report = try CodexUsageReportBuilder(dateProvider: {
