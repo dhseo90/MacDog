@@ -81,6 +81,10 @@ key = limitId + windowDurationMins + resetsAt
 | `sampleCount` | record 생성에 사용된 축약 sample 수 |
 | `source` | `live-cache`, `backfill`, `imported-summary` 중 하나 |
 
+파일 단위 schema는 `schemaVersion`과 `records`만 갖습니다.
+record의 `key`는 저장 필드가 아니라 `limitId`, `windowDurationMins`, `resetsAt` 조합으로 계산합니다.
+기존 `usage.json`과 `usage-weekly-history.json` v1 key는 변경하지 않습니다.
+
 초기 retention은 최근 12개 완료 weekly window와 현재 window를 기본값으로 둡니다.
 장기 보관 설정은 v1.4.0 MVP 이후 별도 이슈로 분리합니다.
 
