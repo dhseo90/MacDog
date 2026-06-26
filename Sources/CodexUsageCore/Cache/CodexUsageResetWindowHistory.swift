@@ -22,6 +22,19 @@ public struct CodexUsageResetWindowHistory: Codable, Equatable, Sendable {
             return $0.limitId < $1.limitId
         }
     }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ??
+            Self.currentSchemaVersion
+        let records = try container.decodeIfPresent([CodexUsageResetWindowHistoryRecord].self, forKey: .records) ?? []
+        self.init(schemaVersion: schemaVersion, records: records)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case records
+    }
 }
 
 public struct CodexUsageResetWindowHistoryKey: Codable, Equatable, Hashable, Sendable {
@@ -113,7 +126,160 @@ public struct CodexUsageResetWindowHistoryRecord: Codable, Equatable, Sendable {
         )
     }
 
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ??
+                Self.currentSchemaVersion,
+            generatedAt: try container.decode(Int.self, forKey: .generatedAt),
+            limitId: try container.decode(String.self, forKey: .limitId),
+            windowDurationMins: try container.decode(Int.self, forKey: .windowDurationMins),
+            resetsAt: try container.decode(Int.self, forKey: .resetsAt),
+            dailyEndSamples: try container.decodeIfPresent(
+                [CodexUsageResetWindowDailySample].self,
+                forKey: .dailyEndSamples
+            ) ?? [],
+            finalUsedPercent: try container.decode(Double.self, forKey: .finalUsedPercent),
+            finalRemainingPercent: try container.decode(Double.self, forKey: .finalRemainingPercent),
+            sampleCount: try container.decodeIfPresent(Int.self, forKey: .sampleCount) ?? 0,
+            source: try container.decodeIfPresent(
+                CodexUsageResetWindowHistorySource.self,
+                forKey: .source
+            ) ?? .liveCache
+        )
+    }
+
+    func migratedToCurrentSchema() -> CodexUsageResetWindowHistoryRecord {
+        guard schemaVersion != Self.currentSchemaVersion else { return self }
+        return CodexUsageResetWindowHistoryRecord(
+            generatedAt: generatedAt,
+            limitId: limitId,
+            windowDurationMins: windowDurationMins,
+            resetsAt: resetsAt,
+            dailyEndSamples: dailyEndSamples,
+            finalUsedPercent: finalUsedPercent,
+            finalRemainingPercent: finalRemainingPercent,
+            sampleCount: sampleCount,
+            source: source
+        )
+    }
+
     private static func clampedPercent(_ value: Double) -> Double {
         min(max(value, 0), 100)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case generatedAt
+        case limitId
+        case windowDurationMins
+        case resetStartAt
+        case resetsAt
+        case dailyEndSamples
+        case finalUsedPercent
+        case finalRemainingPercent
+        case sampleCount
+        case source
+    }
+}
+
+public struct CodexUsageResetWindowHistoryStore {
+    public static let fileName = "usage-reset-window-history.json"
+    public static let completedWindowRetentionCount = 12
+
+    private static var retainedWindowCount: Int {
+        completedWindowRetentionCount + 1
+    }
+
+    private let fileURL: URL
+    private let fileManager: FileManager
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+
+    public init(
+        fileURL: URL = Self.defaultFileURL(),
+        fileManager: FileManager = .default
+    ) {
+        self.fileURL = fileURL
+        self.fileManager = fileManager
+        self.encoder = JSONEncoder()
+        self.encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        self.decoder = JSONDecoder()
+    }
+
+    public static func defaultFileURL() -> URL {
+        CodexUsageCacheStore.defaultApplicationSupportDirectoryURL()
+            .appendingPathComponent(fileName)
+    }
+
+    public static func defaultFileURL(adjacentToCacheFileURL cacheFileURL: URL) -> URL {
+        cacheFileURL.deletingLastPathComponent().appendingPathComponent(fileName)
+    }
+
+    public func read() throws -> CodexUsageResetWindowHistory {
+        guard fileManager.fileExists(atPath: fileURL.path) else {
+            return .empty
+        }
+        let data = try Data(contentsOf: fileURL)
+        let decoded = try decoder.decode(CodexUsageResetWindowHistory.self, from: data)
+        return CodexUsageResetWindowHistory(
+            records: decoded.records.map { $0.migratedToCurrentSchema() }
+        )
+    }
+
+    @discardableResult
+    public func append(_ record: CodexUsageResetWindowHistoryRecord) throws -> Bool {
+        let existing = try read()
+        let existingRecord = existing.records.first { $0.key == record.key }
+        let candidate: CodexUsageResetWindowHistoryRecord
+        if let existingRecord, existingRecord.generatedAt > record.generatedAt {
+            candidate = existingRecord
+        } else {
+            candidate = record
+        }
+
+        let records = existing.records.filter { $0.key != candidate.key } + [candidate]
+        let retained = Self.retained(records)
+        let next = CodexUsageResetWindowHistory(records: retained)
+        guard next != existing else {
+            return false
+        }
+
+        try write(next)
+        return true
+    }
+
+    private func write(_ history: CodexUsageResetWindowHistory) throws {
+        let directory = fileURL.deletingLastPathComponent()
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try encoder.encode(history)
+        try data.write(to: fileURL, options: [.atomic])
+    }
+
+    private static func retained(
+        _ records: [CodexUsageResetWindowHistoryRecord]
+    ) -> [CodexUsageResetWindowHistoryRecord] {
+        let groups = Dictionary(grouping: records) {
+            RetentionGroupKey(limitId: $0.limitId, windowDurationMins: $0.windowDurationMins)
+        }
+
+        return groups.values
+            .flatMap { group in
+                group.sorted { $0.resetsAt > $1.resetsAt }.prefix(retainedWindowCount)
+            }
+            .sorted {
+                if $0.resetsAt != $1.resetsAt {
+                    return $0.resetsAt < $1.resetsAt
+                }
+                if $0.windowDurationMins != $1.windowDurationMins {
+                    return $0.windowDurationMins < $1.windowDurationMins
+                }
+                return $0.limitId < $1.limitId
+            }
+    }
+
+    private struct RetentionGroupKey: Hashable {
+        let limitId: String
+        let windowDurationMins: Int
     }
 }

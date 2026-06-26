@@ -85,6 +85,10 @@ key = limitId + windowDurationMins + resetsAt
 record의 `key`는 저장 필드가 아니라 `limitId`, `windowDurationMins`, `resetsAt` 조합으로 계산합니다.
 기존 `usage.json`과 `usage-weekly-history.json` v1 key는 변경하지 않습니다.
 
+별도 store 파일명은 `usage-reset-window-history.json`입니다.
+store는 같은 key의 record를 하나로 upsert하고, 최근 12개 완료 weekly window와 현재 window에 해당하는 13개 record를 유지합니다.
+legacy schemaVersion은 읽을 때 현재 schemaVersion으로 migration합니다.
+
 초기 retention은 최근 12개 완료 weekly window와 현재 window를 기본값으로 둡니다.
 장기 보관 설정은 v1.4.0 MVP 이후 별도 이슈로 분리합니다.
 

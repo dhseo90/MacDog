@@ -89,6 +89,100 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         )
     }
 
+    func testStoreUsesSeparateDefaultFileNextToUsageCache() {
+        let cacheURL = URL(fileURLWithPath: "/tmp/MacDog/usage.json")
+        let historyURL = CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: cacheURL)
+
+        XCTAssertEqual(historyURL.lastPathComponent, "usage-reset-window-history.json")
+        XCTAssertEqual(historyURL.deletingLastPathComponent(), cacheURL.deletingLastPathComponent())
+        XCTAssertNotEqual(historyURL.lastPathComponent, CodexUsageWeeklyHistoryStore.fileName)
+    }
+
+    func testStoreUpsertsByResetWindowKeyAndSkipsIdenticalRecord() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
+        let first = Self.record(
+            generatedAt: 1_800_000_000,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_345_600,
+            sampleCount: 1
+        )
+        let updated = Self.record(
+            generatedAt: 1_800_000_060,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_345_600,
+            sampleCount: 2
+        )
+
+        XCTAssertTrue(try store.append(first))
+        XCTAssertFalse(try store.append(first))
+        XCTAssertTrue(try store.append(updated))
+
+        let history = try store.read()
+        XCTAssertEqual(history.records.count, 1)
+        XCTAssertEqual(history.records.first?.key, first.key)
+        XCTAssertEqual(history.records.first?.generatedAt, 1_800_000_060)
+        XCTAssertEqual(history.records.first?.sampleCount, 2)
+    }
+
+    func testStoreRetainsCurrentWindowAndTwelveCompletedWindowsPerLimitWindow() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
+        let durationSeconds = 10_080 * 60
+        let firstReset = 1_800_000_000
+
+        for index in 0..<14 {
+            _ = try store.append(Self.record(
+                generatedAt: firstReset + index,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: firstReset + index * durationSeconds
+            ))
+        }
+
+        let history = try store.read()
+        XCTAssertEqual(history.records.count, 13)
+        XCTAssertEqual(history.records.first?.resetsAt, firstReset + durationSeconds)
+        XCTAssertEqual(history.records.last?.resetsAt, firstReset + 13 * durationSeconds)
+    }
+
+    func testStoreMigratesLegacySchemaVersionOnRead() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try legacyHistoryJSON(schemaVersion: 0, recordSchemaVersion: 0)
+            .write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let history = try CodexUsageResetWindowHistoryStore(fileURL: fileURL).read()
+
+        XCTAssertEqual(history.schemaVersion, CodexUsageResetWindowHistory.currentSchemaVersion)
+        XCTAssertEqual(history.records.first?.schemaVersion, CodexUsageResetWindowHistoryRecord.currentSchemaVersion)
+        XCTAssertEqual(history.records.first?.key.limitId, "codex")
+    }
+
+    func testStoreWritesNoSensitiveMaterialOrRawResponseKeys() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
+
+        XCTAssertTrue(try store.append(Self.record(
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_345_600
+        )))
+
+        let text = try String(contentsOf: fileURL)
+        XCTAssertFalse(text.contains("access_token"))
+        XCTAssertFalse(text.contains("refresh_token"))
+        XCTAssertFalse(text.contains("authorization"))
+        XCTAssertFalse(text.contains("cookie"))
+        XCTAssertFalse(text.contains("rawResponse"))
+        XCTAssertFalse(text.contains("sessionMaterial"))
+    }
+
     private static func record(
         generatedAt: Int = 1_800_000_000,
         limitId: String,
@@ -115,6 +209,42 @@ final class UsageResetWindowHistoryTests: XCTestCase {
             sampleCount: sampleCount,
             source: source
         )
+    }
+
+    private func temporaryResetHistoryFileURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("usage-reset-window-history.json")
+    }
+
+    private func legacyHistoryJSON(schemaVersion: Int, recordSchemaVersion: Int) -> String {
+        """
+        {
+          "schemaVersion": \(schemaVersion),
+          "records": [
+            {
+              "schemaVersion": \(recordSchemaVersion),
+              "generatedAt": 1800000000,
+              "limitId": "codex",
+              "windowDurationMins": 10080,
+              "resetStartAt": 1799740800,
+              "resetsAt": 1800345600,
+              "dailyEndSamples": [
+                {
+                  "dayIndex": 1,
+                  "recordedAt": 1800000000,
+                  "usedPercent": 28,
+                  "remainingPercent": 72
+                }
+              ],
+              "finalUsedPercent": 28,
+              "finalRemainingPercent": 72,
+              "sampleCount": 1,
+              "source": "live-cache"
+            }
+          ]
+        }
+        """
     }
 
     private func XCTAssertNoSensitiveHistoryMaterial(

@@ -127,6 +127,7 @@ codex-usage doctor
 - cache에는 raw `planType`, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다.
 - `Plus`/`Pro $100`/`Pro $200` 가격 tier는 현재 조회 경로에서 구분할 수 없으므로 표시, 저장, 추정하지 않습니다.
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
+- v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 축약 record만 저장하고, 기존 `usage.json`/`usage-weekly-history.json` schema를 바꾸지 않습니다.
 - 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않습니다.
 
 ## 개발과 검증
