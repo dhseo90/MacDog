@@ -178,6 +178,56 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.withRefreshing(true).weeklyUsageHistory, history)
     }
 
+    func testRefreshingPreservesResetWindowHistory() {
+        let resetHistory = CodexUsageResetWindowHistory(records: [
+            Self.resetWindowRecord(resetsAt: 1_800_604_800, finalUsedPercent: 74)
+        ])
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            resetWindowHistory: resetHistory,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(state.withRefreshing(true).resetWindowHistory, resetHistory)
+    }
+
+    func testCodexHistoryComparisonModelExposesPastWindowPickerAndModes() throws {
+        let currentReset = 1_800_604_800
+        let pastReset = currentReset - 604_800
+        let olderPastReset = pastReset - 604_800
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 12, weeklyUsedPercent: 32, weeklyResetsAt: currentReset),
+            cacheSnapshot: nil,
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: currentReset, finalUsedPercent: 32),
+                Self.resetWindowRecord(resetsAt: pastReset, finalUsedPercent: 74),
+                Self.resetWindowRecord(resetsAt: olderPastReset, finalUsedPercent: 51)
+            ]),
+            errorMessage: nil
+        )
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(state: state, calendar: Self.utcCalendar))
+
+        XCTAssertEqual(model.availableModes, [.current, .past, .overlay])
+        XCTAssertEqual(model.pastWindows.map(\.key.resetsAt), [pastReset, olderPastReset])
+        XCTAssertEqual(model.defaultPastWindowKey?.resetsAt, pastReset)
+        XCTAssertEqual(model.overlaySeries?.finalUsageMarker.usedPercent, 74)
+    }
+
+    func testCodexHistoryMarkerLabelShowsSevenDayEndUsage() throws {
+        let marker = CodexUsageResetWindowOverlayMarker(
+            id: "codex-7",
+            kind: .sevenDayEnd,
+            day: 7,
+            recordedAt: 1_800_604_800,
+            usedPercent: 74,
+            remainingPercent: 26
+        )
+
+        XCTAssertEqual(CodexUsageHistoryMarkerLabel.hoverText(for: marker), "7일 종료 · 사용 74%")
+    }
+
     func testSystemMetricsUpdateReplacesPrivilegedHelperInstallSnapshot() {
         let state = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: true)
@@ -841,6 +891,30 @@ final class UsageMonitorStateTests: XCTestCase {
             remainingPercent: remainingPercent,
             resetsAt: resetsAt,
             windowDurationMins: 10_080
+        )
+    }
+
+    private static func resetWindowRecord(
+        resetsAt: Int,
+        finalUsedPercent: Double
+    ) -> CodexUsageResetWindowHistoryRecord {
+        CodexUsageResetWindowHistoryRecord(
+            generatedAt: resetsAt - 60,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: resetsAt,
+            dailyEndSamples: [
+                CodexUsageResetWindowDailySample(
+                    dayIndex: 7,
+                    recordedAt: resetsAt,
+                    usedPercent: finalUsedPercent,
+                    remainingPercent: 100 - finalUsedPercent
+                )
+            ],
+            finalUsedPercent: finalUsedPercent,
+            finalRemainingPercent: 100 - finalUsedPercent,
+            sampleCount: 1,
+            source: .liveCache
         )
     }
 

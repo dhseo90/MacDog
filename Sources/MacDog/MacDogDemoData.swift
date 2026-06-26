@@ -19,6 +19,7 @@ enum MacDogDemoData {
             report: report(now: now),
             cacheSnapshot: nil,
             weeklyUsageHistory: weeklyUsageHistory(now: now),
+            resetWindowHistory: resetWindowHistory(now: now),
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -99,6 +100,39 @@ enum MacDogDemoData {
             )
         }
         return CodexUsageWeeklyHistory(samples: samples)
+    }
+
+    private static func resetWindowHistory(now: Int) -> CodexUsageResetWindowHistory {
+        let currentReset = weeklyResetTimestamp(now: now)
+        let durationSeconds = 10_080 * 60
+        let pastWindows = [
+            (resetsAt: currentReset - durationSeconds, used: [8.0, 16.0, 25.0, 37.0, 48.0, 60.0, 72.0]),
+            (resetsAt: currentReset - 2 * durationSeconds, used: [6.0, 14.0, 21.0, 31.0, 39.0, 46.0, 54.0])
+        ]
+        let records = pastWindows.map { window in
+            let samples = window.used.enumerated().map { index, usedPercent in
+                CodexUsageResetWindowDailySample(
+                    dayIndex: index + 1,
+                    recordedAt: window.resetsAt - (6 - index) * 86_400,
+                    usedPercent: usedPercent,
+                    remainingPercent: 100 - usedPercent
+                )
+            }
+            let finalUsed = window.used.last ?? 0
+            return CodexUsageResetWindowHistoryRecord(
+                generatedAt: window.resetsAt - 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: window.resetsAt,
+                dailyEndSamples: samples,
+                finalUsedPercent: finalUsed,
+                finalRemainingPercent: 100 - finalUsed,
+                sampleCount: samples.count,
+                source: .importedSummary
+            )
+        }
+
+        return CodexUsageResetWindowHistory(records: records)
     }
 
     private static func weeklyResetTimestamp(now: Int) -> Int {

@@ -27,6 +27,7 @@ struct CodexUsagePanel: View {
 
                 WeeklyRemainingHistoryBlock(
                     history: state.weeklyUsageHistory,
+                    resetWindowHistory: state.resetWindowHistory,
                     weeklyWindow: limit.weekly,
                     currentReport: state.report,
                     currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt

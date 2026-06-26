@@ -13,6 +13,7 @@ struct UsageMonitorState: Equatable {
     let report: CodexUsageReport?
     let cacheSnapshot: CodexUsageCacheSnapshot?
     let weeklyUsageHistory: CodexUsageWeeklyHistory
+    let resetWindowHistory: CodexUsageResetWindowHistory
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
@@ -28,6 +29,7 @@ struct UsageMonitorState: Equatable {
         report: CodexUsageReport?,
         cacheSnapshot: CodexUsageCacheSnapshot?,
         weeklyUsageHistory: CodexUsageWeeklyHistory = .empty,
+        resetWindowHistory: CodexUsageResetWindowHistory = .empty,
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
         reducedMotion: Bool = false,
@@ -42,6 +44,7 @@ struct UsageMonitorState: Equatable {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
         self.weeklyUsageHistory = weeklyUsageHistory
+        self.resetWindowHistory = resetWindowHistory
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
@@ -59,6 +62,7 @@ struct UsageMonitorState: Equatable {
             report: report,
             cacheSnapshot: cacheSnapshot,
             weeklyUsageHistory: weeklyUsageHistory,
+            resetWindowHistory: resetWindowHistory,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -83,6 +87,7 @@ struct UsageMonitorState: Equatable {
             report: report,
             cacheSnapshot: cacheSnapshot,
             weeklyUsageHistory: weeklyUsageHistory,
+            resetWindowHistory: resetWindowHistory,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,

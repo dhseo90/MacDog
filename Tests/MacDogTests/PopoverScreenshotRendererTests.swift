@@ -103,6 +103,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         let cacheSnapshot = try CodexUsageCacheStore().read()
         let weeklyHistory = (try? CodexUsageWeeklyHistoryStore().read()) ?? .empty
+        let resetWindowHistory = (try? CodexUsageResetWindowHistoryStore().read()) ?? .empty
         guard let report = cacheSnapshot.report else {
             XCTFail("Live cache snapshot has no usage report.")
             return
@@ -123,6 +124,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             report: report,
             cacheSnapshot: cacheSnapshot,
             weeklyUsageHistory: weeklyHistory,
+            resetWindowHistory: resetWindowHistory,
             errorMessage: cacheSnapshot.error?.message,
             systemMetrics: .unavailable
         )

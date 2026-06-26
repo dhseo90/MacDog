@@ -10,6 +10,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
     private let weeklyHistoryStore = CodexUsageWeeklyHistoryStore(fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL())
+    private let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
+        fileURL: CodexUsageResetWindowHistoryStore.defaultFileURL()
+    )
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
     )
@@ -329,6 +332,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
         let weeklyUsageHistory = (try? weeklyHistoryStore.read()) ?? .empty
+        let resetWindowHistory = (try? resetWindowHistoryStore.read()) ?? .empty
 
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
@@ -337,6 +341,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         report: nil,
                         cacheSnapshot: snapshot,
                         weeklyUsageHistory: weeklyUsageHistory,
+                        resetWindowHistory: resetWindowHistory,
                         errorMessage: errorMessage ?? snapshot.error?.message ?? validationError.localizedDescription,
                         displayBasis: preferences.displayBasis,
                         reducedMotion: preferences.reducedMotion,
@@ -352,6 +357,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     report: report,
                     cacheSnapshot: snapshot,
                     weeklyUsageHistory: weeklyUsageHistory,
+                    resetWindowHistory: resetWindowHistory,
                     errorMessage: errorMessage ?? snapshot.error?.message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
@@ -368,6 +374,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 report: nil,
                 cacheSnapshot: snapshot,
                 weeklyUsageHistory: weeklyUsageHistory,
+                resetWindowHistory: resetWindowHistory,
                 errorMessage: errorMessage ?? snapshot.error?.message ?? "사용량 캐시가 아직 없습니다.",
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
@@ -384,6 +391,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             report: nil,
             cacheSnapshot: nil,
             weeklyUsageHistory: weeklyUsageHistory,
+            resetWindowHistory: resetWindowHistory,
             errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,

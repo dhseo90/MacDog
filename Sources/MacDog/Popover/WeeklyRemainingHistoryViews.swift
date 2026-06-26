@@ -4,64 +4,199 @@ import SwiftUI
 
 struct WeeklyRemainingHistoryBlock: View {
     let history: CodexUsageWeeklyHistory
+    let resetWindowHistory: CodexUsageResetWindowHistory
     let weeklyWindow: UsageWindowReport?
     let currentReport: CodexUsageReport?
     let currentTimestamp: Int?
 
-    private var chart: WeeklyRemainingHistoryChart {
-        WeeklyRemainingHistoryChart(
+    @State private var selectedMode: CodexUsageHistoryGraphMode = .current
+    @State private var selectedPastWindowID: String?
+
+    private var comparisonModel: CodexUsageHistoryComparisonModel? {
+        CodexUsageHistoryComparisonModel(
             history: history,
+            resetWindowHistory: resetWindowHistory,
             weeklyWindow: weeklyWindow,
-            currentSample: currentSample
+            currentReport: currentReport,
+            currentTimestamp: currentTimestamp
         )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("주간 잔여량")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 8)
-                Text(chart.summaryText)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+        if let comparisonModel {
+            let mode = effectiveMode(for: comparisonModel)
+            let selectedSeries = selectedOverlaySeries(in: comparisonModel)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("주간 잔여량")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text(summaryText(mode: mode, model: comparisonModel, selectedSeries: selectedSeries))
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+
+                if comparisonModel.availableModes.count > 1 {
+                    HStack(spacing: 6) {
+                        Picker("", selection: $selectedMode) {
+                            ForEach(comparisonModel.availableModes) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .controlSize(.mini)
+                        .labelsHidden()
+
+                        if mode != .current {
+                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
+                                ForEach(comparisonModel.pastWindows) { window in
+                                    Text(windowLabel(for: window))
+                                        .tag(Optional(window.id))
+                                }
+                            }
+                            .labelsHidden()
+                            .controlSize(.mini)
+                            .frame(width: 94)
+                        }
+                    }
+                }
+
+                graph(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
+                    .frame(height: CodexUsagePanelLayout.weeklyGraphHeight)
+
+                WeeklyRemainingTimelineLabels(
+                    startLabel: timelineStartLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries),
+                    endLabel: timelineEndLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
+                )
+
+                if let recordingStartLabel = comparisonModel.currentChart.recordingStartLabel,
+                   mode == .current {
+                    Text(recordingStartLabel)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary.opacity(0.82))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
             }
-
-            WeeklyRemainingHistoryGraph(chart: chart)
-                .frame(height: CodexUsagePanelLayout.weeklyGraphHeight)
-
-            WeeklyRemainingTimelineLabels(
-                startLabel: chart.resetStartLabel,
-                endLabel: chart.resetEndLabel
-            )
-
-            if let recordingStartLabel = chart.recordingStartLabel {
-                Text(recordingStartLabel)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary.opacity(0.82))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("주간 잔여량 그래프")
+            .accessibilityValue(accessibilityValue(mode: mode, model: comparisonModel, selectedSeries: selectedSeries))
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("주간 잔여량 그래프")
-        .accessibilityValue(chart.accessibilityValue)
     }
 
-    private var currentSample: CodexUsageWeeklyHistorySample? {
-        guard let currentReport,
-              let currentTimestamp
-        else {
-            return nil
+    @ViewBuilder
+    private func graph(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> some View {
+        switch mode {
+        case .current:
+            WeeklyRemainingHistoryGraph(chart: model.currentChart)
+        case .past:
+            if let selectedSeries {
+                ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
+            } else {
+                WeeklyRemainingHistoryGraph(chart: model.currentChart)
+            }
+        case .overlay:
+            if let selectedSeries {
+                ResetWindowOverlayGraph(currentChart: model.currentChart, series: selectedSeries)
+            } else {
+                WeeklyRemainingHistoryGraph(chart: model.currentChart)
+            }
         }
+    }
 
-        return CodexUsageWeeklyHistorySample(
-            report: currentReport,
-            recordedAt: currentTimestamp
+    private func effectiveMode(for model: CodexUsageHistoryComparisonModel) -> CodexUsageHistoryGraphMode {
+        model.availableModes.contains(selectedMode) ? selectedMode : .current
+    }
+
+    private func selectedOverlaySeries(
+        in model: CodexUsageHistoryComparisonModel
+    ) -> CodexUsageResetWindowOverlaySeries? {
+        guard let selectedID = selectedPastWindowID,
+              let selectedWindow = model.pastWindows.first(where: { $0.id == selectedID })
+        else {
+            return model.overlaySeries
+        }
+        return CodexUsageResetWindowOverlayBuilder().model(
+            history: resetWindowHistory,
+            selectedKey: selectedWindow.key,
+            excludingCurrentResetsAt: weeklyWindow?.resetsAt
+        ).selectedSeries
+    }
+
+    private func selectedPastWindowIDBinding(
+        for model: CodexUsageHistoryComparisonModel
+    ) -> Binding<String?> {
+        Binding(
+            get: {
+                selectedPastWindowID ?? model.pastWindows.first?.id
+            },
+            set: { newValue in
+                selectedPastWindowID = newValue
+            }
         )
+    }
+
+    private func summaryText(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> String {
+        switch mode {
+        case .current:
+            return model.currentChart.summaryText
+        case .past:
+            guard let selectedSeries else { return "과거 기록 없음" }
+            return "과거 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+        case .overlay:
+            guard let selectedSeries else { return model.currentChart.summaryText }
+            return "현재 vs 과거 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+        }
+    }
+
+    private func timelineStartLabel(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> String {
+        mode == .current ? model.currentChart.resetStartLabel : "0일"
+    }
+
+    private func timelineEndLabel(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> String {
+        mode == .current ? model.currentChart.resetEndLabel : "7일"
+    }
+
+    private func accessibilityValue(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> String {
+        switch mode {
+        case .current:
+            return model.currentChart.accessibilityValue
+        case .past, .overlay:
+            guard let selectedSeries else { return "과거 기록 없음" }
+            return "과거 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+        }
+    }
+
+    private func windowLabel(for window: CodexUsageResetWindowOverlayWindow) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(window.resetsAt))
+        let components = Calendar.current.dateComponents([.month, .day], from: date)
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        return "\(month)/\(day)"
     }
 }
 
@@ -310,6 +445,201 @@ private struct WeeklyRemainingHistoryPlot: View {
             markers: chart.dayMarkers,
             in: size
         )
+    }
+}
+
+private struct ResetWindowOverlayGraph: View {
+    let currentChart: WeeklyRemainingHistoryChart?
+    let series: CodexUsageResetWindowOverlaySeries
+
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(alignment: .top, spacing: CodexUsagePanelLayout.weeklyGraphAxisSpacing) {
+                WeeklyRemainingHistoryYAxisLabels()
+                    .frame(width: CodexUsagePanelLayout.weeklyGraphYAxisWidth, height: geometry.size.height)
+
+                ResetWindowOverlayPlot(
+                    currentChart: currentChart,
+                    series: series
+                )
+                .frame(
+                    width: max(
+                        0,
+                        geometry.size.width -
+                            CodexUsagePanelLayout.weeklyGraphPlotStartX
+                    ),
+                    height: geometry.size.height
+                )
+            }
+        }
+    }
+}
+
+private struct ResetWindowOverlayPlot: View {
+    let currentChart: WeeklyRemainingHistoryChart?
+    let series: CodexUsageResetWindowOverlaySeries
+
+    @State private var hoveredMarkerID: String?
+
+    private var markers: [CodexUsageResetWindowOverlayMarker] {
+        series.dayEndMarkers + [series.finalUsageMarker]
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.primary.opacity(0.045))
+
+                guideLines(in: geometry.size)
+                    .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
+
+                if let currentChart {
+                    currentLine(chart: currentChart, in: geometry.size)
+                        .stroke(.green, style: StrokeStyle(lineWidth: 1.4, lineCap: .butt, lineJoin: .round))
+                        .opacity(0.72)
+                }
+
+                seriesLine(in: geometry.size)
+                    .stroke(.blue, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt, lineJoin: .round))
+
+                ForEach(markers) { marker in
+                    let markerPoint = point(for: marker, in: geometry.size)
+                    markerShape(for: marker, isHovered: hoveredMarkerID == marker.id)
+                        .frame(
+                            width: WeeklyRemainingHistoryInteraction.markerHitDiameter,
+                            height: WeeklyRemainingHistoryInteraction.markerHitDiameter
+                        )
+                        .contentShape(Rectangle())
+                        .onHover { isHovering in
+                            if isHovering {
+                                hoveredMarkerID = marker.id
+                            } else if hoveredMarkerID == marker.id {
+                                hoveredMarkerID = nil
+                            }
+                        }
+                        .onTapGesture {
+                            hoveredMarkerID = marker.id
+                        }
+                        .position(markerPoint)
+                }
+
+                if let hoveredMarker {
+                    let markerPoint = point(for: hoveredMarker, in: geometry.size)
+                    Text(CodexUsageHistoryMarkerLabel.hoverText(for: hoveredMarker))
+                        .font(.caption2.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .position(
+                            WeeklyRemainingHistoryLabelPlacement.hoverLabelPosition(
+                                for: markerPoint,
+                                avoiding: nil,
+                                in: geometry.size
+                            )
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    hoveredMarkerID = nearestMarkerID(to: location, in: geometry.size)
+                case .ended:
+                    hoveredMarkerID = nil
+                }
+            }
+        }
+    }
+
+    private var hoveredMarker: CodexUsageResetWindowOverlayMarker? {
+        guard let hoveredMarkerID else { return nil }
+        return markers.first { $0.id == hoveredMarkerID }
+    }
+
+    private func guideLines(in size: CGSize) -> Path {
+        Path { path in
+            for fraction in [0.0, 0.5, 1.0] {
+                let y = size.height * CGFloat(fraction)
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+
+            for day in 0...7 {
+                let x = size.width * CGFloat(Double(day) / 7.0)
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+            }
+        }
+    }
+
+    private func currentLine(chart: WeeklyRemainingHistoryChart, in size: CGSize) -> Path {
+        Path { path in
+            guard chart.points.count > 1 else { return }
+            for (index, point) in chart.points.enumerated() {
+                let cgPoint = WeeklyRemainingHistoryInteraction.point(for: point, in: size)
+                if index == 0 {
+                    path.move(to: cgPoint)
+                } else {
+                    path.addLine(to: cgPoint)
+                }
+            }
+        }
+    }
+
+    private func seriesLine(in size: CGSize) -> Path {
+        Path { path in
+            guard series.linePoints.count > 1 else { return }
+            for (index, marker) in series.linePoints.enumerated() {
+                let cgPoint = point(for: marker, in: size)
+                if index == 0 {
+                    path.move(to: cgPoint)
+                } else {
+                    path.addLine(to: cgPoint)
+                }
+            }
+        }
+    }
+
+    private func point(for marker: CodexUsageResetWindowOverlayMarker, in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: size.width * CGFloat(marker.timelinePosition),
+            y: size.height * CGFloat(1 - min(max(marker.remainingPercent / 100, 0), 1))
+        )
+    }
+
+    @ViewBuilder
+    private func markerShape(
+        for marker: CodexUsageResetWindowOverlayMarker,
+        isHovered: Bool
+    ) -> some View {
+        let size: CGFloat = isHovered ? 7 : 5
+        if marker.kind == .finalUsage {
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(.orange)
+                .frame(width: size, height: size)
+                .rotationEffect(.degrees(45))
+        } else {
+            Circle()
+                .fill(isHovered ? .blue : Color.primary.opacity(0.46))
+                .frame(width: size, height: size)
+        }
+    }
+
+    private func nearestMarkerID(to location: CGPoint, in size: CGSize) -> String? {
+        var nearestID: String?
+        var nearestDistance: CGFloat = 24
+
+        for marker in markers {
+            let markerPoint = point(for: marker, in: size)
+            let distance = hypot(markerPoint.x - location.x, markerPoint.y - location.y)
+            if distance <= nearestDistance {
+                nearestID = marker.id
+                nearestDistance = distance
+            }
+        }
+
+        return nearestID
     }
 }
 
