@@ -7,6 +7,7 @@ README="$ROOT_DIR/README.md"
 ROADMAP="$ROOT_DIR/ROADMAP.md"
 SCRIPTS_DOC="$ROOT_DIR/Docs/Scripts.md"
 CHECK_SCRIPT="$ROOT_DIR/script/check.sh"
+PACKAGE_SCRIPT="$ROOT_DIR/script/package_release.sh"
 
 usage() {
   cat <<USAGE
@@ -48,6 +49,7 @@ verify_release_readiness() {
   require_file "$ROADMAP"
   require_file "$SCRIPTS_DOC"
   require_file "$CHECK_SCRIPT"
+  require_file "$PACKAGE_SCRIPT"
   require_executable "$ROOT_DIR/script/verify_v140_release_readiness.sh"
 
   require_text '릴리즈 잔여 이슈' "$DOC" "remaining release issue section"
@@ -75,6 +77,10 @@ verify_release_readiness() {
   require_text 'verify_v140_release_readiness\.sh --self-test' "$SCRIPTS_DOC" "Scripts doc reference"
   require_text 'verify_v140_release_readiness\.sh --self-test' "$CHECK_SCRIPT" "check.sh release readiness gate"
   require_text 'verify_v140_usage_intelligence_contract\.sh --self-test' "$CHECK_SCRIPT" "check.sh v1.4 usage contract gate"
+  require_text 'Codex Usage Intelligence' "$PACKAGE_SCRIPT" "v1.4 release note highlights"
+  require_text '현재/과거/오버레이 그래프' "$PACKAGE_SCRIPT" "v1.4 graph overlay release note"
+  require_text 'usage-reset-window-history\.json' "$PACKAGE_SCRIPT" "v1.4 history file release note"
+  require_text '플랜 가격 tier는 추정하지' "$PACKAGE_SCRIPT" "v1.4 plan tier release note boundary"
 
   echo "v1.4.0 release readiness ok"
 }
