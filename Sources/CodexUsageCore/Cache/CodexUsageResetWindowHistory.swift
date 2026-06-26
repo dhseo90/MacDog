@@ -55,6 +55,61 @@ public enum CodexUsageResetWindowHistorySource: String, Codable, Equatable, Send
     case importedSummary = "imported-summary"
 }
 
+public struct CodexUsageResetWindowBackfillSummary: Codable, Equatable, Sendable {
+    public let generatedAt: Int
+    public let limitId: String
+    public let windowDurationMins: Int
+    public let resetsAt: Int
+    public let dailyEndSamples: [CodexUsageResetWindowDailySample]
+    public let finalUsedPercent: Double
+    public let finalRemainingPercent: Double
+    public let sampleCount: Int
+
+    public init(
+        generatedAt: Int,
+        limitId: String,
+        windowDurationMins: Int,
+        resetsAt: Int,
+        dailyEndSamples: [CodexUsageResetWindowDailySample],
+        finalUsedPercent: Double,
+        finalRemainingPercent: Double,
+        sampleCount: Int
+    ) {
+        self.generatedAt = generatedAt
+        self.limitId = limitId
+        self.windowDurationMins = windowDurationMins
+        self.resetsAt = resetsAt
+        self.dailyEndSamples = dailyEndSamples
+        self.finalUsedPercent = Self.clampedPercent(finalUsedPercent)
+        self.finalRemainingPercent = Self.clampedPercent(finalRemainingPercent)
+        self.sampleCount = max(sampleCount, 0)
+    }
+
+    private static func clampedPercent(_ value: Double) -> Double {
+        min(max(value, 0), 100)
+    }
+}
+
+public struct CodexUsageResetWindowBackfillBuilder: Sendable {
+    public init() {}
+
+    public func record(
+        from summary: CodexUsageResetWindowBackfillSummary
+    ) -> CodexUsageResetWindowHistoryRecord {
+        CodexUsageResetWindowHistoryRecord(
+            generatedAt: summary.generatedAt,
+            limitId: summary.limitId,
+            windowDurationMins: summary.windowDurationMins,
+            resetsAt: summary.resetsAt,
+            dailyEndSamples: summary.dailyEndSamples,
+            finalUsedPercent: summary.finalUsedPercent,
+            finalRemainingPercent: summary.finalRemainingPercent,
+            sampleCount: summary.sampleCount,
+            source: .backfill
+        )
+    }
+}
+
 public struct CodexUsageResetWindowDailySample: Codable, Equatable, Sendable {
     public let dayIndex: Int
     public let recordedAt: Int
@@ -312,6 +367,18 @@ public struct CodexUsageResetWindowHistoryStore {
             previousRecord: previousRecord
         )
         return try append(record)
+    }
+
+    @discardableResult
+    public func appendBackfillSummaries(
+        _ summaries: [CodexUsageResetWindowBackfillSummary]
+    ) throws -> Int {
+        let builder = CodexUsageResetWindowBackfillBuilder()
+        var appendedCount = 0
+        for summary in summaries where try append(builder.record(from: summary)) {
+            appendedCount += 1
+        }
+        return appendedCount
     }
 
     private func write(_ history: CodexUsageResetWindowHistory) throws {

@@ -183,6 +183,72 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertFalse(text.contains("sessionMaterial"))
     }
 
+    func testBackfillSummaryAppendsOnlyGeneratedHistoryRecords() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
+        let summary = CodexUsageResetWindowBackfillSummary(
+            generatedAt: 1_800_604_740,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_604_800,
+            dailyEndSamples: [
+                CodexUsageResetWindowDailySample(
+                    dayIndex: 7,
+                    recordedAt: 1_800_604_800,
+                    usedPercent: 74,
+                    remainingPercent: 26
+                )
+            ],
+            finalUsedPercent: 74,
+            finalRemainingPercent: 26,
+            sampleCount: 7
+        )
+
+        XCTAssertEqual(try store.appendBackfillSummaries([summary]), 1)
+
+        let history = try store.read()
+        let record = try XCTUnwrap(history.records.first)
+        XCTAssertEqual(record.source, .backfill)
+        XCTAssertEqual(record.finalUsedPercent, 74)
+        XCTAssertEqual(record.dailyEndSamples.first?.dayIndex, 7)
+    }
+
+    func testBackfillSummaryJSONDoesNotStoreRawLogOrSessionMaterial() throws {
+        let summary = CodexUsageResetWindowBackfillSummary(
+            generatedAt: 1_800_604_740,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_604_800,
+            dailyEndSamples: [
+                CodexUsageResetWindowDailySample(
+                    dayIndex: 7,
+                    recordedAt: 1_800_604_800,
+                    usedPercent: 74,
+                    remainingPercent: 26
+                )
+            ],
+            finalUsedPercent: 74,
+            finalRemainingPercent: 26,
+            sampleCount: 7
+        )
+        let record = CodexUsageResetWindowBackfillBuilder().record(from: summary)
+        let history = CodexUsageResetWindowHistory(records: [record])
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        let data = try encoder.encode(history)
+        let text = String(decoding: data, as: UTF8.self)
+
+        XCTAssertTrue(text.contains(#""source" : "backfill""#))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("rawLog"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("rawResponse"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("access_token"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("refresh_token"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("authorization"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("cookie"))
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("session"))
+    }
+
     private static func record(
         generatedAt: Int = 1_800_000_000,
         limitId: String,
