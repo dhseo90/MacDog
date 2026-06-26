@@ -1,0 +1,63 @@
+{
+  "records" : [
+    {
+      "dailyEndSamples" : [
+        {
+          "dayIndex" : 1,
+          "recordedAt" : 1800086400,
+          "remainingPercent" : 92,
+          "usedPercent" : 8
+        },
+        {
+          "dayIndex" : 7,
+          "recordedAt" : 1800604800,
+          "remainingPercent" : 28,
+          "usedPercent" : 72
+        }
+      ],
+      "finalRemainingPercent" : 28,
+      "finalUsedPercent" : 72,
+      "generatedAt" : 1800604740,
+      "limitId" : "codex",
+      "resetsAt" : 1800604800,
+      "resetStartAt" : 1800000000,
+      "sampleCount" : 7,
+      "schemaVersion" : 1,
+      "source" : "live-cache",
+      "windowDurationMins" : 10080
+    },
+    {
+      "dailyEndSamples" : [
+        {
+          "dayIndex" : 1,
+          "recordedAt" : 1799481600,
+          "remainingPercent" : 94,
+          "usedPercent" : 6
+        },
+        {
+          "dayIndex" : 4,
+          "recordedAt" : 1799740800,
+          "remainingPercent" : 69,
+          "usedPercent" : 31
+        },
+        {
+          "dayIndex" : 7,
+          "recordedAt" : 1800000000,
+          "remainingPercent" : 46,
+          "usedPercent" : 54
+        }
+      ],
+      "finalRemainingPercent" : 46,
+      "finalUsedPercent" : 54,
+      "generatedAt" : 1799999940,
+      "limitId" : "codex",
+      "resetsAt" : 1800000000,
+      "resetStartAt" : 1799395200,
+      "sampleCount" : 7,
+      "schemaVersion" : 1,
+      "source" : "backfill",
+      "windowDurationMins" : 10080
+    }
+  ],
+  "schemaVersion" : 1
+}

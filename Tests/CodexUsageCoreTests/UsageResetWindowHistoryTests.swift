@@ -249,6 +249,21 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertFalse(text.localizedCaseInsensitiveContains("session"))
     }
 
+    func testV140ResetWindowHistoryFixtureDecodesAndContainsNoSensitiveMaterial() throws {
+        let url = try XCTUnwrap(Bundle.module.url(
+            forResource: "v140_reset_window_history",
+            withExtension: "json"
+        ))
+        let data = try Data(contentsOf: url)
+        let history = try JSONDecoder().decode(CodexUsageResetWindowHistory.self, from: data)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(history.records.count, 2)
+        XCTAssertTrue(history.records.contains { $0.source == .liveCache })
+        XCTAssertTrue(history.records.contains { $0.source == .backfill })
+        XCTAssertNoSensitiveHistoryMaterial(in: object)
+    }
+
     private static func record(
         generatedAt: Int = 1_800_000_000,
         limitId: String,
