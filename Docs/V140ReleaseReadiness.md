@@ -1,11 +1,14 @@
 # v1.4.0 릴리즈 준비 감사
 
-상태: 릴리즈 잔여 이슈 정리 / PR 검증 완료 / 리뷰 대기
+상태: published v1.4.0 smoke 완료 / post-smoke UI fix main 반영 / remote tag와 asset 교체 대기
 작성일: 2026-06-26
-기준 브랜치: `codex/v1.4.0-release`
+기준 브랜치: `main`
 대상 버전: `1.4.0`
 Release tag: `v1.4.0`
-Release head: PR merge 후 `origin/main` 최신 SHA로 기록
+Published release head: `7327977bb82d41d8f0571e231865ba3251a178c9`
+Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`
+Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
+Replacement local DMG SHA-256: `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`
 
 이 문서는 v1.4.0 Usage Intelligence 구현 이후 실제 릴리즈까지 남은 이슈를 우선순위와 진행 순서 기준으로 고정합니다.
 구현 세부 범위와 데이터 경계는 [V140UsageIntelligence.md](V140UsageIntelligence.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
@@ -13,10 +16,27 @@ Release head: PR merge 후 `origin/main` 최신 SHA로 기록
 ## 현재 확인
 
 - v1.4.0 P0-P2 구현은 자동 검증 기준으로 완료했습니다.
-- v1.4.0 실제 앱 UI smoke, published DMG 설치 smoke, live fetch/cache smoke는 아직 완료 증거가 없습니다.
-- `main` 직접 push 과정에서 GitHub ruleset bypass 로그가 발생했습니다. 릴리즈 감사에서는 해당 direct push bypass와 required checks 최종 상태를 별도 기록합니다.
+- Published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, live fetch/cache smoke, release final-state 검증을 확인했습니다.
+- 실제 Codex 탭 UI smoke에서 하단 `기록 시작` 라벨 클리핑, current reset timestamp drift가 지난 window로 보이는 문제, `오버레이` UI 문구 모호성이 발견되어 `33b53c9`와 `4ddb5ff`로 수정했습니다.
+- `main` 직접 push 과정에서 GitHub ruleset direct push bypass 로그가 발생했습니다. `4ddb5ff` 기준 required checks 2개(`CI`, `Public Repo Guardrails`)는 통과했습니다.
+- 현재 remote `v1.4.0` tag와 published asset은 `7327977` 기준입니다. Post-smoke fix head `4ddb5ff` 기준 local replacement DMG는 생성/검증했지만, remote tag 이동과 asset 교체는 아직 수행하지 않았습니다.
+- Post-smoke fix head 기준 published DMG 실제 UI 확인 미수행: remote tag/asset 교체 후 Finder drag-and-drop 설치와 Codex 탭 UI smoke를 다시 수행해야 합니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.4.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
+
+## Post-smoke fix 기록
+
+기록 시각: 2026-06-26 22:10 KST
+
+- Commit: `33b53c93b8f0bf880c7cf8668ee4bb72556e86e0` (`fix: refine v1.4.0 usage graph smoke issues`)
+- Commit: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2` (`docs: refresh v1.4 usage screenshot`)
+- Direct push/admin bypass: `main` direct push로 GitHub ruleset bypass가 기록됐습니다.
+- Required checks: `4ddb5ff` 기준 `CI` success, `Public Repo Guardrails` success.
+- Local replacement artifact: `dist/release/MacDog-1.4.0.dmg`, `dist/release/MacDog-1.4.0.dmg.sha256`
+- Local replacement checksum: `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`
+- Local verification: `git diff --check`, focused Swift tests, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`, `hdiutil verify`, checksum 검증, `./script/verify_release_final_state.sh --version 1.4.0` 통과.
+- UI evidence: source renderer와 README screenshot에서 하단 `기록 시작` 라벨이 popover 내부에 표시됨을 확인했습니다.
+- Remote release gap: `v1.4.0` tag와 published asset은 아직 `7327977` 기준입니다. `4ddb5ff` 기준 tag 이동과 asset 교체는 별도 승인 후 진행합니다.
 
 ## 현재 PR 게이트 기록
 

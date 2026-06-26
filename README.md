@@ -6,14 +6,15 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.3.0](https://github.com/dhseo90/MacDog/releases/tag/v1.3.0)입니다.
+현재 GitHub Release는 [v1.4.0](https://github.com/dhseo90/MacDog/releases/tag/v1.4.0)입니다.
 
-- Release head: `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
-- Asset: `MacDog-1.3.0.dmg`
-- DMG SHA-256: `99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
+- Published release head: `7327977bb82d41d8f0571e231865ba3251a178c9`
+- Published asset: `MacDog-1.4.0.dmg`
+- Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, popover 주요 탭 전환, release final-state 검증.
-- 현재 개발 기준 버전은 `v1.4.0`이며, Usage Intelligence P0-P2 구현은 자동 검증 기준으로 진행합니다. 실제 v1.4.0 앱 UI smoke와 릴리즈 검수는 별도 release 단계에서 확인합니다.
+- 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, live fetch/cache 계약, release final-state 검증.
+- Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`. 이 head에는 Codex 그래프 하단 라벨 클리핑 수정, `현재/지난/비교` UI 문구 정리, current reset timestamp drift 제외, README screenshot 갱신이 포함됩니다.
+- Replacement local DMG: `dist/release/MacDog-1.4.0.dmg`, SHA-256 `fa61c70d6b0e6a66a2709c7783c8228448b9efcbb4aa9f5dce8988abf25c9f73`. 이 DMG와 remote `v1.4.0` tag/asset 교체는 아직 수행하지 않았습니다.
 
 ## 화면
 
@@ -64,7 +65,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 사용자 설치는 GitHub Release의 DMG를 기준으로 합니다.
 
-1. [v1.3.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.3.0)에서 `MacDog-1.3.0.dmg`를 내려받습니다.
+1. [v1.4.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.4.0)에서 `MacDog-1.4.0.dmg`를 내려받습니다.
 2. DMG를 Finder에서 엽니다.
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
