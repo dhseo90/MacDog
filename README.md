@@ -13,8 +13,9 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, live fetch/cache 계약, release final-state 검증.
-- Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`. 이 head에는 Codex 그래프 하단 라벨 클리핑 수정, `현재/지난/비교` UI 문구 정리, current reset timestamp drift 제외, README screenshot 갱신이 포함됩니다.
-- Replacement local DMG: `dist/release/MacDog-1.4.0.dmg`, SHA-256 `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8042a9032a2b03152`. 이 DMG와 remote `v1.4.0` tag/asset 교체는 아직 수행하지 않았습니다.
+- Re-run verified head: `0714c750df3e5a67e435c670e2f1a9ca45263771`. 이 head에는 과거 window backfill, 지난/비교 탭 유지, 날짜 기반 timeline/marker 라벨, reset-window history append diagnostic이 포함됩니다.
+- Replacement local DMG: `dist/release/MacDog-1.4.0.dmg`, SHA-256 `b20448f823a407007529478fd009770998b0a4aa6c0538b83bbe093815a76707`. 이 DMG는 checksum과 `hdiutil verify`, candidate CLI live fetch/cache smoke를 통과했습니다.
+- 남은 release smoke: remote `v1.4.0` tag/asset 교체, published DMG 재다운로드 검증, Finder drag-and-drop 재설치, `/Applications/MacDog.app` 기준 실제 Codex 탭 UI smoke, release final-state 검증.
 
 ## 화면
 

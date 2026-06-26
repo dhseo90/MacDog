@@ -1,14 +1,14 @@
 # v1.4.0 릴리즈 준비 감사
 
-상태: published v1.4.0 smoke 완료 / post-smoke UI fix main 반영 / remote tag와 asset 교체 대기
-작성일: 2026-06-26
+상태: v1.4.0 재검증 완료 / remote tag와 asset 교체 대기 / published DMG 재설치 smoke 대기
+작성일: 2026-06-27
 기준 브랜치: `main`
 대상 버전: `1.4.0`
 Release tag: `v1.4.0`
 Published release head: `7327977bb82d41d8f0571e231865ba3251a178c9`
-Post-smoke fix head: `4ddb5ff8f4f33f78f62cfc0f390dc5bd0fe9abf2`
+Re-run verified head: `0714c750df3e5a67e435c670e2f1a9ca45263771`
 Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
-Replacement local DMG SHA-256: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8042a9032a2b03152`
+Replacement local DMG SHA-256: `b20448f823a407007529478fd009770998b0a4aa6c0538b83bbe093815a76707`
 
 이 문서는 v1.4.0 Usage Intelligence 구현 이후 실제 릴리즈까지 남은 이슈를 우선순위와 진행 순서 기준으로 고정합니다.
 구현 세부 범위와 데이터 경계는 [V140UsageIntelligence.md](V140UsageIntelligence.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
@@ -18,9 +18,10 @@ Replacement local DMG SHA-256: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8
 - v1.4.0 P0-P2 구현은 자동 검증 기준으로 완료했습니다.
 - Published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, live fetch/cache smoke, release final-state 검증을 확인했습니다.
 - 실제 Codex 탭 UI smoke에서 하단 `기록 시작` 라벨 클리핑, current reset timestamp drift가 지난 window로 보이는 문제, `오버레이` UI 문구 모호성이 발견되어 `33b53c9`와 `4ddb5ff`로 수정했습니다.
-- `main` 직접 push 과정에서 GitHub ruleset direct push bypass 로그가 발생했습니다. `4ddb5ff` 기준 required checks 2개(`CI`, `Public Repo Guardrails`)는 통과했습니다.
-- 현재 remote `v1.4.0` tag와 published asset은 `7327977` 기준입니다. Post-smoke fix head `4ddb5ff` 기준 local replacement DMG는 생성/검증했지만, remote tag 이동과 asset 교체는 아직 수행하지 않았습니다.
-- Post-smoke fix head 기준 published DMG 실제 UI 확인 미수행: remote tag/asset 교체 후 Finder drag-and-drop 설치와 Codex 탭 UI smoke를 다시 수행해야 합니다.
+- 재검증 중 과거 데이터 backfill, 날짜 기반 지난/비교 timeline 라벨, reset-window history append diagnostic 누락을 `04e7e8d`와 `0714c75`로 추가 수정했습니다.
+- `main` 직접 push 과정에서 GitHub ruleset direct push bypass 로그가 발생했습니다. `0714c75` 기준 required checks 2개(`static-gates`, `guardrails`)는 통과했습니다.
+- 현재 remote `v1.4.0` tag와 published asset은 아직 `7327977` 기준입니다. Re-run verified head `0714c75` 기준 local replacement DMG는 생성/검증했지만, remote tag 이동과 asset 교체는 아직 수행하지 않았습니다.
+- Re-run verified head 기준 candidate 앱 실제 UI 확인: `dist/MacDog.app`에서 Codex 현재 탭, popover placement, 하단 날짜 라벨, copy/export 버튼 표시를 확인했습니다. 자동 클릭 주입으로 지난/비교 탭 전환은 완료하지 못해 published DMG 설치 smoke에서 다시 확인해야 합니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.4.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
 
@@ -37,6 +38,22 @@ Replacement local DMG SHA-256: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8
 - Local verification: `git diff --check`, focused Swift tests, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`, `hdiutil verify`, checksum 검증, `./script/verify_release_final_state.sh --version 1.4.0` 통과.
 - UI evidence: source renderer와 README screenshot에서 하단 `기록 시작` 라벨이 popover 내부에 표시됨을 확인했습니다.
 - Remote release gap: `v1.4.0` tag와 published asset은 아직 `7327977` 기준입니다. `4ddb5ff` 기준 tag 이동과 asset 교체는 별도 승인 후 진행합니다.
+
+## Re-run 기록
+
+기록 시각: 2026-06-27 00:52 KST
+
+- Commit: `04e7e8d277bdb158a76b28abe11a01b2851d4e8c` (`fix: refine v1.4 usage history comparison`)
+- Commit: `0714c750df3e5a67e435c670e2f1a9ca45263771` (`fix: report reset window history cache writes`)
+- Direct push/admin bypass: `main` direct push로 GitHub ruleset bypass가 기록됐습니다.
+- Required checks: `0714c75` 기준 `static-gates` success, `guardrails` success.
+- Local replacement artifact: `dist/release/MacDog-1.4.0.dmg`, `dist/release/MacDog-1.4.0.dmg.sha256`
+- Local replacement checksum: `b20448f823a407007529478fd009770998b0a4aa6c0538b83bbe093815a76707`
+- Local verification: `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`, checksum 검증, `hdiutil verify`, `./script/verify_usage_fetch_cache_contract.sh --cli /Users/dhseo/Desktop/workspace/MacDog/dist/MacDog.app/Contents/MacOS/codex-usage` 통과.
+- Live cache smoke: successful fetch가 `usage-weekly-history.json`과 `usage-reset-window-history.json`을 생성했고, reset-window append diagnostic과 sample schema를 확인했습니다.
+- Candidate UI evidence: `dist/MacDog.app` 실제 popover에서 Codex 현재 탭, 날짜 기반 `기록 시작`/reset end 라벨, copy/export 버튼 표시를 확인했습니다.
+- UI gap: 좌표 클릭 자동화가 SwiftUI segmented control에 전달되지 않아 `지난`/`비교` 실제 탭 전환, window picker, hover/tap marker, PNG copy/export 실행은 published DMG 설치 smoke에서 다시 확인해야 합니다.
+- Remote release gap: `v1.4.0` tag와 published asset은 아직 `7327977` 기준입니다. `0714c75` 기준 tag 이동과 asset 교체가 다음 단계입니다.
 
 ## 현재 PR 게이트 기록
 
@@ -56,10 +73,10 @@ Replacement local DMG SHA-256: `8475305a73202b9b5921edf785f4e2a07acb00b9496f74f8
 
 | 번호 | 우선순위 | 이슈 | 완료 증거 |
 | ---: | --- | --- | --- |
-| 1 | P0 | 원격 CI와 보호 규칙 상태 확인 | `v1.4.0` release head 기준 required checks 2개 통과, direct push bypass 기록 |
+| 1 | P0 | 원격 CI와 보호 규칙 상태 확인 | `0714c75` 기준 required checks 2개 통과, direct push bypass 기록 |
 | 2 | P0 | v1.4.0 최종 릴리즈 문서 정리 | README/ROADMAP/Docs가 release head, DMG 이름, checksum, smoke 결과 기록 위치를 같은 용어로 설명 |
-| 3 | P0 | 릴리즈 전 자동검증 | `git diff --check`, `markdownlint-cli2`, v1.4.0 self-test, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run` 통과 |
-| 4 | P0 | release candidate 패키징 | 원격 tag `v1.4.0` 없음, `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` 생성, checksum과 `hdiutil verify` 통과 |
+| 3 | P0 | 릴리즈 전 자동검증 | `git diff --check`, v1.4.0 self-test, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run` 통과 |
+| 4 | P0 | release candidate 패키징 | 기존 원격 tag `v1.4.0`은 `7327977` 기준, replacement `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` 생성, checksum과 `hdiutil verify` 통과 |
 | 5 | P0 | GitHub draft release 생성/검증 | `Draft Release`가 `UNSIGNED-DRAFT` 확인 입력으로 생성되고 `targetCommitish`가 최신 release head이며 asset 2개가 포함됨 |
 | 6 | P0 | GitHub release publish 검증 | publish 후 `isDraft=false`, `isPrerelease=false`, tag `v1.4.0` 생성, published asset download URL 확인 |
 | 7 | P0 | published DMG 재다운로드 검증 | published `MacDog-1.4.0.dmg` 재다운로드, `.sha256` 검증, `hdiutil verify` 통과 |
