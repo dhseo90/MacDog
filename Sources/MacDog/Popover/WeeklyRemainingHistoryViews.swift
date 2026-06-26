@@ -73,15 +73,6 @@ struct WeeklyRemainingHistoryBlock: View {
                     startLabel: timelineStartLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries),
                     endLabel: timelineEndLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
                 )
-
-                if let recordingStartLabel = comparisonModel.currentChart.recordingStartLabel,
-                   mode == .current {
-                    Text(recordingStartLabel)
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary.opacity(0.82))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("주간 잔여량 그래프")
@@ -173,10 +164,10 @@ struct WeeklyRemainingHistoryBlock: View {
             return model.currentChart.summaryText
         case .past:
             guard let selectedSeries else { return "과거 기록 없음" }
-            return "과거 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+            return "지난 window 최종 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))% 사용"
         case .overlay:
-            guard let selectedSeries else { return model.currentChart.summaryText }
-            return "현재 vs 과거 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+            guard selectedSeries != nil else { return model.currentChart.summaryText }
+            return "현재 pace와 지난 window 비교"
         }
     }
 
@@ -185,7 +176,7 @@ struct WeeklyRemainingHistoryBlock: View {
         model: CodexUsageHistoryComparisonModel,
         selectedSeries: CodexUsageResetWindowOverlaySeries?
     ) -> String {
-        mode == .current ? model.currentChart.resetStartLabel : "0일"
+        mode == .current ? model.currentChart.timelineStartDisplayLabel : "0일"
     }
 
     private func timelineEndLabel(
@@ -206,7 +197,7 @@ struct WeeklyRemainingHistoryBlock: View {
             return model.currentChart.accessibilityValue
         case .past, .overlay:
             guard let selectedSeries else { return "과거 기록 없음" }
-            return "과거 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
+            return "지난 window 최종 사용 \(UsageMonitorState.percent(selectedSeries.finalUsageMarker.usedPercent))%"
         }
     }
 
@@ -298,11 +289,24 @@ private struct CodexUsageGraphSnapshotView: View {
                 selectedSeries: selectedSeries
             )
             WeeklyRemainingTimelineLabels(
-                startLabel: mode == .current ? currentChart.resetStartLabel : "0일",
+                startLabel: mode == .current ? currentChart.timelineStartDisplayLabel : "0일",
                 endLabel: mode == .current ? currentChart.resetEndLabel : "7일"
             )
         }
         .padding(12)
+    }
+}
+
+enum WeeklyRemainingTimelineLabelLayout {
+    static let labelSpacing: CGFloat = 6
+    static let endLabelWidth: CGFloat = 48
+
+    static var leadingInset: CGFloat {
+        CodexUsagePanelLayout.weeklyGraphPlotStartX
+    }
+
+    static func startLabelWidth(totalWidth: CGFloat) -> CGFloat {
+        max(0, totalWidth - leadingInset - labelSpacing - endLabelWidth)
     }
 }
 
@@ -312,19 +316,27 @@ private struct WeeklyRemainingTimelineLabels: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .leading) {
+            HStack(spacing: WeeklyRemainingTimelineLabelLayout.labelSpacing) {
                 Text(startLabel)
-                    .position(
-                        x: CodexUsagePanelLayout.weeklyGraphPlotStartX,
-                        y: CodexUsagePanelLayout.weeklyGraphTimelineHeight / 2
+                    .frame(
+                        width: WeeklyRemainingTimelineLabelLayout.startLabelWidth(totalWidth: geometry.size.width),
+                        alignment: .leading
                     )
+                    .truncationMode(.tail)
 
                 Text(endLabel)
-                    .frame(width: geometry.size.width, alignment: .trailing)
+                    .frame(width: WeeklyRemainingTimelineLabelLayout.endLabelWidth, alignment: .trailing)
             }
             .font(.caption2.weight(.medium))
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .padding(.leading, WeeklyRemainingTimelineLabelLayout.leadingInset)
+            .frame(
+                width: geometry.size.width,
+                height: CodexUsagePanelLayout.weeklyGraphTimelineHeight,
+                alignment: .leading
+            )
         }
         .frame(height: CodexUsagePanelLayout.weeklyGraphTimelineHeight)
     }
@@ -953,6 +965,10 @@ struct WeeklyRemainingHistoryChart: Equatable {
             return resetsAt == nil ? "초기화 시각 필요" : "샘플 대기"
         }
         return "\(UsageMonitorState.percent(latestActualPoint.remainingPercent))% 남음"
+    }
+
+    var timelineStartDisplayLabel: String {
+        recordingStartLabel ?? resetStartLabel
     }
 
     var accessibilityValue: String {

@@ -228,6 +228,12 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(CodexUsageHistoryMarkerLabel.hoverText(for: marker), "7일 종료 · 사용 74%")
     }
 
+    func testCodexHistoryModeLabelsDescribeComparisonIntent() {
+        XCTAssertEqual(CodexUsageHistoryGraphMode.current.label, "현재")
+        XCTAssertEqual(CodexUsageHistoryGraphMode.past.label, "지난")
+        XCTAssertEqual(CodexUsageHistoryGraphMode.overlay.label, "비교")
+    }
+
     func testSystemMetricsUpdateReplacesPrivilegedHelperInstallSnapshot() {
         let state = UsageMonitorState(report: nil, cacheSnapshot: nil, errorMessage: nil)
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: true)
@@ -574,6 +580,7 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.dayMarkers.map(\.id), [0, 1, 2])
         XCTAssertEqual(chart.dayMarkers.map(\.hoverLabel), ["6/1 월 종료 · 100%", "6/2 화 종료 · 83%", "6/3 수 · 64%"])
         XCTAssertEqual(chart.recordingStartLabel, "기록 시작 6/2 화 18:21")
+        XCTAssertEqual(chart.timelineStartDisplayLabel, "기록 시작 6/2 화 18:21")
         XCTAssertEqual(chart.dayMarkers[0].point.recordedAt, start + 86_400)
         XCTAssertEqual(chart.dayMarkers[1].point.recordedAt, start + 2 * 86_400)
         XCTAssertEqual(chart.dayMarkers[2].point.recordedAt, currentSample.recordedAt)
@@ -707,6 +714,20 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertLessThanOrEqual(
             MacResourcesPanelLayout.estimatedContentHeight,
             MacDogPopoverLayout.nonScrollableContentHeight
+        )
+    }
+
+    func testWeeklyTimelineStartLabelStaysInsideGraphBounds() {
+        let totalWidth = MacDogPopoverLayout.contentSurfaceSize.width - (MacDogPopoverLayout.contentPadding * 2)
+        let startLabelWidth = WeeklyRemainingTimelineLabelLayout.startLabelWidth(totalWidth: totalWidth)
+
+        XCTAssertGreaterThan(startLabelWidth, 150)
+        XCTAssertLessThanOrEqual(
+            WeeklyRemainingTimelineLabelLayout.leadingInset +
+                startLabelWidth +
+                WeeklyRemainingTimelineLabelLayout.labelSpacing +
+                WeeklyRemainingTimelineLabelLayout.endLabelWidth,
+            totalWidth
         )
     }
 

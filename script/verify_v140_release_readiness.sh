@@ -61,7 +61,7 @@ verify_release_readiness() {
   require_text 'Draft Release' "$DOC" "draft release workflow step"
   require_text 'UNSIGNED-DRAFT' "$DOC" "unsigned draft release gate"
   require_text 'Finder에서 published DMG를 열고 보이는 `MacDog\.app`을 `Applications`로 실제 drag-and-drop' "$DOC" "Finder drag-and-drop install boundary"
-  require_text '현재/과거/오버레이' "$DOC" "v1.4.0 Codex tab UI smoke"
+  require_text '현재/지난/비교' "$DOC" "v1.4.0 Codex tab UI smoke"
   require_text 'PNG copy/export' "$DOC" "graph copy/export UI smoke"
   require_text 'verify_usage_fetch_cache_contract\.sh --cli /Applications/MacDog\.app/Contents/MacOS/codex-usage' "$DOC" "installed CLI cache contract"
   require_text 'usage-reset-window-history\.json' "$DOC" "reset window history live smoke"
@@ -78,7 +78,7 @@ verify_release_readiness() {
   require_text 'verify_v140_release_readiness\.sh --self-test' "$CHECK_SCRIPT" "check.sh release readiness gate"
   require_text 'verify_v140_usage_intelligence_contract\.sh --self-test' "$CHECK_SCRIPT" "check.sh v1.4 usage contract gate"
   require_text 'Codex Usage Intelligence' "$PACKAGE_SCRIPT" "v1.4 release note highlights"
-  require_text '현재/과거/오버레이 그래프' "$PACKAGE_SCRIPT" "v1.4 graph overlay release note"
+  require_text '현재/지난/비교 그래프' "$PACKAGE_SCRIPT" "v1.4 graph comparison release note"
   require_text 'usage-reset-window-history\.json' "$PACKAGE_SCRIPT" "v1.4 history file release note"
   require_text '플랜 가격 tier는 추정하지' "$PACKAGE_SCRIPT" "v1.4 plan tier release note boundary"
 

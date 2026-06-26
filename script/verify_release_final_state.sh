@@ -18,6 +18,7 @@ LAUNCH_AGENTS_DIR="${MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR:-$HOME/Library/Launc
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
 CACHE_PLIST_NAME="com.dhseo.macdog.usage-cache.plist"
 LAUNCHCTL="${MACDOG_RELEASE_FINAL_LAUNCHCTL:-/bin/launchctl}"
+SFLTOOL="${MACDOG_RELEASE_FINAL_SFLTOOL:-/usr/bin/sfltool}"
 USER_ID="${MACDOG_RELEASE_FINAL_USER_ID:-$(id -u)}"
 
 usage() {
@@ -103,6 +104,65 @@ login_item_status_for() {
   set -e
   login_item_status_from_output "$output"
   return 0
+}
+
+btm_login_item_status_for() {
+  local app_path="$1"
+  [[ -x "$SFLTOOL" ]] || {
+    printf 'unknown'
+    return 0
+  }
+
+  local dump_file
+  dump_file="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/macdog-btm.XXXXXX")"
+  if ! "$SFLTOOL" dumpbtm >"$dump_file" 2>/dev/null; then
+    rm -f "$dump_file"
+    printf 'unknown'
+    return 0
+  fi
+
+  /usr/bin/ruby - "$dump_file" "$app_path" "$BUNDLE_ID" <<'RUBY'
+require "uri"
+
+dump_path = ARGV.fetch(0)
+app_path = ARGV.fetch(1).sub(%r{/+\z}, "")
+bundle_id = ARGV.fetch(2)
+target_url = "file://#{app_path}/"
+encoded_url = URI::DEFAULT_PARSER.escape(target_url)
+
+status = "unknown"
+File.read(dump_path).split(/\n\s*\n/).each do |block|
+  next unless block.include?("Bundle Identifier: #{bundle_id}")
+  next unless block.include?("URL: #{target_url}") || block.include?("URL: #{encoded_url}")
+  if block.match?(/Disposition:\s*\[[^\]]*\benabled\b[^\]]*\]/)
+    status = "enabled"
+    break
+  end
+end
+
+print status
+RUBY
+  rm -f "$dump_file"
+}
+
+effective_login_item_status_for() {
+  local app_binary="$1"
+  local app_path="$2"
+  local status
+  status="$(login_item_status_for "$app_binary")"
+  if [[ "$status" == "enabled" ]]; then
+    printf 'enabled'
+    return 0
+  fi
+
+  local btm_status
+  btm_status="$(btm_login_item_status_for "$app_path")"
+  if [[ "$btm_status" == "enabled" ]]; then
+    printf 'enabled'
+    return 0
+  fi
+
+  printf '%s' "$status"
 }
 
 resource_name_is_allowed() {
@@ -236,6 +296,28 @@ SCRIPT
   chmod +x "$launchctl"
 }
 
+write_fixture_sfltool() {
+  local sfltool="$1"
+  local app="$2"
+  cat >"$sfltool" <<SCRIPT
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "\${1:-}" != "dumpbtm" ]]; then
+  exit 64
+fi
+cat <<OUTPUT
+#1:
+                Name: MacDog
+                Type: app (0x2)
+         Disposition: [enabled, allowed, not notified] (0x3)
+          Identifier: 2.$BUNDLE_ID
+                 URL: file://$app/
+    Bundle Identifier: $BUNDLE_ID
+OUTPUT
+SCRIPT
+  chmod +x "$sfltool"
+}
+
 expect_success() {
   "$@" >/dev/null
 }
@@ -256,6 +338,7 @@ run_self_test() {
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9"
   write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
   write_fixture_launchctl "$tmp/launchctl" "missing" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
+  write_fixture_sfltool "$tmp/sfltool" "$tmp/Applications/$APP_NAME.app"
 
   local parsed_status
   parsed_status="$(login_item_status_from_output $'login-item:status enabled\n')"
@@ -279,7 +362,7 @@ run_self_test() {
     "$0" --version 9.9.9 >/dev/null
 
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9" "notFound"
-  expect_failure env \
+  expect_success env \
     MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
     MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
     MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
@@ -287,6 +370,7 @@ run_self_test() {
     MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
     MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
     MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_SFLTOOL="$tmp/sfltool" \
     MACDOG_RELEASE_FINAL_USER_ID=501 \
     "$0" --version 9.9.9
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9"
@@ -443,7 +527,7 @@ if [[ -d "$installed_app" ]]; then
   if [[ ! -x "$installed_binary" ]]; then
     failures+=("installed app binary is not runnable: $installed_binary")
   elif login_launch_enabled; then
-    login_item_status="$(login_item_status_for "$installed_binary")"
+    login_item_status="$(effective_login_item_status_for "$installed_binary" "$installed_app")"
     if [[ "$login_item_status" != "enabled" ]]; then
       failures+=("login item status mismatch: expected enabled because $LOGIN_LAUNCH_KEY is true, got $login_item_status")
     fi

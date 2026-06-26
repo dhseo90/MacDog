@@ -501,8 +501,8 @@ case "$VERSION" in
     release_highlights=$(cat <<'HIGHLIGHTS'
 ## 주요 변경 사항
 
-- Codex Usage Intelligence를 추가해 reset window 기준 과거 사용량, 현재 pace 예측, 현재/과거/오버레이 그래프를 확인할 수 있습니다.
-- Codex 탭에서 과거 window picker, 7일 끝 marker, final usage marker, hover/tap label을 확인할 수 있습니다.
+- Codex Usage Intelligence를 추가해 reset window 기준 지난 사용량, 현재 pace 예측, 현재/지난/비교 그래프를 확인할 수 있습니다.
+- Codex 탭에서 지난 window picker, 7일 끝 marker, final usage marker, hover/tap label을 확인할 수 있습니다.
 - 화면에 보이는 Codex 사용량 그래프를 PNG로 복사하거나 저장할 수 있습니다.
 - `usage-reset-window-history.json`에 축약 history record만 저장하고, 기존 `usage.json`과 `usage-weekly-history.json` schema는 바꾸지 않습니다.
 - 플랜 가격 tier는 추정하지 않고 기존 raw `planType` 표시 경계만 유지합니다.

@@ -44,7 +44,7 @@ Release head: PR merge 후 `origin/main` 최신 SHA로 기록
 | 6 | P0 | GitHub release publish 검증 | publish 후 `isDraft=false`, `isPrerelease=false`, tag `v1.4.0` 생성, published asset download URL 확인 |
 | 7 | P0 | published DMG 재다운로드 검증 | published `MacDog-1.4.0.dmg` 재다운로드, `.sha256` 검증, `hdiutil verify` 통과 |
 | 8 | P0 | Finder drag-and-drop 설치 smoke | Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop |
-| 9 | P0 | 설치본 첫 실행과 앱 UI smoke | `/Applications/MacDog.app` 기준 첫 실행, menu bar runner, popover placement, Codex 탭 현재/과거/오버레이, window picker, hover/tap marker, PNG copy/export 확인 |
+| 9 | P0 | 설치본 첫 실행과 앱 UI smoke | `/Applications/MacDog.app` 기준 첫 실행, menu bar runner, popover placement, Codex 탭 현재/지난/비교, window picker, hover/tap marker, PNG copy/export 확인 |
 | 10 | P0 | live fetch/cache 계약 smoke | `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage` 실행, `usage-reset-window-history.json` append diagnostic과 sample 확인 |
 | 11 | P1 | release smoke 종료 정리 | `./script/cleanup_release_smoke_state.sh --apply`, `./script/verify_release_final_state.sh --version 1.4.0` 통과 |
 | 12 | P1 | 최종 결과 기록 | v1.4.0 release metadata, checksum, smoke 결과, 미수행 항목을 README/ROADMAP/Docs에 과장 없이 기록 |
@@ -92,7 +92,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift te
 13. published DMG와 `.sha256`을 다시 내려받아 checksum과 `hdiutil verify`를 재확인합니다.
 14. Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
 15. `/Applications/MacDog.app` 기준으로 앱을 실행해 menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
-16. Codex 탭에서 현재/과거/오버레이 전환, 과거 window picker, hover/tap marker, PNG copy/export를 확인합니다.
+16. Codex 탭에서 현재/지난/비교 전환, 지난 window picker, hover/tap marker, PNG copy/export를 확인합니다.
 17. `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
 18. `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`를 실행합니다.
 19. live fetch 성공 시 5시간/주간 window, `usage-weekly-history.json`, `usage-reset-window-history.json` append diagnostic과 sample을 확인합니다.

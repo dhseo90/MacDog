@@ -25,6 +25,25 @@ final class ResetWindowOverlayModelTests: XCTestCase {
         XCTAssertTrue(windows.allSatisfy { $0.key.windowDurationMins == 10_080 })
     }
 
+    func testExcludesCurrentWeeklyWindowWhenResetTimestampDriftsByOneSecond() {
+        let currentReset = 1_800_604_800
+        let driftedCurrentReset = currentReset + 1
+        let pastReset = currentReset - 10_080 * 60
+        let history = CodexUsageResetWindowHistory(records: [
+            Self.record(limitId: "codex", windowDurationMins: 10_080, resetsAt: currentReset),
+            Self.record(limitId: "codex", windowDurationMins: 10_080, resetsAt: driftedCurrentReset),
+            Self.record(limitId: "codex", windowDurationMins: 10_080, resetsAt: pastReset)
+        ])
+
+        let windows = CodexUsageResetWindowOverlayBuilder().pastWeeklyWindows(
+            in: history,
+            limitId: "codex",
+            excludingCurrentResetsAt: currentReset
+        )
+
+        XCTAssertEqual(windows.map(\.key.resetsAt), [pastReset])
+    }
+
     func testNormalizesDailyEndMarkersOnZeroToSevenDayTimeline() throws {
         let resetsAt = 1_800_604_800
         let record = Self.record(

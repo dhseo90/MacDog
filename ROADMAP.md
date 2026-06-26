@@ -155,7 +155,7 @@ v1.4.0 P0-P2 완료 순서:
 - v1.4.0 (5) cache writer 축약 append: live fetch/cache writer 성공 시 weekly sample을 reset window history record로 축약 저장합니다.
 - v1.4.0 (6) 현재 pace 예측: 최근 sample delta로 reset 전 예상 final usage를 계산하고 sample 부족/stale/error 상태를 분리합니다.
 - v1.4.0 (7) 과거 window 오버레이 모델: 과거 weekly window 선택, 0-7일 timeline 정규화, 7일 끝 marker, final usage marker를 생성합니다.
-- v1.4.0 (8) Codex 탭 UI 반영: 과거 window picker, 현재/과거/오버레이 전환, hover/tap label을 연결합니다.
+- v1.4.0 (8) Codex 탭 UI 반영: 지난 window picker, 현재/지난/비교 전환, hover/tap label을 연결합니다.
 - v1.4.0 (9) 그래프 이미지 export/copy: 화면에 보이는 그래프를 PNG로 복사/저장하고 민감정보 metadata를 제외합니다.
 - v1.4.0 (10) 대량 로그/backfill 경계: raw log 저장 없이 생성된 history record만 UI/분석에 사용합니다.
 - v1.4.0 (11) 검증 스크립트와 fixture: cache/privacy/history 계약, fixture, focused Swift tests를 묶습니다.

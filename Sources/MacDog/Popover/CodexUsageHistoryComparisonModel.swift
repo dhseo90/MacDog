@@ -13,9 +13,9 @@ enum CodexUsageHistoryGraphMode: String, CaseIterable, Equatable, Identifiable {
         case .current:
             return "현재"
         case .past:
-            return "과거"
+            return "지난"
         case .overlay:
-            return "오버레이"
+            return "비교"
         }
     }
 }
