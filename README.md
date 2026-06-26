@@ -13,7 +13,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - DMG SHA-256: `99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple signing 조건이 필요한 public stable 배포는 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, popover 주요 탭 전환, release final-state 검증.
-- 현재 개발 기준 버전은 `v1.4.0`이며, P0 범위는 Usage Intelligence의 데이터 계약과 history 저장 경계를 먼저 고정합니다.
+- 현재 개발 기준 버전은 `v1.4.0`이며, Usage Intelligence P0-P2 구현은 자동 검증 기준으로 진행합니다. 실제 v1.4.0 앱 UI smoke와 릴리즈 검수는 별도 release 단계에서 확인합니다.
 
 ## 화면
 
@@ -53,7 +53,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | 영역 | 역할 |
 | --- | --- |
 | 메뉴바 러너 | Codex 사용량 위험도를 작은 캐릭터 움직임으로 표시합니다. |
-| Codex 사용량 탭 | 5시간/주간 사용률, 남은 비율, reset 시각, 알림 기준, 주간 잔여량 그래프를 표시합니다. |
+| Codex 사용량 탭 | 5시간/주간 사용률, 남은 비율, reset 시각, 알림 기준, pace 예측, 주간 잔여량/과거 window/오버레이 그래프를 표시합니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
@@ -79,7 +79,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태와 주간 잔여량 그래프를 표시합니다.
+- Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/과거/오버레이 그래프를 표시합니다.
+- Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
@@ -127,7 +128,8 @@ codex-usage doctor
 - cache에는 raw `planType`, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다.
 - `Plus`/`Pro $100`/`Pro $200` 가격 tier는 현재 조회 경로에서 구분할 수 없으므로 표시, 저장, 추정하지 않습니다.
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
-- v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 축약 record만 저장하고, 기존 `usage.json`/`usage-weekly-history.json` schema를 바꾸지 않습니다.
+- v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장하고, 기존 `usage.json`/`usage-weekly-history.json` schema를 바꾸지 않습니다.
+- 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.
 - 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않습니다.
 
 ## 개발과 검증
@@ -146,6 +148,7 @@ MACDOG_APP_VERSION=<version> ./script/check.sh
 MACDOG_APP_VERSION=<version> ./script/check.sh --no-run
 MACDOG_APP_VERSION=<version> ./script/build_and_run.sh
 npx --yes markdownlint-cli2@0.22.1
+./script/verify_v140_usage_intelligence_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -157,6 +160,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `MACDOG_APP_VERSION=<version> ./script/build_and_run.sh` | 앱 번들을 빌드하고 MacDog를 실행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/build_and_run.sh --with-widget` | optional WidgetKit extension을 포함해 앱 번들을 빌드합니다. 기본 빌드는 위젯을 제외합니다. |
 | `./script/sample_existing_runtime_resources.sh --samples 5 --interval 1` | 이미 실행 중인 MacDog 프로세스의 CPU/RSS를 read-only로 샘플링합니다. |
+| `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |

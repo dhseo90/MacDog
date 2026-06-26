@@ -1,13 +1,13 @@
 # v1.4.0 Usage Intelligence
 
-상태: P0 baseline 진행
+상태: P0-P2 구현 완료 / 자동 검증 완료 / 실제 UI smoke 미수행
 작성일: 2026-06-25
 대상 버전: `1.4.0`
 
 이 문서는 v1.4.0에서 다룰 과거 사용량, 현재 pace 예측, reset window 오버레이, 이미지 export, 대량 로그 처리 기준을 고정합니다.
 플랜/가격 tier 인사이트는 현재 조회 경로로 `Pro $100`과 `Pro $200`을 구분할 수 없으므로 v1.4.0 범위에서 제외합니다.
 
-## P0 진행 순서
+## P0-P2 진행 순서
 
 | 번호 | 이슈 | 완료 경계 |
 | --- | --- | --- |
@@ -16,8 +16,13 @@
 | v1.4.0 (3) | reset window history 계약 | `limitId` + `windowDurationMins` + `resetsAt` 기준 최소 history record schema 정의, 기존 `usage.json`/`usage-weekly-history.json` breaking change 금지 |
 | v1.4.0 (4) | history store 구현 | 별도 history 파일, atomic write, retention, dedupe, schema migration, token/session/raw response 저장 금지 |
 | v1.4.0 (5) | cache writer 축약 append | live fetch/cache writer 성공 시 weekly sample을 reset window history record로 축약 저장 |
-
-P0 이후 범위는 별도 요청이 있을 때만 진행합니다.
+| v1.4.0 (6) | 현재 pace 예측 | 최근 sample delta로 reset 전 예상 final usage 계산, sample 부족/stale/error 상태 분리 |
+| v1.4.0 (7) | 과거 window 오버레이 모델 | 과거 weekly window 선택, 0-7일 timeline 정규화, 7일 끝 marker, final usage marker 생성 |
+| v1.4.0 (8) | Codex 탭 UI 반영 | 과거 window picker, 현재/과거/오버레이 전환, hover/tap으로 7일 끝 사용량 확인 |
+| v1.4.0 (9) | 그래프 이미지 export/copy | 화면에 보이는 그래프 PNG export/copy, auth/session/raw log/local path metadata 제외 |
+| v1.4.0 (10) | 대량 로그/backfill 경계 | raw log 저장 없이 history record 생성까지만 지원, UI/분석은 생성된 record만 사용 |
+| v1.4.0 (11) | 검증 스크립트와 fixture | cache/privacy/history contract 검증 스크립트, fixture, focused Swift tests 추가 |
+| v1.4.0 (12) | 릴리즈 준비 문서/UI smoke | README/ROADMAP/Docs 정리, screenshot renderer 갱신, 실제 UI 확인 여부 분리 보고 |
 
 ## 목표
 
@@ -163,18 +168,29 @@ v1.4.0에서 대량 로그 처리는 raw log 분석 기능이 아니라 "v1.4.0 
 3. reset window history record 계약을 별도 schema로 고정합니다.
 4. reset window history store를 별도 파일로 구현하고 atomic write, retention, dedupe, schema migration test를 작성합니다.
 5. live cache success 후 weekly sample을 reset window record로 축약 append합니다.
+6. 최근 weekly sample delta로 reset 전 예상 final usage를 계산하고 sample 부족/stale/error 상태를 분리합니다.
+7. 과거 weekly reset window를 0-7일 timeline으로 정규화하고 7일 끝 marker와 final usage marker를 만듭니다.
+8. Codex 탭에 현재/과거/오버레이 모드, 과거 window picker, hover/tap label을 연결합니다.
+9. 화면에 보이는 그래프를 PNG로 export/copy하되 auth/session/raw log/local path metadata를 제외합니다.
+10. 대량 로그/backfill은 raw log 저장 없이 generated history record 생성까지만 지원하고 UI/분석은 record만 읽습니다.
+11. v1.4.0 cache/privacy/history contract 검증 스크립트, fixture, focused Swift tests를 둡니다.
+12. README/ROADMAP/Docs를 실제 구현 경계와 맞추고 screenshot renderer가 demo/live reset window history를 주입하도록 유지합니다.
 
 ## 검증 기준
 
 - `git diff --check`
 - `npx --yes markdownlint-cli2@0.22.1`
-- `swift test --filter UsageResetHistory`
-- `swift test --filter UsagePaceProjection`
-- `swift test --filter WeeklyHistory`
+- `./script/verify_v140_usage_intelligence_contract.sh --self-test`
+- `swift test --filter UsageResetWindowHistoryTests`
+- `swift test --filter UsagePaceProjectionTests`
+- `swift test --filter ResetWindowOverlayModelTests`
+- `swift test --filter CodexUsageGraphImageExporterTests`
+- `swift test --filter UsageMonitorStateTests`
 - `swift test --filter PopoverScreenshotRendererTests`
 - 전체 `swift test`
 - macOS 앱 UI 변경이 있으면 Xcode Debug build
 
+README screenshot renderer는 demo snapshot에 reset window history를 넣고, live Codex popover opt-in renderer도 cache 옆 `usage-reset-window-history.json`을 읽습니다.
 실제 popover, image export, hover/tap을 열어보지 않았다면 `UI 확인 미수행`으로 보고합니다.
 
 ## v1.4.0 완료 판단

@@ -7,6 +7,7 @@ OVERLAY_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Cache/CodexUsageResetWindowOver
 PACE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Usage/CodexUsagePaceProjection.swift"
 GRAPH_EXPORT_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/CodexUsageGraphImageExporter.swift"
 USAGE_STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
+SCREENSHOT_RENDERER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
 FIXTURE="$ROOT_DIR/Tests/CodexUsageCoreTests/Fixtures/v140_reset_window_history.json"
 RUN_TESTS=1
 
@@ -81,6 +82,7 @@ verify_sources() {
   require_file "$PACE_SOURCE"
   require_file "$GRAPH_EXPORT_SOURCE"
   require_file "$USAGE_STATE_SOURCE"
+  require_file "$SCREENSHOT_RENDERER_TEST"
 
   require_match 'usage-reset-window-history\.json' "$HISTORY_SOURCE" "reset window history file contract"
   require_match 'CodexUsageResetWindowBackfillSummary' "$HISTORY_SOURCE" "summary-only backfill boundary"
@@ -92,6 +94,8 @@ verify_sources() {
   require_match 'CodexUsageGraphImageExporter' "$GRAPH_EXPORT_SOURCE" "graph PNG export/copy support"
   require_match 'representation\(using: \.png, properties: \[:\]\)' "$GRAPH_EXPORT_SOURCE" "PNG export without metadata properties"
   require_match 'resetWindowHistory' "$USAGE_STATE_SOURCE" "UI reads generated reset-window records"
+  require_match 'MacDogDemoData\.state' "$SCREENSHOT_RENDERER_TEST" "README screenshot renderer uses demo state"
+  require_match 'CodexUsageResetWindowHistoryStore\(\)\.read\(\)' "$SCREENSHOT_RENDERER_TEST" "live screenshot renderer reads reset-window history"
 }
 
 run_focused_tests() {
