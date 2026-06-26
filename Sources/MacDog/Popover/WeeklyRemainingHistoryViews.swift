@@ -38,6 +38,7 @@ struct WeeklyRemainingHistoryBlock: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
+                    graphActionButtons(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
                 }
 
                 if comparisonModel.availableModes.count > 1 {
@@ -94,22 +95,40 @@ struct WeeklyRemainingHistoryBlock: View {
         model: CodexUsageHistoryComparisonModel,
         selectedSeries: CodexUsageResetWindowOverlaySeries?
     ) -> some View {
-        switch mode {
-        case .current:
-            WeeklyRemainingHistoryGraph(chart: model.currentChart)
-        case .past:
-            if let selectedSeries {
-                ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
-            } else {
-                WeeklyRemainingHistoryGraph(chart: model.currentChart)
+        CodexUsageGraphDisplay(
+            mode: mode,
+            currentChart: model.currentChart,
+            selectedSeries: selectedSeries
+        )
+    }
+
+    private func graphActionButtons(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> some View {
+        HStack(spacing: 4) {
+            Button {
+                copyVisibleGraph(mode: mode, model: model, selectedSeries: selectedSeries)
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.caption2.weight(.semibold))
+                    .frame(width: 16, height: 16)
             }
-        case .overlay:
-            if let selectedSeries {
-                ResetWindowOverlayGraph(currentChart: model.currentChart, series: selectedSeries)
-            } else {
-                WeeklyRemainingHistoryGraph(chart: model.currentChart)
+            .buttonStyle(.plain)
+            .help("PNG 복사")
+
+            Button {
+                exportVisibleGraph(mode: mode, model: model, selectedSeries: selectedSeries)
+            } label: {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.caption2.weight(.semibold))
+                    .frame(width: 16, height: 16)
             }
+            .buttonStyle(.plain)
+            .help("PNG 내보내기")
         }
+        .foregroundStyle(.secondary)
     }
 
     private func effectiveMode(for model: CodexUsageHistoryComparisonModel) -> CodexUsageHistoryGraphMode {
@@ -197,6 +216,93 @@ struct WeeklyRemainingHistoryBlock: View {
         let month = components.month ?? 0
         let day = components.day ?? 0
         return "\(month)/\(day)"
+    }
+
+    private func copyVisibleGraph(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) {
+        guard let data = visibleGraphPNGData(mode: mode, model: model, selectedSeries: selectedSeries) else {
+            return
+        }
+        CodexUsageGraphImageExporter.copyPNGData(data)
+    }
+
+    private func exportVisibleGraph(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) {
+        guard let data = visibleGraphPNGData(mode: mode, model: model, selectedSeries: selectedSeries) else {
+            return
+        }
+        CodexUsageGraphImageExporter.exportPNGData(
+            data,
+            suggestedFileName: "macdog-codex-usage-\(mode.rawValue).png"
+        )
+    }
+
+    private func visibleGraphPNGData(
+        mode: CodexUsageHistoryGraphMode,
+        model: CodexUsageHistoryComparisonModel,
+        selectedSeries: CodexUsageResetWindowOverlaySeries?
+    ) -> Data? {
+        CodexUsageGraphImageExporter.pngData(
+            for: CodexUsageGraphSnapshotView(
+                mode: mode,
+                currentChart: model.currentChart,
+                selectedSeries: selectedSeries
+            ),
+            size: CodexUsageGraphImageExporter.defaultImageSize,
+            scale: 2
+        )
+    }
+}
+
+private struct CodexUsageGraphDisplay: View {
+    let mode: CodexUsageHistoryGraphMode
+    let currentChart: WeeklyRemainingHistoryChart
+    let selectedSeries: CodexUsageResetWindowOverlaySeries?
+
+    var body: some View {
+        switch mode {
+        case .current:
+            WeeklyRemainingHistoryGraph(chart: currentChart)
+        case .past:
+            if let selectedSeries {
+                ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
+            } else {
+                WeeklyRemainingHistoryGraph(chart: currentChart)
+            }
+        case .overlay:
+            if let selectedSeries {
+                ResetWindowOverlayGraph(currentChart: currentChart, series: selectedSeries)
+            } else {
+                WeeklyRemainingHistoryGraph(chart: currentChart)
+            }
+        }
+    }
+}
+
+private struct CodexUsageGraphSnapshotView: View {
+    let mode: CodexUsageHistoryGraphMode
+    let currentChart: WeeklyRemainingHistoryChart
+    let selectedSeries: CodexUsageResetWindowOverlaySeries?
+
+    var body: some View {
+        VStack(spacing: 8) {
+            CodexUsageGraphDisplay(
+                mode: mode,
+                currentChart: currentChart,
+                selectedSeries: selectedSeries
+            )
+            WeeklyRemainingTimelineLabels(
+                startLabel: mode == .current ? currentChart.resetStartLabel : "0일",
+                endLabel: mode == .current ? currentChart.resetEndLabel : "7일"
+            )
+        }
+        .padding(12)
     }
 }
 
