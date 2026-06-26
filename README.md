@@ -13,6 +13,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - DMG SHA-256: `99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple signing 조건이 필요한 public stable 배포는 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, popover 주요 탭 전환, release final-state 검증.
+- 현재 개발 기준 버전은 `v1.4.0`이며, P0 범위는 Usage Intelligence의 데이터 계약과 history 저장 경계를 먼저 고정합니다.
 
 ## 화면
 
@@ -237,6 +238,7 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/ChargeLimitResearch.md](Docs/ChargeLimitResearch.md): Charge Limit 연동 조사 결과
 - [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md): v1.3.0 알림과 탭 UI 개선 범위
 - [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md): v1.3.0 릴리즈 준비 감사와 릴리즈 실행/완료 기록
+- [Docs/V140UsageIntelligence.md](Docs/V140UsageIntelligence.md): v1.4.0 과거 사용량, 예측, 오버레이 로드맵
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
