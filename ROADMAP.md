@@ -120,6 +120,7 @@ v1.3.0 완료 기준:
 
 `v1.4.0`은 Codex 사용량을 "현재 잔여량 확인"에서 "과거 패턴과 현재 속도를 함께 이해하는 도구"로 확장합니다.
 세부 이슈와 데이터 경계는 [Docs/V140UsageIntelligence.md](Docs/V140UsageIntelligence.md)에 둡니다.
+릴리즈 잔여 이슈와 실행 스텝은 [Docs/V140ReleaseReadiness.md](Docs/V140ReleaseReadiness.md)에 둡니다.
 
 v1.4.0 구현 범위:
 

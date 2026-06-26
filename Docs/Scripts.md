@@ -77,6 +77,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_v130_local_notification_boundary.sh --self-test` | v1.3.0 로컬 알림 경계 자체검증 | 실제 알림 권한 요청이나 앱 실행 없이 README/ROADMAP/AGENTS와 v1.3.0 문서가 `UserNotifications` 로컬 알림, 사용자 opt-in, 계정 의존 기능명 미나열 경계를 지키는지 확인합니다. |
 | `script/verify_v130_release_readiness.sh --self-test` | v1.3.0 릴리즈 준비 감사 자체검증 | 릴리즈 workflow나 GUI 실행 없이 v1.3.0 잔여 이슈 분류, 수동 smoke 경계, 릴리즈 실행 스텝 문서화를 확인합니다. |
 | `script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 Usage Intelligence 계약 자체검증 | live app-server, GUI 앱, 설치, LaunchAgent, push 없이 reset window history schema, privacy/source guard, fixture, focused Swift tests를 확인합니다. |
+| `script/verify_v140_release_readiness.sh --self-test` | v1.4.0 릴리즈 준비 감사 자체검증 | 릴리즈 workflow나 GUI 실행 없이 v1.4.0 잔여 이슈, 수동 UI/설치/live fetch smoke 경계, release 실행 순서를 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |
