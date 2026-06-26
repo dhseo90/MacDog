@@ -115,7 +115,7 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history도 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
+`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history와 v1.4.0 reset window history를 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 `doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름과 필드 목록을 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 

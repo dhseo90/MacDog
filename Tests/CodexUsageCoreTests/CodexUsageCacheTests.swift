@@ -121,6 +121,63 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.first?.windowDurationMins, 10_080)
     }
 
+    func testWriteSuccessAppendsResetWindowHistoryNextToCacheFile() throws {
+        let fileURL = temporaryFileURL()
+        let now = 1_800_000_000
+        let resetsAt = now + 345_600
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        let historyURL = CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        let history = try CodexUsageResetWindowHistoryStore(fileURL: historyURL).read()
+        let record = try XCTUnwrap(history.records.first)
+
+        XCTAssertEqual(history.records.count, 1)
+        XCTAssertEqual(record.key.limitId, "codex")
+        XCTAssertEqual(record.key.windowDurationMins, 10_080)
+        XCTAssertEqual(record.key.resetsAt, resetsAt)
+        XCTAssertEqual(record.generatedAt, now)
+        XCTAssertEqual(record.finalUsedPercent, 38)
+        XCTAssertEqual(record.finalRemainingPercent, 62)
+        XCTAssertEqual(record.sampleCount, 1)
+        XCTAssertEqual(record.source, .liveCache)
+        XCTAssertEqual(record.dailyEndSamples.first?.remainingPercent, 62)
+    }
+
+    func testWriteSuccessUpdatesResetWindowHistoryForSameWindow() throws {
+        let fileURL = temporaryFileURL()
+        let resetsAt = 1_800_345_600
+        var now = 1_800_000_000
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+        now += 60
+
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 40, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        let historyURL = CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        let history = try CodexUsageResetWindowHistoryStore(fileURL: historyURL).read()
+
+        XCTAssertEqual(history.records.count, 1)
+        XCTAssertEqual(history.records.first?.generatedAt, now)
+        XCTAssertEqual(history.records.first?.finalUsedPercent, 40)
+        XCTAssertEqual(history.records.first?.finalRemainingPercent, 60)
+        XCTAssertEqual(history.records.first?.sampleCount, 2)
+    }
+
     func testWriteSuccessReturnsStoredWeeklyHistoryDiagnostic() throws {
         let fileURL = temporaryFileURL()
         let now = 1_800_000_000

@@ -118,6 +118,38 @@ public struct CodexUsageResetWindowHistoryRecord: Codable, Equatable, Sendable {
         self.source = source
     }
 
+    public init(
+        weeklySample sample: CodexUsageWeeklyHistorySample,
+        generatedAt: Int,
+        limitId: String = "codex",
+        source: CodexUsageResetWindowHistorySource = .liveCache,
+        previousRecord: CodexUsageResetWindowHistoryRecord? = nil
+    ) {
+        let marker = CodexUsageResetWindowDailySample(
+            dayIndex: Self.dayIndex(
+                recordedAt: sample.recordedAt,
+                resetsAt: sample.resetsAt,
+                windowDurationMins: sample.windowDurationMins
+            ),
+            recordedAt: sample.recordedAt,
+            usedPercent: sample.usedPercent,
+            remainingPercent: sample.remainingPercent
+        )
+        let previousSamples = previousRecord?.dailyEndSamples.filter { $0.dayIndex != marker.dayIndex } ?? []
+
+        self.init(
+            generatedAt: generatedAt,
+            limitId: limitId,
+            windowDurationMins: sample.windowDurationMins,
+            resetsAt: sample.resetsAt,
+            dailyEndSamples: previousSamples + [marker],
+            finalUsedPercent: sample.usedPercent,
+            finalRemainingPercent: sample.remainingPercent,
+            sampleCount: (previousRecord?.sampleCount ?? 0) + 1,
+            source: source
+        )
+    }
+
     public var key: CodexUsageResetWindowHistoryKey {
         CodexUsageResetWindowHistoryKey(
             limitId: limitId,
@@ -166,6 +198,18 @@ public struct CodexUsageResetWindowHistoryRecord: Codable, Equatable, Sendable {
 
     private static func clampedPercent(_ value: Double) -> Double {
         min(max(value, 0), 100)
+    }
+
+    private static func dayIndex(
+        recordedAt: Int,
+        resetsAt: Int,
+        windowDurationMins: Int
+    ) -> Int {
+        let durationSeconds = max(windowDurationMins * 60, 1)
+        let resetStartAt = resetsAt - durationSeconds
+        let elapsed = min(max(recordedAt - resetStartAt, 0), max(durationSeconds - 1, 0))
+        let daySeconds = max(durationSeconds / 7, 1)
+        return min(max(elapsed / daySeconds + 1, 1), 7)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -247,6 +291,27 @@ public struct CodexUsageResetWindowHistoryStore {
 
         try write(next)
         return true
+    }
+
+    @discardableResult
+    public func append(
+        sample: CodexUsageWeeklyHistorySample,
+        generatedAt: Int,
+        limitId: String = "codex"
+    ) throws -> Bool {
+        let key = CodexUsageResetWindowHistoryKey(
+            limitId: limitId,
+            windowDurationMins: sample.windowDurationMins,
+            resetsAt: sample.resetsAt
+        )
+        let previousRecord = try read().records.first { $0.key == key }
+        let record = CodexUsageResetWindowHistoryRecord(
+            weeklySample: sample,
+            generatedAt: generatedAt,
+            limitId: limitId,
+            previousRecord: previousRecord
+        )
+        return try append(record)
     }
 
     private func write(_ history: CodexUsageResetWindowHistory) throws {

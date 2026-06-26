@@ -208,6 +208,11 @@ public struct CodexUsageCacheStore {
                 dateProvider: dateProvider
             )
             let stored = try historyStore.append(sample)
+            let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
+                fileURL: CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL),
+                fileManager: fileManager
+            )
+            try resetWindowHistoryStore.append(sample: sample, generatedAt: now)
             let recordingStartedAt = try? historyStore.read().samples
                 .first {
                     $0.matchesResetWindow(
