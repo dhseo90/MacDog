@@ -8,7 +8,7 @@ Release tag: `v1.4.0`
 Published release head: `7327977bb82d41d8f0571e231865ba3251a178c9`
 Re-run verified head: `0714c750df3e5a67e435c670e2f1a9ca45263771`
 Published DMG SHA-256: `c46f7bde5cb4ad0782943cd479dfe0a3841929b663cc605022b33dd7dcec9142`
-Replacement local DMG SHA-256: `b20448f823a407007529478fd009770998b0a4aa6c0538b83bbe093815a76707`
+Replacement local DMG SHA-256: `9505a7acdbce80e558d279ad07a8e81699eec160114ba52911da771d725294c3`
 
 이 문서는 v1.4.0 Usage Intelligence 구현 이후 실제 릴리즈까지 남은 이슈를 우선순위와 진행 순서 기준으로 고정합니다.
 구현 세부 범위와 데이터 경계는 [V140UsageIntelligence.md](V140UsageIntelligence.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
@@ -48,7 +48,7 @@ Replacement local DMG SHA-256: `b20448f823a407007529478fd009770998b0a4aa6c0538b8
 - Direct push/admin bypass: `main` direct push로 GitHub ruleset bypass가 기록됐습니다.
 - Required checks: `0714c75` 기준 `static-gates` success, `guardrails` success.
 - Local replacement artifact: `dist/release/MacDog-1.4.0.dmg`, `dist/release/MacDog-1.4.0.dmg.sha256`
-- Local replacement checksum: `b20448f823a407007529478fd009770998b0a4aa6c0538b83bbe093815a76707`
+- Local replacement checksum: `9505a7acdbce80e558d279ad07a8e81699eec160114ba52911da771d725294c3`
 - Local verification: `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`, checksum 검증, `hdiutil verify`, `./script/verify_usage_fetch_cache_contract.sh --cli /Users/dhseo/Desktop/workspace/MacDog/dist/MacDog.app/Contents/MacOS/codex-usage` 통과.
 - Live cache smoke: successful fetch가 `usage-weekly-history.json`과 `usage-reset-window-history.json`을 생성했고, reset-window append diagnostic과 sample schema를 확인했습니다.
 - Candidate UI evidence: `dist/MacDog.app` 실제 popover에서 Codex 현재 탭, 날짜 기반 `기록 시작`/reset end 라벨, copy/export 버튼 표시를 확인했습니다.
