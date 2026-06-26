@@ -11,7 +11,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - Release head: `a689fe2e5ae6416a5864ebf9097a8890e2d95a4a`
 - Asset: `MacDog-1.3.0.dmg`
 - DMG SHA-256: `99103cba8ab2f64b024afb26b4ae37ab046d42410f68ecf69f08038dad145f29`
-- 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple signing 조건이 필요한 public stable 배포는 별도 milestone에서 다룹니다.
+- 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, CLI/cache LaunchAgent 복구, popover 주요 탭 전환, release final-state 검증.
 - 현재 개발 기준 버전은 `v1.4.0`이며, Usage Intelligence P0-P2 구현은 자동 검증 기준으로 진행합니다. 실제 v1.4.0 앱 UI smoke와 릴리즈 검수는 별도 release 단계에서 확인합니다.
 
@@ -211,7 +211,7 @@ MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh
 
 릴리즈 DMG의 목표 UX는 Finder에서 `MacDog.app`을 `Applications`로 드래그하는 표준 macOS 설치 방식입니다. DMG는 drag-and-drop 배경 화면을 포함하고, 복사 후 `Applications`에서 MacDog를 실행하라는 한글 안내를 표시합니다.
 
-Apple 계정/서명/공유 컨테이너 권한이 필요한 public stable 배포와 실제 Widget UI 검수는 현재 기본 unsigned 릴리즈 범위에서 제외합니다.
+Apple Developer Program, 서명, 공유 컨테이너 권한이 필요한 public stable 배포와 실제 Widget UI 검수는 현재 구현 계획에서 제외합니다.
 
 세부 배포 경계는 [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md)에 정리합니다.
 
@@ -245,6 +245,7 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V130NotificationAndTabUIPolish.md](Docs/V130NotificationAndTabUIPolish.md): v1.3.0 알림과 탭 UI 개선 범위
 - [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md): v1.3.0 릴리즈 준비 감사와 릴리즈 실행/완료 기록
 - [Docs/V140UsageIntelligence.md](Docs/V140UsageIntelligence.md): v1.4.0 과거 사용량, 예측, 오버레이 로드맵
+- [Docs/V140ReleaseReadiness.md](Docs/V140ReleaseReadiness.md): v1.4.0 릴리즈 잔여 이슈와 실행 순서
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

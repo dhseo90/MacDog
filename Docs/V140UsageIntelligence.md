@@ -6,6 +6,7 @@
 
 이 문서는 v1.4.0에서 다룰 과거 사용량, 현재 pace 예측, reset window 오버레이, 이미지 export, 대량 로그 처리 기준을 고정합니다.
 플랜/가격 tier 인사이트는 현재 조회 경로로 `Pro $100`과 `Pro $200`을 구분할 수 없으므로 v1.4.0 범위에서 제외합니다.
+릴리즈 잔여 이슈와 실행 스텝은 [V140ReleaseReadiness.md](V140ReleaseReadiness.md)에 분리합니다.
 
 ## P0-P2 진행 순서
 

@@ -496,10 +496,35 @@ ln -s /Applications "$STAGE_DIR/Applications"
 generate_dmg_background "$BACKGROUND_PATH"
 /usr/bin/chflags hidden "$STAGE_DIR/.background" >/dev/null 2>&1 || true
 
+case "$VERSION" in
+  1.4.0)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- Codex Usage Intelligence를 추가해 reset window 기준 과거 사용량, 현재 pace 예측, 현재/과거/오버레이 그래프를 확인할 수 있습니다.
+- Codex 탭에서 과거 window picker, 7일 끝 marker, final usage marker, hover/tap label을 확인할 수 있습니다.
+- 화면에 보이는 Codex 사용량 그래프를 PNG로 복사하거나 저장할 수 있습니다.
+- `usage-reset-window-history.json`에 축약 history record만 저장하고, 기존 `usage.json`과 `usage-weekly-history.json` schema는 바꾸지 않습니다.
+- 플랜 가격 tier는 추정하지 않고 기존 raw `planType` 표시 경계만 유지합니다.
+HIGHLIGHTS
+)
+    ;;
+  *)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- 릴리즈별 변경 사항은 GitHub Release 본문과 프로젝트 문서를 확인합니다.
+HIGHLIGHTS
+)
+    ;;
+esac
+
 cat >"$NOTES_PATH" <<NOTES
 # MacDog $VERSION 릴리즈 노트
 
 상태: GitHub v$VERSION 로컬/unsigned 검증용 릴리즈 후보입니다. 이 DMG는 ad-hoc signed build이며 Apple notarization은 적용되지 않습니다.
+
+$release_highlights
 
 ## 설치
 
