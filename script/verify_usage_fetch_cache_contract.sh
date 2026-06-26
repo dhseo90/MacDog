@@ -56,6 +56,7 @@ tmp_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-usage-fetch.XXXXXX")"
 trap 'rm -rf "$tmp_dir"' EXIT
 cache_path="$tmp_dir/usage.json"
 history_path="$tmp_dir/usage-weekly-history.json"
+reset_window_history_path="$tmp_dir/usage-reset-window-history.json"
 stdout_path="$tmp_dir/stdout.txt"
 stderr_path="$tmp_dir/stderr.txt"
 
@@ -105,6 +106,10 @@ if [[ "$status" == "0" ]]; then
     cat "$stderr_path" >&2 || true
     die "successful fetch wrote cache but did not write adjacent weekly history: $history_path"
   }
+  [[ -f "$reset_window_history_path" ]] || {
+    cat "$stderr_path" >&2 || true
+    die "successful fetch wrote cache but did not write adjacent reset window history: $reset_window_history_path"
+  }
   /usr/bin/ruby -rjson -e '
     history = JSON.parse(File.read(ARGV.fetch(0)))
     samples = history["samples"]
@@ -114,9 +119,26 @@ if [[ "$status" == "0" ]]; then
     abort("weekly history sample is missing remainingPercent") unless sample["remainingPercent"].is_a?(Numeric)
     abort("weekly history sample is missing resetsAt") unless sample["resetsAt"].is_a?(Integer)
   ' "$history_path"
+  /usr/bin/ruby -rjson -e '
+    history = JSON.parse(File.read(ARGV.fetch(0)))
+    records = history["records"]
+    abort("reset window history must contain at least one record after successful fetch") unless records.is_a?(Array) && records.length.positive?
+    record = records.last
+    abort("reset window history record is missing limitId") unless record["limitId"].is_a?(String)
+    abort("reset window history record is missing windowDurationMins") unless record["windowDurationMins"].is_a?(Integer)
+    abort("reset window history record is missing resetsAt") unless record["resetsAt"].is_a?(Integer)
+    abort("reset window history record is missing sampleCount") unless record["sampleCount"].is_a?(Integer)
+    forbidden = %w[token accessToken refreshToken cookie session authorization raw response rawResponse]
+    hit = record.keys & forbidden
+    abort("reset window history record includes forbidden keys: #{hit.join(",")}") unless hit.empty?
+  ' "$reset_window_history_path"
   /usr/bin/grep -Eq 'history append: stored recordedAt=[^[:space:]]+ recordingStartedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ path=.*usage-weekly-history\.json' "$stderr_path" || {
     cat "$stderr_path" >&2 || true
     die "successful fetch did not emit weekly history append diagnostic"
+  }
+  /usr/bin/grep -Eq 'reset window history append: stored recordedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ windowDurationMins=10080 sampleCount=[0-9]+ source=live-cache path=.*usage-reset-window-history\.json' "$stderr_path" || {
+    cat "$stderr_path" >&2 || true
+    die "successful fetch did not emit reset window history append diagnostic"
   }
 fi
 

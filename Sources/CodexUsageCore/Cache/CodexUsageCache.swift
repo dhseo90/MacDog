@@ -71,19 +71,59 @@ public struct CodexUsageWeeklyHistoryWriteResult: Equatable, Sendable {
     }
 }
 
+public enum CodexUsageResetWindowHistoryWriteDisposition: String, Equatable, Sendable {
+    case stored
+    case skipped
+    case unavailable
+}
+
+public struct CodexUsageResetWindowHistoryWriteResult: Equatable, Sendable {
+    public let disposition: CodexUsageResetWindowHistoryWriteDisposition
+    public let fileURL: URL
+    public let recordedAt: Int?
+    public let remainingPercent: Double?
+    public let resetsAt: Int?
+    public let windowDurationMins: Int?
+    public let sampleCount: Int?
+    public let source: CodexUsageResetWindowHistorySource?
+
+    public init(
+        disposition: CodexUsageResetWindowHistoryWriteDisposition,
+        fileURL: URL,
+        recordedAt: Int?,
+        remainingPercent: Double?,
+        resetsAt: Int?,
+        windowDurationMins: Int?,
+        sampleCount: Int?,
+        source: CodexUsageResetWindowHistorySource?
+    ) {
+        self.disposition = disposition
+        self.fileURL = fileURL
+        self.recordedAt = recordedAt
+        self.remainingPercent = remainingPercent
+        self.resetsAt = resetsAt
+        self.windowDurationMins = windowDurationMins
+        self.sampleCount = sampleCount
+        self.source = source
+    }
+}
+
 public struct CodexUsageCacheWriteResult: Equatable, Sendable {
     public let cachedAt: Int
     public let cacheFileURL: URL
     public let weeklyHistory: CodexUsageWeeklyHistoryWriteResult
+    public let resetWindowHistory: CodexUsageResetWindowHistoryWriteResult
 
     public init(
         cachedAt: Int,
         cacheFileURL: URL,
-        weeklyHistory: CodexUsageWeeklyHistoryWriteResult
+        weeklyHistory: CodexUsageWeeklyHistoryWriteResult,
+        resetWindowHistory: CodexUsageResetWindowHistoryWriteResult
     ) {
         self.cachedAt = cachedAt
         self.cacheFileURL = cacheFileURL
         self.weeklyHistory = weeklyHistory
+        self.resetWindowHistory = resetWindowHistory
     }
 }
 
@@ -200,7 +240,11 @@ public struct CodexUsageCacheStore {
         )
         try write(snapshot)
         let historyFileURL = CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        let resetWindowHistoryFileURL = CodexUsageResetWindowHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
         let weeklyHistory: CodexUsageWeeklyHistoryWriteResult
+        let resetWindowHistory: CodexUsageResetWindowHistoryWriteResult
         if let sample = CodexUsageWeeklyHistorySample(report: report, recordedAt: now) {
             let historyStore = CodexUsageWeeklyHistoryStore(
                 fileURL: historyFileURL,
@@ -209,10 +253,17 @@ public struct CodexUsageCacheStore {
             )
             let stored = try historyStore.append(sample)
             let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
-                fileURL: CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL),
+                fileURL: resetWindowHistoryFileURL,
                 fileManager: fileManager
             )
-            try resetWindowHistoryStore.append(sample: sample, generatedAt: now)
+            let resetWindowStored = try resetWindowHistoryStore.append(sample: sample, generatedAt: now)
+            let resetWindowRecord = try? resetWindowHistoryStore.read().records.first {
+                $0.key == CodexUsageResetWindowHistoryKey(
+                    limitId: "codex",
+                    windowDurationMins: sample.windowDurationMins,
+                    resetsAt: sample.resetsAt
+                )
+            }
             let recordingStartedAt = try? historyStore.read().samples
                 .first {
                     $0.matchesResetWindow(
@@ -229,6 +280,16 @@ public struct CodexUsageCacheStore {
                 remainingPercent: sample.remainingPercent,
                 resetsAt: sample.resetsAt
             )
+            resetWindowHistory = CodexUsageResetWindowHistoryWriteResult(
+                disposition: resetWindowStored ? .stored : .skipped,
+                fileURL: resetWindowHistoryFileURL,
+                recordedAt: sample.recordedAt,
+                remainingPercent: sample.remainingPercent,
+                resetsAt: sample.resetsAt,
+                windowDurationMins: sample.windowDurationMins,
+                sampleCount: resetWindowRecord?.sampleCount,
+                source: resetWindowRecord?.source
+            )
         } else {
             weeklyHistory = CodexUsageWeeklyHistoryWriteResult(
                 disposition: .unavailable,
@@ -238,8 +299,23 @@ public struct CodexUsageCacheStore {
                 remainingPercent: nil,
                 resetsAt: nil
             )
+            resetWindowHistory = CodexUsageResetWindowHistoryWriteResult(
+                disposition: .unavailable,
+                fileURL: resetWindowHistoryFileURL,
+                recordedAt: nil,
+                remainingPercent: nil,
+                resetsAt: nil,
+                windowDurationMins: nil,
+                sampleCount: nil,
+                source: nil
+            )
         }
-        return CodexUsageCacheWriteResult(cachedAt: now, cacheFileURL: fileURL, weeklyHistory: weeklyHistory)
+        return CodexUsageCacheWriteResult(
+            cachedAt: now,
+            cacheFileURL: fileURL,
+            weeklyHistory: weeklyHistory,
+            resetWindowHistory: resetWindowHistory
+        )
     }
 
     public func writeFailure(

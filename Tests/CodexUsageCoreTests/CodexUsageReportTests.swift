@@ -89,14 +89,31 @@ final class CodexUsageReportTests: XCTestCase {
                 recordingStartedAt: 1_800_000_000,
                 remainingPercent: 62,
                 resetsAt: 1_800_345_600
+            ),
+            resetWindowHistory: CodexUsageResetWindowHistoryWriteResult(
+                disposition: .stored,
+                fileURL: URL(fileURLWithPath: "/tmp/MacDog/usage-reset-window-history.json"),
+                recordedAt: 1_800_000_000,
+                remainingPercent: 62,
+                resetsAt: 1_800_345_600,
+                windowDurationMins: 10_080,
+                sampleCount: 3,
+                source: .liveCache
             )
         )
 
-        let line = CodexUsageCacheWriteDiagnosticFormatter().line(from: result)
+        let formatter = CodexUsageCacheWriteDiagnosticFormatter()
 
         XCTAssertEqual(
-            line,
+            formatter.line(from: result),
             "history append: stored recordedAt=2027-01-15T08:00:00Z recordingStartedAt=2027-01-15T08:00:00Z remaining=62% resetsAt=2027-01-19T08:00:00Z path=/tmp/MacDog/usage-weekly-history.json"
+        )
+        XCTAssertEqual(
+            formatter.lines(from: result),
+            [
+                "history append: stored recordedAt=2027-01-15T08:00:00Z recordingStartedAt=2027-01-15T08:00:00Z remaining=62% resetsAt=2027-01-19T08:00:00Z path=/tmp/MacDog/usage-weekly-history.json",
+                "reset window history append: stored recordedAt=2027-01-15T08:00:00Z remaining=62% resetsAt=2027-01-19T08:00:00Z windowDurationMins=10080 sampleCount=3 source=live-cache path=/tmp/MacDog/usage-reset-window-history.json"
+            ]
         )
     }
 

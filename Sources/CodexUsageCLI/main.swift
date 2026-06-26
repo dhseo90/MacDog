@@ -119,7 +119,7 @@ struct CLI {
             if writeCache {
                 let diagnosticFormatter = CodexUsageCacheWriteDiagnosticFormatter()
                 cacheWriteResults
-                    .map { diagnosticFormatter.line(from: $0) }
+                    .flatMap { diagnosticFormatter.lines(from: $0) }
                     .forEach(errorOutput)
             }
             return .success

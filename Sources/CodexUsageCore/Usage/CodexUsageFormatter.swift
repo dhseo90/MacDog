@@ -68,7 +68,17 @@ public struct CodexUsageCacheWriteDiagnosticFormatter: Sendable {
     public init() {}
 
     public func line(from result: CodexUsageCacheWriteResult) -> String {
-        let history = result.weeklyHistory
+        weeklyHistoryLine(from: result.weeklyHistory)
+    }
+
+    public func lines(from result: CodexUsageCacheWriteResult) -> [String] {
+        [
+            weeklyHistoryLine(from: result.weeklyHistory),
+            resetWindowHistoryLine(from: result.resetWindowHistory)
+        ]
+    }
+
+    private func weeklyHistoryLine(from history: CodexUsageWeeklyHistoryWriteResult) -> String {
         return [
             "history append:",
             history.disposition.rawValue,
@@ -76,6 +86,20 @@ public struct CodexUsageCacheWriteDiagnosticFormatter: Sendable {
             "recordingStartedAt=\(history.recordingStartedAt.map(formatEpoch) ?? "unavailable")",
             "remaining=\(history.remainingPercent.map(formatPercent) ?? "unavailable")",
             "resetsAt=\(history.resetsAt.map(formatEpoch) ?? "unavailable")",
+            "path=\(history.fileURL.path)"
+        ].joined(separator: " ")
+    }
+
+    private func resetWindowHistoryLine(from history: CodexUsageResetWindowHistoryWriteResult) -> String {
+        [
+            "reset window history append:",
+            history.disposition.rawValue,
+            "recordedAt=\(history.recordedAt.map(formatEpoch) ?? "unavailable")",
+            "remaining=\(history.remainingPercent.map(formatPercent) ?? "unavailable")",
+            "resetsAt=\(history.resetsAt.map(formatEpoch) ?? "unavailable")",
+            "windowDurationMins=\(history.windowDurationMins.map(String.init) ?? "unavailable")",
+            "sampleCount=\(history.sampleCount.map(String.init) ?? "unavailable")",
+            "source=\(history.source?.rawValue ?? "unavailable")",
             "path=\(history.fileURL.path)"
         ].joined(separator: " ")
     }
