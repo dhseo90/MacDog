@@ -1,14 +1,13 @@
 # v1.4.0 릴리즈 준비 감사
 
-상태: v1.4.0 릴리즈 재정렬 필요 / published DMG 설치본 smoke 완료 / signed Verified tag 재발행 필요
+상태: v1.4.0 릴리즈 완료 / signed Verified tag 확인 / published DMG 설치본 smoke 완료 / release final-state 통과
 작성일: 2026-06-27
 기준 브랜치: `main`
 대상 버전: `1.4.0`
 Release tag: `v1.4.0`
-Published release head: `8cc3922ce857020c55eb7c6990380576ca39d75f`
-Latest main head after release documentation: `a8b92299c07a5c1b390892850c5d9029daaddfd3`
+Published release head: signed `v1.4.0` tag target
 Published asset: `MacDog-1.4.0.dmg`
-Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290eef4a86a`
+Published DMG SHA-256: GitHub Release asset digest와 `MacDog-1.4.0.dmg.sha256`를 기준으로 확인
 
 이 문서는 v1.4.0 Usage Intelligence 구현 이후 실제 릴리즈 완료 결과와 smoke 증거를 기록합니다.
 구현 세부 범위와 데이터 경계는 [V140UsageIntelligence.md](V140UsageIntelligence.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
@@ -22,27 +21,32 @@ Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290
 - 재검증 중 과거 데이터 backfill, 날짜 기반 지난/비교 timeline 라벨, reset-window history append diagnostic 누락을 `04e7e8d`와 `0714c75`로 추가 수정했습니다.
 - 설치본 PNG export Save panel이 닫히지 않는 문제가 발견되어 `8cc3922`로 수정했습니다.
 - `main` 직접 push 과정에서 GitHub ruleset direct push bypass 로그가 발생했습니다. 최종 head `8cc3922` 기준 required checks 2개(`CI`, `Public Repo Guardrails`)는 통과했습니다.
-- remote `v1.4.0` tag와 published asset은 `8cc3922` 기준으로 교체됐고, GitHub Release는 `isDraft=false`, `isPrerelease=false`입니다.
-- 이후 릴리즈 완료 기록 문서 커밋 `a8b9229`가 추가되어 최신 `main`과 release tag가 달라졌습니다.
-- 현재 `v1.4.0` tag는 lightweight tag라 GitHub `Verified` tag 조건을 만족하지 않습니다. v1.4.0을 다시 닫으려면 최신 release head 기준 signed annotated tag를 만들고 GitHub에서 `Verified`를 확인한 뒤 package/release asset을 재검증해야 합니다.
+- remote `v1.4.0` tag와 published asset은 최신 release head 기준으로 교체됐고, GitHub Release는 `isDraft=false`, `isPrerelease=false`입니다.
+- `v1.4.0` tag는 signed annotated tag이며 GitHub verification이 `verified=true`, `reason=valid`입니다.
+- release tag, GitHub Release `targetCommitish`, published asset, final-state 검증은 같은 최신 release head 기준으로 다시 확인했습니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.4.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
 
-## 재정렬 필요 항목
+## Signed tag 재정렬 기록
 
-아래 항목은 v1.4.0 릴리즈를 다시 완료 상태로 기록하기 전에 모두 충족해야 합니다.
+기록 시각: 2026-06-27 15:18 KST
 
-1. 최신 `main` release head를 확정합니다.
-2. `v1.4.0`을 최신 release head에 대한 signed annotated tag로 재발행합니다.
-3. GitHub에서 `v1.4.0` tag가 `Verified`로 표시되는지 확인합니다.
-4. 최신 release head 기준으로 `MacDog-1.4.0.dmg`와 `.sha256`을 다시 생성하거나, 기존 asset을 유지하는 경우 그 사유와 source head 차이를 명시합니다.
-5. GitHub Release `targetCommitish`, tag target, published asset checksum, smoke 결과를 같은 release head 기준으로 다시 기록합니다.
+- `v1.4.0`을 lightweight tag에서 signed annotated tag로 재발행했습니다.
+- GitHub tag verification: `verified=true`, `reason=valid`
+- GitHub Release: `isDraft=false`, `isPrerelease=false`
+- Published assets: `MacDog-1.4.0.dmg`, `MacDog-1.4.0.dmg.sha256`
+- Published asset verification: 재다운로드한 `.sha256` 검증과 `hdiutil verify`를 통과했습니다.
+- Finder install smoke: 사용자가 기존 앱을 종료하고 Finder에서 published DMG의 `MacDog.app`을 `/Applications`로 대치 설치한 뒤 앱을 실행했습니다.
+- Installed cache smoke: `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
+- Release cleanup: `./script/cleanup_release_smoke_state.sh --apply`가 mounted DMG와 `dist/MacDog.app`을 정리했고, `./script/verify_release_final_state.sh --version 1.4.0`이 통과했습니다.
+- Finder 검색 중복 원인은 packaging 산출물 `dist/MacDog.app`이 남아 있었기 때문이며, release cleanup 후 파일 시스템 기준 `/Applications/MacDog.app`만 남았습니다.
 
-## 최종 릴리즈 기록
+## 교체 전 릴리즈 기록
 
 기록 시각: 2026-06-27 02:34 KST
 
-- Final release head: `8cc3922ce857020c55eb7c6990380576ca39d75f`
+- 아래 기록은 signed Verified tag 재발행 전의 교체 전 이력입니다. 현재 source of truth는 위의 signed tag 재정렬 기록과 GitHub Release metadata입니다.
+- Release head at that time: `8cc3922ce857020c55eb7c6990380576ca39d75f`
 - Commit: `8cc3922ce857020c55eb7c6990380576ca39d75f` (`fix: unblock codex graph export save panel`)
 - Direct push/admin bypass: `main` direct push로 GitHub ruleset bypass가 기록됐습니다.
 - Required checks: `8cc3922` 기준 `CI` success, `Public Repo Guardrails` success.
@@ -105,11 +109,11 @@ Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290
 
 | 번호 | 우선순위 | 이슈 | 완료 증거 |
 | ---: | --- | --- | --- |
-| 1 | P0 | 원격 CI와 보호 규칙 상태 확인 | `8cc3922` 기준 required checks 2개 통과, direct push bypass 기록 |
+| 1 | P0 | 원격 CI와 보호 규칙 상태 확인 | signed tag target 기준 required checks 2개 통과, direct push bypass 기록 |
 | 2 | P0 | v1.4.0 최종 릴리즈 문서 정리 | README/ROADMAP/Docs가 release head, DMG 이름, checksum, smoke 결과 기록 위치를 같은 용어로 설명 |
 | 3 | P0 | 릴리즈 전 자동검증 | `git diff --check`, v1.4.0 self-test, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run` 통과 |
 | 4 | P0 | release candidate 패키징 | `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` 생성, checksum과 `hdiutil verify` 통과 |
-| 5 | P0 | GitHub release target/asset 교체 검증 | 재진행 필요: `v1.4.0` tag는 최신 release head를 가리키는 signed/Verified tag여야 함 |
+| 5 | P0 | GitHub release target/asset 교체 검증 | `v1.4.0` tag는 최신 release head를 가리키는 signed/Verified tag이며 asset 2개가 포함됨 |
 | 6 | P0 | GitHub release publish 검증 | `isDraft=false`, `isPrerelease=false`, tag `v1.4.0`, published asset download URL 확인 |
 | 7 | P0 | published DMG 재다운로드 검증 | published `MacDog-1.4.0.dmg` 재다운로드, `.sha256` 검증, `hdiutil verify` 통과 |
 | 8 | P0 | Finder drag-and-drop 설치 smoke | Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop |

@@ -145,7 +145,7 @@ git merge-base --is-ancestor origin/<release-branch> origin/main
 ## GitHub 릴리즈 완료 기준
 
 - GitHub Actions 또는 로컬 release script가 `.dmg`를 재현 가능하게 생성합니다.
-- `.dmg.sha256` checksum을 함께 제공하고 검증합니다.
+- `.dmg.sha256` checksum을 함께 제공하고 검증합니다. DMG는 빌드/패키징 시점의 filesystem metadata 때문에 bit-for-bit checksum이 매 패키징마다 달라질 수 있으므로, 프로젝트 문서의 stale literal 값보다 GitHub Release asset digest와 함께 제공되는 `.sha256` 파일을 최종 checksum source of truth로 둡니다.
 - release tag는 최신 release head를 가리키는 signed annotated tag이며 GitHub에서 `Verified`로 확인됩니다.
 - DMG에는 drag-and-drop 설치를 위한 `Applications` symlink가 포함됩니다.
 - DMG 안에는 앱 설치에 필요 없는 command 파일이나 임시 안내 파일이 없습니다.

@@ -8,9 +8,9 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 현재 GitHub Release는 [v1.4.0](https://github.com/dhseo90/MacDog/releases/tag/v1.4.0)입니다.
 
-- Published release head: `8cc3922ce857020c55eb7c6990380576ca39d75f`
+- Published release head: signed `v1.4.0` tag target
 - Published asset: `MacDog-1.4.0.dmg`
-- Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290eef4a86a`
+- Published DMG SHA-256: GitHub Release asset digest와 함께 제공되는 `MacDog-1.4.0.dmg.sha256`를 기준으로 확인합니다.
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex 현재/지난/비교 탭, 지난 window picker, hover/tap marker, PNG copy/export, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state 검증.
 - v1.4.0에는 과거 window backfill, 지난/비교 탭 유지, 날짜 기반 timeline/marker 라벨, reset-window history append diagnostic, menu bar popover PNG export 저장 패널 fix가 포함됩니다.
