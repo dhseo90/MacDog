@@ -1,11 +1,12 @@
 # v1.4.0 릴리즈 준비 감사
 
-상태: v1.4.0 릴리즈 완료 / published DMG 설치본 smoke 완료 / release final-state 통과
+상태: v1.4.0 릴리즈 재정렬 필요 / published DMG 설치본 smoke 완료 / signed Verified tag 재발행 필요
 작성일: 2026-06-27
 기준 브랜치: `main`
 대상 버전: `1.4.0`
 Release tag: `v1.4.0`
 Published release head: `8cc3922ce857020c55eb7c6990380576ca39d75f`
+Latest main head after release documentation: `a8b92299c07a5c1b390892850c5d9029daaddfd3`
 Published asset: `MacDog-1.4.0.dmg`
 Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290eef4a86a`
 
@@ -22,8 +23,20 @@ Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290
 - 설치본 PNG export Save panel이 닫히지 않는 문제가 발견되어 `8cc3922`로 수정했습니다.
 - `main` 직접 push 과정에서 GitHub ruleset direct push bypass 로그가 발생했습니다. 최종 head `8cc3922` 기준 required checks 2개(`CI`, `Public Repo Guardrails`)는 통과했습니다.
 - remote `v1.4.0` tag와 published asset은 `8cc3922` 기준으로 교체됐고, GitHub Release는 `isDraft=false`, `isPrerelease=false`입니다.
+- 이후 릴리즈 완료 기록 문서 커밋 `a8b9229`가 추가되어 최신 `main`과 release tag가 달라졌습니다.
+- 현재 `v1.4.0` tag는 lightweight tag라 GitHub `Verified` tag 조건을 만족하지 않습니다. v1.4.0을 다시 닫으려면 최신 release head 기준 signed annotated tag를 만들고 GitHub에서 `Verified`를 확인한 뒤 package/release asset을 재검증해야 합니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.4.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
+
+## 재정렬 필요 항목
+
+아래 항목은 v1.4.0 릴리즈를 다시 완료 상태로 기록하기 전에 모두 충족해야 합니다.
+
+1. 최신 `main` release head를 확정합니다.
+2. `v1.4.0`을 최신 release head에 대한 signed annotated tag로 재발행합니다.
+3. GitHub에서 `v1.4.0` tag가 `Verified`로 표시되는지 확인합니다.
+4. 최신 release head 기준으로 `MacDog-1.4.0.dmg`와 `.sha256`을 다시 생성하거나, 기존 asset을 유지하는 경우 그 사유와 source head 차이를 명시합니다.
+5. GitHub Release `targetCommitish`, tag target, published asset checksum, smoke 결과를 같은 release head 기준으로 다시 기록합니다.
 
 ## 최종 릴리즈 기록
 
@@ -96,7 +109,7 @@ Published DMG SHA-256: `52ba15b0f4ff93e45fb50eb84aa5cfca7500206718fe4adc07f8b290
 | 2 | P0 | v1.4.0 최종 릴리즈 문서 정리 | README/ROADMAP/Docs가 release head, DMG 이름, checksum, smoke 결과 기록 위치를 같은 용어로 설명 |
 | 3 | P0 | 릴리즈 전 자동검증 | `git diff --check`, v1.4.0 self-test, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run` 통과 |
 | 4 | P0 | release candidate 패키징 | `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` 생성, checksum과 `hdiutil verify` 통과 |
-| 5 | P0 | GitHub release target/asset 교체 검증 | `v1.4.0` tag와 release `targetCommitish`가 `8cc3922`이며 asset 2개가 포함됨 |
+| 5 | P0 | GitHub release target/asset 교체 검증 | 재진행 필요: `v1.4.0` tag는 최신 release head를 가리키는 signed/Verified tag여야 함 |
 | 6 | P0 | GitHub release publish 검증 | `isDraft=false`, `isPrerelease=false`, tag `v1.4.0`, published asset download URL 확인 |
 | 7 | P0 | published DMG 재다운로드 검증 | published `MacDog-1.4.0.dmg` 재다운로드, `.sha256` 검증, `hdiutil verify` 통과 |
 | 8 | P0 | Finder drag-and-drop 설치 smoke | Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop |
@@ -138,24 +151,26 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift te
 3. `git diff --check`, 문서 lint, v1.4.0 self-test, focused Swift tests, 전체 `swift test`, Xcode Debug build, `MACDOG_RELEASE_VERSION=1.4.0 ./script/check.sh --no-run`을 실행합니다.
 4. `codex/v1.4.0-release -> main` PR을 만들고 CI와 리뷰 상태를 확인합니다.
 5. PR merge 후 `origin/main` 최신 SHA를 v1.4.0 release head로 기록합니다.
-6. 원격 tag `v1.4.0`이 없는지 확인합니다.
-7. `Release Candidate` workflow 또는 로컬 packaging script를 최신 release head 기준으로 실행합니다.
-8. 생성된 `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` artifact를 확인하고 checksum과 `hdiutil verify`를 확인합니다.
-9. `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력으로 실행합니다.
-10. draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
-11. stale draft가 아니고 `targetCommitish`가 최신 release head일 때만 publish합니다.
-12. publish 후 `isDraft=false`, tag `v1.4.0`, published asset download URL을 확인합니다.
-13. published DMG와 `.sha256`을 다시 내려받아 checksum과 `hdiutil verify`를 재확인합니다.
-14. Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
-15. `/Applications/MacDog.app` 기준으로 앱을 실행해 menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
-16. Codex 탭에서 현재/지난/비교 전환, 지난 window picker, hover/tap marker, PNG copy/export를 확인합니다.
-17. `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
-18. `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`를 실행합니다.
-19. live fetch 성공 시 5시간/주간 window, `usage-weekly-history.json`, `usage-reset-window-history.json` append diagnostic과 sample을 확인합니다.
-20. live fetch 실패 시 stale/error snapshot인지 분리해서 보고하고 제품 회귀로 단정하지 않습니다.
-21. `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.
-22. `./script/verify_release_final_state.sh --version 1.4.0`이 통과해야 release smoke 종료로 기록합니다.
-23. release branch 정리는 `codex/v1.4.0-release`와 `origin/codex/v1.4.0-release`가 각각 `main`과 `origin/main`에 포함된 것을 확인한 뒤 별도 승인으로 수행합니다.
+6. 원격 tag `v1.4.0` 상태를 확인합니다. 기존 tag를 재발행하면 기존 target, asset checksum, 재발행 사유를 기록합니다.
+7. 최신 release head 기준 signed annotated tag를 만들고 원격에 push합니다.
+8. GitHub에서 `v1.4.0` tag가 `Verified`로 표시되는지 확인합니다. `Verified`가 아니면 publish하지 않습니다.
+9. `Release Candidate` workflow 또는 로컬 packaging script를 최신 release head 기준으로 실행합니다.
+10. 생성된 `MacDog-1.4.0.dmg`와 `MacDog-1.4.0.dmg.sha256` artifact를 확인하고 checksum과 `hdiutil verify`를 확인합니다.
+11. `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력으로 실행합니다. workflow는 이미 존재하는 signed/Verified tag만 사용해야 하며, tag를 자동 생성하면 안 됩니다.
+12. draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+13. stale draft가 아니고 `targetCommitish`가 최신 release head이며 tag가 `Verified`일 때만 publish합니다.
+14. publish 후 `isDraft=false`, tag `v1.4.0`, tag `Verified`, published asset download URL을 확인합니다.
+15. published DMG와 `.sha256`을 다시 내려받아 checksum과 `hdiutil verify`를 재확인합니다.
+16. Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
+17. `/Applications/MacDog.app` 기준으로 앱을 실행해 menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
+18. Codex 탭에서 현재/지난/비교 전환, 지난 window picker, hover/tap marker, PNG copy/export를 확인합니다.
+19. `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
+20. `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`를 실행합니다.
+21. live fetch 성공 시 5시간/주간 window, `usage-weekly-history.json`, `usage-reset-window-history.json` append diagnostic과 sample을 확인합니다.
+22. live fetch 실패 시 stale/error snapshot인지 분리해서 보고하고 제품 회귀로 단정하지 않습니다.
+23. `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.
+24. `./script/verify_release_final_state.sh --version 1.4.0`이 통과해야 release smoke 종료로 기록합니다.
+25. release branch 정리는 `codex/v1.4.0-release`와 `origin/codex/v1.4.0-release`가 각각 `main`과 `origin/main`에 포함된 것을 확인한 뒤 별도 승인으로 수행합니다.
 
 ## 보고 원칙
 

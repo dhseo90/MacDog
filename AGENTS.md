@@ -39,6 +39,7 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 - raw JSON만 보고 UI 검수를 완료했다고 보고
 - Apple Developer 권한이 필요한 항목을 현재 완료 가능하다고 보고
 - WidgetKit source/test 또는 opt-in build만 보고 실제 위젯 shared cache 표시, stale/error 반영, deep link까지 확인했다고 보고
+- GitHub에서 `Verified`로 확인하지 않은 release tag를 서명 검증 완료로 보고
 
 보고할 때는 확인된 사실과 미확인/추정을 분리합니다.
 
@@ -264,19 +265,23 @@ swift test --filter PopoverScreenshotRendererTests
    - merge 후 `origin/main` 최신 SHA를 `<version>` release head로 기록합니다.
 3. 패키징과 GitHub Release
    - GitHub Release 업데이트와 패키징은 릴리즈 준비의 필수 단계입니다.
-   - 원격 tag `v<version>`이 없는지 확인합니다.
+   - 원격 tag `v<version>`이 없는지 확인합니다. 기존 tag를 재발행하는 경우에는 기존 release/tag/asset 상태와 재발행 사유를 먼저 기록합니다.
+   - GitHub에서 `Verified`로 표시될 signed annotated tag를 만들 수 있는 signing key와 git 설정이 준비됐는지 확인합니다.
+   - signing key가 없거나 GitHub가 tag signature를 `Verified`로 확인하지 못하면 release publish, asset 교체, tag 이동을 중단합니다.
    - `Release Candidate` workflow 또는 로컬 packaging script를 최신 release head 기준으로 실행합니다.
    - 생성된 `.dmg`와 `.dmg.sha256` artifact를 확인하고, 다운로드 후 checksum과 `hdiutil verify`를 확인합니다.
-   - `Draft Release` workflow는 승인된 unsigned/stable 입력값으로 실행합니다.
+   - release tag `v<version>`은 최신 release head에 대해 로컬에서 signed annotated tag로 만든 뒤 원격에 push합니다.
+   - `Draft Release` workflow는 승인된 unsigned/stable 입력값으로 실행하되, 원격에 이미 존재하는 signed tag만 사용해야 합니다. workflow나 `gh release create`가 unsigned/lightweight tag를 자동 생성하게 두지 않습니다.
    - draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
    - draft asset에는 `MacDog-<version>.dmg`와 `MacDog-<version>.dmg.sha256`가 포함되어야 합니다.
-   - stale draft가 아니고 `targetCommitish`가 최신 release head일 때만 publish합니다.
+   - stale draft가 아니고 `targetCommitish`가 최신 release head이며 GitHub tag verification이 `Verified`일 때만 publish합니다.
    - publish 후 `isDraft=false`, tag `v<version>` 생성, published asset download URL을 확인합니다.
    - published asset을 다시 다운로드해 checksum과 `hdiutil verify`를 재확인합니다.
 4. 릴리즈 tag 기준
    - release tag `v<version>`은 반드시 최종 release head, 즉 릴리즈에 포함될 마지막 커밋을 가리켜야 합니다.
    - 마지막 커밋 이후 tag가 생성됐는지 확인합니다.
-   - tag가 최신 release head가 아닌 다른 SHA를 가리키면 publish하지 않고 중단합니다.
+   - release tag는 lightweight tag가 아니라 signed annotated tag여야 하며, GitHub에서 `Verified`로 확인되어야 합니다.
+   - tag가 최신 release head가 아닌 다른 SHA를 가리키거나 GitHub에서 `Verified`가 아니면 publish하지 않고 중단합니다.
 5. 실제 설치와 GUI smoke
    - 설치 검수는 published DMG를 Finder에서 열고, Finder 창에 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 인정합니다.
    - `install.sh`, `cp`, `ditto`, `rsync`, `hdiutil mount` 후 직접 복사는 설치 검수 대체 수단으로 인정하지 않습니다.

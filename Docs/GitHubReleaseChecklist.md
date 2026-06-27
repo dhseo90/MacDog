@@ -86,7 +86,15 @@ hdiutil verify dist/release/MacDog-<version>.dmg
 shasum -a 256 -c dist/release/MacDog-<version>.dmg.sha256
 ```
 
-GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
+GitHub Release를 만들기 전 release tag는 최신 release head에 대해 signed annotated tag로 먼저 생성하고 push합니다. GitHub에서 tag가 `Verified`로 표시되지 않으면 release draft를 만들거나 publish하지 않습니다. `gh release create`는 tag가 없을 때 unsigned/lightweight tag를 자동 생성할 수 있으므로 `--verify-tag` 또는 동등한 검증으로 이미 존재하는 signed tag만 사용합니다.
+
+```sh
+git tag -s v<version> <release-head>
+git push origin v<version>
+gh release create v<version> dist/release/MacDog-<version>.dmg dist/release/MacDog-<version>.dmg.sha256 --verify-tag --draft
+```
+
+GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다. 이 workflow도 원격에 이미 존재하는 signed/Verified tag만 사용해야 하며, tag를 자동 생성하면 안 됩니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
 
 release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서로 종료 상태를 확인합니다.
 
@@ -103,6 +111,7 @@ public stable release 전에 필요한 gate:
 
 - repository public 전환 또는 private branch protection 가능 plan 확인
 - `main` branch protection 적용
+- release tag가 최신 release head를 가리키는 signed annotated tag이고 GitHub에서 `Verified`로 표시됨
 - Developer ID Application signing
 - hardened runtime
 - notarization

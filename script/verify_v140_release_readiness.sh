@@ -8,6 +8,8 @@ ROADMAP="$ROOT_DIR/ROADMAP.md"
 SCRIPTS_DOC="$ROOT_DIR/Docs/Scripts.md"
 CHECK_SCRIPT="$ROOT_DIR/script/check.sh"
 PACKAGE_SCRIPT="$ROOT_DIR/script/package_release.sh"
+RELEASE_DRAFT_WORKFLOW="$ROOT_DIR/.github/workflows/release-draft.yml"
+RELEASE_STABLE_WORKFLOW="$ROOT_DIR/.github/workflows/release-stable.yml"
 
 usage() {
   cat <<USAGE
@@ -50,6 +52,8 @@ verify_release_readiness() {
   require_file "$SCRIPTS_DOC"
   require_file "$CHECK_SCRIPT"
   require_file "$PACKAGE_SCRIPT"
+  require_file "$RELEASE_DRAFT_WORKFLOW"
+  require_file "$RELEASE_STABLE_WORKFLOW"
   require_executable "$ROOT_DIR/script/verify_v140_release_readiness.sh"
 
   require_text '릴리즈 잔여 이슈' "$DOC" "remaining release issue section"
@@ -71,6 +75,8 @@ verify_release_readiness() {
   require_text 'WidgetKit.*기본 앱/DMG.*제외' "$DOC" "WidgetKit default exclusion boundary"
   require_text 'UI 확인 미수행' "$DOC" "UI unverified reporting boundary"
   require_text '가격 tier.*추정' "$DOC" "plan tier no-inference boundary"
+  require_text 'Verified' "$DOC" "GitHub Verified tag boundary"
+  require_text 'signed annotated tag' "$DOC" "signed annotated tag boundary"
 
   require_text 'V140ReleaseReadiness\.md' "$README" "README release readiness doc link"
   require_text 'V140ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release readiness doc link"
@@ -81,6 +87,10 @@ verify_release_readiness() {
   require_text '현재/지난/비교 그래프' "$PACKAGE_SCRIPT" "v1.4 graph comparison release note"
   require_text 'usage-reset-window-history\.json' "$PACKAGE_SCRIPT" "v1.4 history file release note"
   require_text '플랜 가격 tier는 추정하지' "$PACKAGE_SCRIPT" "v1.4 plan tier release note boundary"
+  require_text '--verify-tag' "$RELEASE_DRAFT_WORKFLOW" "draft release pre-existing tag gate"
+  require_text 'verification\.verified' "$RELEASE_DRAFT_WORKFLOW" "draft release GitHub tag verification"
+  require_text '--verify-tag' "$RELEASE_STABLE_WORKFLOW" "stable release pre-existing tag gate"
+  require_text 'verification\.verified' "$RELEASE_STABLE_WORKFLOW" "stable release GitHub tag verification"
 
   echo "v1.4.0 release readiness ok"
 }

@@ -55,6 +55,33 @@ jobs:
         working-directory: dist/release
         run: shasum -a 256 -c "MacDog-${{ inputs.version }}.dmg.sha256"
 
+      - name: Verify signed release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MACDOG_TAG: ${{ inputs.tag }}
+        run: |
+          tag_type="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$MACDOG_TAG" --jq '.object.type')"
+          tag_object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$MACDOG_TAG" --jq '.object.sha')"
+          if [[ "$tag_type" != "tag" ]]; then
+            echo "Release tag must be a signed annotated tag, got object type: $tag_type" >&2
+            exit 1
+          fi
+
+          target_type="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.type')"
+          target_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.sha')"
+          verified="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.verification.verified')"
+          reason="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.verification.reason')"
+
+          if [[ "$target_type" != "commit" || "$target_sha" != "$GITHUB_SHA" ]]; then
+            echo "Release tag must point at this release head. tag=$target_sha head=$GITHUB_SHA type=$target_type" >&2
+            exit 1
+          fi
+
+          if [[ "$verified" != "true" ]]; then
+            echo "Release tag must be GitHub Verified. reason=$reason" >&2
+            exit 1
+          fi
+
       - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,7 +93,7 @@ jobs:
             "dist/release/MacDog-$MACDOG_VERSION.dmg"
             "dist/release/MacDog-$MACDOG_VERSION.dmg.sha256"
             --draft
-            --target "$GITHUB_SHA"
+            --verify-tag
             --title "MacDog $MACDOG_VERSION"
             --notes-file "dist/release/MacDog-$MACDOG_VERSION-release-notes.md"
           )

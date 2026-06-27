@@ -47,6 +47,7 @@
 - 사용자 설치 검수는 published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 완료로 기록합니다.
 - 첫 실행 후 사용자가 설치 파일 정리에 동의하면 MacDog 설치 디스크와 `~/Downloads/MacDog-*` 후보 파일을 정리하는 흐름이 있습니다.
 - release workflow는 unsigned candidate/draft 경로를 현재 기본 릴리즈 범위로 두고, signed stable release gate는 Apple Developer 의존 항목으로 제외합니다.
+- GitHub Release tag는 unsigned/ad-hoc DMG 여부와 별개로 signed annotated tag여야 하며, GitHub에서 `Verified`로 확인되어야 합니다.
 - optional helper 설치/제거는 앱 UI에서 처리합니다.
 - GitHub PR 보호 준비물은 repo 안에 포함되어 있습니다.
 
@@ -114,21 +115,23 @@
 5. 리뷰 반영은 같은 브랜치에서 수정, 테스트, 커밋, 푸시로 반복합니다.
 6. PR merge 후 `origin/main` 최신 SHA를 release head로 기록합니다.
 7. 기존 draft release가 stale target이면 publish하지 않고 삭제 대상으로 보고합니다.
-8. 원격 tag `vX.Y.Z`가 없는지 확인합니다.
+8. 원격 tag `vX.Y.Z`가 없는지 확인합니다. 기존 tag를 재발행하는 경우 기존 release/tag/asset 상태와 재발행 사유를 기록합니다.
 9. `Release Candidate` workflow와 `Draft Release` workflow를 최신 release head 기준으로 실행합니다.
-10. artifact, checksum, draft `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
-11. GitHub Releases 화면에서 stale draft가 아님을 확인한 뒤 publish합니다.
-12. publish 후 `isDraft=false`와 원격 tag 생성을 확인합니다.
-13. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
-14. 설치 검수가 필요한 릴리즈 종료 작업이면 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
-15. 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중인 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
-16. 설치된 CLI 또는 빌드된 CLI로 `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`를 실행합니다.
-17. live fetch 성공 시 5시간/주간 window가 모두 있는 success cache와 `usage-weekly-history.json` sample, `history append: stored ... recordingStartedAt=...` diagnostic을 확인합니다.
-18. live fetch 실패 시 error snapshot인지 확인합니다.
-19. 5시간/주간 window가 없는 `0% 사용 / 100% 남음` 형태의 success cache가 생성되면 실패로 봅니다.
-20. `./script/cleanup_release_smoke_state.sh --apply`로 release smoke 잔여물을 정리합니다.
-21. `./script/verify_release_final_state.sh --version X.Y.Z`가 통과해야 release smoke 종료로 봅니다.
-22. 릴리즈 publish와 final smoke가 끝난 뒤 release branch를 정리합니다.
+10. 최신 release head에 대해 signed annotated tag를 만들고 push한 뒤 GitHub에서 tag가 `Verified`인지 확인합니다.
+11. workflow 또는 `gh release create`가 unsigned/lightweight tag를 자동 생성하지 않도록 `--verify-tag` 또는 동등한 검증을 사용합니다.
+12. artifact, checksum, draft `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+13. GitHub Releases 화면에서 stale draft가 아니고 tag가 `Verified`임을 확인한 뒤 publish합니다.
+14. publish 후 `isDraft=false`, 원격 tag, tag `Verified` 상태를 확인합니다.
+15. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
+16. 설치 검수가 필요한 릴리즈 종료 작업이면 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
+17. 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중인 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
+18. 설치된 CLI 또는 빌드된 CLI로 `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`를 실행합니다.
+19. live fetch 성공 시 5시간/주간 window가 모두 있는 success cache와 `usage-weekly-history.json` sample, `history append: stored ... recordingStartedAt=...` diagnostic을 확인합니다.
+20. live fetch 실패 시 error snapshot인지 확인합니다.
+21. 5시간/주간 window가 없는 `0% 사용 / 100% 남음` 형태의 success cache가 생성되면 실패로 봅니다.
+22. `./script/cleanup_release_smoke_state.sh --apply`로 release smoke 잔여물을 정리합니다.
+23. `./script/verify_release_final_state.sh --version X.Y.Z`가 통과해야 release smoke 종료로 봅니다.
+24. 릴리즈 publish와 final smoke가 끝난 뒤 release branch를 정리합니다.
 
 브랜치 정리 전에는 반드시 아래 조건을 확인합니다.
 
@@ -143,6 +146,7 @@ git merge-base --is-ancestor origin/<release-branch> origin/main
 
 - GitHub Actions 또는 로컬 release script가 `.dmg`를 재현 가능하게 생성합니다.
 - `.dmg.sha256` checksum을 함께 제공하고 검증합니다.
+- release tag는 최신 release head를 가리키는 signed annotated tag이며 GitHub에서 `Verified`로 확인됩니다.
 - DMG에는 drag-and-drop 설치를 위한 `Applications` symlink가 포함됩니다.
 - DMG 안에는 앱 설치에 필요 없는 command 파일이나 임시 안내 파일이 없습니다.
 - 앱 번들 내부 `CFBundleShortVersionString`은 release version과 일치해야 합니다.
