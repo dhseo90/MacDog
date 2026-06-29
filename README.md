@@ -118,7 +118,7 @@ codex-usage doctor
 
 `status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history와 v1.4.0 reset window history를 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
-`doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름과 필드 목록을 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
+`doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름, 필드 목록, app-owned cache freshness, weekly history sample 수, reset-window history record 수, append/retention/pace 상태, 다음 조치 안내를 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 
 ## 데이터와 개인정보
 
@@ -129,6 +129,8 @@ codex-usage doctor
 - `Plus`/`Pro $100`/`Pro $200` 가격 tier는 현재 조회 경로에서 구분할 수 없으므로 표시, 저장, 추정하지 않습니다.
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
 - v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장하고, 기존 `usage.json`/`usage-weekly-history.json` schema를 바꾸지 않습니다.
+- v1.5.0 reliability 진단은 `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json`을 읽어 missing, stale, error, waiting, ok 상태를 분리하지만 schema를 바꾸지 않습니다.
+- weekly reset 이후 새 `resetsAt` window가 감지되면 이전 history와 새 timeline을 분리하고, rolling reset timestamp duplicate는 같은 logical weekly window로 dedupe합니다.
 - 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.
 - 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않습니다.
 
@@ -149,6 +151,7 @@ MACDOG_APP_VERSION=<version> ./script/check.sh --no-run
 MACDOG_APP_VERSION=<version> ./script/build_and_run.sh
 npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v140_usage_intelligence_contract.sh --self-test
+./script/verify_v150_usage_reliability_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -161,6 +164,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `MACDOG_APP_VERSION=<version> ./script/build_and_run.sh --with-widget` | optional WidgetKit extension을 포함해 앱 번들을 빌드합니다. 기본 빌드는 위젯을 제외합니다. |
 | `./script/sample_existing_runtime_resources.sh --samples 5 --interval 1` | 이미 실행 중인 MacDog 프로세스의 CPU/RSS를 read-only로 샘플링합니다. |
 | `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
+| `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |

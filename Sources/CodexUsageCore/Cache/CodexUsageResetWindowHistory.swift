@@ -91,8 +91,7 @@ public struct CodexUsageResetWindowBackfillSummary: Codable, Equatable, Sendable
 }
 
 public struct CodexUsageResetWindowBackfillBuilder: Sendable {
-    private static let resetTimestampToleranceSeconds = CodexUsageWeeklyHistorySample
-        .resetWindowTimestampToleranceSeconds
+    fileprivate static let rollingResetTimestampToleranceSeconds = 2 * 60 * 60
     private static let weeklyWindowDurationMins = 10_080
 
     public init() {}
@@ -137,8 +136,16 @@ public struct CodexUsageResetWindowBackfillBuilder: Sendable {
         let candidates = weeklyHistory.samples
             .filter { sample in
                 sample.windowDurationMins == Self.weeklyWindowDurationMins &&
-                    sample.resetsAt <= referenceTimestamp &&
-                    !Self.isCurrentReset(sample.resetsAt, currentResetsAt: currentResetsAt)
+                    Self.isCompleted(
+                        sample,
+                        completedAtOrBefore: referenceTimestamp,
+                        currentResetsAt: currentResetsAt
+                    ) &&
+                    !Self.isCurrentReset(
+                        sample.resetsAt,
+                        currentResetsAt: currentResetsAt,
+                        windowDurationMins: sample.windowDurationMins
+                    )
             }
             .sorted {
                 if $0.windowDurationMins != $1.windowDurationMins {
@@ -154,7 +161,10 @@ public struct CodexUsageResetWindowBackfillBuilder: Sendable {
             guard let lastGroup = groups.last,
                   let representative = lastGroup.first,
                   representative.windowDurationMins == sample.windowDurationMins,
-                  abs(representative.resetsAt - sample.resetsAt) <= Self.resetTimestampToleranceSeconds
+                  abs(representative.resetsAt - sample.resetsAt) <=
+                  CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
+                      windowDurationMins: sample.windowDurationMins
+                  )
             else {
                 groups.append([sample])
                 return
@@ -218,9 +228,41 @@ public struct CodexUsageResetWindowBackfillBuilder: Sendable {
         }.first?.key ?? group[0].resetsAt
     }
 
-    private static func isCurrentReset(_ resetsAt: Int, currentResetsAt: Int?) -> Bool {
+    private static func isCompleted(
+        _ sample: CodexUsageWeeklyHistorySample,
+        completedAtOrBefore referenceTimestamp: Int,
+        currentResetsAt: Int?
+    ) -> Bool {
+        if sample.resetsAt <= referenceTimestamp {
+            return true
+        }
+
+        guard let currentResetsAt else {
+            return false
+        }
+
+        let durationSeconds = max(sample.windowDurationMins * 60, 1)
+        let sampleResetStartAt = sample.resetsAt - durationSeconds
+        let currentResetStartAt = currentResetsAt - durationSeconds
+        let tolerance = CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
+            windowDurationMins: sample.windowDurationMins
+        )
+
+        return referenceTimestamp >= currentResetStartAt &&
+            sample.recordedAt < currentResetStartAt &&
+            sampleResetStartAt < currentResetStartAt - tolerance
+    }
+
+    private static func isCurrentReset(
+        _ resetsAt: Int,
+        currentResetsAt: Int?,
+        windowDurationMins: Int
+    ) -> Bool {
         guard let currentResetsAt else { return false }
-        return abs(resetsAt - currentResetsAt) <= resetTimestampToleranceSeconds
+        let tolerance = CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
+            windowDurationMins: windowDurationMins
+        )
+        return abs(resetsAt - currentResetsAt) <= tolerance
     }
 }
 
@@ -436,22 +478,24 @@ public struct CodexUsageResetWindowHistoryStore {
         let data = try Data(contentsOf: fileURL)
         let decoded = try decoder.decode(CodexUsageResetWindowHistory.self, from: data)
         return CodexUsageResetWindowHistory(
-            records: decoded.records.map { $0.migratedToCurrentSchema() }
+            records: Self.canonicalized(
+                decoded.records.map { $0.migratedToCurrentSchema() }
+            )
         )
     }
 
     @discardableResult
     public func append(_ record: CodexUsageResetWindowHistoryRecord) throws -> Bool {
         let existing = try read()
-        let existingRecord = existing.records.first { $0.key == record.key }
+        let matchingRecord = existing.records.first { Self.isSameLogicalResetWindow($0, record) }
         let candidate: CodexUsageResetWindowHistoryRecord
-        if let existingRecord, existingRecord.generatedAt > record.generatedAt {
-            candidate = existingRecord
+        if let matchingRecord {
+            candidate = Self.merged(matchingRecord, with: record)
         } else {
             candidate = record
         }
 
-        let records = existing.records.filter { $0.key != candidate.key } + [candidate]
+        let records = existing.records.filter { !Self.isSameLogicalResetWindow($0, candidate) } + [candidate]
         let retained = Self.retained(records)
         let next = CodexUsageResetWindowHistory(records: retained)
         guard next != existing else {
@@ -473,9 +517,23 @@ public struct CodexUsageResetWindowHistoryStore {
             windowDurationMins: sample.windowDurationMins,
             resetsAt: sample.resetsAt
         )
-        let previousRecord = try read().records.first { $0.key == key }
+        let previousRecord = try read().records.first {
+            $0.key == key || Self.isSameLogicalResetWindow($0, sample: sample, limitId: limitId)
+        }
+        let canonicalSample: CodexUsageWeeklyHistorySample
+        if let previousRecord {
+            canonicalSample = CodexUsageWeeklyHistorySample(
+                recordedAt: sample.recordedAt,
+                usedPercent: sample.usedPercent,
+                remainingPercent: sample.remainingPercent,
+                resetsAt: previousRecord.resetsAt,
+                windowDurationMins: sample.windowDurationMins
+            )
+        } else {
+            canonicalSample = sample
+        }
         let record = CodexUsageResetWindowHistoryRecord(
-            weeklySample: sample,
+            weeklySample: canonicalSample,
             generatedAt: generatedAt,
             limitId: limitId,
             previousRecord: previousRecord
@@ -522,6 +580,110 @@ public struct CodexUsageResetWindowHistoryStore {
                 }
                 return $0.limitId < $1.limitId
             }
+    }
+
+    static func logicalResetWindowToleranceSeconds(windowDurationMins: Int) -> Int {
+        let durationSeconds = max(windowDurationMins, 1) * 60
+        return min(
+            CodexUsageResetWindowBackfillBuilder.rollingResetTimestampToleranceSeconds,
+            max(
+                CodexUsageWeeklyHistorySample.resetWindowTimestampToleranceSeconds,
+                durationSeconds / 84
+            )
+        )
+    }
+
+    private static func canonicalized(
+        _ records: [CodexUsageResetWindowHistoryRecord]
+    ) -> [CodexUsageResetWindowHistoryRecord] {
+        records
+            .sorted {
+                if $0.limitId != $1.limitId {
+                    return $0.limitId < $1.limitId
+                }
+                if $0.windowDurationMins != $1.windowDurationMins {
+                    return $0.windowDurationMins < $1.windowDurationMins
+                }
+                if $0.resetStartAt != $1.resetStartAt {
+                    return $0.resetStartAt < $1.resetStartAt
+                }
+                return $0.generatedAt < $1.generatedAt
+            }
+            .reduce(into: [CodexUsageResetWindowHistoryRecord]()) { result, record in
+                guard let index = result.firstIndex(where: { isSameLogicalResetWindow($0, record) }) else {
+                    result.append(record)
+                    return
+                }
+
+                result[index] = merged(result[index], with: record)
+            }
+    }
+
+    private static func isSameLogicalResetWindow(
+        _ lhs: CodexUsageResetWindowHistoryRecord,
+        _ rhs: CodexUsageResetWindowHistoryRecord
+    ) -> Bool {
+        guard lhs.limitId == rhs.limitId,
+              lhs.windowDurationMins == rhs.windowDurationMins
+        else {
+            return false
+        }
+
+        let tolerance = logicalResetWindowToleranceSeconds(windowDurationMins: lhs.windowDurationMins)
+        return abs(lhs.resetStartAt - rhs.resetStartAt) <= tolerance
+    }
+
+    private static func isSameLogicalResetWindow(
+        _ record: CodexUsageResetWindowHistoryRecord,
+        sample: CodexUsageWeeklyHistorySample,
+        limitId: String
+    ) -> Bool {
+        guard record.limitId == limitId,
+              record.windowDurationMins == sample.windowDurationMins
+        else {
+            return false
+        }
+
+        let sampleResetStartAt = sample.resetsAt - sample.windowDurationMins * 60
+        let tolerance = logicalResetWindowToleranceSeconds(windowDurationMins: sample.windowDurationMins)
+        return abs(record.resetStartAt - sampleResetStartAt) <= tolerance
+    }
+
+    private static func merged(
+        _ existing: CodexUsageResetWindowHistoryRecord,
+        with incoming: CodexUsageResetWindowHistoryRecord
+    ) -> CodexUsageResetWindowHistoryRecord {
+        let canonical = existing.resetStartAt <= incoming.resetStartAt ? existing : incoming
+        let latest = existing.generatedAt >= incoming.generatedAt ? existing : incoming
+        let mergedSamples = mergedDailySamples(existing.dailyEndSamples + incoming.dailyEndSamples)
+
+        return CodexUsageResetWindowHistoryRecord(
+            generatedAt: latest.generatedAt,
+            limitId: canonical.limitId,
+            windowDurationMins: canonical.windowDurationMins,
+            resetsAt: canonical.resetsAt,
+            dailyEndSamples: mergedSamples,
+            finalUsedPercent: latest.finalUsedPercent,
+            finalRemainingPercent: latest.finalRemainingPercent,
+            sampleCount: max(existing.sampleCount, incoming.sampleCount),
+            source: latest.source
+        )
+    }
+
+    private static func mergedDailySamples(
+        _ samples: [CodexUsageResetWindowDailySample]
+    ) -> [CodexUsageResetWindowDailySample] {
+        let latestByDay = Dictionary(grouping: samples, by: \.dayIndex)
+            .compactMapValues { daySamples in
+                daySamples.sorted {
+                    if $0.recordedAt != $1.recordedAt {
+                        return $0.recordedAt > $1.recordedAt
+                    }
+                    return $0.remainingPercent < $1.remainingPercent
+                }.first
+            }
+
+        return latestByDay.keys.sorted().compactMap { latestByDay[$0] }
     }
 
     private struct RetentionGroupKey: Hashable {

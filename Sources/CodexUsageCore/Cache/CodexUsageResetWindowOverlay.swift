@@ -111,7 +111,6 @@ public struct CodexUsageResetWindowOverlayMarker: Equatable, Identifiable, Senda
 
 public struct CodexUsageResetWindowOverlayBuilder: Sendable {
     public static let weeklyWindowDurationMins = 10_080
-    public static let resetTimestampToleranceSeconds = 60
 
     public init() {}
 
@@ -156,7 +155,10 @@ public struct CodexUsageResetWindowOverlayBuilder: Sendable {
 
     private static func isCurrentReset(_ resetsAt: Int, currentResetsAt: Int?) -> Bool {
         guard let currentResetsAt else { return false }
-        return abs(resetsAt - currentResetsAt) <= resetTimestampToleranceSeconds
+        let tolerance = CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
+            windowDurationMins: weeklyWindowDurationMins
+        )
+        return abs(resetsAt - currentResetsAt) <= tolerance
     }
 
     public func series(for record: CodexUsageResetWindowHistoryRecord) -> CodexUsageResetWindowOverlaySeries {

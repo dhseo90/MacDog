@@ -235,6 +235,26 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertNil(model.overlaySeries)
     }
 
+    func testCodexHistoryComparisonModelExcludesRollingCurrentResetDuplicates() throws {
+        let currentReset = 1_800_604_800
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 12, weeklyUsedPercent: 1, weeklyResetsAt: currentReset),
+            cacheSnapshot: nil,
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: currentReset - 9 * 60, finalUsedPercent: 0),
+                Self.resetWindowRecord(resetsAt: currentReset - 2 * 60, finalUsedPercent: 1),
+                Self.resetWindowRecord(resetsAt: currentReset, finalUsedPercent: 1)
+            ]),
+            errorMessage: nil
+        )
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(state: state, calendar: Self.utcCalendar))
+
+        XCTAssertTrue(model.pastWindows.isEmpty)
+        XCTAssertNil(model.defaultPastWindowKey)
+        XCTAssertNil(model.overlaySeries)
+    }
+
     func testCodexHistoryComparisonModelBackfillsPastWindowsFromWeeklyHistory() throws {
         let currentReset = 1_800_604_800
         let pastReset = currentReset - 604_800

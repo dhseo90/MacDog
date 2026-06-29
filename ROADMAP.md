@@ -191,32 +191,41 @@ v1.4.0 완료 기준:
 
 `v1.5.0`은 v1.4.0 Usage Intelligence를 확장하되, 새 데이터 계약을 크게 늘리기보다 사용량 진단과 운영 안정성을 강화합니다.
 핵심 방향은 `codex-usage doctor`, cache/history health, protocol drift guard, release readiness를 함께 정리해 사용자가 "현재 사용량 데이터가 믿을 만한 상태인지"를 빠르게 판단하게 만드는 것입니다.
+P0 데이터/진단 경계는 `Docs/V150UsageReliability.md`에 기록합니다.
 
 v1.5.0 구현 범위:
 
 1. v1.4.0에서 추가한 weekly history, reset-window history, pace, graph/export 기능의 데이터 상태를 진단합니다.
 2. `codex-usage doctor`를 확장해 app-server 접근뿐 아니라 cache freshness, history append, reset-window record 상태를 설명합니다.
 3. live fetch 실패, stale cache, sample 부족, protocol drift 가능성을 구분해 사용자와 개발자가 같은 용어로 볼 수 있게 합니다.
-4. Codex 탭에는 사용량 그래프를 방해하지 않는 짧은 데이터 상태 표시를 추가합니다.
-5. v1.5.0 전용 검증 스크립트와 focused tests로 doctor/cache/history/protocol/release readiness 계약을 묶습니다.
-6. 릴리즈 준비 문서는 v1.5.0 자동 검증, 수동 UI smoke, live fetch smoke, published DMG smoke 경계를 분리해 기록합니다.
+4. weekly reset 이후 이전 window 데이터가 새 window 뒤쪽으로 이어지거나 같은 날짜 marker가 중복 생성되지 않도록 reset boundary 그래프 회귀를 막습니다.
+   공식 `resetsAt`이 아직 미래여도 더 새로운 current window가 시작됐으면 이전 사용일 partial window를 `지난` 사용량으로 backfill합니다.
+5. Codex 탭에는 사용량 그래프를 방해하지 않는 짧은 데이터 상태 표시를 추가합니다.
+6. v1.5.0 전용 검증 스크립트와 focused tests로 doctor/cache/history/protocol/release readiness 계약을 묶습니다.
+7. 릴리즈 준비 문서는 v1.5.0 자동 검증, 수동 UI smoke, live fetch smoke, published DMG smoke 경계를 분리해 기록합니다.
+
+v1.5.0 확인된 P0 이슈:
+
+- weekly reset이 오늘 발생한 상태에서 마지막 관측 주간 사용량이 32%였는데, reset 이후 그래프가 이전 window 뒤쪽까지 이어지고 동일 날짜의 이전 데이터가 여러 개 생성되는 문제가 보고됐습니다. 새 `resetsAt`이 감지되면 이전 history와 새 timeline을 분리하고, 새 window는 왼쪽 100% 잔여율에서 시작해야 합니다.
+- 이 현상은 Codex 탭의 `지난`/비교 사용량 화면에서도 이전 window가 현재 reset 이후 데이터처럼 보이는 오류로 이어질 수 있으므로 v1.5.0 P0 reset boundary 수정 범위에 포함합니다.
 
 v1.5.0 P0-P2 완료 순서:
 
 | Step | 제목 | 우선순위 | 개발 내용 |
 | ---: | --- | --- | --- |
 | 1 | v1.5.0 (1) v1.5.0 baseline 정렬 | P0 | VERSION/docs/backlog/source roadmap 정렬 |
-| 2 | v1.5.0 (2) 데이터 계약과 제외 경계 고정 | P0 | `status --json`, `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json` breaking change 금지와 raw payload/session material 미저장 경계를 문서와 테스트 기준으로 고정 |
-| 3 | v1.5.0 (3) usage health 모델 정의 | P0 | app-server 접근, cache freshness, stale/error, weekly sample, reset-window record, pace sample 상태를 하나의 진단 모델로 분류 |
-| 4 | v1.5.0 (4) cache/history health reader 구현 | P0 | app-owned cache 옆 weekly/reset-window history를 읽어 missing, stale, sample 부족, append skipped, retention 상태를 판정 |
-| 5 | v1.5.0 (5) `codex-usage doctor` 확장 | P0 | Codex CLI/app-server 결과에 cache path, freshness, history sample 수, reset-window record 수, 마지막 append 상태, 다음 조치 안내를 추가 |
-| 6 | v1.5.0 (6) 실패 가이드와 protocol drift 진단 강화 | P0 | schema/protocol drift, Codex app-server unavailable, required window missing, stale cache를 구분하고 raw app-server payload나 auth material을 출력하지 않는 안내를 유지 |
-| 7 | v1.5.0 (7) 검증 스크립트와 fixture 묶음 추가 | P0 | `verify_v150_usage_reliability_contract.sh --self-test`로 health model, doctor formatter, privacy guard, focused Swift tests를 한 번에 검증 |
-| 8 | v1.5.0 (8) Codex 탭 데이터 상태 UI 반영 | P1 | 그래프 영역을 방해하지 않는 compact status로 최신 cache, history sample 부족, stale/error, protocol drift 가능성을 표시하고 실제 UI 확인 여부를 분리 보고 |
-| 9 | v1.5.0 (9) live fetch/cache smoke 진단 정리 | P1 | `verify_usage_fetch_cache_contract.sh` 또는 v1.5 smoke가 success/error snapshot, weekly append, reset-window append diagnostic을 더 읽기 쉽게 보고 |
-| 10 | v1.5.0 (10) 운영 회귀 guard 확장 | P1 | runtime sampler, helper 상태, native Charge Limit read-only 회귀, release final-state처럼 사용자 환경을 바꾸지 않는 진단을 v1.5 release readiness에 연결 |
-| 11 | v1.5.0 (11) release readiness 문서화 | P1 | v1.5.0 릴리즈 전 자동검증, UI smoke, live fetch smoke, published DMG smoke, 미수행 보고 형식을 `Docs/V150ReleaseReadiness.md`에 분리 |
-| 12 | v1.5.0 (12) README/ROADMAP/Docs와 screenshot/test closure | P2 | README와 ROADMAP 용어를 v1.5.0 범위와 맞추고, screenshot renderer/focused tests/문서 lint/전체 검증 결과를 닫음 |
+| 2 | v1.5.0 (2) 지난 사용량/reset boundary 그래프 회귀 수정 | P0 | `resetsAt` 변경 시 이전 weekly/reset-window history를 새 window와 분리하고, reset 이후 그래프와 Codex 탭 `지난` 사용량이 이전 32% marker 뒤로 이어지지 않게 하며, 실제 reset으로 중단된 partial window backfill과 동일 날짜/같은 window marker 중복 dedupe를 함께 검증 |
+| 3 | v1.5.0 (3) 데이터 계약과 제외 경계 고정 | P0 | `status --json`, `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json` breaking change 금지와 raw payload/session material 미저장 경계를 문서와 테스트 기준으로 고정 |
+| 4 | v1.5.0 (4) usage health 모델 정의 | P0 | app-server 접근, cache freshness, stale/error, weekly sample, reset-window record, pace sample 상태를 하나의 진단 모델로 분류 |
+| 5 | v1.5.0 (5) cache/history health reader 구현 | P0 | app-owned cache 옆 weekly/reset-window history를 읽어 missing, stale, sample 부족, append skipped, retention 상태를 판정 |
+| 6 | v1.5.0 (6) `codex-usage doctor` 확장 | P0 | Codex CLI/app-server 결과에 cache path, freshness, history sample 수, reset-window record 수, 마지막 append 상태, 다음 조치 안내를 추가 |
+| 7 | v1.5.0 (7) 실패 가이드와 protocol drift 진단 강화 | P0 | schema/protocol drift, Codex app-server unavailable, required window missing, stale cache를 구분하고 raw app-server payload나 auth material을 출력하지 않는 안내를 유지 |
+| 8 | v1.5.0 (8) 검증 스크립트와 fixture 묶음 추가 | P0 | `verify_v150_usage_reliability_contract.sh --self-test`로 health model, reset boundary fixture, doctor formatter, privacy guard, focused Swift tests를 한 번에 검증 |
+| 9 | v1.5.0 (9) Codex 탭 데이터 상태 UI 반영 | P1 | 그래프 영역을 방해하지 않는 compact status로 최신 cache, history sample 부족, stale/error, protocol drift 가능성을 표시하고 실제 UI 확인 여부를 분리 보고 |
+| 10 | v1.5.0 (10) live fetch/cache smoke 진단 정리 | P1 | `verify_usage_fetch_cache_contract.sh` 또는 v1.5 smoke가 success/error snapshot, weekly append, reset-window append diagnostic을 더 읽기 쉽게 보고 |
+| 11 | v1.5.0 (11) 운영 회귀 guard 확장 | P1 | runtime sampler, helper 상태, native Charge Limit read-only 회귀, release final-state처럼 사용자 환경을 바꾸지 않는 진단을 v1.5 release readiness에 연결 |
+| 12 | v1.5.0 (12) release readiness 문서화 | P1 | v1.5.0 릴리즈 전 자동검증, UI smoke, live fetch smoke, published DMG smoke, 미수행 보고 형식을 `Docs/V150ReleaseReadiness.md`에 분리 |
+| 13 | v1.5.0 (13) README/ROADMAP/Docs와 screenshot/test closure | P2 | README와 ROADMAP 용어를 v1.5.0 범위와 맞추고, screenshot renderer/focused tests/문서 lint/전체 검증 결과를 닫음 |
 
 v1.5.0 제외 경계:
 
@@ -233,6 +242,7 @@ v1.5.0 제외 경계:
 v1.5.0 완료 기준:
 
 - usage health 모델은 cache/history/protocol/stale/error/sample 부족 상태를 focused Swift tests로 검증합니다.
+- weekly reset boundary 회귀는 `resetsAt` 변경 fixture로 이전 window 분리, 새 timeline 100% 시작, 동일 날짜 marker dedupe, interrupted partial window backfill을 검증합니다.
 - `codex-usage doctor`는 민감정보 없이 cache/history 상태와 다음 조치를 설명합니다.
 - v1.5.0 검증 스크립트는 source guard, fixture, focused tests, privacy boundary를 통과합니다.
 - Codex 탭 데이터 상태 UI는 demo/screenshot renderer 또는 focused SwiftUI test로 회귀를 막습니다.

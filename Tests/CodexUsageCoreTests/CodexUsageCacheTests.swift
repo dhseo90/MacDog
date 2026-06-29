@@ -178,6 +178,124 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.records.first?.sampleCount, 2)
     }
 
+    func testUsageHealthReaderReportsCacheAndHistoryCounts() throws {
+        let fileURL = temporaryFileURL()
+        var now = 1_800_000_000
+        let resetsAt = now + 604_800
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 1, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 120
+        )
+
+        let report = CodexUsageHealthReader(
+            cacheFileURL: fileURL,
+            now: Date(timeIntervalSince1970: TimeInterval(now + 30))
+        ).read()
+
+        XCTAssertEqual(report.cacheState, .ok)
+        XCTAssertEqual(report.cacheAgeSeconds, 30)
+        XCTAssertEqual(report.cacheStaleAfterSeconds, 120)
+        XCTAssertTrue(report.cacheHasReport)
+        XCTAssertEqual(report.weeklyHistoryState, .ok)
+        XCTAssertEqual(report.weeklySampleCount, 1)
+        XCTAssertEqual(report.latestWeeklySampleResetsAt, resetsAt)
+        XCTAssertEqual(report.weeklyAppendState, .stored)
+        XCTAssertEqual(report.resetWindowHistoryState, .ok)
+        XCTAssertEqual(report.resetWindowRecordCount, 1)
+        XCTAssertEqual(report.latestResetWindowResetsAt, resetsAt)
+        XCTAssertEqual(report.resetWindowAppendState, .stored)
+        XCTAssertEqual(report.resetWindowRetentionState, .ok)
+        XCTAssertEqual(report.resetWindowRetentionLimit, 13)
+        XCTAssertEqual(report.paceState, .waitingForSamples)
+        XCTAssertEqual(report.paceSampleCount, 1)
+
+        now += 60
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 1.1, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 120
+        )
+
+        let denseReport = CodexUsageHealthReader(
+            cacheFileURL: fileURL,
+            now: Date(timeIntervalSince1970: TimeInterval(now + 30))
+        ).read()
+
+        XCTAssertEqual(denseReport.weeklyAppendState, .skipped)
+        XCTAssertEqual(denseReport.resetWindowAppendState, .stored)
+        XCTAssertEqual(denseReport.weeklySampleCount, 1)
+        XCTAssertEqual(denseReport.resetWindowRecordCount, 1)
+        XCTAssertEqual(denseReport.paceState, .projected)
+        XCTAssertEqual(denseReport.paceSampleCount, 2)
+    }
+
+    func testUsageHealthReaderSeparatesMissingAndStaleCache() throws {
+        let missingFileURL = temporaryFileURL()
+        let missing = CodexUsageHealthReader(
+            cacheFileURL: missingFileURL,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        ).read()
+        XCTAssertEqual(missing.cacheState, .missing)
+        XCTAssertEqual(missing.weeklyHistoryState, .missing)
+        XCTAssertEqual(missing.resetWindowHistoryState, .missing)
+
+        let staleFileURL = temporaryFileURL()
+        let store = CodexUsageCacheStore(fileURL: staleFileURL, dateProvider: {
+            Date(timeIntervalSince1970: 1_800_000_000)
+        })
+        try store.writeSuccess(
+            report: Self.historyReport(
+                weeklyUsedPercent: 1,
+                weeklyResetsAt: 1_800_604_800
+            ),
+            staleAfterSeconds: 60
+        )
+
+        let stale = CodexUsageHealthReader(
+            cacheFileURL: staleFileURL,
+            now: Date(timeIntervalSince1970: 1_800_000_120)
+        ).read()
+        XCTAssertEqual(stale.cacheState, .stale)
+        XCTAssertEqual(stale.cacheAgeSeconds, 120)
+    }
+
+    func testUsageHealthReaderReportsResetWindowRetentionOverflow() throws {
+        let fileURL = temporaryFileURL()
+        let historyURL = CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
+        try FileManager.default.createDirectory(
+            at: historyURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let records = (0..<14).map { index in
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: 1_800_000_000 + index,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: 1_800_604_800 + index * 604_800,
+                dailyEndSamples: [],
+                finalUsedPercent: Double(index),
+                finalRemainingPercent: 100 - Double(index),
+                sampleCount: 1,
+                source: .liveCache
+            )
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(CodexUsageResetWindowHistory(records: records)).write(to: historyURL)
+
+        let report = CodexUsageHealthReader(
+            cacheFileURL: fileURL,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        ).read()
+
+        XCTAssertEqual(report.resetWindowHistoryState, .ok)
+        XCTAssertEqual(report.resetWindowRecordCount, 14)
+        XCTAssertEqual(report.resetWindowRetentionState, .error)
+        XCTAssertEqual(report.resetWindowRetentionLimit, 13)
+    }
+
     func testWriteSuccessReturnsStoredWeeklyHistoryDiagnostic() throws {
         let fileURL = temporaryFileURL()
         let now = 1_800_000_000

@@ -151,6 +151,9 @@ struct CLI {
             CodexUsageDoctorFormatter()
                 .bucketInventoryLines(from: diagnostic.fieldInventory)
                 .forEach(output)
+            CodexUsageDoctorFormatter()
+                .usageHealthLines(from: CodexUsageHealthReader().read())
+                .forEach(output)
             return .success
         } catch {
             errorOutput(CodexUsageFailureGuide().message(for: error, context: .doctor))
