@@ -92,6 +92,38 @@ final class ResetWindowOverlayModelTests: XCTestCase {
         XCTAssertEqual(series.linePoints.last, series.finalUsageMarker)
     }
 
+    func testInterruptedWindowFinalMarkerUsesActualLastSampleDay() throws {
+        let resetStartAt = 1_800_000_000
+        let resetsAt = resetStartAt + 10_080 * 60
+        let interruptedAt = resetStartAt + 3 * 86_400 + 16 * 60 * 60
+        let record = Self.record(
+            generatedAt: interruptedAt,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: resetsAt,
+            dailyEndSamples: [
+                Self.dailySample(dayIndex: 1, usedPercent: 3, resetsAt: resetsAt),
+                Self.dailySample(dayIndex: 2, usedPercent: 15, resetsAt: resetsAt),
+                CodexUsageResetWindowDailySample(
+                    dayIndex: 4,
+                    recordedAt: interruptedAt,
+                    usedPercent: 67,
+                    remainingPercent: 33
+                )
+            ],
+            finalUsedPercent: 67
+        )
+
+        let series = CodexUsageResetWindowOverlayBuilder().series(for: record)
+
+        XCTAssertEqual(series.timelineEndDay, 7)
+        XCTAssertEqual(series.finalUsageMarker.day, 3.666, accuracy: 0.001)
+        XCTAssertEqual(series.finalUsageMarker.timelinePosition, 3.666 / 7, accuracy: 0.001)
+        XCTAssertLessThan(series.finalUsageMarker.timelinePosition, 1)
+        XCTAssertNil(series.sevenDayEndMarker)
+        XCTAssertEqual(series.linePoints.last, series.finalUsageMarker)
+    }
+
     func testModelUsesSelectedWindowAndFallsBackToMostRecentPastWindow() throws {
         let currentReset = 1_800_604_800
         let pastReset = currentReset - 10_080 * 60
@@ -125,6 +157,7 @@ final class ResetWindowOverlayModelTests: XCTestCase {
     }
 
     private static func record(
+        generatedAt: Int? = nil,
         limitId: String,
         windowDurationMins: Int,
         resetsAt: Int,
@@ -132,7 +165,7 @@ final class ResetWindowOverlayModelTests: XCTestCase {
         finalUsedPercent: Double = 64
     ) -> CodexUsageResetWindowHistoryRecord {
         CodexUsageResetWindowHistoryRecord(
-            generatedAt: resetsAt - 60,
+            generatedAt: generatedAt ?? resetsAt - 60,
             limitId: limitId,
             windowDurationMins: windowDurationMins,
             resetsAt: resetsAt,

@@ -199,7 +199,7 @@ v1.5.0 구현 범위:
 2. `codex-usage doctor`를 확장해 app-server 접근뿐 아니라 cache freshness, history append, reset-window record 상태를 설명합니다.
 3. live fetch 실패, stale cache, sample 부족, protocol drift 가능성을 구분해 사용자와 개발자가 같은 용어로 볼 수 있게 합니다.
 4. weekly reset 이후 이전 window 데이터가 새 window 뒤쪽으로 이어지거나 같은 날짜 marker가 중복 생성되지 않도록 reset boundary 그래프 회귀를 막습니다.
-   공식 `resetsAt`이 아직 미래여도 더 새로운 current window가 시작됐으면 이전 사용일 partial window를 `지난` 사용량으로 backfill합니다.
+   공식 `resetsAt`이 아직 미래여도 더 새로운 current window가 시작됐으면 이전 reset-start partial window를 `지난` 사용량으로 backfill하고, 다음 reset 이후 남은 7일 구간은 빈 그래프로 둡니다.
 5. Codex 탭에는 사용량 그래프를 방해하지 않는 짧은 데이터 상태 표시를 추가합니다.
 6. v1.5.0 전용 검증 스크립트와 focused tests로 doctor/cache/history/protocol/release readiness 계약을 묶습니다.
 7. 릴리즈 준비 문서는 v1.5.0 자동 검증, 수동 UI smoke, live fetch smoke, published DMG smoke 경계를 분리해 기록합니다.
@@ -214,7 +214,7 @@ v1.5.0 P0-P2 완료 순서:
 | Step | 제목 | 우선순위 | 개발 내용 |
 | ---: | --- | --- | --- |
 | 1 | v1.5.0 (1) v1.5.0 baseline 정렬 | P0 | VERSION/docs/backlog/source roadmap 정렬 |
-| 2 | v1.5.0 (2) 지난 사용량/reset boundary 그래프 회귀 수정 | P0 | `resetsAt` 변경 시 이전 weekly/reset-window history를 새 window와 분리하고, reset 이후 그래프와 Codex 탭 `지난` 사용량이 이전 32% marker 뒤로 이어지지 않게 하며, 실제 reset으로 중단된 partial window backfill과 동일 날짜/같은 window marker 중복 dedupe를 함께 검증 |
+| 2 | v1.5.0 (2) 지난 사용량/reset boundary 그래프 회귀 수정 | P0 | `resetStartAt = resetsAt - 7일` 기준으로 이전 weekly/reset-window history를 새 window와 분리하고, reset 이후 그래프와 Codex 탭 `지난` 사용량이 이전 32% marker 뒤로 이어지지 않게 하며, 실제 reset으로 중단된 partial window backfill, 남은 7일 구간 blank tail, 동일 날짜/같은 window marker 중복 dedupe를 함께 검증 |
 | 3 | v1.5.0 (3) 데이터 계약과 제외 경계 고정 | P0 | `status --json`, `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json` breaking change 금지와 raw payload/session material 미저장 경계를 문서와 테스트 기준으로 고정 |
 | 4 | v1.5.0 (4) usage health 모델 정의 | P0 | app-server 접근, cache freshness, stale/error, weekly sample, reset-window record, pace sample 상태를 하나의 진단 모델로 분류 |
 | 5 | v1.5.0 (5) cache/history health reader 구현 | P0 | app-owned cache 옆 weekly/reset-window history를 읽어 missing, stale, sample 부족, append skipped, retention 상태를 판정 |
@@ -242,7 +242,7 @@ v1.5.0 제외 경계:
 v1.5.0 완료 기준:
 
 - usage health 모델은 cache/history/protocol/stale/error/sample 부족 상태를 focused Swift tests로 검증합니다.
-- weekly reset boundary 회귀는 `resetsAt` 변경 fixture로 이전 window 분리, 새 timeline 100% 시작, 동일 날짜 marker dedupe, interrupted partial window backfill을 검증합니다.
+- weekly reset boundary 회귀는 reset-start 변경 fixture로 이전 window 분리, 새 timeline 100% 시작, 동일 날짜 marker dedupe, interrupted partial window backfill, blank tail final marker 위치를 검증합니다.
 - `codex-usage doctor`는 민감정보 없이 cache/history 상태와 다음 조치를 설명합니다.
 - v1.5.0 검증 스크립트는 source guard, fixture, focused tests, privacy boundary를 통과합니다.
 - Codex 탭 데이터 상태 UI는 demo/screenshot renderer 또는 focused SwiftUI test로 회귀를 막습니다.

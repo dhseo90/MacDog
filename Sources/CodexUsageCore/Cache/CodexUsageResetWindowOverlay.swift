@@ -171,24 +171,34 @@ public struct CodexUsageResetWindowOverlayBuilder: Sendable {
             remainingPercent: 100
         )
         let dayEndMarkers = record.dailyEndSamples.map { sample in
-            let day = Double(sample.dayIndex)
+            let day = Self.timelineDay(recordedAt: sample.recordedAt, in: record)
             return CodexUsageResetWindowOverlayMarker(
                 id: "\(record.key.limitId)-\(record.key.resetsAt)-day-\(sample.dayIndex)",
-                kind: sample.dayIndex == 7 ? .sevenDayEnd : .dayEnd,
+                kind: day >= 7 ? .sevenDayEnd : .dayEnd,
                 day: day,
                 recordedAt: sample.recordedAt,
                 usedPercent: sample.usedPercent,
                 remainingPercent: sample.remainingPercent
             )
         }
+        let finalUsageDay = Self.timelineDay(recordedAt: record.generatedAt, in: record)
         let finalUsageMarker = CodexUsageResetWindowOverlayMarker(
             id: "\(record.key.limitId)-\(record.key.resetsAt)-final",
             kind: .finalUsage,
-            day: 7,
+            day: finalUsageDay,
             recordedAt: record.generatedAt,
             usedPercent: record.finalUsedPercent,
             remainingPercent: record.finalRemainingPercent
         )
+        let linePoints = ([resetStartMarker] + dayEndMarkers + [finalUsageMarker]).sorted {
+            if $0.day != $1.day {
+                return $0.day < $1.day
+            }
+            if $0.recordedAt != $1.recordedAt {
+                return $0.recordedAt < $1.recordedAt
+            }
+            return Self.markerSortPriority($0.kind) < Self.markerSortPriority($1.kind)
+        }
 
         return CodexUsageResetWindowOverlaySeries(
             key: record.key,
@@ -198,7 +208,33 @@ public struct CodexUsageResetWindowOverlayBuilder: Sendable {
             dayEndMarkers: dayEndMarkers,
             sevenDayEndMarker: dayEndMarkers.last { $0.kind == .sevenDayEnd },
             finalUsageMarker: finalUsageMarker,
-            linePoints: [resetStartMarker] + dayEndMarkers + [finalUsageMarker]
+            linePoints: linePoints
         )
+    }
+
+    private static func timelineDay(
+        recordedAt: Int,
+        in record: CodexUsageResetWindowHistoryRecord
+    ) -> Double {
+        let durationSeconds = max(record.windowDurationMins * 60, 1)
+        let completionTolerance = CodexUsageWeeklyHistorySample.resetWindowTimestampToleranceSeconds
+        if recordedAt >= record.resetsAt - completionTolerance {
+            return 7
+        }
+        let elapsed = Double(recordedAt - record.resetStartAt)
+        return min(max(elapsed / Double(durationSeconds) * 7, 0), 7)
+    }
+
+    private static func markerSortPriority(_ kind: CodexUsageResetWindowOverlayMarkerKind) -> Int {
+        switch kind {
+        case .resetStart:
+            return 0
+        case .dayEnd:
+            return 1
+        case .sevenDayEnd:
+            return 2
+        case .finalUsage:
+            return 3
+        }
     }
 }

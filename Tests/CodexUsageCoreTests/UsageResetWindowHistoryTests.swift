@@ -327,6 +327,38 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertEqual(summaries.map(\.sampleCount), [3, 2])
     }
 
+    func testBackfillSummariesUseResetStartsAndLeaveInterruptedWindowTailEmpty() throws {
+        let durationSeconds = 10_080 * 60
+        let june25ResetStart = 1_800_000_000
+        let june25Reset = june25ResetStart + durationSeconds
+        let june28ResetStart = june25ResetStart + 3 * 86_400 + 16 * 60 * 60
+        let june28Reset = june28ResetStart + durationSeconds
+        let june29ResetStart = june28ResetStart + 11 * 60 * 60
+        let june29Reset = june29ResetStart + durationSeconds
+        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: june25ResetStart + 6 * 60 * 60, remainingPercent: 97, resetsAt: june25Reset),
+            Self.weeklySample(recordedAt: june25ResetStart + 86_400 + 8 * 60 * 60, remainingPercent: 85, resetsAt: june25Reset + 73 * 60),
+            Self.weeklySample(recordedAt: june28ResetStart - 30 * 60, remainingPercent: 33, resetsAt: june25Reset),
+            Self.weeklySample(recordedAt: june28ResetStart + 60, remainingPercent: 100, resetsAt: june28Reset),
+            Self.weeklySample(recordedAt: june29ResetStart - 10 * 60, remainingPercent: 98, resetsAt: june28Reset),
+            Self.weeklySample(recordedAt: june29ResetStart + 60, remainingPercent: 100, resetsAt: june29Reset)
+        ])
+
+        let summaries = CodexUsageResetWindowBackfillBuilder().summaries(
+            from: weeklyHistory,
+            completedAtOrBefore: june29ResetStart + 2 * 60,
+            excludingCurrentResetsAt: june29Reset
+        )
+
+        XCTAssertEqual(summaries.map(\.resetsAt), [june25Reset, june28Reset])
+        XCTAssertEqual(summaries.map(\.generatedAt), [june28ResetStart - 30 * 60, june29ResetStart - 10 * 60])
+        XCTAssertEqual(summaries.map { $0.dailyEndSamples.map(\.dayIndex) }, [[1, 2, 4], [1]])
+        XCTAssertFalse(
+            summaries.flatMap(\.dailyEndSamples).contains { $0.dayIndex == 7 },
+            "Interrupted windows should leave the remaining 7-day graph tail empty"
+        )
+    }
+
     func testBackfillSummaryJSONDoesNotStoreRawLogOrSessionMaterial() throws {
         let summary = CodexUsageResetWindowBackfillSummary(
             generatedAt: 1_800_604_740,

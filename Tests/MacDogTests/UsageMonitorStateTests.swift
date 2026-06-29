@@ -281,6 +281,47 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(model.resetWindowHistory.records.first?.source, .backfill)
     }
 
+    func testCodexHistoryComparisonModelUsesLatestResetStartAsCurrentWindow() throws {
+        let durationSeconds = 10_080 * 60
+        let june25ResetStart = Self.timestamp(year: 2026, month: 6, day: 25, hour: 6, minute: 28)
+        let june25Reset = june25ResetStart + durationSeconds
+        let june28ResetStart = Self.timestamp(year: 2026, month: 6, day: 28, hour: 22, minute: 52)
+        let june28Reset = june28ResetStart + durationSeconds
+        let june29ResetStart = Self.timestamp(year: 2026, month: 6, day: 29, hour: 9, minute: 39)
+        let june29Reset = june29ResetStart + durationSeconds
+        let currentSample = Self.weeklySample(
+            recordedAt: june29ResetStart + 5 * 60,
+            remainingPercent: 99,
+            resetsAt: june29Reset
+        )
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: june25ResetStart + 6 * 60 * 60, remainingPercent: 97, resetsAt: june25Reset),
+            Self.weeklySample(recordedAt: june25ResetStart + 86_400, remainingPercent: 85, resetsAt: june25Reset + 73 * 60),
+            Self.weeklySample(recordedAt: june28ResetStart - 60, remainingPercent: 33, resetsAt: june25Reset),
+            Self.weeklySample(recordedAt: june28ResetStart + 60, remainingPercent: 100, resetsAt: june28Reset),
+            Self.weeklySample(recordedAt: june29ResetStart - 60, remainingPercent: 98, resetsAt: june28Reset),
+            currentSample
+        ])
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 99, resetsAt: june29Reset),
+            currentReport: Self.report(fiveHourUsedPercent: 12, weeklyUsedPercent: 1, weeklyResetsAt: june29Reset),
+            currentTimestamp: currentSample.recordedAt,
+            calendar: Self.utcCalendar
+        ))
+
+        XCTAssertEqual(model.currentChart.resetStartAt, june29ResetStart)
+        XCTAssertEqual(model.currentChart.actualSampleCount, 1)
+        XCTAssertEqual(model.currentChart.points.first?.recordedAt, june29ResetStart)
+        XCTAssertEqual(model.currentChart.latestActualPoint?.recordedAt, currentSample.recordedAt)
+        XCTAssertEqual(model.pastWindows.map(\.resetStartAt), [june28ResetStart, june25ResetStart])
+        XCTAssertEqual(model.overlaySeries?.resetStartMarker.recordedAt, june28ResetStart)
+        XCTAssertEqual(model.overlaySeries?.finalUsageMarker.recordedAt, june29ResetStart - 60)
+        XCTAssertLessThan(try XCTUnwrap(model.overlaySeries?.finalUsageMarker.timelinePosition), 1)
+    }
+
     func testCodexHistoryMarkerLabelShowsSevenDayEndUsage() throws {
         let recordedAt = Self.timestamp(year: 2026, month: 6, day: 25, hour: 6, minute: 28)
         let marker = CodexUsageResetWindowOverlayMarker(
@@ -531,6 +572,36 @@ final class UsageMonitorStateTests: XCTestCase {
             currentSample: currentSample
         )
 
+        XCTAssertEqual(chart.actualSampleCount, 4)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 63)
+        XCTAssertEqual(
+            chart.dayMarkers.map { UsageMonitorState.percent($0.point.remainingPercent) },
+            ["90", "80", "64", "63"]
+        )
+    }
+
+    func testWeeklyHistoryChartKeepsSamplesWhenResetTimestampRollsWithinSameStartWindow() {
+        let start = 1_800_000_000
+        let stableReset = start + 604_800
+        let currentReset = stableReset + 73 * 60
+        let history = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: start + 86_400 - 120, remainingPercent: 90, resetsAt: stableReset),
+            Self.weeklySample(recordedAt: start + 2 * 86_400 - 120, remainingPercent: 80, resetsAt: stableReset + 30 * 60),
+            Self.weeklySample(recordedAt: start + 3 * 86_400 - 120, remainingPercent: 64, resetsAt: stableReset + 60 * 60)
+        ])
+        let currentSample = Self.weeklySample(
+            recordedAt: start + 3 * 86_400 + 120,
+            remainingPercent: 63,
+            resetsAt: currentReset
+        )
+
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 63, resetsAt: currentReset),
+            currentSample: currentSample
+        )
+
+        XCTAssertEqual(chart.resetStartAt, start)
         XCTAssertEqual(chart.actualSampleCount, 4)
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 63)
         XCTAssertEqual(

@@ -941,23 +941,39 @@ struct WeeklyRemainingHistoryChart: Equatable {
 
         let durationMins = weeklyWindow.windowDurationMins ?? 10_080
         let durationSeconds = max(durationMins, 1) * 60
-        let resetStartAt = resetsAt - durationSeconds
-        let resetWindowToleranceSeconds = CodexUsageWeeklyHistorySample.resetWindowTimestampToleranceSeconds
+        let nominalResetStartAt = resetsAt - durationSeconds
+        let resetWindowToleranceSeconds = CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
+            windowDurationMins: durationMins
+        )
         var samples = history.samples.filter {
-            $0.matchesResetWindow(resetsAt: resetsAt, windowDurationMins: durationMins) &&
-                $0.recordedAt >= resetStartAt &&
-                $0.recordedAt <= resetsAt + resetWindowToleranceSeconds
+            Self.matchesLogicalResetWindow(
+                $0,
+                resetStartAt: nominalResetStartAt,
+                windowDurationMins: durationMins,
+                toleranceSeconds: resetWindowToleranceSeconds
+            )
         }
 
         if let currentSample,
-           currentSample.matchesResetWindow(resetsAt: resetsAt, windowDurationMins: durationMins),
-           currentSample.recordedAt >= resetStartAt,
-           currentSample.recordedAt <= resetsAt + resetWindowToleranceSeconds,
+           Self.matchesLogicalResetWindow(
+            currentSample,
+            resetStartAt: nominalResetStartAt,
+            windowDurationMins: durationMins,
+            toleranceSeconds: resetWindowToleranceSeconds
+           ),
            !samples.contains(where: { $0.recordedAt == currentSample.recordedAt }) {
             samples.append(currentSample)
         }
 
         samples.sort { $0.recordedAt < $1.recordedAt }
+        let resetStartAt = ([nominalResetStartAt] + samples.map {
+            Self.resetStartAt(for: $0)
+        }).min() ?? nominalResetStartAt
+        let canonicalResetsAt = resetStartAt + durationSeconds
+        samples = samples.filter {
+            $0.recordedAt >= resetStartAt &&
+                $0.recordedAt <= canonicalResetsAt + resetWindowToleranceSeconds
+        }
 
         let dayGridPositions = Self.dayGridPositions(durationSeconds: durationSeconds)
         var displayedRemainingPercent = 100.0
@@ -1008,9 +1024,9 @@ struct WeeklyRemainingHistoryChart: Equatable {
         self.actualSampleCount = actualPoints.count
         self.latestActualPoint = latestActualPoint
         self.resetStartAt = resetStartAt
-        self.resetsAt = resetsAt
+        self.resetsAt = canonicalResetsAt
         self.resetStartLabel = Self.resetDayLabel(timestamp: resetStartAt, calendar: calendar)
-        self.resetEndLabel = Self.resetDayLabel(timestamp: resetsAt, calendar: calendar)
+        self.resetEndLabel = Self.resetDayLabel(timestamp: canonicalResetsAt, calendar: calendar)
         self.recordingStartLabel = actualPoints.first.map {
             "기록 시작 \(Self.resetDayTimeLabel(timestamp: $0.recordedAt, calendar: calendar))"
         }
@@ -1050,6 +1066,22 @@ struct WeeklyRemainingHistoryChart: Equatable {
         return (0...dayCount).map {
             min(Double($0 * daySeconds) / Double(durationSeconds), 1)
         }
+    }
+
+    private static func resetStartAt(for sample: CodexUsageWeeklyHistorySample) -> Int {
+        sample.resetsAt - max(sample.windowDurationMins * 60, 1)
+    }
+
+    private static func matchesLogicalResetWindow(
+        _ sample: CodexUsageWeeklyHistorySample,
+        resetStartAt targetResetStartAt: Int,
+        windowDurationMins targetWindowDurationMins: Int,
+        toleranceSeconds: Int
+    ) -> Bool {
+        guard sample.windowDurationMins == targetWindowDurationMins else {
+            return false
+        }
+        return abs(resetStartAt(for: sample) - targetResetStartAt) <= max(toleranceSeconds, 0)
     }
 
     private static func dayMarkers(

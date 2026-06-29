@@ -105,7 +105,11 @@ verify_sources() {
   require_match 'testStoreMergesRollingResetTimestampSamplesIntoOneLogicalWeeklyWindow' "$HISTORY_TESTS" "reset boundary dedupe test"
   require_match 'testStoreKeepsSameDayObservedResetWindowsApart' "$HISTORY_TESTS" "same-day actual reset split test"
   require_match 'testBackfillSummariesIncludeInterruptedFutureResetWindowsBeforeCurrentWindow' "$HISTORY_TESTS" "interrupted future reset backfill test"
+  require_match 'testBackfillSummariesUseResetStartsAndLeaveInterruptedWindowTailEmpty' "$HISTORY_TESTS" "reset-start partial window tail test"
+  require_match 'testInterruptedWindowFinalMarkerUsesActualLastSampleDay' "$ROOT_DIR/Tests/CodexUsageCoreTests/ResetWindowOverlayModelTests.swift" "interrupted overlay marker position test"
   require_match 'testCodexHistoryComparisonModelExcludesRollingCurrentResetDuplicates' "$STATE_TESTS" "current reset duplicate exclusion test"
+  require_match 'testCodexHistoryComparisonModelUsesLatestResetStartAsCurrentWindow' "$STATE_TESTS" "latest reset-start current window test"
+  require_match 'testWeeklyHistoryChartKeepsSamplesWhenResetTimestampRollsWithinSameStartWindow' "$STATE_TESTS" "current reset-start rolling timestamp test"
 
   require_match 'Do not paste auth tokens or raw app-server payloads' "$FAILURE_GUIDE_SOURCE" "raw payload redaction guidance"
   require_match 'schema may have changed' "$FAILURE_GUIDE_SOURCE" "schema drift guidance"

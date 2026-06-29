@@ -218,14 +218,10 @@ public struct CodexUsageResetWindowBackfillBuilder: Sendable {
     }
 
     private func canonicalResetsAt(in group: [CodexUsageWeeklyHistorySample]) -> Int {
-        let counts = Dictionary(grouping: group, by: \.resetsAt)
-            .mapValues(\.count)
-        return counts.sorted {
-            if $0.value != $1.value {
-                return $0.value > $1.value
-            }
-            return $0.key < $1.key
-        }.first?.key ?? group[0].resetsAt
+        let durationSeconds = max(group[0].windowDurationMins * 60, 1)
+        let resetStartAt = group.map { $0.resetsAt - durationSeconds }.min() ??
+            group[0].resetsAt - durationSeconds
+        return resetStartAt + durationSeconds
     }
 
     private static func isCompleted(
@@ -582,7 +578,7 @@ public struct CodexUsageResetWindowHistoryStore {
             }
     }
 
-    static func logicalResetWindowToleranceSeconds(windowDurationMins: Int) -> Int {
+    public static func logicalResetWindowToleranceSeconds(windowDurationMins: Int) -> Int {
         let durationSeconds = max(windowDurationMins, 1) * 60
         return min(
             CodexUsageResetWindowBackfillBuilder.rollingResetTimestampToleranceSeconds,
