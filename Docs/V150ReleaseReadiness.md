@@ -1,6 +1,6 @@
 # v1.5.0 릴리즈 준비 감사
 
-상태: Step 9-13 구현 완료 / 릴리즈 미완료 / signed Verified tag 미생성 / published DMG smoke 미수행
+상태: Step 14-15 로컬 preflight/packaging 완료 / 릴리즈 미완료 / signed Verified tag 미생성 / published DMG smoke 미수행
 작성일: 2026-07-01
 기준 브랜치: `main`
 대상 버전: `1.5.0`
@@ -15,6 +15,8 @@ Published asset: 미생성
 - Step 1-8 P0 usage reliability 구현은 source/test/verifier 기준으로 완료했습니다.
 - reset boundary 실제 UI smoke는 `dist/MacDog.app` popover에서 수행했습니다. `지난` 탭의 interrupted window가 마지막 sample에서 멈추고 남은 7일 축을 blank tail로 유지하는 것을 확인했습니다.
 - Step 9-13은 source/test/verifier/docs 기준으로 완료했습니다. Codex 탭 데이터 상태 UI의 실제 화면 smoke는 릴리즈 수동 UI smoke에서 별도로 확인합니다.
+- Step 14 preflight는 `MACDOG_RELEASE_VERSION=1.5.0 ./script/check.sh --no-run`으로 통과했습니다.
+- Step 15 local packaging은 `MACDOG_RELEASE_VERSION=1.5.0 ./script/package_release.sh`로 `MacDog-1.5.0.dmg`, `MacDog-1.5.0.dmg.sha256`, release notes를 생성했고 checksum과 `hdiutil verify`를 통과했습니다.
 - GitHub Release, signed annotated tag, Verified tag, published DMG, Finder drag-and-drop 설치 smoke는 아직 수행하지 않았습니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.5.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
