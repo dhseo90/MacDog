@@ -250,6 +250,8 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V130ReleaseReadiness.md](Docs/V130ReleaseReadiness.md): v1.3.0 릴리즈 준비 감사와 릴리즈 실행/완료 기록
 - [Docs/V140UsageIntelligence.md](Docs/V140UsageIntelligence.md): v1.4.0 과거 사용량, 예측, 오버레이 로드맵
 - [Docs/V140ReleaseReadiness.md](Docs/V140ReleaseReadiness.md): v1.4.0 릴리즈 잔여 이슈와 실행 순서
+- [Docs/V150UsageReliability.md](Docs/V150UsageReliability.md): v1.5.0 사용량 reliability, reset boundary, cache/history 진단 경계
+- [Docs/V150ReleaseReadiness.md](Docs/V150ReleaseReadiness.md): v1.5.0 릴리즈 잔여 이슈와 실행 순서
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

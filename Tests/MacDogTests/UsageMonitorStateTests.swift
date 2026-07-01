@@ -152,6 +152,90 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(summary.resetCountdowns.first?.value, "1시간 남음 · 09:00")
     }
 
+    func testCodexDataStatusReportsReadyCacheAndHistory() {
+        let weeklyReset = 1_800_604_800
+        let report = Self.report(
+            fiveHourUsedPercent: 8,
+            weeklyUsedPercent: 22,
+            weeklyResetsAt: weeklyReset
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(cachedAt: Int(Date().timeIntervalSince1970), report: report),
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [
+                Self.weeklySample(recordedAt: 1_800_000_000, remainingPercent: 78, resetsAt: weeklyReset)
+            ]),
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: weeklyReset, finalUsedPercent: 22)
+            ]),
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(
+            state.codexDataStatus,
+            CodexUsageDataStatus(
+                tone: .ok,
+                systemImage: "checkmark.circle.fill",
+                title: "데이터 정상",
+                detail: "cache 최신 · weekly 1 sample · reset 1 record"
+            )
+        )
+    }
+
+    func testCodexDataStatusReportsHistorySampleWaiting() {
+        let report = Self.report(fiveHourUsedPercent: 8, weeklyUsedPercent: 22)
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(cachedAt: Int(Date().timeIntervalSince1970), report: report),
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(state.codexDataStatus.tone, .waiting)
+        XCTAssertEqual(state.codexDataStatus.title, "history 샘플 대기")
+        XCTAssertEqual(state.codexDataStatus.detail, "그래프는 현재 cache 중심으로 표시")
+    }
+
+    func testCodexDataStatusSeparatesStaleAndErrorCache() {
+        let report = Self.report(fiveHourUsedPercent: 8, weeklyUsedPercent: 22)
+        let stale = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(
+                cachedAt: 1_700_000_000,
+                staleAfterSeconds: 120,
+                report: report
+            ),
+            errorMessage: nil
+        )
+        let error = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(
+                cachedAt: Int(Date().timeIntervalSince1970),
+                report: report,
+                error: CodexUsageCacheError(message: "redacted failure", recordedAt: 1_800_000_030)
+            ),
+            errorMessage: "redacted failure"
+        )
+
+        XCTAssertEqual(stale.codexDataStatus.title, "오래된 cache")
+        XCTAssertEqual(stale.codexDataStatus.tone, .warning)
+        XCTAssertEqual(error.codexDataStatus.title, "cache 오류")
+        XCTAssertEqual(error.codexDataStatus.tone, .error)
+    }
+
+    func testCodexDataStatusFlagsMissingRequiredWindowsAsProtocolCheck() {
+        let state = UsageMonitorState(
+            report: Self.incompleteCodexReport(),
+            cacheSnapshot: nil,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(state.codexDataStatus.tone, .warning)
+        XCTAssertEqual(state.codexDataStatus.title, "프로토콜 확인 필요")
+        XCTAssertEqual(state.codexDataStatus.detail, "필수 5시간/주간 window 누락")
+    }
+
     func testRefreshingPreservesPrivilegedHelperInstallSnapshot() {
         let snapshot = PrivilegedHelperInstallSnapshot(helperToolExists: true, launchDaemonExists: false)
         let state = UsageMonitorState(
@@ -1069,6 +1153,20 @@ final class UsageMonitorStateTests: XCTestCase {
             credits: nil,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static func cacheSnapshot(
+        cachedAt: Int,
+        staleAfterSeconds: Int = 120,
+        report: CodexUsageReport?,
+        error: CodexUsageCacheError? = nil
+    ) -> CodexUsageCacheSnapshot {
+        CodexUsageCacheSnapshot(
+            cachedAt: cachedAt,
+            staleAfterSeconds: staleAfterSeconds,
+            report: report,
+            error: error
         )
     }
 

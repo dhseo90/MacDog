@@ -1,6 +1,6 @@
 # v1.5.0 Usage Reliability & Diagnostics
 
-상태: P0 구현 완료 / 자동 검증 통과 / 실제 UI smoke 미수행
+상태: P0-P2 구현 완료 / reset boundary 실제 UI smoke 수행 / 릴리즈 smoke 미수행
 작성일: 2026-06-29
 대상 버전: `1.5.0`
 
@@ -19,6 +19,11 @@
 | v1.5.0 (6) | `codex-usage doctor` 확장 | app-server 접근 결과와 cache/history health, append/retention/pace 상태, 다음 조치 안내를 함께 출력 |
 | v1.5.0 (7) | 실패 가이드와 protocol drift 진단 강화 | schema/protocol drift, stale/error cache, raw payload/auth material 금지 문구 유지 |
 | v1.5.0 (8) | 검증 스크립트와 fixture 묶음 추가 | `verify_v150_usage_reliability_contract.sh --self-test`로 source guard와 focused Swift tests를 묶음 |
+| v1.5.0 (9) | Codex 탭 데이터 상태 UI | cache 최신성, history sample 부족, stale/error, protocol drift 가능성을 compact status로 표시 |
+| v1.5.0 (10) | live fetch/cache smoke 진단 정리 | live smoke 성공 시 weekly/reset-window history 요약을 함께 출력 |
+| v1.5.0 (11) | 운영 회귀 guard 확장 | runtime sampler, helper state, Charge Limit read-only, release final-state를 release readiness에 연결 |
+| v1.5.0 (12) | release readiness 문서화 | `Docs/V150ReleaseReadiness.md`에 자동검증, UI smoke, live fetch smoke, published DMG smoke 경계를 분리 |
+| v1.5.0 (13) | README/ROADMAP/Docs closure | README/ROADMAP/Docs/Scripts/check.sh가 v1.5.0 release readiness와 같은 용어를 사용 |
 
 ## 사용자 이슈
 
@@ -68,6 +73,7 @@ raw error message, raw app-server response, auth/session material은 doctor heal
 ## 제외 경계
 
 - 실제 GUI smoke, published DMG 설치 smoke, signed tag verification은 v1.5.0 P0 자동 검증 완료 조건이 아닙니다.
+- Codex 탭 데이터 상태 UI의 실제 화면 smoke는 Step 20 설치본 UI smoke에서 별도로 확인합니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect 권한이 필요한 항목은 v1.5.0 P0 완료 조건에 넣지 않습니다.
 - WidgetKit 실제 UI 검수는 App Group provisioning 전 완료로 보고하지 않습니다.
 - 장시간 watch 테스트는 사용자가 별도로 요청할 때만 실행합니다.

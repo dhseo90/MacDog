@@ -9,6 +9,7 @@ struct CodexUsagePanel: View {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
                 CodexUsageSummaryBlock(summary: summary, phase: state.phase)
+                CodexUsageDataStatusBlock(status: state.codexDataStatus)
 
                 VStack(alignment: .leading, spacing: 8) {
                     UsageRow(
@@ -132,6 +133,42 @@ private struct CodexUsageSummaryBlock: View {
         case .fast:
             .orange
         case .sprint, .limit:
+            .red
+        }
+    }
+}
+
+private struct CodexUsageDataStatusBlock: View {
+    let status: CodexUsageDataStatus
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: status.systemImage)
+                .font(.caption2.weight(.semibold))
+                .frame(width: 12)
+            Text(status.title)
+                .font(.caption2.weight(.semibold))
+            Text(status.detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(tint)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(status.title), \(status.detail)")
+    }
+
+    private var tint: Color {
+        switch status.tone {
+        case .ok:
+            .green
+        case .waiting:
+            .secondary
+        case .warning:
+            .orange
+        case .error:
             .red
         }
     }
