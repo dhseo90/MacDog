@@ -118,6 +118,7 @@ if [[ "$status" == "0" ]]; then
     abort("weekly history sample is missing recordedAt") unless sample["recordedAt"].is_a?(Integer)
     abort("weekly history sample is missing remainingPercent") unless sample["remainingPercent"].is_a?(Numeric)
     abort("weekly history sample is missing resetsAt") unless sample["resetsAt"].is_a?(Integer)
+    puts "usage-fetch:weekly-history samples=#{samples.length} recordedAt=#{sample["recordedAt"]} remaining=#{sample["remainingPercent"]} resetsAt=#{sample["resetsAt"]}"
   ' "$history_path"
   /usr/bin/ruby -rjson -e '
     history = JSON.parse(File.read(ARGV.fetch(0)))
@@ -131,6 +132,7 @@ if [[ "$status" == "0" ]]; then
     forbidden = %w[token accessToken refreshToken cookie session authorization raw response rawResponse]
     hit = record.keys & forbidden
     abort("reset window history record includes forbidden keys: #{hit.join(",")}") unless hit.empty?
+    puts "usage-fetch:reset-window-history records=#{records.length} resetsAt=#{record["resetsAt"]} windowDurationMins=#{record["windowDurationMins"]} sampleCount=#{record["sampleCount"]}"
   ' "$reset_window_history_path"
   /usr/bin/grep -Eq 'history append: stored recordedAt=[^[:space:]]+ recordingStartedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ path=.*usage-weekly-history\.json' "$stderr_path" || {
     cat "$stderr_path" >&2 || true

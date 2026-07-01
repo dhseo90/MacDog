@@ -184,6 +184,64 @@ struct UsageMonitorState: Equatable {
         )
     }
 
+    var codexDataStatus: CodexUsageDataStatus {
+        if cacheSnapshot?.error != nil {
+            return CodexUsageDataStatus(
+                tone: .error,
+                systemImage: "exclamationmark.triangle.fill",
+                title: "cache 오류",
+                detail: "마지막 성공 cache와 오류 상태를 함께 표시"
+            )
+        }
+        if isStale {
+            return CodexUsageDataStatus(
+                tone: .warning,
+                systemImage: "clock.badge.exclamationmark",
+                title: "오래된 cache",
+                detail: "stale/error 상태를 함께 확인"
+            )
+        }
+        if report != nil, codexLimit == nil {
+            return CodexUsageDataStatus(
+                tone: .warning,
+                systemImage: "rectangle.badge.exclamationmark",
+                title: "프로토콜 확인 필요",
+                detail: "필수 5시간/주간 window 누락"
+            )
+        }
+        if isRefreshing {
+            return CodexUsageDataStatus(
+                tone: .waiting,
+                systemImage: "arrow.clockwise",
+                title: "데이터 갱신 중",
+                detail: "cache/history 갱신 대기"
+            )
+        }
+        if codexLimit == nil {
+            return CodexUsageDataStatus(
+                tone: .waiting,
+                systemImage: "hourglass",
+                title: "사용량 데이터 대기",
+                detail: "cache snapshot 또는 live report 필요"
+            )
+        }
+        if weeklyUsageHistory.samples.isEmpty || resetWindowHistory.records.isEmpty {
+            return CodexUsageDataStatus(
+                tone: .waiting,
+                systemImage: "chart.xyaxis.line",
+                title: "history 샘플 대기",
+                detail: "그래프는 현재 cache 중심으로 표시"
+            )
+        }
+
+        return CodexUsageDataStatus(
+            tone: .ok,
+            systemImage: "checkmark.circle.fill",
+            title: "데이터 정상",
+            detail: "cache 최신 · weekly \(weeklyUsageHistory.samples.count) \(Self.unit("sample", count: weeklyUsageHistory.samples.count)) · reset \(resetWindowHistory.records.count) \(Self.unit("record", count: resetWindowHistory.records.count))"
+        )
+    }
+
     var isStale: Bool {
         cacheSnapshot?.isStale() ?? false
     }
@@ -268,6 +326,10 @@ struct UsageMonitorState: Equatable {
         }
         return summary
     }
+
+    private static func unit(_ singular: String, count: Int) -> String {
+        count == 1 ? singular : "\(singular)s"
+    }
 }
 
 struct CodexUsagePanelSummary: Equatable {
@@ -280,6 +342,20 @@ struct CodexUsagePanelSummary: Equatable {
     let statusDetail: String
     let notificationThresholdSummary: String
     let resetCountdowns: [ResetCountdown]
+}
+
+struct CodexUsageDataStatus: Equatable {
+    enum Tone: Equatable {
+        case ok
+        case waiting
+        case warning
+        case error
+    }
+
+    let tone: Tone
+    let systemImage: String
+    let title: String
+    let detail: String
 }
 
 enum PetStatusReaction: Equatable {
