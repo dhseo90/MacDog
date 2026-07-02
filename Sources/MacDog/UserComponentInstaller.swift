@@ -176,12 +176,10 @@ struct UserComponentInstaller {
             homeDirectory: homeDirectory,
             fileManager: fileManager
         )
-
-        if isEnabled {
-            try controller.setEnabled(true)
-        } else {
-            try controller.setEnabled(false)
+        let coordinator = LoginLaunchPreferenceCoordinator { enabled in
+            try controller.setEnabled(enabled)
         }
+        try coordinator.setEnabled(isEnabled)
     }
 
     @discardableResult

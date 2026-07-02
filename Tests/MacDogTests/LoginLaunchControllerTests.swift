@@ -29,6 +29,22 @@ final class LoginLaunchControllerTests: XCTestCase {
         XCTAssertEqual(launchctlArguments, [["bootout", "gui/\(getuid())", legacyPlist.path]])
     }
 
+    func testEnablingFailsWhenMainAppLoginItemRemainsUnavailableAfterRegister() throws {
+        let root = try temporaryDirectory()
+        let service = RecordingLoginLaunchService(status: .notFound, statusAfterRegister: .notFound)
+        let controller = LoginLaunchController(
+            homeDirectory: root,
+            service: service,
+            launchctlRunner: { _ in }
+        )
+
+        XCTAssertThrowsError(try controller.setEnabled(true)) { error in
+            XCTAssertEqual(error as? LoginLaunchControllerError, .loginItemUnavailable(.notFound))
+        }
+        XCTAssertEqual(service.registerCallCount, 1)
+        XCTAssertEqual(service.unregisterCallCount, 0)
+    }
+
     func testDisablingUnregistersMainAppLoginItem() throws {
         let root = try temporaryDirectory()
         let service = RecordingLoginLaunchService(status: .enabled)
@@ -54,16 +70,18 @@ final class LoginLaunchControllerTests: XCTestCase {
 
 private final class RecordingLoginLaunchService: LoginLaunchServicing {
     var status: LoginLaunchStatus
+    private let statusAfterRegister: LoginLaunchStatus
     private(set) var registerCallCount = 0
     private(set) var unregisterCallCount = 0
 
-    init(status: LoginLaunchStatus) {
+    init(status: LoginLaunchStatus, statusAfterRegister: LoginLaunchStatus = .enabled) {
         self.status = status
+        self.statusAfterRegister = statusAfterRegister
     }
 
     func register() throws {
         registerCallCount += 1
-        status = .enabled
+        status = statusAfterRegister
     }
 
     func unregister() throws {

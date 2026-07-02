@@ -85,6 +85,9 @@ struct LoginLaunchController {
         if service.status != .enabled {
             try service.register()
         }
+        guard service.status == .enabled else {
+            throw LoginLaunchControllerError.loginItemUnavailable(service.status)
+        }
     }
 
     private func remove() throws {
@@ -125,13 +128,39 @@ struct LoginLaunchController {
 
 }
 
-enum LoginLaunchControllerError: LocalizedError {
+struct LoginLaunchPreferenceCoordinator {
+    private let defaults: UserDefaults
+    private let setLoginItem: (Bool) throws -> Void
+
+    init(
+        defaults: UserDefaults = .standard,
+        setLoginItem: @escaping (Bool) throws -> Void = { try LoginLaunchController().setEnabled($0) }
+    ) {
+        self.defaults = defaults
+        self.setLoginItem = setLoginItem
+    }
+
+    func setEnabled(_ isEnabled: Bool) throws {
+        do {
+            try setLoginItem(isEnabled)
+            RunnerPreferences.setLoginLaunchEnabled(isEnabled, defaults: defaults)
+        } catch {
+            RunnerPreferences.setLoginLaunchEnabled(!isEnabled, defaults: defaults)
+            throw error
+        }
+    }
+}
+
+enum LoginLaunchControllerError: LocalizedError, Equatable {
     case launchctlFailed(String)
+    case loginItemUnavailable(LoginLaunchStatus)
 
     var errorDescription: String? {
         switch self {
         case .launchctlFailed(let command):
             return "자동 실행 설정 변경 실패: launchctl \(command)"
+        case .loginItemUnavailable(let status):
+            return "자동 실행 등록 후 macOS 로그인 항목 상태가 활성화되지 않았습니다: \(status)"
         }
     }
 }

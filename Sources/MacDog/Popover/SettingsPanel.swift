@@ -15,9 +15,10 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.usageNotificationsEnabledKey) private var usageNotificationsEnabled = RunnerPreferences.defaultUsageNotificationsEnabled
     @AppStorage(RunnerPreferences.usageResetSoonNotificationsEnabledKey) private var usageResetSoonNotificationsEnabled = RunnerPreferences.defaultUsageResetSoonNotificationsEnabled
     @State private var loginLaunchErrorMessage: String?
+    @State private var isRevertingLoginLaunchEnabled = false
     @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
 
-    private let loginLaunchController = LoginLaunchController()
+    private let loginLaunchPreferenceCoordinator = LoginLaunchPreferenceCoordinator()
 
     init(
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot,
@@ -109,12 +110,21 @@ struct SettingsPanel: View {
             deferredPreferencesChanged()
         }
         .onChange(of: loginLaunchEnabled) { _, enabled in
-            RunnerPreferences.setLoginLaunchEnabled(enabled)
+            if isRevertingLoginLaunchEnabled {
+                isRevertingLoginLaunchEnabled = false
+                deferredPreferencesChanged()
+                return
+            }
             do {
-                try loginLaunchController.setEnabled(enabled)
+                try loginLaunchPreferenceCoordinator.setEnabled(enabled)
                 loginLaunchErrorMessage = nil
             } catch {
                 loginLaunchErrorMessage = error.localizedDescription
+                let storedValue = RunnerPreferences.loginLaunchEnabled()
+                if enabled != storedValue {
+                    isRevertingLoginLaunchEnabled = true
+                    loginLaunchEnabled = storedValue
+                }
             }
             deferredPreferencesChanged()
         }
