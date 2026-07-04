@@ -509,6 +509,20 @@ case "$VERSION" in
 HIGHLIGHTS
 )
     ;;
+  1.5.0)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- Usage Reliability & Diagnostics를 추가해 `codex-usage doctor`가 app-server 접근, cache freshness, weekly/reset-window history, append/retention/pace 상태와 다음 조치를 함께 설명합니다.
+- weekly reset 이후 이전 window 데이터가 새 window 뒤쪽으로 이어지지 않도록 reset boundary 그래프 회귀를 막고, 새 timeline은 왼쪽 100% 잔여율에서 시작합니다.
+- Codex 탭은 cache 최신성, history sample 부족, stale/error, protocol drift 가능성을 그래프를 방해하지 않는 compact status로 표시합니다.
+- live fetch/cache smoke는 `usage-fetch:weekly-history`와 `usage-fetch:reset-window-history` 요약을 함께 출력해 release smoke에서 history append 상태를 확인할 수 있습니다.
+- 로그인 항목 등록 후 macOS Login Item 상태가 enabled가 아니면 실패로 처리하고, 저장된 로그인 실행 선호값을 실제 결과 쪽으로 되돌립니다.
+- release 운영 guard를 보강해 runtime sampler, helper 상태, native Charge Limit read-only 확인, final-state 검증을 v1.5.0 release readiness에 연결했습니다.
+- JSON/cache/app-server 계약은 breaking change하지 않고, raw app-server response, auth token, cookie, session material, auth header 저장 또는 출력을 계속 금지합니다.
+HIGHLIGHTS
+)
+    ;;
   *)
     release_highlights=$(cat <<'HIGHLIGHTS'
 ## 주요 변경 사항

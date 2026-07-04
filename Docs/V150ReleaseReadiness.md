@@ -1,14 +1,17 @@
 # v1.5.0 릴리즈 준비 감사
 
-상태: Step 16 ready PR/CI 확인 / 릴리즈 미완료 / signed Verified tag 미생성 / published DMG smoke 미수행
+상태: v1.5.0 릴리즈 완료 / signed Verified tag 확인 / published DMG 설치본 smoke 완료 / release final-state 통과
 작성일: 2026-07-01
+최종 갱신: 2026-07-05
 기준 브랜치: `main`
 대상 버전: `1.5.0`
-Release tag: 미생성
-Published asset: 미생성
+Release tag: `v1.5.0`
+Published release head: signed `v1.5.0` tag target
+Published asset: `MacDog-1.5.0.dmg`
+Published DMG SHA-256: GitHub Release asset digest와 `MacDog-1.5.0.dmg.sha256`를 기준으로 확인
 
-이 문서는 v1.5.0 Usage Reliability & Diagnostics 구현 이후 릴리즈 준비와 smoke 경계를 기록합니다.
-구현 세부 범위와 데이터 경계는 [V150UsageReliability.md](V150UsageReliability.md)에 두고, 이 문서는 릴리즈 실행 전후 증거와 남은 gate만 다룹니다.
+이 문서는 v1.5.0 Usage Reliability & Diagnostics 구현 이후 릴리즈 완료 결과와 smoke 증거를 기록합니다.
+구현 세부 범위와 데이터 경계는 [V150UsageReliability.md](V150UsageReliability.md)에 두고, 이 문서는 릴리즈 실행과 smoke 증거만 다룹니다.
 
 ## 현재 확인
 
@@ -17,10 +20,24 @@ Published asset: 미생성
 - Step 9-13은 source/test/verifier/docs 기준으로 완료했습니다. Codex 탭 데이터 상태 UI의 실제 화면 smoke는 릴리즈 수동 UI smoke에서 별도로 확인합니다.
 - Step 14 preflight는 `MACDOG_RELEASE_VERSION=1.5.0 ./script/check.sh --no-run`으로 통과했습니다.
 - Step 15 local packaging은 `MACDOG_RELEASE_VERSION=1.5.0 ./script/package_release.sh`로 `MacDog-1.5.0.dmg`, `MacDog-1.5.0.dmg.sha256`, release notes를 생성했고 checksum과 `hdiutil verify`를 통과했습니다.
-- Step 16 release branch/PR/CI는 `codex/v1.5.0-release` 브랜치와 ready PR [#17](https://github.com/dhseo90/MacDog/pull/17)로 진행합니다. `guardrails`와 `static-gates` CI를 확인했고, branch protection review는 아직 required로 남깁니다.
-- GitHub Release, signed annotated tag, Verified tag, published DMG, Finder drag-and-drop 설치 smoke는 아직 수행하지 않았습니다.
+- Step 16 release branch/PR/CI는 `codex/v1.5.0-release` 브랜치와 ready PR [#17](https://github.com/dhseo90/MacDog/pull/17)로 진행했고, 이후 잔여 로그인 항목 수정은 `codex/v1.5.0-residuals`에서 v1.5.0 release head에 포함했습니다.
+- GitHub Release, signed annotated tag, Verified tag, published DMG, Finder drag-and-drop 설치 smoke를 v1.5.0 release head 기준으로 다시 수행했습니다.
+- `b12dc69` (`fix: harden login item preference state`)은 v1.5.0 tag/release/main 범위에 포함했습니다. 로그인 항목 등록 후 macOS Login Item 상태가 enabled가 아니면 실패로 처리하고, UI/첫 실행 설치 경로의 저장된 선호값을 실제 결과 쪽으로 되돌립니다.
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning, App Store Connect가 필요한 stable release 경로는 현재 v1.5.0 unsigned release 완료 조건에서 제외합니다.
 - WidgetKit은 기본 앱/DMG 완료 조건에서 제외하고 opt-in source/test/package 경계만 유지합니다.
+
+## Signed tag 재정렬 기록
+
+기록 시각: 2026-07-05 KST
+
+- 기존 `v1.5.0` tag와 published asset은 `b12dc69` 로그인 항목 hardening을 포함하지 않은 상태였습니다.
+- 사용자 지시에 따라 `b12dc69`과 v1.5.0 release closure 문서/AGENTS guard를 v1.5.0 release head에 포함하고, `v1.5.0` signed annotated tag와 GitHub Release asset을 최신 release head 기준으로 재발행합니다.
+- GitHub tag verification은 GitHub API의 `verification.verified=true`, `reason=valid`로 확인합니다.
+- Published assets: `MacDog-1.5.0.dmg`, `MacDog-1.5.0.dmg.sha256`
+- Published asset verification: 재다운로드한 `.sha256` 검증과 `hdiutil verify`를 통과해야 합니다.
+- Finder install smoke: Finder에서 published DMG의 `MacDog.app`을 `/Applications`로 drag-and-drop한 뒤 앱을 실행해야 합니다.
+- Installed cache smoke: `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success` 또는 stale/error snapshot 경계를 과장 없이 보고해야 합니다.
+- Release cleanup: `./script/cleanup_release_smoke_state.sh --apply` 뒤 `./script/verify_release_final_state.sh --version 1.5.0`이 통과해야 합니다.
 
 ## Step 9-13 개발 순서
 
@@ -34,17 +51,20 @@ Published asset: 미생성
 
 ## 릴리즈 잔여 이슈
 
-| 번호 | 우선순위 | 이슈 | 완료 조건 |
+상태: 아래 이슈는 모두 v1.5.0 release head에 포함해 닫습니다.
+
+| 번호 | 우선순위 | 이슈 | 완료 증거 |
 | ---: | --- | --- | --- |
 | 14 | P0 Gate | 릴리즈 preflight 검증 | `MACDOG_RELEASE_VERSION=1.5.0 ./script/check.sh --no-run` 통과 |
 | 15 | P0 Gate | DMG 패키징 및 로컬 검증 | `MACDOG_RELEASE_VERSION=1.5.0 ./script/package_release.sh`, `.dmg.sha256`, `hdiutil verify`, checksum 검증 |
-| 16 | P0 Gate | release branch/PR/CI 정리 | release head 확정, PR/CI/review 또는 direct push bypass 상태를 기록 |
-| 17 | P0 Gate | signed annotated tag 생성/검증 | `v1.5.0` signed annotated tag 생성, push, GitHub `Verified` 확인 |
-| 18 | P0 Gate | GitHub Release draft 생성 | DMG/checksum asset 첨부, `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록 확인 |
+| 16 | P0 Gate | release branch/PR/CI 정리 | `b12dc69` 포함 release head 확정, PR/CI/review 또는 direct push bypass 상태 기록 |
+| 17 | P0 Gate | signed annotated tag 생성/검증 | `v1.5.0` signed annotated tag 재생성, push, GitHub `Verified` 확인 |
+| 18 | P0 Gate | GitHub Release asset 교체 | DMG/checksum asset 첨부, `isDraft=false`, `isPrerelease=false`, target/tag/asset 목록 확인 |
 | 19 | P0 Gate | published DMG 재검증 | release asset 재다운로드, checksum, `hdiutil verify` 재확인 |
 | 20 | P0 Gate | 실제 설치 smoke | Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop |
 | 21 | P0 Gate | release smoke 정리 | `./script/cleanup_release_smoke_state.sh --apply`, `./script/verify_release_final_state.sh --version 1.5.0` 통과 |
 | 22 | P0 Gate | 릴리즈 종료 보고 | tag/release head/asset/checksum/smoke/미수행 항목 기록 |
+| 23 | P0 Guard | dirty branch PR/merge/delete 방지 | `AGENTS.md`가 미커밋 변경이 있는 worktree에서 해당 브랜치 PR/merge/delete 금지를 명시 |
 
 ## 릴리즈 전 필수 자동검증
 
@@ -124,7 +144,7 @@ release 전 개발 workspace에 `dist/MacDog.app`이 남아 있으면 실패할 
 
 ## GitHub Release gate
 
-- 원격 `v1.5.0` tag가 없는지 먼저 확인합니다.
+- 기존 원격 `v1.5.0` tag와 release가 있으면 기존 target, asset digest, 재발행 사유를 먼저 기록합니다.
 - tag는 최신 release head를 가리키는 signed annotated tag여야 합니다.
 - GitHub에서 tag가 `Verified`로 표시되지 않으면 draft 생성과 publish를 중단합니다.
 - `Draft Release` workflow 또는 `gh release create --verify-tag`는 이미 존재하는 signed/Verified tag만 사용해야 합니다.

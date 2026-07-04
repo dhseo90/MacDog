@@ -104,6 +104,8 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 - 여러 단계의 변경을 하나의 커밋에 섞지 않습니다.
 - 실패한 단계는 커밋하지 않습니다.
 - 커밋 메시지는 `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:` 같은 명확한 형식을 사용합니다.
+- `git status --short`가 비어 있지 않은 worktree에서는 그 worktree의 현재 브랜치에 대한 PR 생성, PR merge, 로컬/원격 브랜치 삭제를 진행하지 않습니다.
+- 미커밋 변경은 금지하지 않습니다. 다만 해당 브랜치를 PR/merge/delete 대상으로 삼으려면 먼저 변경 범위를 검토하고, 필요한 변경은 검증 후 커밋하거나 사용자 승인 아래 보류 상태를 명확히 기록해 worktree를 clean 상태로 만든 뒤 진행합니다.
 
 푸시는 사용자가 명시적으로 요청하기 전까지 금지합니다.
 
@@ -252,6 +254,7 @@ swift test --filter PopoverScreenshotRendererTests
 
 1. 커밋 준비
    - `git status --short --branch`와 `git diff --stat`로 현재 변경 범위와 브랜치를 확인합니다.
+   - `git status --short`가 비어 있지 않으면 현재 브랜치의 PR 생성, merge, 브랜치 삭제를 진행하지 않습니다.
    - 새 파일은 `??` 또는 staged `A` 항목까지 확인하고, 버전별 로드맵/릴리즈 문서가 요구하는 핵심 source, test, docs가 누락되지 않았는지 확인합니다.
    - PR 생성 전 `git diff --check`, 범위별 focused test, 전체 `swift test`를 통과시킵니다.
    - macOS 앱 변경이 있으면 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO` 또는 현재 repo의 공식 Xcode build 명령을 통과시킵니다.
@@ -259,6 +262,7 @@ swift test --filter PopoverScreenshotRendererTests
    - 검증 통과 후에만 릴리즈 범위 변경을 커밋합니다.
 2. 릴리즈 브랜치와 PR
    - 현재 변경이 `main`에 직접 있으면 릴리즈용 브랜치로 분리합니다.
+   - release branch worktree가 clean 상태가 아니면 `<release-branch>` PR 생성, PR merge, branch cleanup을 진행하지 않습니다.
    - `<release-branch>`를 push하고 `<release-branch> -> main` PR을 생성합니다.
    - PR CI와 리뷰를 확인합니다.
    - 리뷰 또는 CI 실패 시 같은 브랜치에서 수정, 테스트, 커밋, push를 반복합니다.
@@ -293,6 +297,7 @@ swift test --filter PopoverScreenshotRendererTests
 6. Release smoke 종료
    - `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.
    - `./script/verify_release_final_state.sh --version <version>`을 실행합니다.
+   - branch cleanup 전 `git status --short --branch`로 현재 worktree가 clean 상태인지 확인합니다.
    - release branch가 `main`과 `origin/main`에 포함됐는지 확인한 뒤에만 브랜치 정리를 진행합니다.
    - 로컬/원격 release branch 삭제는 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 수행합니다.
    - 정리 후 `git branch -a`로 release branch 잔여 여부를 확인합니다.

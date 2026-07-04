@@ -30,16 +30,16 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | --- | --- | --- | --- |
 | Codex Usage CLI | app-server 사용량 조회, JSON 출력, cache writer, doctor | 구현 완료, 자동 검증 완료 | live app-server protocol drift 발생 시 fixture 갱신 |
 | Shared Cache | app-owned cache, weekly history, stale/error snapshot | 구현 완료, 자동 검증 완료 | cache schema 변경 시 회귀 테스트 유지 |
-| Menu Bar App | status item, runner, popover, refresh, placement | 구현 완료, 자동 검증 완료, v1.3.0 smoke 완료 | 다음 release에서 실제 앱 화면 재확인 |
+| Menu Bar App | status item, runner, popover, refresh, placement | 구현 완료, 자동 검증 완료, v1.5.0 smoke 완료 | 다음 release에서 실제 앱 화면 재확인 |
 | Codex Pup Character | 메뉴바 이미지, 데스크톱 펫, 탭 버튼 이미지 | 구현 완료, 자동 검증 완료 | 캐릭터 변경 시 전체 세트 동시 교체 |
 | Desktop Pet | 드래그 저장, 좌클릭 popover, 우클릭 메뉴, 화면 보정 | 구현 완료, 자동 검증 완료 | 캐릭터/펫 변경 시 실제 동작 재확인 |
-| Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.3.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
+| Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.5.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
 | Privileged Helper | 덮개 닫힘 보호와 잠금 화면 설정 변경 보조 | 구현 완료, 자동 검증 완료 | signed/stable 배포 UX는 Apple Developer Program 의존 범위라 현재 구현 계획에서 제외 |
 | WidgetKit | optional source/opt-in build 경계 | 기본 릴리즈 제외 | App Group provisioning 이후 실제 위젯 UI 검수 |
-| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.4.0 릴리즈 완료, published DMG 재다운로드와 설치본 smoke 검증 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
+| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.5.0 릴리즈 완료, published DMG 재다운로드와 설치본 smoke 검증 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
 | v1.3.0 | 알림 중심 사용량 인지와 탭별 UI 개선 | 릴리즈 완료 | 후속 이슈 없음 |
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
-| v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | P0-P2 구현 완료, 릴리즈 gate 남음 | Step 14부터 release preflight, packaging, tag, published DMG, 설치 smoke 순서로 진행 |
+| v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -250,6 +250,15 @@ v1.5.0 완료 기준:
 - README/ROADMAP/Docs가 v1.5.0 범위와 제외 경계를 같은 용어로 설명합니다.
 - `git diff --check`, 문서 lint, focused `swift test`, 전체 `swift test`, 필요한 경우 Xcode Debug build가 통과합니다.
 - 실제 UI 확인을 하지 않았다면 `UI 확인 미수행`으로 보고합니다.
+
+v1.5.0 릴리즈 결과:
+
+- Release tag: `v1.5.0`
+- Published release head: signed `v1.5.0` tag target
+- GitHub Release 상태: publish 완료
+- Published asset: `MacDog-1.5.0.dmg`, `MacDog-1.5.0.dmg.sha256`
+- 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex 현재/지난/비교 탭, CLI/cache LaunchAgent, 로그인 항목 선호 상태, release final-state를 확인했습니다.
+- 포함된 잔여 수정: `b12dc69`의 로그인 항목 선호 상태 hardening을 v1.5.0 tag/release 범위에 포함했습니다.
 
 ## RunCat UI 참고 방향
 
