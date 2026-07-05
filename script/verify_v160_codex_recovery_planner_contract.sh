@@ -21,6 +21,11 @@ require_text() {
   fi
 }
 
+run_swift_test() {
+  DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+    /usr/bin/xcrun swift test "$@"
+}
+
 if [[ "$#" -ne 1 || "${1:-}" != "--self-test" ]]; then
   echo "usage: $0 --self-test" >&2
   exit 2
@@ -33,6 +38,8 @@ require_file "Sources/CodexUsageCore/Usage/CodexUsageSessionPlan.swift"
 require_file "Sources/MacDog/Popover/CodexRecoveryPlannerViews.swift"
 require_file "Tests/CodexUsageCoreTests/CodexUsageResetScheduleTests.swift"
 require_file "Tests/CodexUsageCoreTests/CodexUsageSessionPlanTests.swift"
+require_file "Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
+require_file "Tests/MacDogTests/UsageNotificationSettingsTests.swift"
 
 require_text 'status --json.*breaking change' "Docs/V160CodexRecoveryPlanner.md" "JSON boundary"
 require_text 'Dashboard 탭' "Docs/V160CodexRecoveryPlanner.md" "Dashboard exclusion"
@@ -41,4 +48,13 @@ require_text 'CodexUsageResetSchedule' "Sources/CodexUsageCore/Usage/CodexUsageR
 require_text 'CodexUsageSessionPlan' "Sources/CodexUsageCore/Usage/CodexUsageSessionPlan.swift" "session plan model"
 require_text 'func json\(from report: CodexUsageReport\)' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "formatter JSON entrypoint"
 
+echo "==> Running v1.6 focused Swift tests"
+run_swift_test --filter CodexUsageResetScheduleTests
+run_swift_test --filter CodexUsageSessionPlanTests
+run_swift_test --filter UsageMonitorStateTests
+run_swift_test --filter UsageNotificationPolicyTests
+run_swift_test --filter UsageNotificationDeliveryTests
+run_swift_test --filter UsageNotificationSettingsTests
+run_swift_test --filter PetMenuModelTests
+run_swift_test --filter PopoverScreenshotRendererTests
 echo "v1.6 recovery planner contract ok"

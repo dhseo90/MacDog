@@ -266,6 +266,8 @@ v1.5.0 릴리즈 결과:
 세부 범위는 [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md)에 둡니다.
 릴리즈 준비와 수동 smoke 경계는 [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md)에 둡니다.
 
+상태: P0-P2 구현 완료 / 자동 검증 완료 / 실제 UI smoke 미수행
+
 v1.6.0 구현 범위:
 
 1. reset schedule 모델을 추가합니다.

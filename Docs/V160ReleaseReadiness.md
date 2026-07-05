@@ -1,29 +1,30 @@
 # v1.6.0 릴리즈 준비 감사
 
-상태: 구현 예정 / release smoke 미수행
+상태: P0-P2 구현 완료 / 자동 검증 완료 / release smoke 미수행
 작성일: 2026-07-05
 대상 버전: `1.6.0`
 
 ## 릴리즈 전 자동검증
 
+2026-07-05 기준 아래 명령이 통과했습니다.
+
 ```sh
 git diff --check
 npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v160_codex_recovery_planner_contract.sh --self-test
-swift test --filter CodexUsageResetScheduleTests
-swift test --filter CodexUsageSessionPlanTests
-swift test --filter UsageMonitorStateTests
-swift test --filter UsageNotificationPolicyTests
-swift test --filter PetMenuModelTests
-swift test --filter PopoverScreenshotRendererTests
-swift test
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift test --no-parallel
 ```
 
-macOS 앱 UI 변경이 있으므로 release head 확정 전 Xcode Debug build도 통과시킵니다.
+`verify_v160_codex_recovery_planner_contract.sh`는 source guard와 focused Swift tests를 함께 실행합니다.
+전체 Swift test는 369개 통과, opt-in screenshot test 2개 skip으로 완료됐습니다.
+
+macOS 앱 UI 변경이 있으므로 release head 확정 전 아래 Xcode Debug build도 통과했습니다.
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
 ```
+
+빌드 중 CoreSimulator out-of-date 경고가 출력됐지만 macOS build는 `BUILD SUCCEEDED`로 종료했습니다.
 
 ## 수동 UI smoke
 
