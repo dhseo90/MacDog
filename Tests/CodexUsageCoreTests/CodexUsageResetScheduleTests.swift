@@ -99,6 +99,25 @@ final class CodexUsageResetScheduleTests: XCTestCase {
         XCTAssertFalse(schedule.primaryEntries.isEmpty)
     }
 
+    func testReportsErrorStateWhenErrorSnapshotHasNoReport() throws {
+        let now = 1_800_000_000
+        let snapshot = Self.snapshot(
+            cachedAt: now,
+            staleAfterSeconds: 120,
+            report: nil,
+            error: CodexUsageCacheError(message: "network unavailable", recordedAt: now)
+        )
+
+        let schedule = CodexUsageResetScheduleBuilder().schedule(
+            snapshot: snapshot,
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(schedule.state, .error)
+        XCTAssertTrue(schedule.entries.isEmpty)
+        XCTAssertEqual(schedule.trustSummary, "오류 상태 함께 표시")
+    }
+
     func testReturnsWaitingScheduleWhenReportIsMissing() throws {
         let now = 1_800_000_000
         let snapshot = Self.snapshot(cachedAt: now, staleAfterSeconds: 120, report: nil)
@@ -111,6 +130,44 @@ final class CodexUsageResetScheduleTests: XCTestCase {
         XCTAssertEqual(schedule.state, .waiting)
         XCTAssertTrue(schedule.entries.isEmpty)
         XCTAssertEqual(schedule.summaryText, "회복 일정 대기")
+    }
+
+    func testDoesNotMarkNextRecoveryWhenResetTimesAreMissing() throws {
+        let now = 1_800_000_000
+        let report = Self.report(
+            fiveHourUsedPercent: 42,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 64,
+            weeklyResetsAt: nil
+        )
+
+        let schedule = CodexUsageResetScheduleBuilder().schedule(
+            report: report,
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(schedule.primaryEntries.count, 2)
+        XCTAssertNil(schedule.nextRecovery)
+        XCTAssertEqual(schedule.primaryEntries.map(\.isNextRecovery), [false, false])
+        XCTAssertEqual(schedule.summaryText, "회복 카드 2장")
+    }
+
+    func testUsesStableTieBreakerWhenResetTimesMatch() throws {
+        let now = 1_800_000_000
+        let report = Self.report(
+            fiveHourUsedPercent: 42,
+            fiveHourResetsAt: now + 3_600,
+            weeklyUsedPercent: 64,
+            weeklyResetsAt: now + 3_600
+        )
+
+        let schedule = CodexUsageResetScheduleBuilder().schedule(
+            report: report,
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(schedule.primaryEntries.map(\.kind), [.fiveHour, .weekly])
+        XCTAssertEqual(schedule.primaryEntries.map(\.isNextRecovery), [true, false])
     }
 
     func testReportsProtocolDriftWhenRequiredCodexWindowsAreMissing() throws {
@@ -203,9 +260,9 @@ final class CodexUsageResetScheduleTests: XCTestCase {
 
     private static func report(
         fiveHourUsedPercent: Double,
-        fiveHourResetsAt: Int,
+        fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
-        weeklyResetsAt: Int
+        weeklyResetsAt: Int?
     ) -> CodexUsageReport {
         CodexUsageReport(
             generatedAt: 0,
@@ -228,9 +285,9 @@ final class CodexUsageResetScheduleTests: XCTestCase {
     private static func limit(
         id: String,
         fiveHourUsedPercent: Double,
-        fiveHourResetsAt: Int,
+        fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
-        weeklyResetsAt: Int
+        weeklyResetsAt: Int?
     ) -> UsageLimitReport {
         UsageLimitReport(
             limitId: id,

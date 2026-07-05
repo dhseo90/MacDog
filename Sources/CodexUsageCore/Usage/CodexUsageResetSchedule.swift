@@ -162,7 +162,13 @@ public struct CodexUsageResetScheduleBuilder: Sendable {
         now: Date
     ) -> CodexUsageResetSchedule {
         guard let report else {
-            return CodexUsageResetSchedule(state: .waiting, entries: [])
+            let state: CodexUsageResetScheduleState = switch cacheState {
+            case .error:
+                .error
+            case .ok, .waiting, .stale, .protocolDrift:
+                .waiting
+            }
+            return CodexUsageResetSchedule(state: state, entries: [])
         }
         guard let codex = report.limits["codex"], codex.hasRequiredCodexUsageWindows else {
             return CodexUsageResetSchedule(state: .protocolDrift, entries: [])
@@ -218,14 +224,24 @@ public struct CodexUsageResetScheduleBuilder: Sendable {
             .sorted { lhs, rhs in
                 switch (lhs.resetsAt, rhs.resetsAt) {
                 case let (.some(left), .some(right)):
-                    return left < right
+                    if left != right {
+                        return left < right
+                    }
                 case (.some, .none):
                     return true
                 case (.none, .some):
                     return false
                 case (.none, .none):
-                    return lhs.title < rhs.title
+                    break
                 }
+
+                let leftPriority = windowKindPriority(lhs.kind)
+                let rightPriority = windowKindPriority(rhs.kind)
+                if leftPriority != rightPriority {
+                    return leftPriority < rightPriority
+                }
+
+                return lhs.id < rhs.id
             }
     }
 
@@ -268,7 +284,7 @@ public struct CodexUsageResetScheduleBuilder: Sendable {
     private func markNextRecovery(
         _ entries: [CodexUsageResetScheduleEntry]
     ) -> [CodexUsageResetScheduleEntry] {
-        guard let firstID = entries.first?.id else { return entries }
+        guard let firstID = entries.first(where: { $0.resetsAt != nil })?.id else { return entries }
         return entries.map { entry in
             CodexUsageResetScheduleEntry(
                 id: entry.id,
@@ -296,6 +312,17 @@ public struct CodexUsageResetScheduleBuilder: Sendable {
             return "주간"
         case .other:
             return window.windowDurationMins.map { "\($0)분" } ?? "기타"
+        }
+    }
+
+    private func windowKindPriority(_ kind: UsageWindowKind) -> Int {
+        switch kind {
+        case .fiveHour:
+            return 0
+        case .weekly:
+            return 1
+        case .other:
+            return 2
         }
     }
 
