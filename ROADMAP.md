@@ -260,6 +260,38 @@ v1.5.0 릴리즈 결과:
 - 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex 현재/지난/비교 탭, CLI/cache LaunchAgent, 로그인 항목 선호 상태, release final-state를 확인했습니다.
 - 포함된 잔여 수정: `b12dc69`의 로그인 항목 선호 상태 hardening을 v1.5.0 tag/release 범위에 포함했습니다.
 
+## v1.6.0: Codex Recovery Planner
+
+`v1.6.0`은 Codex 탭을 "현재 사용량 확인"에서 "회복 일정과 다음 작업 판단"으로 확장합니다.
+세부 범위는 [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md)에 둡니다.
+릴리즈 준비와 수동 smoke 경계는 [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md)에 둡니다.
+
+상태: P0-P2 구현 완료 / 자동 검증 완료 / 실제 UI smoke 미수행
+
+v1.6.0 구현 범위:
+
+1. reset schedule 모델을 추가합니다.
+2. Codex 탭에 5시간/주간 회복 카드를 표시합니다.
+3. 가장 빠른 reset을 다음 회복으로 강조합니다.
+4. stale/error/waiting 상태를 과장 없이 표시합니다.
+5. 작업 세션 계획을 1시간, 3시간, reset까지 기준으로 보여줍니다.
+6. reset 30분 전 알림을 회복 관점 문구로 정리합니다.
+7. 메뉴바 tooltip 또는 펫 메뉴에 다음 초기화 glance를 표시합니다.
+8. CLI 텍스트 출력에 reset schedule 요약을 추가합니다.
+9. v1.6 verifier, focused tests, README/Docs closure를 완료합니다.
+
+v1.6.0 제외 경계:
+
+- `codex-usage status --json` schema breaking change
+- 기존 app-owned cache와 history 파일 schema breaking change
+- raw app-server response, raw log line, auth token, cookie, session material, auth header 저장 또는 출력
+- `Plus`/`Pro $100`/`Pro $200` 가격 tier 추정
+- 공식 Codex 사용량과 로컬 SQLite 추정치 혼합 표시
+- 새 Dashboard 탭
+- Apple Developer Program, Developer ID signing, notarization, App Group provisioning이 필요한 기능
+- WidgetKit 실제 UI 완료 조건 포함
+- 사용자 명시 요청 없는 장시간 테스트, GUI 앱 실행, 설치/LaunchAgent/helper 변경, push
+
 ## RunCat UI 참고 방향
 
 RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이며, 시스템 부하에 따라 속도가 달라지는 상태 표시"입니다. 이 프로젝트는 CPU 부하 대신 Codex 사용률을 속도 입력으로 사용합니다.

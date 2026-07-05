@@ -189,7 +189,7 @@ final class UsageNotificationDispatcher {
     }
 }
 
-private extension UsageNotificationCandidate {
+extension UsageNotificationCandidate {
     var notificationContent: UsageNotificationContent {
         UsageNotificationContent(
             identifier: dedupeKey.rawValue,
@@ -207,7 +207,7 @@ private extension UsageNotificationCandidate {
         case .limitReached:
             "Codex 한도 도달"
         case .resetSoon:
-            "Codex reset 임박"
+            "Codex 회복 임박"
         }
     }
 
@@ -221,7 +221,17 @@ private extension UsageNotificationCandidate {
         case .limitReached:
             return "\(window.label) 사용량이 \(percent)%입니다. 한도 도달 상태를 확인하세요."
         case .resetSoon:
-            return "\(window.label) 사용량이 \(percent)%이고 reset까지 30분 이하입니다."
+            return "5시간 한도가 곧 회복됩니다.\(resetSuffix)"
         }
+    }
+
+    private var resetSuffix: String {
+        guard let resetsAt else { return "" }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "M월 d일 HH:mm"
+        let resetTime = formatter.string(from: Date(timeIntervalSince1970: TimeInterval(resetsAt)))
+        return " 초기화 시각 \(resetTime)"
     }
 }

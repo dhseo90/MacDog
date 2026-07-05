@@ -109,6 +109,28 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 
 푸시는 사용자가 명시적으로 요청하기 전까지 금지합니다.
 
+### 4.1 PR 리뷰 우회
+
+릴리즈 PR이 작성자 본인 review 금지 때문에 `REVIEW_REQUIRED`로 막힌 경우,
+사용자가 `admin bypass`, `관리자 우회 merge`, `2번으로 진행`처럼 명시 승인하면
+branch protection의 review requirement를 관리자 권한으로 우회해 merge할 수 있습니다.
+
+허용 조건:
+
+- worktree가 clean 상태입니다.
+- PR CI와 필수 status check가 모두 통과했습니다.
+- PR이 `MERGEABLE`이고 대화 해결 요구가 남아 있지 않습니다.
+- blocker가 self-approval 불가에 따른 review requirement뿐임을 확인했습니다.
+- 사용자가 현재 PR에 대해 admin bypass를 명시 승인했습니다.
+
+금지:
+
+- CI 실패, 충돌, unresolved conversation, requested changes 상태에서 admin bypass merge
+- 사용자 명시 승인 없는 admin bypass merge
+- admin bypass를 대신해 branch protection 설정을 임시 완화하는 행위
+
+보고 시 admin bypass를 사용한 사실, 실행 명령, merge SHA, CI 상태, 우회 사유를 분리해서 기록합니다.
+
 마지막 보고 형식:
 
 ```text

@@ -2,10 +2,19 @@ struct PetMenuModel: Equatable {
     let title: String
     let entries: [PetMenuEntry]
 
-    init(preferences: RunnerPreferences, surface: PetSurface) {
+    init(preferences: RunnerPreferences, surface: PetSurface, nextResetGlance: String? = nil) {
         self.title = "코덱스 펫"
-        self.entries = [
+        var entries: [PetMenuEntry] = [
             .command(PetMenuCommand(title: "사용량 상세 보기", action: .showUsageDetails)),
+        ]
+        if let nextResetGlance {
+            entries.append(.command(PetMenuCommand(
+                title: nextResetGlance,
+                action: .showUsageDetails,
+                isEnabled: false
+            )))
+        }
+        entries += [
             .command(PetMenuCommand(title: "캐시 다시 읽기", action: .refreshNow)),
             .separator,
             .submenu(Self.speedSubmenu(preferences: preferences)),
@@ -29,6 +38,7 @@ struct PetMenuModel: Equatable {
             .separator,
             .command(PetMenuCommand(title: "코덱스 사용량 종료", action: .quit))
         ]
+        self.entries = entries
     }
 
     var commands: [PetMenuCommand] {

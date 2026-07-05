@@ -80,6 +80,7 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 ## 주요 기능
 
 - Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
+- Codex 회복 계획: 5시간/주간 초기화 카드, 다음 회복 시점, 작업 세션별 예상 사용률을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.

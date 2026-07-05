@@ -4,12 +4,19 @@ import SwiftUI
 struct CodexUsagePanel: View {
     let state: UsageMonitorState
 
+    @State private var selectedPlanDuration: CodexUsageSessionPlanDuration = .oneHour
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
                 CodexUsageSummaryBlock(summary: summary, phase: state.phase)
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)
+                CodexRecoveryPlannerBlock(
+                    schedule: state.codexResetSchedule(now: resetSummaryNow),
+                    plan: state.codexSessionPlan(duration: selectedPlanDuration, now: resetSummaryNow),
+                    selectedDuration: $selectedPlanDuration
+                )
 
                 VStack(alignment: .leading, spacing: 8) {
                     UsageRow(

@@ -6,6 +6,109 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
+    func testCodexRecoveryPlannerBlockBuildsCompactLayout() {
+        var selectedDuration = CodexUsageSessionPlanDuration.oneHour
+        let entries = [
+            CodexUsageResetScheduleEntry(
+                id: "codex.fiveHour.1800007200",
+                limitId: "codex",
+                limitName: "Codex",
+                title: "5시간",
+                kind: .fiveHour,
+                scope: .primary,
+                windowDurationMins: 300,
+                resetsAt: 1_800_007_200,
+                remainingSeconds: 7_200,
+                usedPercent: 62,
+                remainingPercent: 38,
+                trustState: .stale,
+                isNextRecovery: true
+            ),
+            CodexUsageResetScheduleEntry(
+                id: "codex.weekly.1800604800",
+                limitId: "codex",
+                limitName: "Codex",
+                title: "주간",
+                kind: .weekly,
+                scope: .primary,
+                windowDurationMins: 10_080,
+                resetsAt: 1_800_604_800,
+                remainingSeconds: 604_800,
+                usedPercent: 41,
+                remainingPercent: 59,
+                trustState: .stale,
+                isNextRecovery: false
+            )
+        ]
+        let schedule = CodexUsageResetSchedule(state: .stale, entries: entries)
+        let plan = CodexUsageSessionPlan(
+            duration: .oneHour,
+            durationSeconds: 3_600,
+            state: .watch,
+            availability: .ready,
+            currentUsedPercent: 62,
+            projectedUsedPercentAtEnd: 81,
+            usedPercentPerHour: 19,
+            sampleCount: 2
+        )
+        let utc = try! XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        let locale = Locale(identifier: "en_US_POSIX")
+
+        XCTAssertEqual(schedule.primaryEntries.count, 2)
+        XCTAssertEqual(schedule.primaryEntries.first?.title, "5시간")
+        XCTAssertEqual(schedule.primaryEntries.first?.isNextRecovery, true)
+        XCTAssertEqual(schedule.primaryEntries.last?.title, "주간")
+        XCTAssertEqual(
+            CodexRecoveryResetTextFormatter.relativeText(remainingSeconds: entries[0].remainingSeconds),
+            "2시간 후"
+        )
+        XCTAssertEqual(
+            CodexRecoveryResetTextFormatter.resetDateText(
+                resetsAt: entries[0].resetsAt,
+                timeZone: utc,
+                locale: locale
+            ),
+            "1/15 10:00 초기화"
+        )
+        XCTAssertEqual(
+            CodexRecoveryResetTextFormatter.resetDateText(
+                resetsAt: entries[1].resetsAt,
+                timeZone: utc,
+                locale: locale
+            ),
+            "1/22 08:00 초기화"
+        )
+        XCTAssertEqual(plan.title, "1시간 작업 주의")
+        XCTAssertEqual(plan.detail, "예상 사용률 81%")
+
+        let view = CodexRecoveryPlannerBlock(
+            schedule: schedule,
+            plan: plan,
+            selectedDuration: Binding(
+                get: { selectedDuration },
+                set: { selectedDuration = $0 }
+            )
+        )
+
+        let hostingView = NSHostingView(rootView: view.frame(width: 320))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 180)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(selectedDuration, .oneHour)
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 180)
+    }
+
+    func testCodexRecoveryResetFormatterFallsBackWhenResetDateIsUnavailable() {
+        XCTAssertEqual(
+            CodexRecoveryResetTextFormatter.resetDateText(resetsAt: nil),
+            "초기화 시각 확인 불가"
+        )
+        XCTAssertEqual(
+            CodexRecoveryResetTextFormatter.relativeText(remainingSeconds: nil),
+            "시각 확인 불가"
+        )
+    }
+
     func testRenderReadmeScreenshotsWhenRequested() throws {
         guard ProcessInfo.processInfo.environment["MACDOG_RENDER_README_SCREENSHOTS"] == "1" else {
             throw XCTSkip("README screenshot rendering is opt-in.")

@@ -38,6 +38,11 @@ enum UsageNotificationAuthorizationStatus: Equatable, Sendable {
     }
 }
 
+enum UsageNotificationSettingsCopy {
+    static let usageToggleTitle = "Codex 사용량 알림"
+    static let resetSoonToggleTitle = "회복 30분 전 알림"
+}
+
 struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
     let usageNotificationsEnabled: Bool
     let resetSoonNotificationsEnabled: Bool
@@ -76,7 +81,7 @@ struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
         switch authorizationStatus {
         case .authorized:
             return resetSoonNotificationsEnabled
-                ? "80%, 95%, 한도 도달, reset 30분 전 기준을 확인합니다."
+                ? "80%, 95%, 한도 도달, 회복 30분 전 기준을 확인합니다."
                 : "80%, 95%, 한도 도달 기준을 확인합니다."
         case .denied:
             return "macOS 알림 설정에서 MacDog 알림을 허용해야 발송됩니다."
@@ -88,7 +93,10 @@ struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
     }
 
     var visibleControlTitles: [String] {
-        ["Codex 사용량 알림", "Reset 30분 전 알림"]
+        [
+            UsageNotificationSettingsCopy.usageToggleTitle,
+            UsageNotificationSettingsCopy.resetSoonToggleTitle
+        ]
     }
 }
 

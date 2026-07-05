@@ -41,9 +41,42 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         ])
         XCTAssertEqual(deliveredContents.map(\.title), [
             "Codex 사용량 높음",
-            "Codex reset 임박"
+            "Codex 회복 임박"
         ])
+        let resetContent = try XCTUnwrap(deliveredContents.first {
+            $0.identifier == "usage.resetSoon.fiveHour.reset.1800001800"
+        })
+        XCTAssertTrue(resetContent.body.contains("5시간 한도가 곧 회복됩니다."))
+        XCTAssertFalse(resetContent.body.contains("사용량이 82%"))
+        XCTAssertFalse(resetContent.body.contains("reset까지 30분 이하"))
         XCTAssertEqual(dedupeStore.ledger.deliveredKeys.map(\.rawValue), result.deliveredKeys.map(\.rawValue))
+    }
+
+    func testResetSoonNotificationUsesRecoveryCopy() {
+        let candidate = UsageNotificationCandidate(
+            event: .resetSoon,
+            window: .fiveHour,
+            usedPercent: 88,
+            resetsAt: 1_800_001_800
+        )
+
+        XCTAssertEqual(candidate.notificationContent.title, "Codex 회복 임박")
+        XCTAssertTrue(candidate.notificationContent.body.contains("5시간 한도가 곧 회복됩니다."))
+        XCTAssertFalse(candidate.notificationContent.body.contains("reset까지 30분 이하"))
+    }
+
+    func testResetSoonNotificationKeepsFiveHourRecoveryCopyForWeeklyCandidate() {
+        let candidate = UsageNotificationCandidate(
+            event: .resetSoon,
+            window: .weekly,
+            usedPercent: 88,
+            resetsAt: 1_800_001_800
+        )
+
+        XCTAssertEqual(candidate.notificationContent.title, "Codex 회복 임박")
+        XCTAssertTrue(candidate.notificationContent.body.contains("5시간 한도가 곧 회복됩니다."))
+        XCTAssertTrue(candidate.notificationContent.body.contains("초기화 시각"))
+        XCTAssertFalse(candidate.notificationContent.body.contains("주간 한도가 곧 회복됩니다."))
     }
 
     func testDispatcherFiltersResetSoonAndAlreadyDeliveredKeys() async throws {

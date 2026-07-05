@@ -184,6 +184,31 @@ struct UsageMonitorState: Equatable {
         )
     }
 
+    func codexResetSchedule(now: Date = Date()) -> CodexUsageResetSchedule {
+        if let cacheSnapshot {
+            return CodexUsageResetScheduleBuilder().schedule(snapshot: cacheSnapshot, now: now)
+        }
+        return CodexUsageResetScheduleBuilder().schedule(report: report, now: now)
+    }
+
+    func codexSessionPlan(
+        duration: CodexUsageSessionPlanDuration,
+        now: Date = Date()
+    ) -> CodexUsageSessionPlan {
+        CodexUsageSessionPlanBuilder().plan(
+            snapshot: cacheSnapshot,
+            weeklyHistory: weeklyUsageHistory,
+            duration: duration,
+            now: now
+        )
+    }
+
+    func nextResetGlance(now: Date = Date()) -> String? {
+        let schedule = codexResetSchedule(now: now)
+        guard let next = schedule.nextRecovery else { return nil }
+        return "다음 초기화: \(next.title) \(Self.relativeDuration(next.remainingSeconds))"
+    }
+
     var codexDataStatus: CodexUsageDataStatus {
         if cacheSnapshot?.error != nil {
             return CodexUsageDataStatus(
@@ -325,6 +350,21 @@ struct UsageMonitorState: Equatable {
             return String(summary.dropFirst("초기화 ".count))
         }
         return summary
+    }
+
+    private static func relativeDuration(_ seconds: Int?) -> String {
+        guard let seconds else { return "시각 확인 불가" }
+        if seconds <= 0 { return "곧" }
+
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        if hours > 0, minutes > 0 {
+            return "\(hours)시간 \(minutes)분 후"
+        }
+        if hours > 0 {
+            return "\(hours)시간 후"
+        }
+        return "\(max(minutes, 1))분 후"
     }
 
     private static func unit(_ singular: String, count: Int) -> String {
