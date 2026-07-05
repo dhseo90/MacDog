@@ -1,4 +1,5 @@
 import CodexUsageCore
+import Foundation
 import SwiftUI
 
 struct CodexRecoveryPlannerBlock: View {
@@ -77,6 +78,39 @@ private struct CodexRecoveryCardsBlock: View {
     }
 }
 
+struct CodexRecoveryResetTextFormatter {
+    static func relativeText(remainingSeconds: Int?) -> String {
+        guard let seconds = remainingSeconds else { return "시각 확인 불가" }
+        if seconds <= 0 { return "곧 회복" }
+
+        let days = seconds / 86_400
+        let hours = (seconds % 86_400) / 3_600
+        let minutes = (seconds % 3_600) / 60
+
+        if days > 0 {
+            return hours > 0 ? "\(days)일 \(hours)시간 후" : "\(days)일 후"
+        }
+        if hours > 0 {
+            return minutes > 0 ? "\(hours)시간 \(minutes)분 후" : "\(hours)시간 후"
+        }
+        return "\(max(minutes, 1))분 후"
+    }
+
+    static func resetDateText(
+        resetsAt: Int?,
+        timeZone: TimeZone = .current,
+        locale: Locale = .current
+    ) -> String {
+        guard let resetsAt else { return "초기화 시각 확인 불가" }
+
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "M/d HH:mm '초기화'"
+        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(resetsAt)))
+    }
+}
+
 private struct CodexRecoveryCard: View {
     let entry: CodexUsageResetScheduleEntry
     let scheduleTint: Color
@@ -94,11 +128,11 @@ private struct CodexRecoveryCard: View {
                 Spacer(minLength: 0)
             }
 
-            Text(relativeTimeText)
+            Text(resetSummaryText)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.58)
 
             Text("남음 \(percentText(entry.remainingPercent)) · 사용 \(percentText(entry.usedPercent))")
                 .font(.caption2)
@@ -120,7 +154,7 @@ private struct CodexRecoveryCard: View {
                 .stroke(tint.opacity(entry.isNextRecovery ? 0.34 : 0.18), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(entry.title), \(relativeTimeText), \(entry.remainingPercent.rounded())% 남음")
+        .accessibilityLabel("\(entry.title), \(resetSummaryText), \(entry.remainingPercent.rounded())% 남음")
     }
 
     private var tint: Color {
@@ -132,20 +166,15 @@ private struct CodexRecoveryCard: View {
     }
 
     private var relativeTimeText: String {
-        guard let seconds = entry.remainingSeconds else { return "시각 확인 불가" }
-        if seconds <= 0 { return "곧 회복" }
+        CodexRecoveryResetTextFormatter.relativeText(remainingSeconds: entry.remainingSeconds)
+    }
 
-        let days = seconds / 86_400
-        let hours = (seconds % 86_400) / 3_600
-        let minutes = (seconds % 3_600) / 60
+    private var resetDateText: String {
+        CodexRecoveryResetTextFormatter.resetDateText(resetsAt: entry.resetsAt)
+    }
 
-        if days > 0 {
-            return hours > 0 ? "\(days)일 \(hours)시간 후" : "\(days)일 후"
-        }
-        if hours > 0 {
-            return minutes > 0 ? "\(hours)시간 \(minutes)분 후" : "\(hours)시간 후"
-        }
-        return "\(max(minutes, 1))분 후"
+    private var resetSummaryText: String {
+        "\(relativeTimeText) · \(resetDateText)"
     }
 
     private func percentText(_ value: Double) -> String {
