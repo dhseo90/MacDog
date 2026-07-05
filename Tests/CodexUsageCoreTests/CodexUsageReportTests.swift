@@ -57,6 +57,27 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Plan: pro"))
     }
 
+    func testFormatsResetScheduleInTextReportWithoutChangingJSON() throws {
+        let response = try loadFixture()
+        let report = try CodexUsageReportBuilder(dateProvider: {
+            Date(timeIntervalSince1970: 1_779_700_000)
+        }).build(from: response)
+        let formatter = CodexUsageFormatter(
+            timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!,
+            locale: Locale(identifier: "en_US_POSIX"),
+            now: { Date(timeIntervalSince1970: 1_779_700_000) }
+        )
+
+        let text = formatter.text(from: report)
+        let json = String(decoding: try formatter.json(from: report), as: UTF8.self)
+
+        XCTAssertTrue(text.contains("Recovery cards: 2"))
+        XCTAssertTrue(text.contains("Next reset:"))
+        XCTAssertTrue(text.contains("Weekly reset:"))
+        XCTAssertFalse(json.contains("Recovery cards"))
+        XCTAssertFalse(json.contains("Next reset"))
+    }
+
     func testPlanDisplayKeepsRawPlanTypeAndDoesNotInferPricingTier() {
         XCTAssertEqual(CodexUsagePlanDisplay.displayLabel(rawPlanType: "pro"), "pro")
         XCTAssertEqual(CodexUsagePlanDisplay.displayLabel(rawPlanType: "plus"), "plus")

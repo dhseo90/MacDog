@@ -182,7 +182,7 @@ struct CLI {
       codex-usage doctor
 
     Commands:
-      status   Print current Codex 5-hour and weekly usage.
+      status   Print current Codex usage and reset schedule.
       doctor   Check Codex CLI and app-server usage access.
     """
 }
