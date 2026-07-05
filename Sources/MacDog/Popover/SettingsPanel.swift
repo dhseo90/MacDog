@@ -209,14 +209,14 @@ private struct UsageNotificationSettingsContent: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Toggle("Codex 사용량 알림", isOn: $usageNotificationsEnabled)
+                Toggle(UsageNotificationSettingsCopy.usageToggleTitle, isOn: $usageNotificationsEnabled)
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
                     .font(.caption2.weight(.medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
-                Toggle("Reset 30분 전 알림", isOn: $resetSoonNotificationsEnabled)
+                Toggle(UsageNotificationSettingsCopy.resetSoonToggleTitle, isOn: $resetSoonNotificationsEnabled)
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
                     .font(.caption2.weight(.medium))

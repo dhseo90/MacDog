@@ -38,6 +38,11 @@ enum UsageNotificationAuthorizationStatus: Equatable, Sendable {
     }
 }
 
+enum UsageNotificationSettingsCopy {
+    static let usageToggleTitle = "Codex 사용량 알림"
+    static let resetSoonToggleTitle = "회복 30분 전 알림"
+}
+
 struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
     let usageNotificationsEnabled: Bool
     let resetSoonNotificationsEnabled: Bool
@@ -88,7 +93,10 @@ struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
     }
 
     var visibleControlTitles: [String] {
-        ["Codex 사용량 알림", "회복 30분 전 알림"]
+        [
+            UsageNotificationSettingsCopy.usageToggleTitle,
+            UsageNotificationSettingsCopy.resetSoonToggleTitle
+        ]
     }
 }
 

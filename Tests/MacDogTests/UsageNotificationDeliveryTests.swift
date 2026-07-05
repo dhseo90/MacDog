@@ -65,6 +65,20 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertFalse(candidate.notificationContent.body.contains("reset까지 30분 이하"))
     }
 
+    func testResetSoonNotificationKeepsFiveHourRecoveryCopyForWeeklyCandidate() {
+        let candidate = UsageNotificationCandidate(
+            event: .resetSoon,
+            window: .weekly,
+            usedPercent: 88,
+            resetsAt: 1_800_001_800
+        )
+
+        XCTAssertEqual(candidate.notificationContent.title, "Codex 회복 임박")
+        XCTAssertTrue(candidate.notificationContent.body.contains("5시간 한도가 곧 회복됩니다."))
+        XCTAssertTrue(candidate.notificationContent.body.contains("초기화 시각"))
+        XCTAssertFalse(candidate.notificationContent.body.contains("주간 한도가 곧 회복됩니다."))
+    }
+
     func testDispatcherFiltersResetSoonAndAlreadyDeliveredKeys() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()

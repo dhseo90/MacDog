@@ -221,7 +221,7 @@ extension UsageNotificationCandidate {
         case .limitReached:
             return "\(window.label) 사용량이 \(percent)%입니다. 한도 도달 상태를 확인하세요."
         case .resetSoon:
-            return "\(window.label) 한도가 곧 회복됩니다.\(resetSuffix)"
+            return "5시간 한도가 곧 회복됩니다.\(resetSuffix)"
         }
     }
 
