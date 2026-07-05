@@ -21,7 +21,7 @@ require_text() {
   fi
 }
 
-if [[ "${1:-}" != "--self-test" ]]; then
+if [[ "$#" -ne 1 || "${1:-}" != "--self-test" ]]; then
   echo "usage: $0 --self-test" >&2
   exit 2
 fi
@@ -39,6 +39,6 @@ require_text 'Dashboard 탭' "Docs/V160CodexRecoveryPlanner.md" "Dashboard exclu
 require_text 'auth token|session material' "Docs/V160CodexRecoveryPlanner.md" "auth redaction boundary"
 require_text 'CodexUsageResetSchedule' "Sources/CodexUsageCore/Usage/CodexUsageResetSchedule.swift" "reset schedule model"
 require_text 'CodexUsageSessionPlan' "Sources/CodexUsageCore/Usage/CodexUsageSessionPlan.swift" "session plan model"
-require_text 'status --json' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "formatter JSON boundary note"
+require_text 'func json\(from report: CodexUsageReport\)' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "formatter JSON entrypoint"
 
 echo "v1.6 recovery planner contract ok"
