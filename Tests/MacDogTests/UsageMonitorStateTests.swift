@@ -152,6 +152,86 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(summary.resetCountdowns.first?.value, "1시간 남음 · 09:00")
     }
 
+    func testCodexResetScheduleUsesCacheTrustState() {
+        let now = 1_800_000_000
+        let report = Self.report(
+            fiveHourUsedPercent: 68,
+            weeklyUsedPercent: 42,
+            fiveHourResetsAt: now + 3_600,
+            weeklyResetsAt: now + 604_800
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(
+                cachedAt: now - 300,
+                staleAfterSeconds: 120,
+                report: report
+            ),
+            errorMessage: nil
+        )
+
+        let schedule = state.codexResetSchedule(now: Date(timeIntervalSince1970: TimeInterval(now)))
+
+        XCTAssertEqual(schedule.state, .stale)
+        XCTAssertEqual(schedule.primaryEntries.map(\.title), ["5시간", "주간"])
+    }
+
+    func testCodexSessionPlanUsesOptionalCacheSnapshotAndWeeklyHistory() throws {
+        let now = 1_800_000_000
+        let resetsAt = now + 3 * 60 * 60
+        let report = Self.report(
+            fiveHourUsedPercent: 12,
+            weeklyUsedPercent: 75,
+            weeklyResetsAt: resetsAt
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(
+                cachedAt: now,
+                staleAfterSeconds: 120,
+                report: report
+            ),
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [
+                Self.weeklySample(recordedAt: now - 60 * 60, remainingPercent: 30, resetsAt: resetsAt)
+            ]),
+            errorMessage: nil
+        )
+
+        let plan = state.codexSessionPlan(
+            duration: .oneHour,
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(plan.availability, .ready)
+        XCTAssertEqual(plan.state, .watch)
+        XCTAssertEqual(plan.durationSeconds, 3_600)
+        XCTAssertEqual(try XCTUnwrap(plan.projectedUsedPercentAtEnd), 80, accuracy: 0.0001)
+        XCTAssertEqual(plan.sampleCount, 2)
+    }
+
+    func testNextResetTooltipSummary() {
+        let now = 1_800_000_000
+        let report = Self.report(
+            fiveHourUsedPercent: 68,
+            weeklyUsedPercent: 42,
+            fiveHourResetsAt: now + 3_600,
+            weeklyResetsAt: now + 604_800
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(
+                cachedAt: now,
+                report: report
+            ),
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(
+            state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))),
+            "다음 초기화: 5시간 1시간 후"
+        )
+    }
+
     func testCodexDataStatusReportsReadyCacheAndHistory() {
         let weeklyReset = 1_800_604_800
         let report = Self.report(

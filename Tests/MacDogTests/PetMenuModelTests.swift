@@ -60,6 +60,21 @@ final class PetMenuModelTests: XCTestCase {
         XCTAssertEqual(submenu(in: model, titled: "시간 기준 길이")?.isEnabled, true)
     }
 
+    func testMenuModelIncludesNextResetGlanceWhenProvided() {
+        let preferences = RunnerPreferences(defaults: defaults)
+        let model = PetMenuModel(
+            preferences: preferences,
+            surface: .menuBar,
+            nextResetGlance: "다음 초기화: 5시간 1시간 후"
+        )
+
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(
+            title: "다음 초기화: 5시간 1시간 후",
+            action: .showUsageDetails,
+            isEnabled: false
+        )))
+    }
+
     func testMenuModelReflectsConditionTriggerToggleActions() {
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionMemoryThresholdTrigger(true, defaults: defaults)

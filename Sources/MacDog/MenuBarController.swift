@@ -224,7 +224,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func applyState(_ newState: UsageMonitorState) {
         state = newState
         updatePopoverController()
-        statusItem.button?.toolTip = state.toolTip
+        statusItem.button?.toolTip = [
+            state.toolTip,
+            state.nextResetGlance()
+        ]
+        .compactMap(\.self)
+        .joined(separator: "\n")
         renderCurrentFrame()
     }
 
@@ -674,7 +679,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func makePetMenu(surface: PetSurface) -> NSMenu {
-        let model = PetMenuModel(preferences: preferences, surface: surface)
+        let model = PetMenuModel(
+            preferences: preferences,
+            surface: surface,
+            nextResetGlance: state.nextResetGlance()
+        )
         let menu = NSMenu(title: model.title)
         for entry in model.entries {
             switch entry {
