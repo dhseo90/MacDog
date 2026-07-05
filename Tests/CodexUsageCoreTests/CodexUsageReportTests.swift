@@ -74,8 +74,11 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Recovery cards: 2"))
         XCTAssertTrue(text.contains("Next reset:"))
         XCTAssertTrue(text.contains("Weekly reset:"))
+        XCTAssertTrue(text.contains("Next reset: 5시간 2026-05-26 01:27 GMT+9 (in 7h 21m)"))
+        XCTAssertTrue(text.contains("Weekly reset: 2026-05-31 09:19 GMT+9 (in 135h 12m)"))
         XCTAssertFalse(json.contains("Recovery cards"))
         XCTAssertFalse(json.contains("Next reset"))
+        XCTAssertFalse(json.contains("Weekly reset"))
     }
 
     func testPlanDisplayKeepsRawPlanTypeAndDoesNotInferPricingTier() {
