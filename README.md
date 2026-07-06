@@ -155,6 +155,7 @@ MACDOG_APP_VERSION=<version> ./script/build_and_run.sh
 npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v140_usage_intelligence_contract.sh --self-test
 ./script/verify_v150_usage_reliability_contract.sh --self-test
+./script/verify_v160_codex_recovery_planner_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -168,6 +169,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/sample_existing_runtime_resources.sh --samples 5 --interval 1` | 이미 실행 중인 MacDog 프로세스의 CPU/RSS를 read-only로 샘플링합니다. |
 | `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
+| `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
@@ -255,6 +257,8 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V140ReleaseReadiness.md](Docs/V140ReleaseReadiness.md): v1.4.0 릴리즈 잔여 이슈와 실행 순서
 - [Docs/V150UsageReliability.md](Docs/V150UsageReliability.md): v1.5.0 사용량 reliability, reset boundary, cache/history 진단 경계
 - [Docs/V150ReleaseReadiness.md](Docs/V150ReleaseReadiness.md): v1.5.0 릴리즈 잔여 이슈와 실행 순서
+- [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md): v1.6.0 Codex Usage & Reset Credits UI와 데이터 경계
+- [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md): v1.6.0 릴리즈 준비 감사와 완료 smoke 기록
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
