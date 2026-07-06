@@ -184,29 +184,24 @@ struct UsageMonitorState: Equatable {
         )
     }
 
-    func codexResetSchedule(now: Date = Date()) -> CodexUsageResetSchedule {
-        if let cacheSnapshot {
-            return CodexUsageResetScheduleBuilder().schedule(snapshot: cacheSnapshot, now: now)
-        }
-        return CodexUsageResetScheduleBuilder().schedule(report: report, now: now)
-    }
-
-    func codexSessionPlan(
-        duration: CodexUsageSessionPlanDuration,
-        now: Date = Date()
-    ) -> CodexUsageSessionPlan {
-        CodexUsageSessionPlanBuilder().plan(
-            snapshot: cacheSnapshot,
-            weeklyHistory: weeklyUsageHistory,
-            duration: duration,
-            now: now
-        )
-    }
-
     func nextResetGlance(now: Date = Date()) -> String? {
-        let schedule = codexResetSchedule(now: now)
-        guard let next = schedule.nextRecovery else { return nil }
-        return "다음 초기화: \(next.title) \(Self.relativeDuration(next.remainingSeconds))"
+        let candidates = [
+            UsageWindowStatus(label: "5시간", window: codexLimit?.fiveHour),
+            UsageWindowStatus(label: "주간", window: codexLimit?.weekly)
+        ]
+        .compactMap { status -> (label: String, remainingSeconds: Int)? in
+            guard let status,
+                  let resetsAt = status.window.resetsAt
+            else { return nil }
+
+            let resetDate = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+            let remainingSeconds = Int(ceil(resetDate.timeIntervalSince(now)))
+            return remainingSeconds > 0 ? (status.label, remainingSeconds) : nil
+        }
+        .sorted { $0.remainingSeconds < $1.remainingSeconds }
+
+        guard let next = candidates.first else { return nil }
+        return "다음 초기화: \(next.label) \(Self.relativeDuration(next.remainingSeconds))"
     }
 
     var codexDataStatus: CodexUsageDataStatus {

@@ -78,10 +78,10 @@ enum MacDogPopoverLayout {
 }
 
 enum CodexUsagePanelLayout {
-    static let weeklyGraphHeight: CGFloat = 74
+    static let weeklyGraphHeight: CGFloat = 52
     static let weeklyGraphYAxisWidth: CGFloat = 28
     static let weeklyGraphAxisSpacing: CGFloat = 5
-    static let weeklyGraphTimelineHeight: CGFloat = 13
+    static let weeklyGraphTimelineHeight: CGFloat = 10
 
     static var weeklyGraphPlotStartX: CGFloat {
         weeklyGraphYAxisWidth + weeklyGraphAxisSpacing

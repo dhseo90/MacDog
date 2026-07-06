@@ -29,10 +29,26 @@ final class CodexAppServerRequestFactoryTests: XCTestCase {
         XCTAssertNil(object["params"])
     }
 
+    func testChatGPTAuthTokensRefreshRequestKeepsTokenOutOfRequest() throws {
+        let request = try CodexAppServerRequestFactory().chatGPTAuthTokensRefreshRequest(previousAccountId: "acct_123")
+        let object = try jsonObject(fromLineRequest: request)
+
+        XCTAssertEqual(object["id"] as? Int, 3)
+        XCTAssertEqual(object["method"] as? String, "account/chatgptAuthTokens/refresh")
+
+        let params = try XCTUnwrap(object["params"] as? [String: Any])
+        XCTAssertEqual(params["reason"] as? String, "unauthorized")
+        XCTAssertEqual(params["previousAccountId"] as? String, "acct_123")
+        XCTAssertNil(params["accessToken"])
+        XCTAssertNil(params["refreshToken"])
+        XCTAssertNil(params["cookie"])
+    }
+
     func testRequestsAreNewlineDelimitedAndDoNotContainAuthMaterial() throws {
         let requests = [
             try CodexAppServerRequestFactory().initializeRequest(),
-            try CodexAppServerRequestFactory().rateLimitReadRequest()
+            try CodexAppServerRequestFactory().rateLimitReadRequest(),
+            try CodexAppServerRequestFactory().chatGPTAuthTokensRefreshRequest(previousAccountId: nil)
         ]
 
         for request in requests {

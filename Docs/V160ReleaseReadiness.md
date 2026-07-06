@@ -1,12 +1,12 @@
 # v1.6.0 릴리즈 준비 감사
 
-상태: P0-P2 구현 완료 / 자동 검증 완료 / release smoke 미수행
+상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
 작성일: 2026-07-05
 대상 버전: `1.6.0`
 
 ## 릴리즈 전 자동검증
 
-2026-07-05 기준 아래 명령이 통과했습니다.
+2026-07-05 재작업 기준 아래 명령이 통과했습니다.
 
 ```sh
 git diff --check
@@ -16,9 +16,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift te
 ```
 
 `verify_v160_codex_recovery_planner_contract.sh`는 source guard와 focused Swift tests를 함께 실행합니다.
-전체 Swift test는 369개 통과, opt-in screenshot test 2개 skip으로 완료됐습니다.
+전체 Swift test는 351개 통과, opt-in screenshot test 2개 skip으로 완료됐습니다.
 
-macOS 앱 UI 변경이 있으므로 release head 확정 전 아래 Xcode Debug build도 통과했습니다.
+macOS 앱 UI 변경이 있으므로 아래 Xcode Debug build도 통과했습니다.
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
@@ -30,9 +30,10 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild bui
 
 실제 menu bar popover를 열지 않았다면 `UI 확인 미수행`으로 보고합니다.
 
-- Codex 탭 회복 카드가 겹치지 않는지 확인합니다.
-- 다음 회복 강조가 보이는지 확인합니다.
-- 1시간, 3시간, reset까지 session plan 선택이 동작하는지 확인합니다.
+- Codex 탭에 회복 일정 카드가 없는지 확인합니다.
+- 1시간, 3시간, reset까지 session plan 선택이 없는지 확인합니다.
+- 5시간/주간 사용량이 각각 한 번만 표시되는지 확인합니다.
+- 사용자 초기화권 장수와 장별 유효기간이 보이는지 확인합니다.
 - 현재/지난/비교 그래프가 아래로 밀려도 읽을 수 있는지 확인합니다.
 - 메뉴바 tooltip 또는 펫 메뉴에 다음 초기화 glance가 보이는지 확인합니다.
 

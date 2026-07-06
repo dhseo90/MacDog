@@ -16,6 +16,7 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertEqual(report.codexLimit?.fiveHour?.usedPercent, 15)
         XCTAssertEqual(report.codexLimit?.weekly?.usedPercent, 38)
         XCTAssertEqual(report.codexLimit?.maxUsedPercent, 38)
+        XCTAssertEqual(report.resetCredits?.availableCount, 2)
         XCTAssertNotNil(report.limits["codex_bengalfox"])
     }
 
@@ -57,7 +58,7 @@ final class CodexUsageReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Plan: pro"))
     }
 
-    func testFormatsResetScheduleInTextReportWithoutChangingJSON() throws {
+    func testFormatsResetCreditsInTextReportWithoutRecoveryCards() throws {
         let response = try loadFixture()
         let report = try CodexUsageReportBuilder(dateProvider: {
             Date(timeIntervalSince1970: 1_779_700_000)
@@ -71,14 +72,26 @@ final class CodexUsageReportTests: XCTestCase {
         let text = formatter.text(from: report)
         let json = String(decoding: try formatter.json(from: report), as: UTF8.self)
 
-        XCTAssertTrue(text.contains("Recovery cards: 2"))
-        XCTAssertTrue(text.contains("Next reset:"))
-        XCTAssertTrue(text.contains("Weekly reset:"))
-        XCTAssertTrue(text.contains("Next reset: 5시간 2026-05-26 01:27 GMT+9 (in 7h 21m)"))
-        XCTAssertTrue(text.contains("Weekly reset: 2026-05-31 09:19 GMT+9 (in 135h 12m)"))
+        XCTAssertTrue(text.contains("Reset credits: 2 available"))
+        XCTAssertTrue(text.contains("Reset credit expiry: unavailable"))
         XCTAssertFalse(json.contains("Recovery cards"))
         XCTAssertFalse(json.contains("Next reset"))
         XCTAssertFalse(json.contains("Weekly reset"))
+        XCTAssertTrue(json.contains("\"resetCredits\""))
+
+        let detailedReport = report.replacingResetCredits(RateLimitResetCreditsSummary(
+            availableCount: 1,
+            credits: [
+                RateLimitResetCredit(
+                    id: "live_credit",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2026-07-18T00:34:01.707337Z"
+                )
+            ]
+        ))
+        let detailedText = formatter.text(from: detailedReport)
+        XCTAssertTrue(detailedText.contains("Reset credit expiries: 2026-07-18 09:34 GMT+9"))
     }
 
     func testPlanDisplayKeepsRawPlanTypeAndDoesNotInferPricingTier() {

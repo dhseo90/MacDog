@@ -24,10 +24,8 @@ public struct CodexUsageFormatter: Sendable {
         lines.append(format(label: "5h", window: limit.fiveHour))
         lines.append(format(label: "Weekly", window: limit.weekly))
         lines.append("Credits: \(limit.credits?.balance ?? "unknown")")
+        lines.append(contentsOf: resetCreditLines(from: report.resetCredits))
         lines.append("Plan: \(CodexUsagePlanDisplay.displayLabel(rawPlanType: limit.planType ?? report.planType))")
-        lines.append(contentsOf: resetScheduleLines(
-            from: CodexUsageResetScheduleBuilder().schedule(report: report, now: now())
-        ))
 
         if let reached = limit.rateLimitReachedType ?? report.rateLimitReachedType {
             lines.append("Limit status: \(reached)")
@@ -69,34 +67,48 @@ public struct CodexUsageFormatter: Sendable {
         return formatter.string(from: date)
     }
 
-    private func resetScheduleLines(from schedule: CodexUsageResetSchedule) -> [String] {
-        guard !schedule.primaryEntries.isEmpty else {
-            return ["Recovery cards: 0"]
+    private func resetCreditLines(from summary: RateLimitResetCreditsSummary?) -> [String] {
+        guard let summary else {
+            return ["Reset credits: unknown"]
         }
 
-        var lines = ["Recovery cards: \(schedule.primaryEntries.count)"]
-        if let next = schedule.nextRecovery {
-            lines.append("Next reset: \(next.title) \(formatResetEntry(next))")
+        var lines = ["Reset credits: \(summary.availableCount) available"]
+        guard summary.availableCount > 0 else {
+            return lines
         }
-        if let weekly = schedule.primaryEntries.first(where: { $0.kind == .weekly }) {
-            lines.append("Weekly reset: \(formatResetEntry(weekly))")
+
+        let expiries = summary.credits.compactMap(\.expiresAt)
+        if expiries.isEmpty {
+            lines.append("Reset credit expiry: unavailable")
+        } else {
+            let formattedExpiries = expiries.map(formatResetCreditExpiry).joined(separator: ", ")
+            lines.append("Reset credit expiries: \(formattedExpiries)")
         }
         return lines
     }
 
-    private func formatResetEntry(_ entry: CodexUsageResetScheduleEntry) -> String {
-        let reset = entry.resetsAt.map(formatEpoch) ?? "unknown"
-        let remaining = entry.remainingSeconds.map(formatDuration) ?? "remaining unknown"
-        return "\(reset) (\(remaining))"
+    private func formatResetCreditExpiry(_ rawValue: String) -> String {
+        guard let date = parseISO8601Date(rawValue) else {
+            return rawValue
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd HH:mm zzz"
+        return formatter.string(from: date)
     }
 
-    private func formatDuration(_ seconds: Int) -> String {
-        if seconds <= 0 { return "now" }
-        let hours = seconds / 3_600
-        let minutes = (seconds % 3_600) / 60
-        if hours > 0, minutes > 0 { return "in \(hours)h \(minutes)m" }
-        if hours > 0 { return "in \(hours)h" }
-        return "in \(max(minutes, 1))m"
+    private func parseISO8601Date(_ rawValue: String) -> Date? {
+        let fractionalParser = ISO8601DateFormatter()
+        fractionalParser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalParser.date(from: rawValue) {
+            return date
+        }
+
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime]
+        return parser.date(from: rawValue)
     }
 }
 

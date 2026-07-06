@@ -77,6 +77,32 @@ public final class CodexAppServerClient {
         throw lastError ?? CodexAppServerError.processLaunchFailed("No Codex app-server invocation was available.")
     }
 
+    public func refreshChatGPTAuthTokens(previousAccountId: String? = nil) throws -> ChatGPTAuthTokensRefreshResponse {
+        var lastError: Error?
+        for arguments in appServerArgumentCandidates() {
+            do {
+                let responseData = try readInitializedResponseData(
+                    arguments: arguments,
+                    responseID: CodexAppServerRequestFactory.chatGPTAuthTokensRefreshRequestID
+                ) { handle in
+                    try sendChatGPTAuthTokensRefresh(to: handle, previousAccountId: previousAccountId)
+                }
+                return try decodeResponse(
+                    ChatGPTAuthTokensRefreshResponse.self,
+                    from: responseData,
+                    id: CodexAppServerRequestFactory.chatGPTAuthTokensRefreshRequestID
+                )
+            } catch {
+                lastError = error
+                guard Self.canRetryWithNextInvocation(after: error) else {
+                    throw error
+                }
+            }
+        }
+
+        throw lastError ?? CodexAppServerError.processLaunchFailed("No Codex app-server invocation was available.")
+    }
+
     static func argumentCandidates(proxySubcommandAvailable: Bool, daemonAvailable: Bool) -> [[String]] {
         (proxySubcommandAvailable && daemonAvailable) ? [proxyArguments, legacyArguments] : [legacyArguments]
     }
@@ -88,6 +114,9 @@ public final class CodexAppServerClient {
         switch appServerError {
         case .processLaunchFailed, .stdinClosed, .invalidJSONLine, .responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID):
             return true
+        case .rpcError(id: CodexAppServerRequestFactory.chatGPTAuthTokensRefreshRequestID, let message):
+            return message.contains("unknown variant") &&
+                message.contains("account/chatgptAuthTokens/refresh")
         case .codexBinaryNotFound,
              .codexBinaryNotExecutable,
              .responseTimedOut,
@@ -107,6 +136,19 @@ public final class CodexAppServerClient {
     }
 
     private func readRateLimitResponseData(arguments: [String]) throws -> Data {
+        try readInitializedResponseData(
+            arguments: arguments,
+            responseID: CodexAppServerRequestFactory.rateLimitReadRequestID
+        ) { handle in
+            try sendRateLimitRead(to: handle)
+        }
+    }
+
+    private func readInitializedResponseData(
+        arguments: [String],
+        responseID: Int,
+        sendRequest: (FileHandle) throws -> Void
+    ) throws -> Data {
         let process = Process()
         process.executableURL = codexURL
         process.arguments = arguments
@@ -149,12 +191,12 @@ public final class CodexAppServerClient {
             id: CodexAppServerRequestFactory.initializeRequestID
         )
 
-        try sendRateLimitRead(to: stdin.fileHandleForWriting)
-        let rateLimitData = try reader.waitForResponse(
-            id: CodexAppServerRequestFactory.rateLimitReadRequestID,
+        try sendRequest(stdin.fileHandleForWriting)
+        let responseData = try reader.waitForResponse(
+            id: responseID,
             timeout: timeout
         )
-        return rateLimitData
+        return responseData
     }
 
     private func appServerArgumentCandidates() -> [[String]] {
@@ -210,6 +252,10 @@ public final class CodexAppServerClient {
 
     private func sendRateLimitRead(to handle: FileHandle) throws {
         handle.write(try requestFactory.rateLimitReadRequest())
+    }
+
+    private func sendChatGPTAuthTokensRefresh(to handle: FileHandle, previousAccountId: String?) throws {
+        handle.write(try requestFactory.chatGPTAuthTokensRefreshRequest(previousAccountId: previousAccountId))
     }
 
     private func decodeResponse<Result: Decodable>(

@@ -4,21 +4,15 @@ import SwiftUI
 struct CodexUsagePanel: View {
     let state: UsageMonitorState
 
-    @State private var selectedPlanDuration: CodexUsageSessionPlanDuration = .oneHour
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
-                CodexUsageSummaryBlock(summary: summary, phase: state.phase)
-                CodexUsageDataStatusBlock(status: state.codexDataStatus)
-                CodexRecoveryPlannerBlock(
-                    schedule: state.codexResetSchedule(now: resetSummaryNow),
-                    plan: state.codexSessionPlan(duration: selectedPlanDuration, now: resetSummaryNow),
-                    selectedDuration: $selectedPlanDuration
-                )
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("현재 사용량")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: 8) {
                     UsageRow(
                         title: "5시간",
                         window: limit.fiveHour,
@@ -31,7 +25,7 @@ struct CodexUsagePanel: View {
                     )
                 }
 
-                Divider()
+                CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
 
                 WeeklyRemainingHistoryBlock(
                     history: state.weeklyUsageHistory,
@@ -40,6 +34,8 @@ struct CodexUsagePanel: View {
                     currentReport: state.report,
                     currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
                 )
+
+                CodexUsageDataStatusBlock(status: state.codexDataStatus)
             } else if state.isRefreshing {
                 HStack(spacing: 8) {
                     ProgressView()
@@ -62,6 +58,7 @@ struct CodexUsagePanel: View {
                     .lineLimit(2)
             }
         }
+        .padding(.bottom, 2)
     }
 
     private func resetSummary(at index: Int, in summary: CodexUsagePanelSummary) -> String? {

@@ -14,6 +14,8 @@ final class RateLimitModelsTests: XCTestCase {
         XCTAssertEqual(bucket.fiveHourWindow?.remainingPercent, 85)
         XCTAssertEqual(bucket.weeklyWindow?.usedPercent, 38)
         XCTAssertEqual(bucket.weeklyWindow?.remainingPercent, 62)
+        XCTAssertEqual(response.rateLimitResetCredits?.availableCount, 2)
+        XCTAssertEqual(response.rateLimitResetCredits?.credits, [])
     }
 
     func testFixtureKeepsExpectedRateLimitResponseSchema() throws {
@@ -22,6 +24,7 @@ final class RateLimitModelsTests: XCTestCase {
 
         XCTAssertNotNil(object["rateLimits"])
         XCTAssertNotNil(object["rateLimitsByLimitId"])
+        XCTAssertNotNil(object["rateLimitResetCredits"])
 
         let rateLimitsByLimitId = try XCTUnwrap(object["rateLimitsByLimitId"] as? [String: Any])
         let codexBucket = try XCTUnwrap(rateLimitsByLimitId["codex"] as? [String: Any])
@@ -119,6 +122,18 @@ final class RateLimitModelsTests: XCTestCase {
               "futureBucketMetadata": { "ignored": true }
             }
           },
+          "rateLimitResetCredits": {
+            "availableCount": 1,
+            "credits": [
+              {
+                "id": "credit_1",
+                "status": "available",
+                "resetType": "manual",
+                "expiresAt": "2026-07-06T09:30:00Z",
+                "title": "Reset credit"
+              }
+            ]
+          },
           "futureTopLevelField": "ignored"
         }
         """
@@ -128,6 +143,44 @@ final class RateLimitModelsTests: XCTestCase {
         XCTAssertEqual(response.codexBucket.limitId, "codex")
         XCTAssertEqual(response.codexBucket.fiveHourWindow?.usedPercent, 12)
         XCTAssertEqual(response.codexBucket.weeklyWindow?.usedPercent, 34)
+        XCTAssertEqual(response.rateLimitResetCredits?.availableCount, 1)
+        XCTAssertEqual(response.rateLimitResetCredits?.credits.first?.expiresAt, "2026-07-06T09:30:00Z")
+        XCTAssertEqual(response.rateLimitResetCredits?.credits.first?.resetType, "manual")
+    }
+
+    func testDecodesSnakeCaseResetCreditDetailsFromPublicBackendShape() throws {
+        let json = """
+        {
+          "available_count": 2,
+          "credits": [
+            {
+              "id": "credit_1",
+              "status": "available",
+              "reset_type": "manual",
+              "expires_at": "2026-07-06T09:30:00Z",
+              "description": "Expires soon"
+            },
+            {
+              "id": "credit_2",
+              "status": "available",
+              "reset_type": "manual",
+              "expires_at": "2026-07-07T11:00:00Z"
+            }
+          ]
+        }
+        """
+
+        let summary = try JSONDecoder().decode(
+            RateLimitResetCreditsSummary.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(summary.availableCount, 2)
+        XCTAssertEqual(summary.credits.map(\.id), ["credit_1", "credit_2"])
+        XCTAssertEqual(summary.credits.map(\.expiresAt), [
+            "2026-07-06T09:30:00Z",
+            "2026-07-07T11:00:00Z"
+        ])
     }
 
     func testIdentifiesKnownWindowDurations() {

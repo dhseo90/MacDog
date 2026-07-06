@@ -59,6 +59,8 @@
       "planType": "pro",
       "rateLimitReachedType": null
     }
+  },
+  "rateLimitResetCredits": {
+    "availableCount": 2
   }
 }
-
