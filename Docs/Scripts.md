@@ -6,7 +6,7 @@
 
 | Script | 의미 | 영향 |
 | --- | --- | --- |
-| `script/check.sh` | 표준 로컬 검증 전체 실행 | Swift test, build, packaging dry-run, 일부 상태 조회. 기본 모드는 앱을 실행할 수 있고 `--no-run`은 실행하지 않습니다. `MACDOG_APP_VERSION` 또는 `MACDOG_RELEASE_VERSION`이 없으면 실패합니다. |
+| `script/check.sh` | 표준 로컬 검증 전체 실행 | Swift test, build, v1.6.0 Codex Usage & Reset Credits 계약, packaging dry-run, 일부 상태 조회. 기본 모드는 앱을 실행할 수 있고 `--no-run`은 실행하지 않습니다. `MACDOG_APP_VERSION` 또는 `MACDOG_RELEASE_VERSION`이 없으면 실패합니다. |
 | `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행합니다. `--version`, `MACDOG_APP_VERSION`, `MACDOG_RELEASE_VERSION` 중 하나로 앱 번들 버전을 반드시 명시해야 합니다. |
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, 앱 cache 경로를 만듭니다. `MACDOG_APP_VERSION` 또는 `MACDOG_RELEASE_VERSION`이 없으면 실패합니다. helper 설치 옵션은 관리자 권한이 필요합니다. |
 | `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, cache/history 파일을 제거합니다. 기본값은 UserDefaults와 optional helper를 유지합니다. |

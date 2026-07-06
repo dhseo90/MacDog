@@ -6,14 +6,14 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.5.0](https://github.com/dhseo90/MacDog/releases/tag/v1.5.0)입니다.
+현재 GitHub Release는 [v1.6.0](https://github.com/dhseo90/MacDog/releases/tag/v1.6.0)입니다.
 
-- Published release head: signed `v1.5.0` tag target
-- Published asset: `MacDog-1.5.0.dmg`
-- Published DMG SHA-256: GitHub Release asset digest와 함께 제공되는 `MacDog-1.5.0.dmg.sha256`를 기준으로 확인합니다.
+- Published release head: signed `v1.6.0` tag target `538c1e3501ec4c03c5331d45604030100f302d14`
+- Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
+- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex 현재/지난/비교 탭, 지난 window picker, hover/tap marker, PNG copy/export, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state 검증.
-- v1.5.0에는 usage health/doctor 진단, reset boundary 그래프 회귀 방지, Codex 탭 데이터 상태 UI, live fetch/cache smoke 요약, 운영 회귀 guard, 로그인 항목 선호 상태 hardening이 포함됩니다.
+- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭 전환, 사용자 초기화권 장수/장별 유효기간 표시, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state 검증.
+- v1.6.0에는 Codex 탭의 중복 회복 일정 제거, 5시간/주간 사용량 단일 표시, 사용자 초기화권 장수와 장별 유효기간 표시, 초기화권 상세 조회 sanitize, README Codex 탭 screenshot 갱신이 포함됩니다.
 
 ## 화면
 
@@ -64,7 +64,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 사용자 설치는 GitHub Release의 DMG를 기준으로 합니다.
 
-1. [v1.5.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.5.0)에서 `MacDog-1.5.0.dmg`를 내려받습니다.
+1. [v1.6.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.6.0)에서 `MacDog-1.6.0.dmg`를 내려받습니다.
 2. DMG를 Finder에서 엽니다.
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
@@ -155,6 +155,7 @@ MACDOG_APP_VERSION=<version> ./script/build_and_run.sh
 npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v140_usage_intelligence_contract.sh --self-test
 ./script/verify_v150_usage_reliability_contract.sh --self-test
+./script/verify_v160_codex_recovery_planner_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -168,6 +169,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/sample_existing_runtime_resources.sh --samples 5 --interval 1` | 이미 실행 중인 MacDog 프로세스의 CPU/RSS를 read-only로 샘플링합니다. |
 | `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
+| `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
@@ -255,6 +257,8 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V140ReleaseReadiness.md](Docs/V140ReleaseReadiness.md): v1.4.0 릴리즈 잔여 이슈와 실행 순서
 - [Docs/V150UsageReliability.md](Docs/V150UsageReliability.md): v1.5.0 사용량 reliability, reset boundary, cache/history 진단 경계
 - [Docs/V150ReleaseReadiness.md](Docs/V150ReleaseReadiness.md): v1.5.0 릴리즈 잔여 이슈와 실행 순서
+- [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md): v1.6.0 Codex Usage & Reset Credits UI와 데이터 경계
+- [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md): v1.6.0 릴리즈 준비 감사와 완료 smoke 기록
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

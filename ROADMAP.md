@@ -30,16 +30,17 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | --- | --- | --- | --- |
 | Codex Usage CLI | app-server 사용량 조회, JSON 출력, cache writer, doctor | 구현 완료, 자동 검증 완료 | live app-server protocol drift 발생 시 fixture 갱신 |
 | Shared Cache | app-owned cache, weekly history, stale/error snapshot | 구현 완료, 자동 검증 완료 | cache schema 변경 시 회귀 테스트 유지 |
-| Menu Bar App | status item, runner, popover, refresh, placement | 구현 완료, 자동 검증 완료, v1.5.0 smoke 완료 | 다음 release에서 실제 앱 화면 재확인 |
+| Menu Bar App | status item, runner, popover, refresh, placement | 구현 완료, 자동 검증 완료, v1.6.0 smoke 완료 | 다음 release에서 실제 앱 화면 재확인 |
 | Codex Pup Character | 메뉴바 이미지, 데스크톱 펫, 탭 버튼 이미지 | 구현 완료, 자동 검증 완료 | 캐릭터 변경 시 전체 세트 동시 교체 |
 | Desktop Pet | 드래그 저장, 좌클릭 popover, 우클릭 메뉴, 화면 보정 | 구현 완료, 자동 검증 완료 | 캐릭터/펫 변경 시 실제 동작 재확인 |
-| Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.5.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
+| Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.6.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
 | Privileged Helper | 덮개 닫힘 보호와 잠금 화면 설정 변경 보조 | 구현 완료, 자동 검증 완료 | signed/stable 배포 UX는 Apple Developer Program 의존 범위라 현재 구현 계획에서 제외 |
 | WidgetKit | optional source/opt-in build 경계 | 기본 릴리즈 제외 | App Group provisioning 이후 실제 위젯 UI 검수 |
-| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.5.0 릴리즈 완료, published DMG 재다운로드와 설치본 smoke 검증 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
+| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.6.0 릴리즈 완료, published DMG 재다운로드와 설치본 smoke 검증 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
 | v1.3.0 | 알림 중심 사용량 인지와 탭별 UI 개선 | 릴리즈 완료 | 후속 이슈 없음 |
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
+| v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -266,7 +267,16 @@ v1.5.0 릴리즈 결과:
 세부 범위는 [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md)에 둡니다.
 릴리즈 준비와 수동 smoke 경계는 [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md)에 둡니다.
 
-상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
+상태: publish 완료 / Finder 설치 smoke 완료 / final-state 검증 통과
+
+v1.6.0 릴리즈 결과:
+
+- Release tag: `v1.6.0`
+- Published release head: signed `v1.6.0` tag target `538c1e3501ec4c03c5331d45604030100f302d14`
+- GitHub Release 상태: publish 완료
+- Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
+- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
+- 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭, 초기화권 만료일, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state를 확인했습니다.
 
 v1.6.0 구현 범위:
 
