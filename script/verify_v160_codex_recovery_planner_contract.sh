@@ -21,7 +21,18 @@ require_text() {
   fi
 }
 
+reject_text() {
+  local pattern="$1"
+  local file="$2"
+  local label="$3"
+  if /usr/bin/grep -Eq "$pattern" "$file"; then
+    echo "unexpected $label in $file" >&2
+    exit 1
+  fi
+}
+
 run_swift_test() {
+  CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-/private/tmp/macdog-clang-module-cache}" \
   DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
     /usr/bin/xcrun swift test "$@"
 }
@@ -33,28 +44,50 @@ fi
 
 require_file "Docs/V160CodexRecoveryPlanner.md"
 require_file "Docs/V160ReleaseReadiness.md"
-require_file "Sources/CodexUsageCore/Usage/CodexUsageResetSchedule.swift"
-require_file "Sources/CodexUsageCore/Usage/CodexUsageSessionPlan.swift"
-require_file "Sources/MacDog/Popover/CodexRecoveryPlannerViews.swift"
-require_file "Tests/CodexUsageCoreTests/CodexUsageResetScheduleTests.swift"
-require_file "Tests/CodexUsageCoreTests/CodexUsageSessionPlanTests.swift"
+require_file "Sources/CodexUsageCore/Models/RateLimitModels.swift"
+require_file "Sources/CodexUsageCore/Usage/CodexLocalAuthTokenProvider.swift"
+require_file "Sources/CodexUsageCore/Usage/CodexResetCreditDetailsClient.swift"
+require_file "Sources/CodexUsageCore/Usage/CodexUsageReport.swift"
+require_file "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift"
+require_file "Sources/MacDog/Popover/CodexResetCreditsViews.swift"
+require_file "Sources/MacDog/Popover/CodexUsagePanel.swift"
+require_file "Tests/CodexUsageCoreTests/CodexLocalAuthTokenProviderTests.swift"
+require_file "Tests/CodexUsageCoreTests/CodexResetCreditDetailsClientTests.swift"
+require_file "Tests/CodexUsageCoreTests/RateLimitModelsTests.swift"
+require_file "Tests/CodexUsageCoreTests/CodexUsageReportTests.swift"
+require_file "Tests/MacDogTests/UsageMonitorStateTests.swift"
+require_file "Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
 require_file "Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
 require_file "Tests/MacDogTests/UsageNotificationSettingsTests.swift"
 
 require_text 'status --json.*breaking change' "Docs/V160CodexRecoveryPlanner.md" "JSON boundary"
 require_text 'Dashboard 탭' "Docs/V160CodexRecoveryPlanner.md" "Dashboard exclusion"
 require_text 'auth token|session material' "Docs/V160CodexRecoveryPlanner.md" "auth redaction boundary"
-require_text 'CodexUsageResetSchedule' "Sources/CodexUsageCore/Usage/CodexUsageResetSchedule.swift" "reset schedule model"
-require_text 'CodexUsageSessionPlan' "Sources/CodexUsageCore/Usage/CodexUsageSessionPlan.swift" "session plan model"
+require_text '초기화권' "Docs/V160CodexRecoveryPlanner.md" "reset credit scope"
+require_text 'credits\[\]\.expires_at' "Docs/V160CodexRecoveryPlanner.md" "reset credit expiry source"
+require_text 'expiresAt.*status.*resetType' "Docs/V160CodexRecoveryPlanner.md" "sanitized reset credit cache fields"
+require_text 'RateLimitResetCreditsSummary' "Sources/CodexUsageCore/Models/RateLimitModels.swift" "reset credit model"
+require_text 'rateLimitResetCredits' "Sources/CodexUsageCore/Models/RateLimitModels.swift" "app-server reset credit field"
+require_text 'CodexLocalAuthTokenProvider' "Sources/CodexUsageCore/Usage/CodexLocalAuthTokenProvider.swift" "local auth fallback"
+require_text 'rate-limit-reset-credits' "Sources/CodexUsageCore/Usage/CodexResetCreditDetailsClient.swift" "backend reset credit detail endpoint"
+require_text 'resetCredits' "Sources/CodexUsageCore/Usage/CodexUsageReport.swift" "usage report reset credits"
+require_text 'Reset credits:' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "CLI reset credit text"
+require_text 'CodexResetCreditsBlock' "Sources/MacDog/Popover/CodexResetCreditsViews.swift" "reset credit UI"
 require_text 'func json\(from report: CodexUsageReport\)' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "formatter JSON entrypoint"
 
+reject_text 'CodexUsageResetSchedule|CodexUsageSessionPlan|CodexRecoveryPlannerBlock' "Sources/MacDog/Popover/CodexUsagePanel.swift" "recovery/session planner UI"
+reject_text 'Recovery cards:' "Sources/CodexUsageCore/Usage/CodexUsageFormatter.swift" "CLI recovery card text"
+
 echo "==> Running v1.6 focused Swift tests"
-run_swift_test --filter CodexUsageResetScheduleTests
-run_swift_test --filter CodexUsageSessionPlanTests
+run_swift_test --filter RateLimitModelsTests
+run_swift_test --filter CodexAppServerRequestFactoryTests
+run_swift_test --filter CodexLocalAuthTokenProviderTests
+run_swift_test --filter CodexResetCreditDetailsClientTests
+run_swift_test --filter CodexUsageReportTests
 run_swift_test --filter UsageMonitorStateTests
 run_swift_test --filter UsageNotificationPolicyTests
 run_swift_test --filter UsageNotificationDeliveryTests
 run_swift_test --filter UsageNotificationSettingsTests
 run_swift_test --filter PetMenuModelTests
 run_swift_test --filter PopoverScreenshotRendererTests
-echo "v1.6 recovery planner contract ok"
+echo "v1.6 codex usage and reset credits contract ok"

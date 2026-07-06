@@ -5,6 +5,7 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
     public let source: String
     public let planType: String?
     public let credits: CreditsSnapshot?
+    public let resetCredits: RateLimitResetCreditsSummary?
     public let rateLimitReachedType: String?
     public let limits: [String: UsageLimitReport]
 
@@ -13,6 +14,7 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
         source: String,
         planType: String?,
         credits: CreditsSnapshot?,
+        resetCredits: RateLimitResetCreditsSummary? = nil,
         rateLimitReachedType: String?,
         limits: [String: UsageLimitReport]
     ) {
@@ -20,6 +22,7 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
         self.source = source
         self.planType = planType
         self.credits = credits
+        self.resetCredits = resetCredits
         self.rateLimitReachedType = rateLimitReachedType
         self.limits = limits
     }
@@ -44,6 +47,18 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
         if !missing.isEmpty {
             throw CodexUsageReportValidationError.missingRequiredCodexWindows(missing)
         }
+    }
+
+    public func replacingResetCredits(_ resetCredits: RateLimitResetCreditsSummary?) -> CodexUsageReport {
+        CodexUsageReport(
+            generatedAt: generatedAt,
+            source: source,
+            planType: planType,
+            credits: credits,
+            resetCredits: resetCredits,
+            rateLimitReachedType: rateLimitReachedType,
+            limits: limits
+        )
     }
 }
 
@@ -178,6 +193,7 @@ public struct CodexUsageReportBuilder: Sendable {
             source: "codex-app-server",
             planType: codex?.planType,
             credits: codex?.credits,
+            resetCredits: response.rateLimitResetCredits,
             rateLimitReachedType: codex?.rateLimitReachedType,
             limits: limits
         )

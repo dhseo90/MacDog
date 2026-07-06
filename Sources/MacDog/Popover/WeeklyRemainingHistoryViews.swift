@@ -27,7 +27,7 @@ struct WeeklyRemainingHistoryBlock: View {
             let mode = effectiveMode(for: comparisonModel)
             let selectedSeries = selectedOverlaySeries(in: comparisonModel)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("주간 잔여량")
                         .font(.caption.weight(.semibold))
@@ -38,32 +38,6 @@ struct WeeklyRemainingHistoryBlock: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
-                    graphActionButtons(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
-                }
-
-                if comparisonModel.availableModes.count > 1 {
-                    HStack(spacing: 6) {
-                        Picker("", selection: $selectedMode) {
-                            ForEach(comparisonModel.availableModes) { mode in
-                                Text(mode.label).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .controlSize(.mini)
-                        .labelsHidden()
-
-                        if mode != .current, !comparisonModel.pastWindows.isEmpty {
-                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
-                                ForEach(comparisonModel.pastWindows) { window in
-                                    Text(windowLabel(for: window))
-                                        .tag(Optional(window.id))
-                                }
-                            }
-                            .labelsHidden()
-                            .controlSize(.mini)
-                            .frame(width: 94)
-                        }
-                    }
                 }
 
                 graph(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
@@ -1405,7 +1379,7 @@ struct UsageRow: View {
                 .accessibilityValue(summary)
 
             if let resetSummary {
-                Text("reset \(resetSummary)")
+                Text(formattedResetSummary(resetSummary))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -1413,6 +1387,13 @@ struct UsageRow: View {
             }
 
         }
+    }
+
+    private func formattedResetSummary(_ resetSummary: String) -> String {
+        if resetSummary.contains("알 수 없음") || resetSummary.contains("확인 중") {
+            return "리셋 시각 \(resetSummary)"
+        }
+        return "리셋까지 \(resetSummary)"
     }
 
     private var summary: String {

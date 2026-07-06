@@ -79,8 +79,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
-- Codex 회복 계획: 5시간/주간 초기화 카드, 다음 회복 시점, 작업 세션별 예상 사용률을 Codex 탭에서 확인합니다.
+- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
+- Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
@@ -117,7 +117,7 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history와 v1.4.0 reset window history를 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
+`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history와 v1.4.0 reset window history를 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 `doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름, 필드 목록, app-owned cache freshness, weekly history sample 수, reset-window history record 수, append/retention/pace 상태, 다음 조치 안내를 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 
@@ -125,7 +125,9 @@ codex-usage doctor
 
 - Codex 사용량 기준은 로컬 Codex app-server의 `account/rateLimits/read` 응답입니다.
 - `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석합니다.
-- auth token, refresh token, cookie, session material은 읽거나 저장하지 않습니다.
+- 사용자 초기화권 장수는 `rateLimitResetCredits`에서 읽고, 장별 유효기간은 ChatGPT backend의 reset credit 상세 응답에서 읽습니다.
+- 초기화권 유효기간은 장별 `expiresAt`만 표시하며, 5시간/주간 사용량 window와 섞어 추정하지 않습니다.
+- auth token, refresh token, cookie, session material은 출력하거나 저장하지 않습니다. reset credit 상세 조회에 필요한 access token은 메모리에서만 backend `Authorization` header로 사용합니다.
 - cache에는 raw `planType`, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다.
 - `Plus`/`Pro $100`/`Pro $200` 가격 tier는 현재 조회 경로에서 구분할 수 없으므로 표시, 저장, 추정하지 않습니다.
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
@@ -133,7 +135,7 @@ codex-usage doctor
 - v1.5.0 reliability 진단은 `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json`을 읽어 missing, stale, error, waiting, ok 상태를 분리하지만 schema를 바꾸지 않습니다.
 - weekly reset 이후 새 `resetsAt` window가 감지되면 이전 history와 새 timeline을 분리하고, rolling reset timestamp duplicate는 같은 logical weekly window로 dedupe합니다.
 - 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.
-- 메뉴바 앱 UI process는 auth token이나 raw app-server 응답을 다루지 않습니다.
+- 메뉴바 앱 UI process는 auth token이나 raw app-server/backend 응답 원문을 다루지 않고, sanitize된 cache만 읽습니다.
 
 ## 개발과 검증
 

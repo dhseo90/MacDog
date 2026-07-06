@@ -3,6 +3,7 @@ import Foundation
 struct CodexAppServerRequestFactory {
     static let initializeRequestID = 1
     static let rateLimitReadRequestID = 2
+    static let chatGPTAuthTokensRefreshRequestID = 3
 
     func initializeRequest() throws -> Data {
         try request(
@@ -24,6 +25,20 @@ struct CodexAppServerRequestFactory {
 
     func rateLimitReadRequest() throws -> Data {
         try request(id: Self.rateLimitReadRequestID, method: "account/rateLimits/read", params: nil)
+    }
+
+    func chatGPTAuthTokensRefreshRequest(previousAccountId: String?) throws -> Data {
+        var params: [String: Any] = [
+            "reason": "unauthorized"
+        ]
+        if let previousAccountId {
+            params["previousAccountId"] = previousAccountId
+        }
+        return try request(
+            id: Self.chatGPTAuthTokensRefreshRequestID,
+            method: "account/chatgptAuthTokens/refresh",
+            params: params
+        )
     }
 
     private func request(id: Int, method: String, params: Any?) throws -> Data {

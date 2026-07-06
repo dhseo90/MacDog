@@ -57,4 +57,15 @@ final class CodexAppServerClientTests: XCTestCase {
             )
         )
     }
+
+    func testUnsupportedProxyAuthRefreshCanRetryWithLegacyInvocation() {
+        XCTAssertTrue(
+            CodexAppServerClient.canRetryWithNextInvocation(
+                after: CodexAppServerError.rpcError(
+                    id: CodexAppServerRequestFactory.chatGPTAuthTokensRefreshRequestID,
+                    message: "Invalid request: unknown variant `account/chatgptAuthTokens/refresh`"
+                )
+            )
+        )
+    }
 }

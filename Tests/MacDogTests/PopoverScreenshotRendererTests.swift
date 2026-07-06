@@ -6,107 +6,120 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
-    func testCodexRecoveryPlannerBlockBuildsCompactLayout() {
-        var selectedDuration = CodexUsageSessionPlanDuration.oneHour
-        let entries = [
-            CodexUsageResetScheduleEntry(
-                id: "codex.fiveHour.1800007200",
-                limitId: "codex",
-                limitName: "Codex",
-                title: "5시간",
-                kind: .fiveHour,
-                scope: .primary,
-                windowDurationMins: 300,
-                resetsAt: 1_800_007_200,
-                remainingSeconds: 7_200,
-                usedPercent: 62,
-                remainingPercent: 38,
-                trustState: .stale,
-                isNextRecovery: true
-            ),
-            CodexUsageResetScheduleEntry(
-                id: "codex.weekly.1800604800",
-                limitId: "codex",
-                limitName: "Codex",
-                title: "주간",
-                kind: .weekly,
-                scope: .primary,
-                windowDurationMins: 10_080,
-                resetsAt: 1_800_604_800,
-                remainingSeconds: 604_800,
-                usedPercent: 41,
-                remainingPercent: 59,
-                trustState: .stale,
-                isNextRecovery: false
-            )
-        ]
-        let schedule = CodexUsageResetSchedule(state: .stale, entries: entries)
-        let plan = CodexUsageSessionPlan(
-            duration: .oneHour,
-            durationSeconds: 3_600,
-            state: .watch,
-            availability: .ready,
-            currentUsedPercent: 62,
-            projectedUsedPercentAtEnd: 81,
-            usedPercentPerHour: 19,
-            sampleCount: 2
+    func testCodexResetCreditsBlockBuildsCompactLayout() {
+        let resetCredits = RateLimitResetCreditsSummary(
+            availableCount: 3,
+            credits: [
+                RateLimitResetCredit(
+                    id: "credit_1",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2027-01-16T09:30:00Z"
+                ),
+                RateLimitResetCredit(
+                    id: "credit_2",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2027-01-17T11:00:00Z"
+                ),
+                RateLimitResetCredit(
+                    id: "credit_3",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2027-01-18T12:30:00Z"
+                )
+            ]
         )
-        let utc = try! XCTUnwrap(TimeZone(secondsFromGMT: 0))
-        let locale = Locale(identifier: "en_US_POSIX")
 
-        XCTAssertEqual(schedule.primaryEntries.count, 2)
-        XCTAssertEqual(schedule.primaryEntries.first?.title, "5시간")
-        XCTAssertEqual(schedule.primaryEntries.first?.isNextRecovery, true)
-        XCTAssertEqual(schedule.primaryEntries.last?.title, "주간")
+        XCTAssertEqual(CodexResetCreditTextFormatter.countText(for: resetCredits), "3장")
         XCTAssertEqual(
-            CodexRecoveryResetTextFormatter.relativeText(remainingSeconds: entries[0].remainingSeconds),
-            "2시간 후"
+            CodexResetCreditTextFormatter.expirySummary(for: resetCredits, timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!),
+            "먼저 1/16 18:30까지 · 1/17 20:00까지 · 1/18 21:30까지"
         )
         XCTAssertEqual(
-            CodexRecoveryResetTextFormatter.resetDateText(
-                resetsAt: entries[0].resetsAt,
-                timeZone: utc,
-                locale: locale
+            CodexResetCreditTextFormatter.expiryText(
+                for: RateLimitResetCredit(
+                    id: "live_credit",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2026-07-18T00:34:01.707337Z"
+                ),
+                timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!
             ),
-            "1/15 10:00 초기화"
+            "7/18 09:34까지"
         )
-        XCTAssertEqual(
-            CodexRecoveryResetTextFormatter.resetDateText(
-                resetsAt: entries[1].resetsAt,
-                timeZone: utc,
-                locale: locale
-            ),
-            "1/22 08:00 초기화"
-        )
-        XCTAssertEqual(plan.title, "1시간 작업 주의")
-        XCTAssertEqual(plan.detail, "예상 사용률 81%")
 
-        let view = CodexRecoveryPlannerBlock(
-            schedule: schedule,
-            plan: plan,
-            selectedDuration: Binding(
-                get: { selectedDuration },
-                set: { selectedDuration = $0 }
-            )
-        )
+        let view = CodexResetCreditsBlock(resetCredits: resetCredits)
 
         let hostingView = NSHostingView(rootView: view.frame(width: 320))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 180)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 96)
         hostingView.layoutSubtreeIfNeeded()
 
-        XCTAssertEqual(selectedDuration, .oneHour)
-        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 180)
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 96)
     }
 
-    func testCodexRecoveryResetFormatterFallsBackWhenResetDateIsUnavailable() {
+    func testCodexResetCreditsBlockKeepsFiveCreditsCompactAndSortedByExpiry() {
+        let resetCredits = Self.resetCredits(count: 5, shuffled: true)
+
+        XCTAssertEqual(CodexResetCreditTextFormatter.countText(for: resetCredits), "5장")
         XCTAssertEqual(
-            CodexRecoveryResetTextFormatter.resetDateText(resetsAt: nil),
-            "초기화 시각 확인 불가"
+            CodexResetCreditTextFormatter.expirySummary(for: resetCredits, timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!),
+            "먼저 7/18 09:34까지 · 7/27 08:47까지 · 8/1 04:07까지 · 8/5 12:20까지 · 8/9 21:10까지"
         )
+
+        let view = CodexResetCreditsBlock(resetCredits: resetCredits)
+
+        let hostingView = NSHostingView(rootView: view.frame(width: 320))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 96)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 96)
+    }
+
+    func testCodexResetCreditFormatterUsesActionableCopyWhenExpiryDetailsAreUnavailable() {
+        let resetCredits = RateLimitResetCreditsSummary(availableCount: 2)
+
+        XCTAssertEqual(CodexResetCreditTextFormatter.countText(for: resetCredits), "2장")
         XCTAssertEqual(
-            CodexRecoveryResetTextFormatter.relativeText(remainingSeconds: nil),
-            "시각 확인 불가"
+            CodexResetCreditTextFormatter.expirySummary(for: resetCredits),
+            "만료일 갱신 필요"
         )
+    }
+
+    func testCodexUsagePanelKeepsPrimarySectionsVisibleWithoutDisclosure() throws {
+        let state = UsageMonitorState(
+            report: Self.codexReportWithThreeResetCreditExpiries(),
+            cacheSnapshot: nil,
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil,
+            systemMetrics: .unavailable
+        )
+        let view = CodexUsagePanel(state: state)
+
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+    }
+
+    func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
+        let state = UsageMonitorState(
+            report: Self.codexReportWithResetCredits(Self.resetCredits(count: 6, shuffled: true)),
+            cacheSnapshot: nil,
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil,
+            systemMetrics: .unavailable
+        )
+        let view = CodexUsagePanel(state: state)
+
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
     }
 
     func testRenderReadmeScreenshotsWhenRequested() throws {
@@ -278,6 +291,72 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         if module == .battery {
             RunnerPreferences.setChargeLimitTargetPercent(90, defaults: defaults)
         }
+    }
+
+    private static func codexReportWithThreeResetCreditExpiries() -> CodexUsageReport {
+        codexReportWithResetCredits(resetCredits(count: 3, shuffled: false))
+    }
+
+    private static func codexReportWithResetCredits(_ resetCredits: RateLimitResetCreditsSummary) -> CodexUsageReport {
+        CodexUsageReport(
+            generatedAt: 1_800_000_000,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            resetCredits: resetCredits,
+            rateLimitReachedType: nil,
+            limits: [
+                "codex": UsageLimitReport(
+                    limitId: "codex",
+                    limitName: "Codex",
+                    primary: UsageWindowReport(
+                        kind: .fiveHour,
+                        usedPercent: 6,
+                        remainingPercent: 94,
+                        windowDurationMins: 300,
+                        resetsAt: 1_800_015_600
+                    ),
+                    secondary: UsageWindowReport(
+                        kind: .weekly,
+                        usedPercent: 67,
+                        remainingPercent: 33,
+                        windowDurationMins: 10_080,
+                        resetsAt: 1_800_056_400
+                    ),
+                    credits: nil,
+                    planType: "pro",
+                    rateLimitReachedType: nil
+                )
+            ]
+        )
+    }
+
+    private static func resetCredits(count: Int, shuffled: Bool) -> RateLimitResetCreditsSummary {
+        let expiries = [
+            "2026-07-18T00:34:01.707337Z",
+            "2026-07-26T23:47:07.735255Z",
+            "2026-07-31T19:07:22.221365Z",
+            "2026-08-05T03:20:00Z",
+            "2026-08-09T12:10:00Z",
+            "2026-08-12T14:45:00Z"
+        ]
+        var credits = Array(expiries.prefix(count)).enumerated().map { index, expiry in
+            RateLimitResetCredit(
+                id: "credit_\(index + 1)",
+                status: "available",
+                resetType: "manual",
+                expiresAt: expiry
+            )
+        }
+
+        if shuffled {
+            credits = Array(credits.reversed())
+        }
+
+        return RateLimitResetCreditsSummary(
+            availableCount: count,
+            credits: credits
+        )
     }
 
     private func render<V: View>(view: V, size: NSSize, scale: CGFloat) -> NSImage {

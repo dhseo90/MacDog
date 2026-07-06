@@ -260,28 +260,30 @@ v1.5.0 릴리즈 결과:
 - 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex 현재/지난/비교 탭, CLI/cache LaunchAgent, 로그인 항목 선호 상태, release final-state를 확인했습니다.
 - 포함된 잔여 수정: `b12dc69`의 로그인 항목 선호 상태 hardening을 v1.5.0 tag/release 범위에 포함했습니다.
 
-## v1.6.0: Codex Recovery Planner
+## v1.6.0: Codex Usage & Reset Credits
 
-`v1.6.0`은 Codex 탭을 "현재 사용량 확인"에서 "회복 일정과 다음 작업 판단"으로 확장합니다.
+`v1.6.0`은 Codex 탭을 "현재 사용량 확인"에서 "현재 사용량과 사용자 초기화권 확인"으로 확장합니다.
 세부 범위는 [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md)에 둡니다.
 릴리즈 준비와 수동 smoke 경계는 [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md)에 둡니다.
 
-상태: P0-P2 구현 완료 / 자동 검증 완료 / 실제 UI smoke 미수행
+상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
 
 v1.6.0 구현 범위:
 
-1. reset schedule 모델을 추가합니다.
-2. Codex 탭에 5시간/주간 회복 카드를 표시합니다.
-3. 가장 빠른 reset을 다음 회복으로 강조합니다.
-4. stale/error/waiting 상태를 과장 없이 표시합니다.
-5. 작업 세션 계획을 1시간, 3시간, reset까지 기준으로 보여줍니다.
-6. reset 30분 전 알림을 회복 관점 문구로 정리합니다.
-7. 메뉴바 tooltip 또는 펫 메뉴에 다음 초기화 glance를 표시합니다.
-8. CLI 텍스트 출력에 reset schedule 요약을 추가합니다.
+1. 5시간/주간 사용량 게이지를 한 번만 표시합니다.
+2. reset까지 남은 시간을 주 정보로, 실제 초기화 시각을 보조 정보로 표시합니다.
+3. 사용자 초기화권 장수를 `rateLimitResetCredits`에서 표시합니다.
+4. 초기화권 장별 유효기간을 ChatGPT backend 상세 응답의 `expiresAt` 기준으로 표시합니다.
+5. stale/error/waiting 상태를 과장 없이 표시합니다.
+6. 주간 그래프는 보조 정보로 낮추고 Codex 탭 하단 여백을 확보합니다.
+7. 메뉴바 tooltip 또는 펫 메뉴의 다음 초기화 glance는 기존 5시간/주간 window에서 직접 계산합니다.
+8. CLI 텍스트 출력에서 초기화권 summary를 표시하고 recovery/session plan 문구를 제거합니다.
 9. v1.6 verifier, focused tests, README/Docs closure를 완료합니다.
 
 v1.6.0 제외 경계:
 
+- 5시간/주간 사용량을 회복 일정 카드로 중복 표시
+- 1시간, 3시간, reset까지 같은 임의 작업 세션 계획
 - `codex-usage status --json` schema breaking change
 - 기존 app-owned cache와 history 파일 schema breaking change
 - raw app-server response, raw log line, auth token, cookie, session material, auth header 저장 또는 출력

@@ -15,6 +15,14 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 4. Codex 사용량 조회 계약, `--json` schema, cache schema, app-server JSON-RPC 해석, 앱/위젯 데이터 경계는 요청 없이 breaking change를 만들지 않습니다.
 5. `~/.codex/auth.json`은 직접 읽거나 출력하지 않습니다.
 6. token, access token, refresh token, cookie, session material, auth header는 읽기/출력/cache/log/fixture/문서 저장 모두 금지합니다.
+   단, Codex 사용량 초기화권 만료일 조회를 위해 `codex-usage`가 다음 순서로 access token을
+   메모리에서만 받아 ChatGPT backend 요청의 `Authorization` header에 즉시 사용하는 것은
+   예외로 허용합니다.
+   1. Codex app-server `account/chatgptAuthTokens/refresh`
+   2. app-server가 해당 method를 지원하지 않는 경우 Codex auth store
+      (`$CODEX_HOME/auth.json`, `~/.config/codex/auth.json`, `~/.codex/auth.json`, macOS Keychain `Codex Auth`)
+   이 예외는 token 출력, token cache 저장, raw response 저장, fixture/문서 token 저장을 허용하지 않습니다.
+   auth store 직접 읽기는 초기화권 만료일 backend 요청 직전의 메모리 사용으로만 제한합니다.
 7. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, helper 설치/삭제, codesign/notarization, push는 사용자 명시 요청 없이 실행하지 않습니다.
 8. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획, 완료 조건, 후속 이슈에 넣지 않습니다. 사용자가 해당 권한 사용 가능 상태와 별도 milestone을 승인한 경우만 예외입니다.
 9. WidgetKit 코드는 보존/opt-in build 대상입니다. 기본 앱/DMG 완료 조건에 넣지 않고, source/test/fixture/opt-in build 수준까지만 확인한 경우 실제 위젯 UI 검수 완료로 보고하지 않습니다.

@@ -12,7 +12,7 @@ final class CodexUsageFieldInventoryTests: XCTestCase {
 
         let inventory = try CodexUsageFieldInventory.make(fromJSONRPCResponseData: data)
 
-        XCTAssertEqual(inventory.topLevelFields, ["rateLimits", "rateLimitsByLimitId"])
+        XCTAssertEqual(inventory.topLevelFields, ["rateLimitResetCredits", "rateLimits", "rateLimitsByLimitId"])
         XCTAssertEqual(inventory.buckets.map(\.key), ["codex", "codex_bengalfox"])
         XCTAssertEqual(inventory.buckets.map(\.limitId), ["codex", "codex_bengalfox"])
         XCTAssertEqual(
