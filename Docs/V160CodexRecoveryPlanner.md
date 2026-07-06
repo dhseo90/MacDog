@@ -1,7 +1,8 @@
 # v1.6.0 Codex Usage & Reset Credits
 
-상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
+상태: publish 완료 / Finder 설치 smoke 완료 / final-state 검증 통과
 작성일: 2026-07-05
+최종 갱신: 2026-07-06
 대상 버전: `1.6.0`
 
 ## 목표
@@ -16,7 +17,7 @@ v1.6.0은 Codex 탭을 현재 사용량과 사용자 보유 초기화권을 함�
 - 실제 초기화 시각은 2차 정보로 함께 표시합니다.
 - 사용자 보유 초기화권은 5시간권/주간권과 분리해 표시합니다.
 - 초기화권은 보유 장수와 각 장의 유효기간을 표시할 수 있는 모델을 둡니다.
-- 현재 Codex app-server가 유효기간 상세를 제공하지 않는 경우에는 장수만 표시하고 유효기간은 미확인으로 표시합니다.
+- 초기화권 상세 조회가 실패하거나 backend shape가 바뀐 경우에는 장수만 표시하고 유효기간은 갱신 필요 상태로 표시합니다.
 - 주간 잔여량 그래프는 보조 정보로 낮춰 Codex 탭 하단에 여유 있게 배치합니다.
 - v1.6 focused tests와 verifier를 새 UI 계약에 맞춥니다.
 
@@ -64,3 +65,12 @@ Codex app-server가 `account/chatgptAuthTokens/refresh`를 지원하면 그 경�
 - `CreditsSnapshot`의 balance를 초기화권 장수로 오해하지 않습니다.
 - `status --json`과 기존 cache/history schema가 breaking change 없이 유지됩니다.
 - 실제 UI 확인을 하지 않았다면 `UI 확인 미수행`으로 보고합니다.
+
+## v1.6.0 검증 결과
+
+- Published DMG 기준 `/Applications/MacDog.app` 설치 smoke에서 Codex 탭을 직접 확인했습니다.
+- Codex 탭은 5시간/주간 사용량을 각각 한 번씩 표시했고, 회복 일정 카드와 1시간/3시간/session plan UI는 없었습니다.
+- 사용자 초기화권은 `3장`으로 표시됐고, 장별 유효기간 `7/18 09:34`, `7/27 08:47`, `8/1 04:07`이 표시됐습니다.
+- 설치본 CLI `codex-usage status --write-cache --timeout 20` 출력에서 `Reset credits: 3 available`과 세 장의 만료일을 확인했습니다.
+- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
+- `./script/verify_release_final_state.sh --version 1.6.0`이 통과했습니다.

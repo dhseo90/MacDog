@@ -266,7 +266,16 @@ v1.5.0 릴리즈 결과:
 세부 범위는 [Docs/V160CodexRecoveryPlanner.md](Docs/V160CodexRecoveryPlanner.md)에 둡니다.
 릴리즈 준비와 수동 smoke 경계는 [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md)에 둡니다.
 
-상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
+상태: publish 완료 / Finder 설치 smoke 완료 / final-state 검증 통과
+
+v1.6.0 릴리즈 결과:
+
+- Release tag: `v1.6.0`
+- Published release head: signed `v1.6.0` tag target `538c1e3501ec4c03c5331d45604030100f302d14`
+- GitHub Release 상태: publish 완료
+- Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
+- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
+- 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭, 초기화권 만료일, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state를 확인했습니다.
 
 v1.6.0 구현 범위:
 
