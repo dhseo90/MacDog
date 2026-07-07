@@ -2,38 +2,40 @@
 
 상태: publish 완료 / Finder 설치 smoke 완료 / final-state 검증 통과
 작성일: 2026-07-05
-최종 갱신: 2026-07-06
+최종 갱신: 2026-07-07
 대상 버전: `1.6.0`
 
 ## 릴리즈 결과
 
 - Release tag: `v1.6.0`
-- Release head: `538c1e3501ec4c03c5331d45604030100f302d14`
+- Release head: `600b8d546b0bbbbef8b4a8a8e9b01b3f39eab16e`
 - Tag verification: GitHub `Verified`, reason `valid`
 - GitHub Release: <https://github.com/dhseo90/MacDog/releases/tag/v1.6.0>
 - Release 상태: `isDraft=false`, `isPrerelease=false`
 - Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
-- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
-- Published asset digest: `sha256:9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
-- `.dmg.sha256` asset digest: `sha256:2e7f00e3ae06e51e5ab9759227c35b4e3d17329bdea983e9ffad4855c925d160`
-- Release workflow: `Draft Release` run `28792583599`, conclusion `success`
+- Published DMG SHA-256: `bb443361809c6655002747c6f057f28bf440378ce69b3af2d7209f12b053f242`
+- Published asset digest: `sha256:bb443361809c6655002747c6f057f28bf440378ce69b3af2d7209f12b053f242`
+- `.dmg.sha256` asset digest: `sha256:05c17adb0047985f87762bfa12c1ea6fab324eb3bf6513634d772c8ebd53f747`
+- Release workflow: `Draft Release` run `28869936729`, conclusion `success`
+- Reissue note: 기존 published `v1.6.0` release/tag는 Codex 탭 history/spacing/reset credit UI 누락을 고친 PR #23 이후 새 release head로 재발행했습니다.
 
 ## Release smoke 결과
 
-- Published DMG를 `/private/tmp/macdog-v160-published.TULVwf`로 재다운로드했습니다.
+- Published DMG를 `/private/tmp/macdog-v160-published-28869936729`로 재다운로드했습니다.
 - `shasum -a 256 -c MacDog-1.6.0.dmg.sha256` 통과.
-- `hdiutil verify /private/tmp/macdog-v160-published.TULVwf/MacDog-1.6.0.dmg` 통과.
+- `hdiutil verify /private/tmp/macdog-v160-published-28869936729/MacDog-1.6.0.dmg` 통과.
 - Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop했습니다.
 - 기존 `/Applications/MacDog.app` 대치 확인창에서 `대치`를 선택했습니다.
 - `/Applications/MacDog.app` 버전은 `1.6.0`입니다.
 - `/Applications/MacDog.app`의 app/CLI 바이너리 checksum이 mounted DMG 내부 app/CLI와 일치했습니다.
-- `/Applications/MacDog.app`을 실행했고, 프로세스 경로가 `/Applications/MacDog.app/Contents/MacOS/MacDog --open-popover-on-launch`임을 확인했습니다.
-- 첫 실행 설치 파일 정리 안내가 표시됐고 `나중에`로 닫았습니다.
+- Finder에서 `/Applications/MacDog.app`을 직접 열었고, 프로세스 경로가 `/Applications/MacDog.app/Contents/MacOS/MacDog`임을 확인했습니다.
+- `macdog://open`으로 설치본 popover를 열어 Codex 탭을 확인했습니다.
 - Codex 탭에서 5시간/주간 사용량이 한 번씩 표시되고, 사용자 초기화권 `3장`과 `7/18 09:34`, `7/27 08:47`, `8/1 04:07` 유효기간이 표시됨을 확인했습니다.
 - 활성 자원, 잠들지 않기, 배터리, 설정 탭 전환을 확인했습니다.
-- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
-- 설치본 CLI `codex-usage status --write-cache --timeout 20` 출력에서 reset credit 3장과 장별 만료일을 확인했습니다.
-- `./script/cleanup_release_smoke_state.sh --apply`로 `/Volumes/MacDog 1.6.0`을 eject하고 `dist/MacDog.app`을 격리했습니다.
+- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`는 exit 0이었고 `usage-fetch:source-unavailable`을 보고했습니다.
+- live fetch 실패 원인은 `codex-usage doctor`에서도 같은 Codex app-server timeout으로 확인했습니다.
+- 설치본 UI는 `cache 최신 · weekly 2296 samples · reset 3 records` 상태를 표시했습니다.
+- `./script/cleanup_release_smoke_state.sh --apply`로 `dist/MacDog.app`을 격리했습니다.
 - `./script/verify_release_final_state.sh --version 1.6.0`이 `Release final state ok`로 통과했습니다.
 
 ## 릴리즈 전 자동검증

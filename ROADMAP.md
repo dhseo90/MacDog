@@ -272,11 +272,11 @@ v1.5.0 릴리즈 결과:
 v1.6.0 릴리즈 결과:
 
 - Release tag: `v1.6.0`
-- Published release head: signed `v1.6.0` tag target `538c1e3501ec4c03c5331d45604030100f302d14`
+- Published release head: signed `v1.6.0` tag target `600b8d546b0bbbbef8b4a8a8e9b01b3f39eab16e`
 - GitHub Release 상태: publish 완료
 - Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
-- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
-- 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭, 초기화권 만료일, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state를 확인했습니다.
+- Published DMG SHA-256: `bb443361809c6655002747c6f057f28bf440378ce69b3af2d7209f12b053f242`
+- 설치 smoke: published DMG를 Finder에서 열고 `MacDog.app`을 `Applications`로 drag-and-drop한 뒤 `/Applications/MacDog.app` 기준 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭, 초기화권 만료일, CLI/cache smoke 실행, live fetch timeout 분리 보고, release final-state를 확인했습니다.
 
 v1.6.0 구현 범위:
 

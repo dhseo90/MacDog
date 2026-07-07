@@ -74,6 +74,6 @@ Codex app-server가 `account/chatgptAuthTokens/refresh`를 지원하면 그 경�
 - Published DMG 기준 `/Applications/MacDog.app` 설치 smoke에서 Codex 탭을 직접 확인했습니다.
 - Codex 탭은 5시간/주간 사용량을 각각 한 번씩 표시했고, 회복 일정 카드와 1시간/3시간/session plan UI는 없었습니다.
 - 사용자 초기화권은 `3장`으로 표시됐고, 장별 유효기간 `7/18 09:34`, `7/27 08:47`, `8/1 04:07`이 표시됐습니다.
-- 설치본 CLI `codex-usage status --write-cache --timeout 20` 출력에서 `Reset credits: 3 available`과 세 장의 만료일을 확인했습니다.
-- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`가 `usage-fetch:success`로 통과했습니다.
+- 설치본 popover에서 `cache 최신 · weekly 2296 samples · reset 3 records` 상태를 확인했습니다.
+- `./script/verify_usage_fetch_cache_contract.sh --cli /Applications/MacDog.app/Contents/MacOS/codex-usage`는 exit 0이었고, live fetch는 Codex app-server timeout으로 `usage-fetch:source-unavailable`을 보고했습니다.
 - `./script/verify_release_final_state.sh --version 1.6.0`이 통과했습니다.

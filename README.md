@@ -8,11 +8,11 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 현재 GitHub Release는 [v1.6.0](https://github.com/dhseo90/MacDog/releases/tag/v1.6.0)입니다.
 
-- Published release head: signed `v1.6.0` tag target `538c1e3501ec4c03c5331d45604030100f302d14`
+- Published release head: signed `v1.6.0` tag target `600b8d546b0bbbbef8b4a8a8e9b01b3f39eab16e`
 - Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
-- Published DMG SHA-256: `9b14a126866cbef06590cf22e9479ebab5d733b435d4ea7c42251d3ace86a411`
+- Published DMG SHA-256: `bb443361809c6655002747c6f057f28bf440378ce69b3af2d7209f12b053f242`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭 전환, 사용자 초기화권 장수/장별 유효기간 표시, CLI/cache LaunchAgent, live fetch/cache 계약, release final-state 검증.
+- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭 전환, 사용자 초기화권 장수/장별 유효기간 표시, CLI/cache smoke 실행, live fetch timeout 분리 보고, release final-state 검증.
 - v1.6.0에는 Codex 탭의 중복 회복 일정 제거, 5시간/주간 사용량 단일 표시, 사용자 초기화권 장수와 장별 유효기간 표시, 초기화권 상세 조회 sanitize, README Codex 탭 screenshot 갱신이 포함됩니다.
 
 ## 화면

@@ -1,7 +1,7 @@
 # v1.6.0 Codex Usage & Reset Credits Implementation Plan
 
 작성일: 2026-07-05
-상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
+상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 완료
 실행 방식: task별 구현 후 focused test와 자체 리뷰
 
 ## 목표

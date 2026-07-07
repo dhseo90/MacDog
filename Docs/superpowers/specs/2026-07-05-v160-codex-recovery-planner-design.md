@@ -1,7 +1,7 @@
 # v1.6.0 Codex Usage & Reset Credits Redesign
 
 작성일: 2026-07-05
-상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 미수행
+상태: 재작업 구현 완료 / 자동 검증 통과 / release smoke 완료
 
 ## 문제
 
