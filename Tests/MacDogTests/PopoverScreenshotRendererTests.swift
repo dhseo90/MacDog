@@ -102,6 +102,20 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
+        XCTAssertTrue(
+            source.contains("CodexUsageSummaryInline("),
+            "Codex tab should keep the existing current risk summary visible"
+        )
+        XCTAssertTrue(
+            source.contains("summary.notificationThresholdSummary"),
+            "Codex tab should keep the existing notification threshold visible"
+        )
+        XCTAssertTrue(
+            source.contains("spacing: CodexUsagePanelLayout.sectionSpacing"),
+            "Codex tab should separate current usage, reset credits, history, and data status as major sections"
+        )
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
@@ -120,6 +134,52 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+    }
+
+    func testWeeklyHistoryBlockExposesModePickerAndWiresGraphActions() throws {
+        let report = Self.codexReportWithThreeResetCreditExpiries()
+        let weeklyWindow = try XCTUnwrap(report.limits["codex"]?.secondary)
+        let currentReset = try XCTUnwrap(weeklyWindow.resetsAt)
+        let pastReset = currentReset - 604_800
+        let history = CodexUsageResetWindowHistory(records: [
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: pastReset - 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: pastReset,
+                dailyEndSamples: [
+                    CodexUsageResetWindowDailySample(
+                        dayIndex: 7,
+                        recordedAt: pastReset - 60,
+                        usedPercent: 72,
+                        remainingPercent: 28
+                    )
+                ],
+                finalUsedPercent: 72,
+                finalRemainingPercent: 28,
+                sampleCount: 1,
+                source: .backfill
+            )
+        ])
+        let view = WeeklyRemainingHistoryBlock(
+            history: .empty,
+            resetWindowHistory: history,
+            weeklyWindow: weeklyWindow,
+            currentReport: report,
+            currentTimestamp: report.generatedAt
+        )
+
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let descendants = allDescendants(of: hostingView)
+        XCTAssertTrue(
+            descendants.contains { $0 is NSSegmentedControl },
+            "history mode picker should expose 현재/지난/비교 controls"
+        )
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift")
+        XCTAssertTrue(source.contains("graphActionButtons(mode: mode"))
     }
 
     func testRenderReadmeScreenshotsWhenRequested() throws {
@@ -402,5 +462,9 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         }
 
         try png.write(to: url)
+    }
+
+    private func allDescendants(of view: NSView) -> [NSView] {
+        view.subviews + view.subviews.flatMap(allDescendants)
     }
 }

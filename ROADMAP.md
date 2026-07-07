@@ -285,10 +285,11 @@ v1.6.0 구현 범위:
 3. 사용자 초기화권 장수를 `rateLimitResetCredits`에서 표시합니다.
 4. 초기화권 장별 유효기간을 ChatGPT backend 상세 응답의 `expiresAt` 기준으로 표시합니다.
 5. stale/error/waiting 상태를 과장 없이 표시합니다.
-6. 주간 그래프는 보조 정보로 낮추고 Codex 탭 하단 여백을 확보합니다.
-7. 메뉴바 tooltip 또는 펫 메뉴의 다음 초기화 glance는 기존 5시간/주간 window에서 직접 계산합니다.
-8. CLI 텍스트 출력에서 초기화권 summary를 표시하고 recovery/session plan 문구를 제거합니다.
-9. v1.6 verifier, focused tests, README/Docs closure를 완료합니다.
+6. 기존 현재 위험 기준과 알림 기준 요약은 1번 탭 안에 compact하게 유지합니다.
+7. 주간 history 그래프는 보조 정보로 낮추되 `현재`/`지난`/`비교` 모드와 PNG 복사/내보내기 액션은 1번 탭 안에 유지합니다.
+8. 메뉴바 tooltip 또는 펫 메뉴의 다음 초기화 glance는 기존 5시간/주간 window에서 직접 계산합니다.
+9. CLI 텍스트 출력에서 초기화권 summary를 표시하고 recovery/session plan 문구를 제거합니다.
+10. v1.6 verifier, focused tests, README/Docs closure를 완료합니다.
 
 v1.6.0 제외 경계:
 

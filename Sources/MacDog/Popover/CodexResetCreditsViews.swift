@@ -6,7 +6,7 @@ struct CodexResetCreditsBlock: View {
     let resetCredits: RateLimitResetCreditsSummary?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Label("사용자 초기화권", systemImage: "arrow.counterclockwise.circle.fill")
                     .font(.caption.weight(.semibold))
@@ -24,7 +24,7 @@ struct CodexResetCreditsBlock: View {
                 resetCreditPlaceholder("초기화권 정보 미확인")
             }
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 4)
         .padding(.horizontal, 8)
         .background(
             RoundedRectangle(cornerRadius: 6)
@@ -46,7 +46,7 @@ struct CodexResetCreditsBlock: View {
             resetCreditPlaceholder("만료일 갱신 필요")
         } else {
             let items = CodexResetCreditTextFormatter.displayItems(for: resetCredits)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 if resetCredits.credits.count <= 2 {
                     ForEach(items) { item in
                         resetCreditItemCell(item)

@@ -5,13 +5,21 @@ struct CodexUsagePanel: View {
     let state: UsageMonitorState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: CodexUsagePanelLayout.sectionSpacing) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("현재 사용량")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("현재 사용량")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 6)
+                        CodexUsageSummaryInline(
+                            summary: summary,
+                            phase: state.phase,
+                            selectedBasisLabel: state.selectedWindowStatus?.label
+                        )
+                    }
 
                     UsageRow(
                         title: "5시간",
@@ -58,7 +66,7 @@ struct CodexUsagePanel: View {
                     .lineLimit(2)
             }
         }
-        .padding(.bottom, 2)
+        .padding(.bottom, 0)
     }
 
     private func resetSummary(at index: Int, in summary: CodexUsagePanelSummary) -> String? {
@@ -76,56 +84,32 @@ struct CodexUsagePanel: View {
     }
 }
 
-private struct CodexUsageSummaryBlock: View {
+private struct CodexUsageSummaryInline: View {
     let summary: CodexUsagePanelSummary
     let phase: UsagePressurePhase
+    let selectedBasisLabel: String?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
-                .frame(width: 14)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(summary.statusTitle)
-                    .font(.caption.weight(.semibold))
-                Text(summary.statusDetail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                Text(summary.notificationThresholdSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(tint)
-        .padding(.vertical, 6)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(tint.opacity(0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(tint.opacity(0.24), lineWidth: 1)
-        )
-        .accessibilityElement(children: .combine)
+        Text("\(summary.statusTitle) · \(basisText) · \(compactNotificationText)")
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.68)
+            .help(summary.notificationThresholdSummary)
+            .accessibilityLabel("\(summary.statusTitle), \(summary.statusDetail), \(summary.notificationThresholdSummary)")
+            .accessibilityIdentifier("codex-usage-risk-notification-summary")
     }
 
-    private var systemImage: String {
-        switch phase {
-        case .limit:
-            "exclamationmark.octagon.fill"
-        case .fast, .sprint:
-            "exclamationmark.triangle.fill"
-        case .calm, .active:
-            "gauge.with.dots.needle.33percent"
-        }
+    private var compactNotificationText: String {
+        summary.notificationThresholdSummary
+            .replacingOccurrences(of: "알림 기준 ", with: "알림 ")
+            .components(separatedBy: " · ")
+            .first ?? summary.notificationThresholdSummary
+    }
+
+    private var basisText: String {
+        guard let selectedBasisLabel else { return "기준 확인 필요" }
+        return "\(selectedBasisLabel) 기준"
     }
 
     private var tint: Color {

@@ -78,8 +78,35 @@ enum MacDogDemoData {
             source: "demo",
             planType: "pro",
             credits: credits,
+            resetCredits: resetCredits,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static var resetCredits: RateLimitResetCreditsSummary {
+        RateLimitResetCreditsSummary(
+            availableCount: 3,
+            credits: [
+                RateLimitResetCredit(
+                    id: "demo_credit_1",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2026-07-18T00:34:01Z"
+                ),
+                RateLimitResetCredit(
+                    id: "demo_credit_2",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2026-07-26T23:47:07Z"
+                ),
+                RateLimitResetCredit(
+                    id: "demo_credit_3",
+                    status: "available",
+                    resetType: "manual",
+                    expiresAt: "2026-07-31T19:07:22Z"
+                )
+            ]
         )
     }
 
