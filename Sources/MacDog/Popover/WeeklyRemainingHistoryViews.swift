@@ -27,7 +27,7 @@ struct WeeklyRemainingHistoryBlock: View {
             let mode = effectiveMode(for: comparisonModel)
             let selectedSeries = selectedOverlaySeries(in: comparisonModel)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("주간 잔여량")
                         .font(.caption.weight(.semibold))
@@ -38,6 +38,32 @@ struct WeeklyRemainingHistoryBlock: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
+                    graphActionButtons(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
+                }
+
+                if comparisonModel.availableModes.count > 1 {
+                    HStack(spacing: 6) {
+                        Picker("", selection: $selectedMode) {
+                            ForEach(comparisonModel.availableModes) { mode in
+                                Text(mode.label).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .controlSize(.mini)
+                        .labelsHidden()
+
+                        if mode != .current, !comparisonModel.pastWindows.isEmpty {
+                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
+                                ForEach(comparisonModel.pastWindows) { window in
+                                    Text(windowLabel(for: window))
+                                        .tag(Optional(window.id))
+                                }
+                            }
+                            .labelsHidden()
+                            .controlSize(.mini)
+                            .frame(width: 94)
+                        }
+                    }
                 }
 
                 graph(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)

@@ -1045,7 +1045,7 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
         XCTAssertTrue(MacDogPopoverModule.settings.usesScrollableContent)
-        XCTAssertGreaterThan(CodexUsagePanelLayout.weeklyGraphHeight, 0)
+        XCTAssertGreaterThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 56)
         XCTAssertLessThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 90)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphYAxisWidth, 28)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphAxisSpacing, 5)
@@ -1096,6 +1096,15 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.latestActualPoint?.remainingPercent, state.codexLimit?.weekly?.remainingPercent)
         XCTAssertEqual(chart.resetStartLabel, "6/1 월")
         XCTAssertEqual(chart.resetEndLabel, "6/8 월")
+    }
+
+    func testDemoDataProvidesResetCreditExpiriesForCodexTab() throws {
+        let state = MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp)
+        let resetCredits = try XCTUnwrap(state.report?.resetCredits)
+
+        XCTAssertEqual(resetCredits.availableCount, 3)
+        XCTAssertEqual(resetCredits.credits.count, 3)
+        XCTAssertEqual(resetCredits.credits.first?.expiresAt, "2026-07-18T00:34:01Z")
     }
 
     func testPetReactionPrioritizesSystemLoad() {
