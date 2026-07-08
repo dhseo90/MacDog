@@ -41,6 +41,7 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
+| v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 로컬 검증 완료, 릴리즈 준비 중 | release smoke에서 mode 전환과 dropdown 표시 조건 확인 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -304,6 +305,27 @@ v1.6.0 제외 경계:
 - Apple Developer Program, Developer ID signing, notarization, App Group provisioning이 필요한 기능
 - WidgetKit 실제 UI 완료 조건 포함
 - 사용자 명시 요청 없는 장시간 테스트, GUI 앱 실행, 설치/LaunchAgent/helper 변경, push
+
+## v1.6.1: History Control Polish
+
+`v1.6.1`은 v1.6.0 Codex 탭의 정보 구조를 유지하면서 주간 잔여량 history mode control의 전환 흔들림을 줄이는 patch release입니다.
+세부 범위는 [Docs/V161HistoryControlPolish.md](Docs/V161HistoryControlPolish.md)에 둡니다.
+릴리즈 준비와 수동 smoke 경계는 [Docs/V161ReleaseReadiness.md](Docs/V161ReleaseReadiness.md)에 둡니다.
+
+상태: 로컬 검증 완료, 릴리즈 준비 중
+
+v1.6.1 구현 범위:
+
+1. `현재`/`지난`/`비교` segmented control을 compact width로 고정합니다.
+2. `현재` mode에서는 지난 window dropdown을 표시하지 않습니다.
+3. `지난`/`비교` mode에서는 지난 window가 있을 때 dropdown을 표시합니다.
+4. Codex 사용량 JSON/cache/history/reset credit schema는 변경하지 않습니다.
+
+v1.6.1 완료 기준:
+
+- `PopoverScreenshotRendererTests`가 current mode의 dropdown 부재와 past mode의 dropdown 표시를 검증합니다.
+- README screenshot renderer가 Codex 탭을 정상 렌더링합니다.
+- release smoke에서 published DMG 설치본의 Codex 탭 mode 전환을 직접 확인합니다.
 
 ## RunCat UI 참고 방향
 

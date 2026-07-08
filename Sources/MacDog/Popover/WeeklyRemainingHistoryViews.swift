@@ -12,6 +12,24 @@ struct WeeklyRemainingHistoryBlock: View {
     @State private var selectedMode: CodexUsageHistoryGraphMode = .current
     @State private var selectedPastWindowID: String?
 
+    init(
+        history: CodexUsageWeeklyHistory,
+        resetWindowHistory: CodexUsageResetWindowHistory,
+        weeklyWindow: UsageWindowReport?,
+        currentReport: CodexUsageReport?,
+        currentTimestamp: Int?,
+        initialMode: CodexUsageHistoryGraphMode = .current,
+        initialPastWindowID: String? = nil
+    ) {
+        self.history = history
+        self.resetWindowHistory = resetWindowHistory
+        self.weeklyWindow = weeklyWindow
+        self.currentReport = currentReport
+        self.currentTimestamp = currentTimestamp
+        _selectedMode = State(initialValue: initialMode)
+        _selectedPastWindowID = State(initialValue: initialPastWindowID)
+    }
+
     private var comparisonModel: CodexUsageHistoryComparisonModel? {
         CodexUsageHistoryComparisonModel(
             history: history,
@@ -51,6 +69,7 @@ struct WeeklyRemainingHistoryBlock: View {
                         .pickerStyle(.segmented)
                         .controlSize(.mini)
                         .labelsHidden()
+                        .frame(width: 126)
 
                         if mode != .current, !comparisonModel.pastWindows.isEmpty {
                             Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
