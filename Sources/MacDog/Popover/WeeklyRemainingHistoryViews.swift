@@ -61,25 +61,25 @@ struct WeeklyRemainingHistoryBlock: View {
 
                 if comparisonModel.availableModes.count > 1 {
                     HStack(spacing: 0) {
-                        WeeklyRemainingHistoryModePicker(
+                        WeeklyRemainingHistoryModeTabs(
                             modes: comparisonModel.availableModes,
                             selectedMode: $selectedMode
-                        )
-                        .frame(
-                            width: WeeklyRemainingHistoryControlLayout.modePickerWidth,
-                            height: WeeklyRemainingHistoryControlLayout.modePickerHeight
                         )
 
                         if mode != .current, !comparisonModel.pastWindows.isEmpty {
                             Spacer(minLength: WeeklyRemainingHistoryControlLayout.modeWindowPickerSpacing)
 
-                            WeeklyRemainingHistoryWindowPicker(
-                                windows: comparisonModel.pastWindows,
-                                selectedWindowID: selectedPastWindowIDBinding(for: comparisonModel)
-                            )
+                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
+                                ForEach(comparisonModel.pastWindows) { window in
+                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(for: window))
+                                        .tag(Optional(window.id))
+                                }
+                            }
+                            .controlSize(.mini)
+                            .labelsHidden()
                             .frame(
                                 width: WeeklyRemainingHistoryControlLayout.windowPickerWidth,
-                                height: WeeklyRemainingHistoryControlLayout.modePickerHeight
+                                alignment: .trailing
                             )
                         }
                     }
@@ -274,13 +274,14 @@ struct WeeklyRemainingHistoryBlock: View {
 }
 
 private enum WeeklyRemainingHistoryControlLayout {
-    static let modePickerWidth: CGFloat = 150
-    static let modePickerHeight: CGFloat = 16
+    static let modeTabWidth: CGFloat = 26
+    static let modeTabHeight: CGFloat = 16
+    static let modeTabSpacing: CGFloat = 2
     static let modeWindowPickerSpacing: CGFloat = 24
-    static let windowPickerWidth: CGFloat = 96
+    static let windowPickerWidth: CGFloat = 94
 }
 
-private struct WeeklyRemainingHistoryModePicker: NSViewRepresentable {
+private struct WeeklyRemainingHistoryModeTabs: NSViewRepresentable {
     let modes: [CodexUsageHistoryGraphMode]
     @Binding var selectedMode: CodexUsageHistoryGraphMode
 
@@ -288,102 +289,92 @@ private struct WeeklyRemainingHistoryModePicker: NSViewRepresentable {
         Coordinator(parent: self)
     }
 
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(
-            labels: modes.map(\.label),
-            trackingMode: .selectOne,
-            target: context.coordinator,
-            action: #selector(Coordinator.selectionChanged(_:))
-        )
-        control.controlSize = .mini
-        control.segmentStyle = .automatic
-        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        control.setContentCompressionResistancePriority(.required, for: .horizontal)
-        control.setAccessibilityLabel("주간 잔여량 그래프 모드")
-        return control
+    func makeNSView(context: Context) -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.distribution = .fill
+        stack.spacing = WeeklyRemainingHistoryControlLayout.modeTabSpacing
+        stack.setContentHuggingPriority(.required, for: .horizontal)
+        stack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        rebuildButtons(in: stack, coordinator: context.coordinator)
+        return stack
     }
 
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+    func updateNSView(_ stack: NSStackView, context: Context) {
         context.coordinator.parent = self
-        control.target = context.coordinator
-        control.action = #selector(Coordinator.selectionChanged(_:))
-        control.segmentCount = modes.count
+        let currentIDs = stack.arrangedSubviews.compactMap { ($0 as? NSButton)?.identifier?.rawValue }
+        let expectedIDs = modes.map(\.rawValue)
 
-        let segmentWidth = WeeklyRemainingHistoryControlLayout.modePickerWidth / CGFloat(max(modes.count, 1))
-        for (index, mode) in modes.enumerated() {
-            control.setLabel(mode.label, forSegment: index)
-            control.setWidth(segmentWidth, forSegment: index)
+        if currentIDs != expectedIDs {
+            rebuildButtons(in: stack, coordinator: context.coordinator)
         }
 
-        if let selectedIndex = modes.firstIndex(of: selectedMode) {
-            control.selectedSegment = selectedIndex
-        } else {
-            control.selectedSegment = 0
+        for mode in modes {
+            guard let button = stack.arrangedSubviews
+                .compactMap({ $0 as? NSButton })
+                .first(where: { $0.identifier?.rawValue == mode.rawValue })
+            else {
+                continue
+            }
+            update(button: button, for: mode)
         }
+    }
+
+    private func rebuildButtons(in stack: NSStackView, coordinator: Coordinator) {
+        for view in stack.arrangedSubviews {
+            stack.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        for mode in modes {
+            let button = NSButton(
+                title: mode.label,
+                target: coordinator,
+                action: #selector(Coordinator.selectionChanged(_:))
+            )
+            button.identifier = NSUserInterfaceItemIdentifier(mode.rawValue)
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.setContentHuggingPriority(.required, for: .horizontal)
+            button.setContentCompressionResistancePriority(.required, for: .horizontal)
+            NSLayoutConstraint.activate([
+                button.widthAnchor.constraint(equalToConstant: WeeklyRemainingHistoryControlLayout.modeTabWidth),
+                button.heightAnchor.constraint(equalToConstant: WeeklyRemainingHistoryControlLayout.modeTabHeight)
+            ])
+            update(button: button, for: mode)
+            stack.addArrangedSubview(button)
+        }
+    }
+
+    private func update(button: NSButton, for mode: CodexUsageHistoryGraphMode) {
+        let isSelected = mode == selectedMode
+        button.title = mode.label
+        button.isBordered = false
+        button.focusRingType = .none
+        button.font = .systemFont(ofSize: 10, weight: isSelected ? .semibold : .medium)
+        button.contentTintColor = isSelected ? .white : .secondaryLabelColor
+        button.wantsLayer = true
+        button.layer?.cornerRadius = 4
+        button.layer?.backgroundColor = isSelected ? NSColor.controlAccentColor.cgColor : NSColor.clear.cgColor
+        button.setAccessibilityLabel(mode.label)
+        button.setAccessibilityRole(.button)
     }
 
     final class Coordinator: NSObject {
-        var parent: WeeklyRemainingHistoryModePicker
+        var parent: WeeklyRemainingHistoryModeTabs
 
-        init(parent: WeeklyRemainingHistoryModePicker) {
+        init(parent: WeeklyRemainingHistoryModeTabs) {
             self.parent = parent
         }
 
-        @MainActor @objc func selectionChanged(_ sender: NSSegmentedControl) {
-            let index = sender.selectedSegment
-            guard parent.modes.indices.contains(index) else { return }
-            parent.selectedMode = parent.modes[index]
-        }
-    }
-}
-
-private struct WeeklyRemainingHistoryWindowPicker: NSViewRepresentable {
-    let windows: [CodexUsageResetWindowOverlayWindow]
-    @Binding var selectedWindowID: String?
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
-    }
-
-    func makeNSView(context: Context) -> NSPopUpButton {
-        let control = NSPopUpButton(frame: .zero, pullsDown: false)
-        control.controlSize = .mini
-        control.target = context.coordinator
-        control.action = #selector(Coordinator.selectionChanged(_:))
-        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        control.setContentCompressionResistancePriority(.required, for: .horizontal)
-        control.setAccessibilityLabel("지난 주간 window 선택")
-        return control
-    }
-
-    func updateNSView(_ control: NSPopUpButton, context: Context) {
-        context.coordinator.parent = self
-        control.target = context.coordinator
-        control.action = #selector(Coordinator.selectionChanged(_:))
-        control.removeAllItems()
-        control.addItems(withTitles: windows.map { CodexUsageHistoryTimelineLabel.windowLabel(for: $0) })
-
-        for (index, window) in windows.enumerated() {
-            control.item(at: index)?.representedObject = window.id
-        }
-
-        let selectedID = selectedWindowID ?? windows.first?.id
-        if let index = windows.firstIndex(where: { $0.id == selectedID }) {
-            control.selectItem(at: index)
-        }
-    }
-
-    final class Coordinator: NSObject {
-        var parent: WeeklyRemainingHistoryWindowPicker
-
-        init(parent: WeeklyRemainingHistoryWindowPicker) {
-            self.parent = parent
-        }
-
-        @MainActor @objc func selectionChanged(_ sender: NSPopUpButton) {
-            let index = sender.indexOfSelectedItem
-            guard parent.windows.indices.contains(index) else { return }
-            parent.selectedWindowID = parent.windows[index].id
+        @MainActor @objc func selectionChanged(_ sender: NSButton) {
+            guard
+                let rawValue = sender.identifier?.rawValue,
+                let mode = CodexUsageHistoryGraphMode(rawValue: rawValue)
+            else {
+                return
+            }
+            parent.selectedMode = mode
         }
     }
 }
