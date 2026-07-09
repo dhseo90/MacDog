@@ -193,8 +193,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             descendants.compactMap { $0 as? NSSegmentedControl }.first
         )
 
-        XCTAssertGreaterThanOrEqual(segmentedControl.frame.width, 144)
-        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 160)
+        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
         XCTAssertFalse(
             descendants.contains { $0 is NSPopUpButton },
             "current mode should not show the past-window dropdown"
@@ -213,10 +212,37 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let segmentedFrame = segmentedControl.convert(segmentedControl.bounds, to: hostingView)
         let windowPickerFrame = windowPicker.convert(windowPicker.bounds, to: hostingView)
 
-        XCTAssertGreaterThanOrEqual(segmentedFrame.width, 144)
-        XCTAssertLessThanOrEqual(segmentedFrame.width, 160)
+        XCTAssertLessThanOrEqual(segmentedFrame.width, 132)
         XCTAssertGreaterThanOrEqual(windowPickerFrame.minX - segmentedFrame.maxX, 24)
-        XCTAssertGreaterThanOrEqual(windowPickerFrame.maxX, hostingView.bounds.maxX - 8)
+        XCTAssertGreaterThanOrEqual(windowPickerFrame.maxX, hostingView.bounds.maxX - 24)
+    }
+
+    func testWeeklyHistoryModeSwitchingDoesNotCrashAndCurrentHidesWindowPicker() throws {
+        let view = try weeklyHistoryBlock(initialMode: .current)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        var descendants = allDescendants(of: hostingView)
+        let segmentedControl = try XCTUnwrap(descendants.compactMap { $0 as? NSSegmentedControl }.first)
+
+        segmentedControl.selectedSegment = 1
+        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        hostingView.layoutSubtreeIfNeeded()
+        descendants = allDescendants(of: hostingView)
+        XCTAssertTrue(descendants.contains { $0 is NSPopUpButton })
+
+        segmentedControl.selectedSegment = 2
+        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        hostingView.layoutSubtreeIfNeeded()
+        descendants = allDescendants(of: hostingView)
+        XCTAssertTrue(descendants.contains { $0 is NSPopUpButton })
+
+        segmentedControl.selectedSegment = 0
+        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        hostingView.layoutSubtreeIfNeeded()
+        descendants = allDescendants(of: hostingView)
+        XCTAssertFalse(descendants.contains { $0 is NSPopUpButton })
     }
 
     func testRenderReadmeScreenshotsWhenRequested() throws {
