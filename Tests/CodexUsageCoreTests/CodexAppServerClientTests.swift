@@ -2,6 +2,18 @@ import XCTest
 @testable import CodexUsageCore
 
 final class CodexAppServerClientTests: XCTestCase {
+    func testResolverPrefersCurrentChatGPTAppBundleCLI() {
+        XCTAssertEqual(
+            CodexCLIResolver.defaultCandidates.first,
+            "/Applications/ChatGPT.app/Contents/Resources/codex"
+        )
+        XCTAssertTrue(
+            CodexCLIResolver.defaultCandidates.contains(
+                "/Applications/Codex.app/Contents/Resources/codex"
+            )
+        )
+    }
+
     func testDefaultWorkingDirectoryUsesTemporaryDirectory() {
         XCTAssertEqual(CodexAppServerClient.defaultWorkingDirectoryURL.path, "/tmp")
     }

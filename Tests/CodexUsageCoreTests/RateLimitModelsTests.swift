@@ -183,6 +183,32 @@ final class RateLimitModelsTests: XCTestCase {
         ])
     }
 
+    func testDecodesAppServerResetCreditExpiryFromUnixSeconds() throws {
+        let json = """
+        {
+          "availableCount": 1,
+          "credits": [
+            {
+              "id": "credit_1",
+              "status": "available",
+              "resetType": "codexRateLimits",
+              "grantedAt": 1783612800,
+              "expiresAt": 1783670400
+            }
+          ]
+        }
+        """
+
+        let summary = try JSONDecoder().decode(
+            RateLimitResetCreditsSummary.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(summary.availableCount, 1)
+        XCTAssertEqual(summary.credits.first?.expiresAt, "2026-07-10T08:00:00Z")
+        XCTAssertEqual(summary.credits.first?.resetType, "codexRateLimits")
+    }
+
     func testIdentifiesKnownWindowDurations() {
         XCTAssertEqual(
             RateLimitWindow(usedPercent: 1, windowDurationMins: 300, resetsAt: nil).identifiedKind,

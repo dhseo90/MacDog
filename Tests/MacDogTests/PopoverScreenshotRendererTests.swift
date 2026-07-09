@@ -246,6 +246,30 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(descendants.contains { $0 is NSPopUpButton })
     }
 
+    func testWeeklyHistoryModeSwitchingKeepsFiveWindowPickerSelectionValid() throws {
+        let view = try weeklyHistoryBlock(initialMode: .current, pastWindowCount: 5)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        for selectedTitle in ["지난", "비교", "현재", "지난", "비교"] {
+            let modeButton = try XCTUnwrap(
+                modeTabButtons(in: hostingView).first { $0.title == selectedTitle }
+            )
+            modeButton.performClick(nil)
+            hostingView.layoutSubtreeIfNeeded()
+
+            let windowPickers = allDescendants(of: hostingView).compactMap { $0 as? NSPopUpButton }
+            if selectedTitle == "현재" {
+                XCTAssertTrue(windowPickers.isEmpty)
+            } else {
+                let picker = try XCTUnwrap(windowPickers.first)
+                XCTAssertEqual(picker.numberOfItems, 5)
+                XCTAssertTrue((0..<picker.numberOfItems).contains(picker.indexOfSelectedItem))
+            }
+        }
+    }
+
     func testRenderReadmeScreenshotsWhenRequested() throws {
         guard ProcessInfo.processInfo.environment["MACDOG_RENDER_README_SCREENSHOTS"] == "1" else {
             throw XCTSkip("README screenshot rendering is opt-in.")
@@ -471,14 +495,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
     }
 
     private func weeklyHistoryBlock(
-        initialMode: CodexUsageHistoryGraphMode
+        initialMode: CodexUsageHistoryGraphMode,
+        pastWindowCount: Int = 1
     ) throws -> WeeklyRemainingHistoryBlock {
         let report = Self.codexReportWithThreeResetCreditExpiries()
         let weeklyWindow = try XCTUnwrap(report.limits["codex"]?.secondary)
         let currentReset = try XCTUnwrap(weeklyWindow.resetsAt)
-        let pastReset = currentReset - 604_800
-        let history = CodexUsageResetWindowHistory(records: [
-            CodexUsageResetWindowHistoryRecord(
+        let records = (1...pastWindowCount).map { offset in
+            let pastReset = currentReset - offset * 604_800
+            return CodexUsageResetWindowHistoryRecord(
                 generatedAt: pastReset - 60,
                 limitId: "codex",
                 windowDurationMins: 10_080,
@@ -496,7 +521,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 sampleCount: 1,
                 source: .backfill
             )
-        ])
+        }
+        let history = CodexUsageResetWindowHistory(records: records)
         return WeeklyRemainingHistoryBlock(
             history: .empty,
             resetWindowHistory: history,
