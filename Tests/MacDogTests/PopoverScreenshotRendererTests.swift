@@ -174,10 +174,11 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         let descendants = allDescendants(of: hostingView)
-        XCTAssertTrue(
+        XCTAssertFalse(
             descendants.contains { $0 is NSSegmentedControl },
-            "history mode picker should expose 현재/지난/비교 controls"
+            "history mode tabs should avoid the default segmented control chrome"
         )
+        XCTAssertEqual(modeTabButtons(in: hostingView).map(\.title), ["현재", "지난", "비교"])
         let source = try String(contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift")
         XCTAssertTrue(source.contains("graphActionButtons(mode: mode"))
     }
@@ -189,11 +190,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         let descendants = allDescendants(of: hostingView)
-        let segmentedControl = try XCTUnwrap(
-            descendants.compactMap { $0 as? NSSegmentedControl }.first
-        )
+        let modeTabs = modeTabButtons(in: hostingView)
 
-        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
+        XCTAssertEqual(modeTabs.map(\.title), ["현재", "지난", "비교"])
+        XCTAssertLessThanOrEqual(modeTabFrame(for: modeTabs, in: hostingView).width, 86)
         XCTAssertFalse(
             descendants.contains { $0 is NSPopUpButton },
             "current mode should not show the past-window dropdown"
@@ -207,14 +207,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         let descendants = allDescendants(of: hostingView)
-        let segmentedControl = try XCTUnwrap(descendants.compactMap { $0 as? NSSegmentedControl }.first)
+        let modeTabs = modeTabButtons(in: hostingView)
         let windowPicker = try XCTUnwrap(descendants.compactMap { $0 as? NSPopUpButton }.first)
-        let segmentedFrame = segmentedControl.convert(segmentedControl.bounds, to: hostingView)
+        let modeTabFrame = modeTabFrame(for: modeTabs, in: hostingView)
         let windowPickerFrame = windowPicker.convert(windowPicker.bounds, to: hostingView)
 
-        XCTAssertLessThanOrEqual(segmentedFrame.width, 132)
-        XCTAssertGreaterThanOrEqual(windowPickerFrame.minX - segmentedFrame.maxX, 24)
-        XCTAssertGreaterThanOrEqual(windowPickerFrame.maxX, hostingView.bounds.maxX - 24)
+        XCTAssertEqual(modeTabs.map(\.title), ["현재", "지난", "비교"])
+        XCTAssertLessThanOrEqual(modeTabFrame.width, 86)
+        XCTAssertGreaterThanOrEqual(windowPickerFrame.minX - modeTabFrame.maxX, 24)
+        XCTAssertEqual(windowPickerFrame.maxX, hostingView.bounds.maxX, accuracy: 1)
     }
 
     func testWeeklyHistoryModeSwitchingDoesNotCrashAndCurrentHidesWindowPicker() throws {
@@ -224,22 +225,22 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         var descendants = allDescendants(of: hostingView)
-        let segmentedControl = try XCTUnwrap(descendants.compactMap { $0 as? NSSegmentedControl }.first)
+        var modeTabs = modeTabButtons(in: hostingView)
+        XCTAssertEqual(modeTabs.map(\.title), ["현재", "지난", "비교"])
 
-        segmentedControl.selectedSegment = 1
-        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        modeTabs[1].performClick(nil)
         hostingView.layoutSubtreeIfNeeded()
         descendants = allDescendants(of: hostingView)
         XCTAssertTrue(descendants.contains { $0 is NSPopUpButton })
 
-        segmentedControl.selectedSegment = 2
-        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        modeTabs = modeTabButtons(in: hostingView)
+        modeTabs[2].performClick(nil)
         hostingView.layoutSubtreeIfNeeded()
         descendants = allDescendants(of: hostingView)
         XCTAssertTrue(descendants.contains { $0 is NSPopUpButton })
 
-        segmentedControl.selectedSegment = 0
-        segmentedControl.sendAction(segmentedControl.action, to: segmentedControl.target)
+        modeTabs = modeTabButtons(in: hostingView)
+        modeTabs[0].performClick(nil)
         hostingView.layoutSubtreeIfNeeded()
         descendants = allDescendants(of: hostingView)
         XCTAssertFalse(descendants.contains { $0 is NSPopUpButton })
@@ -373,6 +374,55 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
         let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
         try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-live-codex.png"))
+    }
+
+    func testRenderReadmeCodexComparisonScreenshotWhenRequested() throws {
+        guard ProcessInfo.processInfo.environment["MACDOG_RENDER_README_CODEX_COMPARISON"] == "1" else {
+            throw XCTSkip("README Codex comparison rendering is opt-in.")
+        }
+
+        let outputDirectory = ProcessInfo.processInfo.environment["MACDOG_RENDER_README_CODEX_COMPARISON_OUTPUT_DIR"]
+            .map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("macdog-readme-codex-comparison", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let defaults = UserDefaults.standard
+        let previousModule = defaults.object(forKey: RunnerPreferences.popoverModuleKey)
+        defer {
+            if let previousModule {
+                defaults.set(previousModule, forKey: RunnerPreferences.popoverModuleKey)
+            } else {
+                defaults.removeObject(forKey: RunnerPreferences.popoverModuleKey)
+            }
+        }
+        defaults.set(MacDogPopoverModule.codex.rawValue, forKey: RunnerPreferences.popoverModuleKey)
+
+        let preferences = RunnerPreferences(defaults: defaults)
+        let state = MacDogDemoData.state(
+            preferences: preferences,
+            now: MacDogDemoData.readmeScreenshotTimestamp
+        )
+        let view = UsagePopoverView(
+            state: state,
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+        )
+        let hostingView = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+        hostingView.frame = NSRect(origin: .zero, size: NSSize(width: 370, height: 408))
+        hostingView.setFrameSize(NSSize(width: 370, height: 408))
+        hostingView.layoutSubtreeIfNeeded()
+
+        let comparisonButton = try XCTUnwrap(
+            allDescendants(of: hostingView)
+                .compactMap { $0 as? NSButton }
+                .first { $0.title == "비교" }
+        )
+        comparisonButton.performClick(nil)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let image = snapshot(hostingView: hostingView, size: NSSize(width: 370, height: 408), scale: 2)
+        try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-codex-comparison.png"))
     }
 
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
@@ -526,6 +576,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.setFrameSize(size)
         hostingView.layoutSubtreeIfNeeded()
 
+        return snapshot(hostingView: hostingView, size: size, scale: scale)
+    }
+
+    private func snapshot(hostingView: NSView, size: NSSize, scale: CGFloat) -> NSImage {
         let pixelWidth = Int(size.width * scale)
         let pixelHeight = Int(size.height * scale)
         guard let bitmap = NSBitmapImageRep(
@@ -566,5 +620,21 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private func allDescendants(of view: NSView) -> [NSView] {
         view.subviews + view.subviews.flatMap(allDescendants)
+    }
+
+    private func modeTabButtons(in view: NSView) -> [NSButton] {
+        let modeTitles = Set(["현재", "지난", "비교"])
+        return allDescendants(of: view)
+            .compactMap { $0 as? NSButton }
+            .filter { modeTitles.contains($0.title) }
+            .sorted { first, second in
+                first.convert(first.bounds, to: view).minX < second.convert(second.bounds, to: view).minX
+            }
+    }
+
+    private func modeTabFrame(for buttons: [NSButton], in view: NSView) -> NSRect {
+        buttons
+            .map { $0.convert($0.bounds, to: view) }
+            .reduce(.null) { $0.union($1) }
     }
 }
