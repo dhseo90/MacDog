@@ -60,29 +60,30 @@ struct WeeklyRemainingHistoryBlock: View {
                 }
 
                 if comparisonModel.availableModes.count > 1 {
-                    HStack(spacing: 6) {
-                        Picker("", selection: $selectedMode) {
-                            ForEach(comparisonModel.availableModes) { mode in
-                                Text(mode.label).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .controlSize(.mini)
-                        .labelsHidden()
-                        .frame(width: 126)
+                    HStack(spacing: 0) {
+                        WeeklyRemainingHistoryModePicker(
+                            modes: comparisonModel.availableModes,
+                            selectedMode: $selectedMode
+                        )
+                        .frame(
+                            width: WeeklyRemainingHistoryControlLayout.modePickerWidth,
+                            height: WeeklyRemainingHistoryControlLayout.modePickerHeight
+                        )
 
                         if mode != .current, !comparisonModel.pastWindows.isEmpty {
-                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
-                                ForEach(comparisonModel.pastWindows) { window in
-                                    Text(windowLabel(for: window))
-                                        .tag(Optional(window.id))
-                                }
-                            }
-                            .labelsHidden()
-                            .controlSize(.mini)
-                            .frame(width: 94)
+                            Spacer(minLength: WeeklyRemainingHistoryControlLayout.modeWindowPickerSpacing)
+
+                            WeeklyRemainingHistoryWindowPicker(
+                                windows: comparisonModel.pastWindows,
+                                selectedWindowID: selectedPastWindowIDBinding(for: comparisonModel)
+                            )
+                            .frame(
+                                width: WeeklyRemainingHistoryControlLayout.windowPickerWidth,
+                                height: WeeklyRemainingHistoryControlLayout.modePickerHeight
+                            )
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 graph(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
@@ -230,10 +231,6 @@ struct WeeklyRemainingHistoryBlock: View {
         }
     }
 
-    private func windowLabel(for window: CodexUsageResetWindowOverlayWindow) -> String {
-        CodexUsageHistoryTimelineLabel.windowLabel(for: window)
-    }
-
     private func copyVisibleGraph(
         mode: CodexUsageHistoryGraphMode,
         model: CodexUsageHistoryComparisonModel,
@@ -273,6 +270,121 @@ struct WeeklyRemainingHistoryBlock: View {
             size: CodexUsageGraphImageExporter.defaultImageSize,
             scale: 2
         )
+    }
+}
+
+private enum WeeklyRemainingHistoryControlLayout {
+    static let modePickerWidth: CGFloat = 150
+    static let modePickerHeight: CGFloat = 16
+    static let modeWindowPickerSpacing: CGFloat = 24
+    static let windowPickerWidth: CGFloat = 96
+}
+
+private struct WeeklyRemainingHistoryModePicker: NSViewRepresentable {
+    let modes: [CodexUsageHistoryGraphMode]
+    @Binding var selectedMode: CodexUsageHistoryGraphMode
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSSegmentedControl {
+        let control = NSSegmentedControl(
+            labels: modes.map(\.label),
+            trackingMode: .selectOne,
+            target: context.coordinator,
+            action: #selector(Coordinator.selectionChanged(_:))
+        )
+        control.controlSize = .mini
+        control.segmentStyle = .automatic
+        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        control.setContentCompressionResistancePriority(.required, for: .horizontal)
+        control.setAccessibilityLabel("주간 잔여량 그래프 모드")
+        return control
+    }
+
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        control.target = context.coordinator
+        control.action = #selector(Coordinator.selectionChanged(_:))
+        control.segmentCount = modes.count
+
+        let segmentWidth = WeeklyRemainingHistoryControlLayout.modePickerWidth / CGFloat(max(modes.count, 1))
+        for (index, mode) in modes.enumerated() {
+            control.setLabel(mode.label, forSegment: index)
+            control.setWidth(segmentWidth, forSegment: index)
+        }
+
+        if let selectedIndex = modes.firstIndex(of: selectedMode) {
+            control.selectedSegment = selectedIndex
+        } else {
+            control.selectedSegment = 0
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var parent: WeeklyRemainingHistoryModePicker
+
+        init(parent: WeeklyRemainingHistoryModePicker) {
+            self.parent = parent
+        }
+
+        @MainActor @objc func selectionChanged(_ sender: NSSegmentedControl) {
+            let index = sender.selectedSegment
+            guard parent.modes.indices.contains(index) else { return }
+            parent.selectedMode = parent.modes[index]
+        }
+    }
+}
+
+private struct WeeklyRemainingHistoryWindowPicker: NSViewRepresentable {
+    let windows: [CodexUsageResetWindowOverlayWindow]
+    @Binding var selectedWindowID: String?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let control = NSPopUpButton(frame: .zero, pullsDown: false)
+        control.controlSize = .mini
+        control.target = context.coordinator
+        control.action = #selector(Coordinator.selectionChanged(_:))
+        control.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        control.setContentCompressionResistancePriority(.required, for: .horizontal)
+        control.setAccessibilityLabel("지난 주간 window 선택")
+        return control
+    }
+
+    func updateNSView(_ control: NSPopUpButton, context: Context) {
+        context.coordinator.parent = self
+        control.target = context.coordinator
+        control.action = #selector(Coordinator.selectionChanged(_:))
+        control.removeAllItems()
+        control.addItems(withTitles: windows.map { CodexUsageHistoryTimelineLabel.windowLabel(for: $0) })
+
+        for (index, window) in windows.enumerated() {
+            control.item(at: index)?.representedObject = window.id
+        }
+
+        let selectedID = selectedWindowID ?? windows.first?.id
+        if let index = windows.firstIndex(where: { $0.id == selectedID }) {
+            control.selectItem(at: index)
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var parent: WeeklyRemainingHistoryWindowPicker
+
+        init(parent: WeeklyRemainingHistoryWindowPicker) {
+            self.parent = parent
+        }
+
+        @MainActor @objc func selectionChanged(_ sender: NSPopUpButton) {
+            let index = sender.indexOfSelectedItem
+            guard parent.windows.indices.contains(index) else { return }
+            parent.selectedWindowID = parent.windows[index].id
+        }
     }
 }
 

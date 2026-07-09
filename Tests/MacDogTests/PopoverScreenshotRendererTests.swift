@@ -193,7 +193,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             descendants.compactMap { $0 as? NSSegmentedControl }.first
         )
 
-        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
+        XCTAssertGreaterThanOrEqual(segmentedControl.frame.width, 144)
+        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 160)
         XCTAssertFalse(
             descendants.contains { $0 is NSPopUpButton },
             "current mode should not show the past-window dropdown"
@@ -207,15 +208,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
 
         let descendants = allDescendants(of: hostingView)
-        let segmentedControl = try XCTUnwrap(
-            descendants.compactMap { $0 as? NSSegmentedControl }.first
-        )
+        let segmentedControl = try XCTUnwrap(descendants.compactMap { $0 as? NSSegmentedControl }.first)
+        let windowPicker = try XCTUnwrap(descendants.compactMap { $0 as? NSPopUpButton }.first)
+        let segmentedFrame = segmentedControl.convert(segmentedControl.bounds, to: hostingView)
+        let windowPickerFrame = windowPicker.convert(windowPicker.bounds, to: hostingView)
 
-        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
-        XCTAssertTrue(
-            descendants.contains { $0 is NSPopUpButton },
-            "past mode should show the past-window dropdown"
-        )
+        XCTAssertGreaterThanOrEqual(segmentedFrame.width, 144)
+        XCTAssertLessThanOrEqual(segmentedFrame.width, 160)
+        XCTAssertGreaterThanOrEqual(windowPickerFrame.minX - segmentedFrame.maxX, 24)
+        XCTAssertGreaterThanOrEqual(windowPickerFrame.maxX, hostingView.bounds.maxX - 8)
     }
 
     func testRenderReadmeScreenshotsWhenRequested() throws {
