@@ -182,6 +182,42 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(source.contains("graphActionButtons(mode: mode"))
     }
 
+    func testWeeklyHistoryCurrentModeUsesCompactModeControlWithoutWindowPicker() throws {
+        let view = try weeklyHistoryBlock(initialMode: .current)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let descendants = allDescendants(of: hostingView)
+        let segmentedControl = try XCTUnwrap(
+            descendants.compactMap { $0 as? NSSegmentedControl }.first
+        )
+
+        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
+        XCTAssertFalse(
+            descendants.contains { $0 is NSPopUpButton },
+            "current mode should not show the past-window dropdown"
+        )
+    }
+
+    func testWeeklyHistoryPastModeKeepsCompactModeControlAndShowsWindowPicker() throws {
+        let view = try weeklyHistoryBlock(initialMode: .past)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let descendants = allDescendants(of: hostingView)
+        let segmentedControl = try XCTUnwrap(
+            descendants.compactMap { $0 as? NSSegmentedControl }.first
+        )
+
+        XCTAssertLessThanOrEqual(segmentedControl.frame.width, 132)
+        XCTAssertTrue(
+            descendants.contains { $0 is NSPopUpButton },
+            "past mode should show the past-window dropdown"
+        )
+    }
+
     func testRenderReadmeScreenshotsWhenRequested() throws {
         guard ProcessInfo.processInfo.environment["MACDOG_RENDER_README_SCREENSHOTS"] == "1" else {
             throw XCTSkip("README screenshot rendering is opt-in.")
@@ -355,6 +391,43 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private static func codexReportWithThreeResetCreditExpiries() -> CodexUsageReport {
         codexReportWithResetCredits(resetCredits(count: 3, shuffled: false))
+    }
+
+    private func weeklyHistoryBlock(
+        initialMode: CodexUsageHistoryGraphMode
+    ) throws -> WeeklyRemainingHistoryBlock {
+        let report = Self.codexReportWithThreeResetCreditExpiries()
+        let weeklyWindow = try XCTUnwrap(report.limits["codex"]?.secondary)
+        let currentReset = try XCTUnwrap(weeklyWindow.resetsAt)
+        let pastReset = currentReset - 604_800
+        let history = CodexUsageResetWindowHistory(records: [
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: pastReset - 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: pastReset,
+                dailyEndSamples: [
+                    CodexUsageResetWindowDailySample(
+                        dayIndex: 7,
+                        recordedAt: pastReset - 60,
+                        usedPercent: 72,
+                        remainingPercent: 28
+                    )
+                ],
+                finalUsedPercent: 72,
+                finalRemainingPercent: 28,
+                sampleCount: 1,
+                source: .backfill
+            )
+        ])
+        return WeeklyRemainingHistoryBlock(
+            history: .empty,
+            resetWindowHistory: history,
+            weeklyWindow: weeklyWindow,
+            currentReport: report,
+            currentTimestamp: report.generatedAt,
+            initialMode: initialMode
+        )
     }
 
     private static func codexReportWithResetCredits(_ resetCredits: RateLimitResetCreditsSummary) -> CodexUsageReport {
