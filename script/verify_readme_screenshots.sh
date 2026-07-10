@@ -106,9 +106,15 @@ export TZ="${MACDOG_README_SCREENSHOT_TZ:-Asia/Seoul}"
 render_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-readme-screenshots.XXXXXX")"
 trap 'rm -rf "$render_dir"' EXIT
 
-MACDOG_RENDER_README_SCREENSHOTS=1 \
-MACDOG_RENDER_README_SCREENSHOTS_OUTPUT_DIR="$render_dir" \
-  "$XCRUN" swift test --filter PopoverScreenshotRendererTests >/dev/null
+renderer_test="MacDogTests.PopoverScreenshotRendererTests/testRenderReadmeScreenshotsWhenRequested"
+if ! renderer_output="$(
+  MACDOG_RENDER_README_SCREENSHOTS=1 \
+  MACDOG_RENDER_README_SCREENSHOTS_OUTPUT_DIR="$render_dir" \
+    "$XCRUN" swift test --filter "$renderer_test" 2>&1
+)"; then
+  printf '%s\n' "$renderer_output" >&2
+  die "README screenshot renderer test failed: $renderer_test"
+fi
 
 strict_pixel_compare=1
 if [[ "${GITHUB_ACTIONS:-}" == "true" && "${MACDOG_README_SCREENSHOT_STRICT:-}" != "1" ]]; then
