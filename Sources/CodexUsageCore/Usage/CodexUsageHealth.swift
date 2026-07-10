@@ -61,7 +61,7 @@ public struct CodexUsageHealthReport: Equatable, Sendable {
         latestResetWindowResetsAt: Int?,
         resetWindowAppendState: CodexUsageHealthAppendState = .unavailable,
         resetWindowRetentionState: CodexUsageHealthState = .waiting,
-        resetWindowRetentionLimit: Int = CodexUsageResetWindowHistoryStore.completedWindowRetentionCount + 1,
+        resetWindowRetentionLimit: Int = CodexUsageResetWindowHistoryStore.completedWindowRetentionCount,
         paceState: CodexUsageHealthPaceState = .unavailable,
         paceSampleCount: Int = 0
     ) {
@@ -331,9 +331,8 @@ public struct CodexUsageHealthReader {
         history: CodexUsageResetWindowHistory?
     ) -> CodexUsageHealthAppendState {
         guard let history else { return .missing }
-        return history.records.contains {
-            isSameLogicalResetWindow(record: $0, sample: currentSample)
-        } ? .stored : .missing
+        _ = currentSample
+        return history.records.isEmpty ? .skipped : .stored
     }
 
     private func readPaceHealth(
@@ -381,23 +380,6 @@ public struct CodexUsageHealthReader {
             )
     }
 
-    private func isSameLogicalResetWindow(
-        record: CodexUsageResetWindowHistoryRecord,
-        sample: CodexUsageWeeklyHistorySample
-    ) -> Bool {
-        guard record.limitId == "codex",
-              record.windowDurationMins == sample.windowDurationMins
-        else {
-            return false
-        }
-
-        let sampleResetStartAt = sample.resetsAt - sample.windowDurationMins * 60
-        let tolerance = CodexUsageResetWindowHistoryStore.logicalResetWindowToleranceSeconds(
-            windowDurationMins: sample.windowDurationMins
-        )
-        return abs(record.resetStartAt - sampleResetStartAt) <= tolerance
-    }
-
     private struct CacheHealth {
         let state: CodexUsageHealthState
         let ageSeconds: Int?
@@ -435,7 +417,7 @@ public struct CodexUsageHealthReader {
 
 private extension CodexUsageHealthReader {
     static var resetWindowRetentionLimit: Int {
-        CodexUsageResetWindowHistoryStore.completedWindowRetentionCount + 1
+        CodexUsageResetWindowHistoryStore.completedWindowRetentionCount
     }
 }
 

@@ -252,26 +252,32 @@ public struct CodexUsageCacheStore {
                 dateProvider: dateProvider
             )
             let stored = try historyStore.append(sample)
+            let storedWeeklyHistory = try historyStore.read()
             let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
                 fileURL: resetWindowHistoryFileURL,
                 fileManager: fileManager
             )
-            let resetWindowStored = try resetWindowHistoryStore.append(sample: sample, generatedAt: now)
-            let resetWindowRecord = try? resetWindowHistoryStore.read().records.first {
-                $0.key == CodexUsageResetWindowHistoryKey(
-                    limitId: "codex",
-                    windowDurationMins: sample.windowDurationMins,
-                    resetsAt: sample.resetsAt
-                )
+            let confirmedSummaries = CodexUsageResetWindowBackfillBuilder().summaries(
+                from: storedWeeklyHistory,
+                completedAtOrBefore: now,
+                excludingCurrentResetsAt: sample.resetsAt
+            )
+            let resetWindowStored = try resetWindowHistoryStore.reconcileConfirmedSummaries(
+                confirmedSummaries,
+                observedSince: storedWeeklyHistory.samples.first?.recordedAt ?? now,
+                limitId: "codex",
+                windowDurationMins: sample.windowDurationMins
+            )
+            let resetWindowRecord = try? resetWindowHistoryStore.read().records.last {
+                $0.limitId == "codex" &&
+                    $0.windowDurationMins == sample.windowDurationMins
             }
-            let recordingStartedAt = try? historyStore.read().samples
-                .first {
-                    $0.matchesResetWindow(
-                        resetsAt: sample.resetsAt,
-                        windowDurationMins: sample.windowDurationMins
-                    )
-                }?
-                .recordedAt
+            let recordingStartedAt = storedWeeklyHistory.samples.first {
+                $0.matchesResetWindow(
+                    resetsAt: sample.resetsAt,
+                    windowDurationMins: sample.windowDurationMins
+                )
+            }?.recordedAt
             weeklyHistory = CodexUsageWeeklyHistoryWriteResult(
                 disposition: stored ? .stored : .skipped,
                 fileURL: historyFileURL,

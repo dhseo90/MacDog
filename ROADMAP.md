@@ -155,7 +155,7 @@ v1.4.0 P0-P2 완료 순서:
 - v1.4.0 (2) 플랜 tier 제외 경계 고정: `Plus`/`Pro $100`/`Pro $200` 구분 불가를 확정하고 raw `planType` 기존 표시만 유지합니다.
 - v1.4.0 (3) reset window history 계약: `limitId`, `windowDurationMins`, `resetsAt` 기준 최소 history record schema를 정의하고 기존 cache/history 파일은 breaking change 없이 유지합니다.
 - v1.4.0 (4) history store 구현: 별도 history 파일, atomic write, retention, dedupe, schema migration, 민감정보 미저장 테스트를 갖춥니다.
-- v1.4.0 (5) cache writer 축약 append: live fetch/cache writer 성공 시 weekly sample을 reset window history record로 축약 저장합니다.
+- v1.4.0 (5) cache writer 축약 append: live fetch/cache writer 성공 시 weekly sample을 13주 보존하고, 지속된 잔여량 회복과 새 current window로 확인된 완료 창만 reset window history record로 reconcile합니다.
 - v1.4.0 (6) 현재 pace 예측: 최근 sample delta로 reset 전 예상 final usage를 계산하고 sample 부족/stale/error 상태를 분리합니다.
 - v1.4.0 (7) 과거 window 오버레이 모델: 과거 weekly window 선택, 0-7일 timeline 정규화, 7일 끝 marker, final usage marker를 생성합니다.
 - v1.4.0 (8) Codex 탭 UI 반영: 지난 window picker, 현재/지난/비교 전환, hover/tap label을 연결합니다.
@@ -203,6 +203,7 @@ v1.5.0 구현 범위:
 3. live fetch 실패, stale cache, sample 부족, protocol drift 가능성을 구분해 사용자와 개발자가 같은 용어로 볼 수 있게 합니다.
 4. weekly reset 이후 이전 window 데이터가 새 window 뒤쪽으로 이어지거나 같은 날짜 marker가 중복 생성되지 않도록 reset boundary 그래프 회귀를 막습니다.
    공식 `resetsAt`이 아직 미래여도 더 새로운 current window가 시작됐으면 이전 reset-start partial window를 `지난` 사용량으로 backfill하고, 다음 reset 이후 남은 7일 구간은 빈 그래프로 둡니다.
+   rolling `resetsAt`이나 일시적인 100% 샘플은 리셋으로 확정하지 않으며, 후보 계보가 6시간 지속되거나 공식 current window로 확인될 때만 완료 창 경계로 사용합니다.
 5. Codex 탭에는 사용량 그래프를 방해하지 않는 짧은 데이터 상태 표시를 추가합니다.
 6. v1.5.0 전용 검증 스크립트와 focused tests로 doctor/cache/history/protocol/release readiness 계약을 묶습니다.
 7. 릴리즈 준비 문서는 v1.5.0 자동 검증, 수동 UI smoke, live fetch smoke, published DMG smoke 경계를 분리해 기록합니다.

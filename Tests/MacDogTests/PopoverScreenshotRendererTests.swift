@@ -418,8 +418,20 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let cacheSnapshot = try CodexUsageCacheStore().read()
-        let weeklyHistory = (try? CodexUsageWeeklyHistoryStore().read()) ?? .empty
-        let resetWindowHistory = (try? CodexUsageResetWindowHistoryStore().read()) ?? .empty
+        let weeklyHistory = try ProcessInfo.processInfo.environment["MACDOG_LIVE_WEEKLY_HISTORY_PATH"]
+            .map {
+                try JSONDecoder().decode(
+                    CodexUsageWeeklyHistory.self,
+                    from: Data(contentsOf: URL(fileURLWithPath: $0))
+                )
+            } ?? ((try? CodexUsageWeeklyHistoryStore().read()) ?? .empty)
+        let resetWindowHistory = try ProcessInfo.processInfo.environment["MACDOG_LIVE_RESET_HISTORY_PATH"]
+            .map {
+                try JSONDecoder().decode(
+                    CodexUsageResetWindowHistory.self,
+                    from: Data(contentsOf: URL(fileURLWithPath: $0))
+                )
+            } ?? ((try? CodexUsageResetWindowHistoryStore().read()) ?? .empty)
         guard let report = cacheSnapshot.report else {
             XCTFail("Live cache snapshot has no usage report.")
             return
@@ -450,6 +462,31 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
         let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
         try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-live-codex.png"))
+
+        if let comparisonModel = CodexUsageHistoryComparisonModel(state: state) {
+            let labels = comparisonModel.pastWindows.map {
+                CodexUsageHistoryTimelineLabel.windowLabel(
+                    for: $0,
+                    endingAt: comparisonModel.displayEndAt(for: $0)
+                )
+            }
+            XCTAssertEqual(Set(labels).count, labels.count)
+            print("Live Codex history windows: \(labels.joined(separator: ", "))")
+
+            let historyView = WeeklyRemainingHistoryBlock(
+                history: weeklyHistory,
+                resetWindowHistory: resetWindowHistory,
+                weeklyWindow: report.limits["codex"]?.secondary,
+                currentReport: report,
+                currentTimestamp: cacheSnapshot.cachedAt,
+                initialMode: .past
+            )
+            let historyImage = render(view: historyView, size: NSSize(width: 292, height: 140), scale: 2)
+            try write(
+                image: historyImage,
+                to: outputDirectory.appendingPathComponent("macdog-live-codex-history-past.png")
+            )
+        }
     }
 
     func testRenderReadmeCodexComparisonScreenshotWhenRequested() throws {

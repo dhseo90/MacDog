@@ -121,7 +121,7 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.first?.windowDurationMins, 10_080)
     }
 
-    func testWriteSuccessAppendsResetWindowHistoryNextToCacheFile() throws {
+    func testWriteSuccessDoesNotPersistUnconfirmedCurrentResetWindow() throws {
         let fileURL = temporaryFileURL()
         let now = 1_800_000_000
         let resetsAt = now + 345_600
@@ -136,35 +136,34 @@ final class CodexUsageCacheTests: XCTestCase {
 
         let historyURL = CodexUsageResetWindowHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
         let history = try CodexUsageResetWindowHistoryStore(fileURL: historyURL).read()
-        let record = try XCTUnwrap(history.records.first)
 
-        XCTAssertEqual(history.records.count, 1)
-        XCTAssertEqual(record.key.limitId, "codex")
-        XCTAssertEqual(record.key.windowDurationMins, 10_080)
-        XCTAssertEqual(record.key.resetsAt, resetsAt)
-        XCTAssertEqual(record.generatedAt, now)
-        XCTAssertEqual(record.finalUsedPercent, 38)
-        XCTAssertEqual(record.finalRemainingPercent, 62)
-        XCTAssertEqual(record.sampleCount, 1)
-        XCTAssertEqual(record.source, .liveCache)
-        XCTAssertEqual(record.dailyEndSamples.first?.remainingPercent, 62)
+        XCTAssertTrue(history.records.isEmpty)
     }
 
-    func testWriteSuccessUpdatesResetWindowHistoryForSameWindow() throws {
+    func testWriteSuccessPersistsCompletedWindowAfterNextConfirmedReset() throws {
         let fileURL = temporaryFileURL()
-        let resetsAt = 1_800_345_600
-        var now = 1_800_000_000
+        let durationSeconds = 10_080 * 60
+        let firstResetStart = 1_800_000_000
+        let firstReset = firstResetStart + durationSeconds
+        let nextResetStart = firstResetStart + 3 * 86_400
+        let nextReset = nextResetStart + durationSeconds
+        var now = firstResetStart + 60 * 60
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
             Date(timeIntervalSince1970: TimeInterval(now))
         })
         try store.writeSuccess(
-            report: Self.historyReport(weeklyUsedPercent: 38, weeklyResetsAt: resetsAt),
+            report: Self.historyReport(weeklyUsedPercent: 20, weeklyResetsAt: firstReset),
             staleAfterSeconds: 60
         )
-        now += 60
+        now = nextResetStart - 60
+        try store.writeSuccess(
+            report: Self.historyReport(weeklyUsedPercent: 60, weeklyResetsAt: firstReset),
+            staleAfterSeconds: 60
+        )
+        now = nextResetStart + 60
 
         try store.writeSuccess(
-            report: Self.historyReport(weeklyUsedPercent: 40, weeklyResetsAt: resetsAt),
+            report: Self.historyReport(weeklyUsedPercent: 0, weeklyResetsAt: nextReset),
             staleAfterSeconds: 60
         )
 
@@ -172,10 +171,12 @@ final class CodexUsageCacheTests: XCTestCase {
         let history = try CodexUsageResetWindowHistoryStore(fileURL: historyURL).read()
 
         XCTAssertEqual(history.records.count, 1)
-        XCTAssertEqual(history.records.first?.generatedAt, now)
-        XCTAssertEqual(history.records.first?.finalUsedPercent, 40)
-        XCTAssertEqual(history.records.first?.finalRemainingPercent, 60)
+        XCTAssertEqual(history.records.first?.resetsAt, firstReset)
+        XCTAssertEqual(history.records.first?.generatedAt, nextResetStart - 60)
+        XCTAssertEqual(history.records.first?.finalUsedPercent, 60)
+        XCTAssertEqual(history.records.first?.finalRemainingPercent, 40)
         XCTAssertEqual(history.records.first?.sampleCount, 2)
+        XCTAssertEqual(history.records.first?.source, .backfill)
     }
 
     func testUsageHealthReaderReportsCacheAndHistoryCounts() throws {
@@ -203,12 +204,12 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(report.weeklySampleCount, 1)
         XCTAssertEqual(report.latestWeeklySampleResetsAt, resetsAt)
         XCTAssertEqual(report.weeklyAppendState, .stored)
-        XCTAssertEqual(report.resetWindowHistoryState, .ok)
-        XCTAssertEqual(report.resetWindowRecordCount, 1)
-        XCTAssertEqual(report.latestResetWindowResetsAt, resetsAt)
-        XCTAssertEqual(report.resetWindowAppendState, .stored)
-        XCTAssertEqual(report.resetWindowRetentionState, .ok)
-        XCTAssertEqual(report.resetWindowRetentionLimit, 13)
+        XCTAssertEqual(report.resetWindowHistoryState, .waiting)
+        XCTAssertEqual(report.resetWindowRecordCount, 0)
+        XCTAssertNil(report.latestResetWindowResetsAt)
+        XCTAssertEqual(report.resetWindowAppendState, .skipped)
+        XCTAssertEqual(report.resetWindowRetentionState, .waiting)
+        XCTAssertEqual(report.resetWindowRetentionLimit, 12)
         XCTAssertEqual(report.paceState, .waitingForSamples)
         XCTAssertEqual(report.paceSampleCount, 1)
 
@@ -224,9 +225,9 @@ final class CodexUsageCacheTests: XCTestCase {
         ).read()
 
         XCTAssertEqual(denseReport.weeklyAppendState, .skipped)
-        XCTAssertEqual(denseReport.resetWindowAppendState, .stored)
+        XCTAssertEqual(denseReport.resetWindowAppendState, .skipped)
         XCTAssertEqual(denseReport.weeklySampleCount, 1)
-        XCTAssertEqual(denseReport.resetWindowRecordCount, 1)
+        XCTAssertEqual(denseReport.resetWindowRecordCount, 0)
         XCTAssertEqual(denseReport.paceState, .projected)
         XCTAssertEqual(denseReport.paceSampleCount, 2)
     }
@@ -293,7 +294,7 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(report.resetWindowHistoryState, .ok)
         XCTAssertEqual(report.resetWindowRecordCount, 14)
         XCTAssertEqual(report.resetWindowRetentionState, .error)
-        XCTAssertEqual(report.resetWindowRetentionLimit, 13)
+        XCTAssertEqual(report.resetWindowRetentionLimit, 12)
     }
 
     func testWriteSuccessReturnsStoredWeeklyHistoryDiagnostic() throws {
@@ -396,6 +397,13 @@ final class CodexUsageCacheTests: XCTestCase {
         let history = try store.read()
         XCTAssertEqual(history.samples.count, 1)
         XCTAssertEqual(history.samples.first?.recordedAt, newRecordedAt)
+    }
+
+    func testWeeklyHistoryRetainsThirteenWeeksForCompletedWindowRecovery() {
+        XCTAssertEqual(
+            CodexUsageWeeklyHistoryStore.defaultRetentionSeconds,
+            13 * 7 * 24 * 60 * 60
+        )
     }
 
     func testFailureSnapshotPreservesLastSuccessReport() throws {

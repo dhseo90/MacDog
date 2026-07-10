@@ -62,7 +62,7 @@ final class CodexUsageDoctorFormatterTests: XCTestCase {
             latestResetWindowResetsAt: 1_800_604_800,
             resetWindowAppendState: .stored,
             resetWindowRetentionState: .ok,
-            resetWindowRetentionLimit: 13,
+            resetWindowRetentionLimit: 12,
             paceState: .projected,
             paceSampleCount: 2
         )
@@ -73,7 +73,7 @@ final class CodexUsageDoctorFormatterTests: XCTestCase {
         XCTAssertTrue(output.contains("Cache: error"))
         XCTAssertTrue(output.contains("age=180s"))
         XCTAssertTrue(output.contains("Weekly history: ok samples=12 append=skipped"))
-        XCTAssertTrue(output.contains("Reset window history: ok records=3 append=stored retention=ok/13"))
+        XCTAssertTrue(output.contains("Reset window history: ok records=3 append=stored retention=ok/12"))
         XCTAssertTrue(output.contains("Pace: projected samples=2"))
         XCTAssertFalse(output.localizedCaseInsensitiveContains("access_token"))
         XCTAssertFalse(output.localizedCaseInsensitiveContains("raw"))

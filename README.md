@@ -117,7 +117,7 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 history와 v1.4.0 reset window history를 별도 파일로 append합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
+`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 원시 history를 저장하고, 지속된 잔여량 회복과 새 current window로 확인된 완료 창만 v1.4.0 reset window history에 반영합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 `doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름, 필드 목록, app-owned cache freshness, weekly history sample 수, reset-window history record 수, append/retention/pace 상태, 다음 조치 안내를 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 
@@ -131,7 +131,8 @@ codex-usage doctor
 - cache에는 raw `planType`, 사용률, 초기화 시각, stale/error 상태 같은 표시 정보만 저장합니다.
 - `Plus`/`Pro $100`/`Pro $200` 가격 tier는 현재 조회 경로에서 구분할 수 없으므로 표시, 저장, 추정하지 않습니다.
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
-- v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장하고, 기존 `usage.json`/`usage-weekly-history.json` schema를 바꾸지 않습니다.
+- v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 확인된 완료 창의 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장합니다. 현재 창은 공식 current usage로 그리며 영구 완료 record로 미리 저장하지 않습니다.
+- `usage-weekly-history.json`은 완료 창 재구성을 위해 13주를 보존하고, reset-window history는 최근 확인된 완료 창 12개를 보존합니다. 두 파일의 schema는 그대로 유지합니다.
 - v1.5.0 reliability 진단은 `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json`을 읽어 missing, stale, error, waiting, ok 상태를 분리하지만 schema를 바꾸지 않습니다.
 - weekly reset 이후 새 `resetsAt` window가 감지되면 이전 history와 새 timeline을 분리하고, rolling reset timestamp duplicate는 같은 logical weekly window로 dedupe합니다.
 - 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.

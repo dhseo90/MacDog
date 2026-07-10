@@ -124,9 +124,14 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         let backfilledRecords = summaries.map {
             CodexUsageResetWindowBackfillBuilder().record(from: $0)
         }
-        let existingKeys = Set(resetWindowHistory.records.map(\.key))
+        guard let observedSince = weeklyHistory.samples.first?.recordedAt else {
+            return resetWindowHistory
+        }
+        let olderRecords = resetWindowHistory.records.filter {
+            $0.generatedAt < observedSince
+        }
         return CodexUsageResetWindowHistory(
-            records: resetWindowHistory.records + backfilledRecords.filter { !existingKeys.contains($0.key) }
+            records: olderRecords + backfilledRecords
         )
     }
 }
@@ -161,7 +166,7 @@ enum CodexUsageHistoryTimelineLabel {
         calendar: Calendar = .current
     ) -> String {
         guard let series else { return "" }
-        return "기록 시작 \(dayTimeLabel(timestamp: series.resetStartMarker.recordedAt, calendar: calendar))"
+        return "초기화 \(dayTimeLabel(timestamp: series.resetStartMarker.recordedAt, calendar: calendar))"
     }
 
     static func endLabel(
@@ -170,7 +175,7 @@ enum CodexUsageHistoryTimelineLabel {
         calendar: Calendar = .current
     ) -> String {
         guard let series else { return "" }
-        return dayLabel(timestamp: endingAt ?? series.key.resetsAt, calendar: calendar)
+        return "리셋 전 \(dayLabel(timestamp: endingAt ?? series.key.resetsAt, calendar: calendar))"
     }
 
     static func windowLabel(

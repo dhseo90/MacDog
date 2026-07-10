@@ -65,8 +65,8 @@ weekly reset이 오늘 발생한 상태에서 마지막으로 본 주간 사용�
 
 `codex-usage doctor`는 cache age, staleAfter, report 유무, weekly sample 수, reset-window record 수, 최신 reset, 다음 조치 안내를 출력합니다.
 weekly append는 마지막 cache snapshot의 weekly sample이 history에 저장됐는지, dense unchanged 정책으로 skip된 것으로 볼 수 있는지, 또는 누락됐는지를 분리합니다.
-reset-window append는 현재 cache snapshot과 같은 logical weekly reset window record가 있는지 확인합니다.
-retention은 `codex`/window duration별 reset-window record 수가 최근 12개 완료 window와 현재 window 기준 13개를 넘는지 확인합니다.
+reset-window append는 확인된 완료 창이 있으면 `stored`, 현재 창만 있어 영구 record를 만들지 않은 정상 상태는 `skipped`로 구분합니다.
+retention은 `codex`/window duration별 reset-window record 수가 최근 확인된 완료 window 12개를 넘는지 확인합니다. 원시 weekly history는 완료 창 재구성을 위해 13주를 보존합니다.
 pace는 기존 projection 모델을 재사용해 `projected`, `waitingForSamples`, `stale`, `error`, `unavailable`과 sample 수만 표시합니다.
 raw error message, raw app-server response, auth/session material은 doctor health 출력에 포함하지 않습니다.
 

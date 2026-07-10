@@ -123,22 +123,26 @@ if [[ "$status" == "0" ]]; then
   /usr/bin/ruby -rjson -e '
     history = JSON.parse(File.read(ARGV.fetch(0)))
     records = history["records"]
-    abort("reset window history must contain at least one record after successful fetch") unless records.is_a?(Array) && records.length.positive?
+    abort("reset window history records must be an array") unless records.is_a?(Array)
     record = records.last
-    abort("reset window history record is missing limitId") unless record["limitId"].is_a?(String)
-    abort("reset window history record is missing windowDurationMins") unless record["windowDurationMins"].is_a?(Integer)
-    abort("reset window history record is missing resetsAt") unless record["resetsAt"].is_a?(Integer)
-    abort("reset window history record is missing sampleCount") unless record["sampleCount"].is_a?(Integer)
-    forbidden = %w[token accessToken refreshToken cookie session authorization raw response rawResponse]
-    hit = record.keys & forbidden
-    abort("reset window history record includes forbidden keys: #{hit.join(",")}") unless hit.empty?
-    puts "usage-fetch:reset-window-history records=#{records.length} resetsAt=#{record["resetsAt"]} windowDurationMins=#{record["windowDurationMins"]} sampleCount=#{record["sampleCount"]}"
+    if record
+      abort("reset window history record is missing limitId") unless record["limitId"].is_a?(String)
+      abort("reset window history record is missing windowDurationMins") unless record["windowDurationMins"].is_a?(Integer)
+      abort("reset window history record is missing resetsAt") unless record["resetsAt"].is_a?(Integer)
+      abort("reset window history record is missing sampleCount") unless record["sampleCount"].is_a?(Integer)
+      forbidden = %w[token accessToken refreshToken cookie session authorization raw response rawResponse]
+      hit = record.keys & forbidden
+      abort("reset window history record includes forbidden keys: #{hit.join(",")}") unless hit.empty?
+      puts "usage-fetch:reset-window-history records=#{records.length} resetsAt=#{record["resetsAt"]} windowDurationMins=#{record["windowDurationMins"]} sampleCount=#{record["sampleCount"]}"
+    else
+      puts "usage-fetch:reset-window-history records=0 state=waiting"
+    end
   ' "$reset_window_history_path"
   /usr/bin/grep -Eq 'history append: stored recordedAt=[^[:space:]]+ recordingStartedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ path=.*usage-weekly-history\.json' "$stderr_path" || {
     cat "$stderr_path" >&2 || true
     die "successful fetch did not emit weekly history append diagnostic"
   }
-  /usr/bin/grep -Eq 'reset window history append: stored recordedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ windowDurationMins=10080 sampleCount=[0-9]+ source=live-cache path=.*usage-reset-window-history\.json' "$stderr_path" || {
+  /usr/bin/grep -Eq 'reset window history append: (stored|skipped) recordedAt=[^[:space:]]+ remaining=[^[:space:]]+ resetsAt=[^[:space:]]+ windowDurationMins=10080 sampleCount=[^[:space:]]+ source=[^[:space:]]+ path=.*usage-reset-window-history\.json' "$stderr_path" || {
     cat "$stderr_path" >&2 || true
     die "successful fetch did not emit reset window history append diagnostic"
   }
