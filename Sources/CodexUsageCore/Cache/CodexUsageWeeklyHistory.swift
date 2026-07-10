@@ -75,7 +75,8 @@ public struct CodexUsageWeeklyHistoryStore {
     public static let fileName = "usage-weekly-history.json"
     public static let minimumSampleIntervalSeconds = 5 * 60
     public static let minimumRemainingPercentDelta = 0.25
-    public static let defaultRetentionSeconds = 8 * 24 * 60 * 60
+    public static let defaultRetentionSeconds =
+        (CodexUsageResetWindowHistoryStore.completedWindowRetentionCount + 1) * 7 * 24 * 60 * 60
 
     private let fileURL: URL
     private let fileManager: FileManager

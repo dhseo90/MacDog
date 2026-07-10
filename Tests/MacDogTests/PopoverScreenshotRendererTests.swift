@@ -218,6 +218,58 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertEqual(windowPickerFrame.maxX, hostingView.bounds.maxX, accuracy: 1)
     }
 
+    func testWeeklyHistoryWindowPickerUsesActualEndDatesForInterruptedWindows() throws {
+        let calendar = Calendar.current
+        let olderStart = Int(try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 7,
+            hour: 9
+        ))).timeIntervalSince1970.rounded())
+        let newerStart = olderStart + 3 * 60 * 60
+        let currentStart = olderStart + 23 * 60 * 60
+        let durationSeconds = 10_080 * 60
+        let records = [olderStart, newerStart].map { start in
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: start + 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: start + durationSeconds,
+                dailyEndSamples: [],
+                finalUsedPercent: 1,
+                finalRemainingPercent: 99,
+                sampleCount: 1,
+                source: .backfill
+            )
+        }
+        let weeklyWindow = UsageWindowReport(
+            kind: .weekly,
+            usedPercent: 1,
+            remainingPercent: 99,
+            windowDurationMins: 10_080,
+            resetsAt: currentStart + durationSeconds
+        )
+        let view = WeeklyRemainingHistoryBlock(
+            history: .empty,
+            resetWindowHistory: CodexUsageResetWindowHistory(records: records),
+            weeklyWindow: weeklyWindow,
+            currentReport: nil,
+            currentTimestamp: currentStart + 60,
+            initialMode: .past
+        )
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let picker = try XCTUnwrap(
+            allDescendants(of: hostingView).compactMap { $0 as? NSPopUpButton }.first
+        )
+        let itemTitles = (0..<picker.numberOfItems).map { picker.itemTitle(at: $0) }
+
+        XCTAssertEqual(itemTitles, ["7/7-7/8", "7/7-7/7"])
+        XCTAssertEqual(Set(itemTitles).count, itemTitles.count)
+    }
+
     func testWeeklyHistoryModeSwitchingDoesNotCrashAndCurrentHidesWindowPicker() throws {
         let view = try weeklyHistoryBlock(initialMode: .current)
         let hostingView = NSHostingView(rootView: view.frame(width: 292))
@@ -244,6 +296,30 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
         descendants = allDescendants(of: hostingView)
         XCTAssertFalse(descendants.contains { $0 is NSPopUpButton })
+    }
+
+    func testWeeklyHistoryModeSwitchingKeepsFiveWindowPickerSelectionValid() throws {
+        let view = try weeklyHistoryBlock(initialMode: .current, pastWindowCount: 5)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        for selectedTitle in ["지난", "비교", "현재", "지난", "비교"] {
+            let modeButton = try XCTUnwrap(
+                modeTabButtons(in: hostingView).first { $0.title == selectedTitle }
+            )
+            modeButton.performClick(nil)
+            hostingView.layoutSubtreeIfNeeded()
+
+            let windowPickers = allDescendants(of: hostingView).compactMap { $0 as? NSPopUpButton }
+            if selectedTitle == "현재" {
+                XCTAssertTrue(windowPickers.isEmpty)
+            } else {
+                let picker = try XCTUnwrap(windowPickers.first)
+                XCTAssertEqual(picker.numberOfItems, 5)
+                XCTAssertTrue((0..<picker.numberOfItems).contains(picker.indexOfSelectedItem))
+            }
+        }
     }
 
     func testRenderReadmeScreenshotsWhenRequested() throws {
@@ -342,8 +418,20 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let cacheSnapshot = try CodexUsageCacheStore().read()
-        let weeklyHistory = (try? CodexUsageWeeklyHistoryStore().read()) ?? .empty
-        let resetWindowHistory = (try? CodexUsageResetWindowHistoryStore().read()) ?? .empty
+        let weeklyHistory = try ProcessInfo.processInfo.environment["MACDOG_LIVE_WEEKLY_HISTORY_PATH"]
+            .map {
+                try JSONDecoder().decode(
+                    CodexUsageWeeklyHistory.self,
+                    from: Data(contentsOf: URL(fileURLWithPath: $0))
+                )
+            } ?? ((try? CodexUsageWeeklyHistoryStore().read()) ?? .empty)
+        let resetWindowHistory = try ProcessInfo.processInfo.environment["MACDOG_LIVE_RESET_HISTORY_PATH"]
+            .map {
+                try JSONDecoder().decode(
+                    CodexUsageResetWindowHistory.self,
+                    from: Data(contentsOf: URL(fileURLWithPath: $0))
+                )
+            } ?? ((try? CodexUsageResetWindowHistoryStore().read()) ?? .empty)
         guard let report = cacheSnapshot.report else {
             XCTFail("Live cache snapshot has no usage report.")
             return
@@ -374,6 +462,31 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
         let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
         try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-live-codex.png"))
+
+        if let comparisonModel = CodexUsageHistoryComparisonModel(state: state) {
+            let labels = comparisonModel.pastWindows.map {
+                CodexUsageHistoryTimelineLabel.windowLabel(
+                    for: $0,
+                    endingAt: comparisonModel.displayEndAt(for: $0)
+                )
+            }
+            XCTAssertEqual(Set(labels).count, labels.count)
+            print("Live Codex history windows: \(labels.joined(separator: ", "))")
+
+            let historyView = WeeklyRemainingHistoryBlock(
+                history: weeklyHistory,
+                resetWindowHistory: resetWindowHistory,
+                weeklyWindow: report.limits["codex"]?.secondary,
+                currentReport: report,
+                currentTimestamp: cacheSnapshot.cachedAt,
+                initialMode: .past
+            )
+            let historyImage = render(view: historyView, size: NSSize(width: 292, height: 140), scale: 2)
+            try write(
+                image: historyImage,
+                to: outputDirectory.appendingPathComponent("macdog-live-codex-history-past.png")
+            )
+        }
     }
 
     func testRenderReadmeCodexComparisonScreenshotWhenRequested() throws {
@@ -471,14 +584,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
     }
 
     private func weeklyHistoryBlock(
-        initialMode: CodexUsageHistoryGraphMode
+        initialMode: CodexUsageHistoryGraphMode,
+        pastWindowCount: Int = 1
     ) throws -> WeeklyRemainingHistoryBlock {
         let report = Self.codexReportWithThreeResetCreditExpiries()
         let weeklyWindow = try XCTUnwrap(report.limits["codex"]?.secondary)
         let currentReset = try XCTUnwrap(weeklyWindow.resetsAt)
-        let pastReset = currentReset - 604_800
-        let history = CodexUsageResetWindowHistory(records: [
-            CodexUsageResetWindowHistoryRecord(
+        let records = (1...pastWindowCount).map { offset in
+            let pastReset = currentReset - offset * 604_800
+            return CodexUsageResetWindowHistoryRecord(
                 generatedAt: pastReset - 60,
                 limitId: "codex",
                 windowDurationMins: 10_080,
@@ -496,7 +610,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 sampleCount: 1,
                 source: .backfill
             )
-        ])
+        }
+        let history = CodexUsageResetWindowHistory(records: records)
         return WeeklyRemainingHistoryBlock(
             history: .empty,
             resetWindowHistory: history,

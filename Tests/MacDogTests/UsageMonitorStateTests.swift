@@ -480,6 +480,123 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(model.overlaySeries?.resetStartMarker.recordedAt, june28ResetStart)
         XCTAssertEqual(model.overlaySeries?.finalUsageMarker.recordedAt, june29ResetStart - 60)
         XCTAssertLessThan(try XCTUnwrap(model.overlaySeries?.finalUsageMarker.timelinePosition), 1)
+        let june28Window = try XCTUnwrap(model.pastWindows.first)
+        let june25Window = try XCTUnwrap(model.pastWindows.last)
+        XCTAssertEqual(model.displayEndAt(for: june28Window), june29ResetStart)
+        XCTAssertEqual(model.displayEndAt(for: june25Window), june28ResetStart)
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.windowLabel(
+                for: june28Window,
+                endingAt: model.displayEndAt(for: june28Window),
+                calendar: Self.utcCalendar
+            ),
+            "6/28-6/29"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.windowLabel(
+                for: june25Window,
+                endingAt: model.displayEndAt(for: june25Window),
+                calendar: Self.utcCalendar
+            ),
+            "6/25-6/28"
+        )
+    }
+
+    func testCodexHistoryComparisonModelDropsTransientRollingResetRecords() throws {
+        let durationSeconds = 10_080 * 60
+        let firstResetStart = Self.timestamp(year: 2026, month: 6, day: 30, hour: 10)
+        let firstReset = firstResetStart + durationSeconds
+        let secondResetStart = Self.timestamp(year: 2026, month: 7, day: 7, hour: 11)
+        let falseRollingStart = Self.timestamp(year: 2026, month: 7, day: 8, hour: 12)
+        let currentResetStart = Self.timestamp(year: 2026, month: 7, day: 10, hour: 7)
+        let currentReset = currentResetStart + durationSeconds
+        let stableSecondStart = secondResetStart + 60 * 60
+        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: firstResetStart + 60 * 60, remainingPercent: 80, resetsAt: firstReset),
+            Self.weeklySample(recordedAt: secondResetStart - 60, remainingPercent: 6, resetsAt: firstReset),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 6 * 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + 5 * 60 + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 11 * 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + 10 * 60 + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 60 * 60,
+                remainingPercent: 99,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart - 60,
+                remainingPercent: 91,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 60,
+                remainingPercent: 100,
+                resetsAt: falseRollingStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 2 * 60,
+                remainingPercent: 90,
+                resetsAt: falseRollingStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 3 * 60,
+                remainingPercent: 90,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: currentResetStart - 60,
+                remainingPercent: 52,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(recordedAt: currentResetStart + 60, remainingPercent: 96, resetsAt: currentReset),
+            Self.weeklySample(recordedAt: currentResetStart + 6 * 60, remainingPercent: 95, resetsAt: currentReset)
+        ])
+        let existingHistory = CodexUsageResetWindowHistory(records: [
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: falseRollingStart + 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: falseRollingStart + durationSeconds,
+                dailyEndSamples: [],
+                finalUsedPercent: 0,
+                finalRemainingPercent: 100,
+                sampleCount: 1,
+                source: .liveCache
+            )
+        ])
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: weeklyHistory,
+            resetWindowHistory: existingHistory,
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 95, resetsAt: currentReset),
+            currentReport: Self.report(fiveHourUsedPercent: 2, weeklyUsedPercent: 5, weeklyResetsAt: currentReset),
+            currentTimestamp: currentResetStart + 6 * 60,
+            calendar: Self.utcCalendar
+        ))
+
+        XCTAssertEqual(model.pastWindows.map(\.resetStartAt), [secondResetStart, firstResetStart])
+        XCTAssertFalse(model.pastWindows.contains { $0.resetStartAt == falseRollingStart })
+        XCTAssertEqual(
+            model.pastWindows.map {
+                CodexUsageHistoryTimelineLabel.windowLabel(
+                    for: $0,
+                    endingAt: model.displayEndAt(for: $0),
+                    calendar: Self.utcCalendar
+                )
+            },
+            ["7/7-7/10", "6/30-7/7"]
+        )
     }
 
     func testCodexHistoryMarkerLabelShowsSevenDayEndUsage() throws {
@@ -526,15 +643,23 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(
             CodexUsageHistoryTimelineLabel.startLabel(for: series, calendar: Self.utcCalendar),
-            "기록 시작 6/18 목 06:28"
+            "초기화 6/18 목 06:28"
         )
         XCTAssertEqual(
             CodexUsageHistoryTimelineLabel.endLabel(for: series, calendar: Self.utcCalendar),
-            "6/25 목"
+            "리셋 전 6/25 목"
         )
         XCTAssertEqual(
             CodexUsageHistoryTimelineLabel.windowLabel(for: window, calendar: Self.utcCalendar),
             "6/18-6/25"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.endLabel(
+                for: series,
+                endingAt: resetStart + 3 * 86_400,
+                calendar: Self.utcCalendar
+            ),
+            "리셋 전 6/21 일"
         )
         XCTAssertEqual(
             CodexUsageHistoryMarkerLabel.hoverText(for: firstDayMarker, calendar: Self.utcCalendar),
@@ -924,7 +1049,7 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(chart.dayMarkers.map(\.id), [0, 1, 2])
         XCTAssertEqual(chart.dayMarkers.map(\.hoverLabel), ["6/1 월 종료 · 100%", "6/2 화 종료 · 83%", "6/3 수 · 64%"])
         XCTAssertEqual(chart.recordingStartLabel, "기록 시작 6/2 화 18:21")
-        XCTAssertEqual(chart.timelineStartDisplayLabel, "기록 시작 6/2 화 18:21")
+        XCTAssertEqual(chart.timelineStartDisplayLabel, "초기화 6/1 월 00:21")
         XCTAssertEqual(chart.dayMarkers[0].point.recordedAt, start + 86_400)
         XCTAssertEqual(chart.dayMarkers[1].point.recordedAt, start + 2 * 86_400)
         XCTAssertEqual(chart.dayMarkers[2].point.recordedAt, currentSample.recordedAt)

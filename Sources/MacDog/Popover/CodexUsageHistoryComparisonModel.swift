@@ -97,6 +97,15 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         overlayModel.selectedSeries
     }
 
+    func displayEndAt(for window: CodexUsageResetWindowOverlayWindow) -> Int {
+        let newerResetStarts = ([currentChart.resetStartAt] + pastWindows.map { Optional($0.resetStartAt) })
+            .compactMap { $0 }
+            .filter {
+                $0 > window.resetStartAt && $0 < window.resetsAt
+            }
+        return newerResetStarts.min() ?? window.resetsAt
+    }
+
     private static func resetWindowHistory(
         _ resetWindowHistory: CodexUsageResetWindowHistory,
         backfilledFrom weeklyHistory: CodexUsageWeeklyHistory,
@@ -115,9 +124,14 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         let backfilledRecords = summaries.map {
             CodexUsageResetWindowBackfillBuilder().record(from: $0)
         }
-        let existingKeys = Set(resetWindowHistory.records.map(\.key))
+        guard let observedSince = weeklyHistory.samples.first?.recordedAt else {
+            return resetWindowHistory
+        }
+        let olderRecords = resetWindowHistory.records.filter {
+            $0.generatedAt < observedSince
+        }
         return CodexUsageResetWindowHistory(
-            records: resetWindowHistory.records + backfilledRecords.filter { !existingKeys.contains($0.key) }
+            records: olderRecords + backfilledRecords
         )
     }
 }
@@ -152,23 +166,25 @@ enum CodexUsageHistoryTimelineLabel {
         calendar: Calendar = .current
     ) -> String {
         guard let series else { return "" }
-        return "기록 시작 \(dayTimeLabel(timestamp: series.resetStartMarker.recordedAt, calendar: calendar))"
+        return "초기화 \(dayTimeLabel(timestamp: series.resetStartMarker.recordedAt, calendar: calendar))"
     }
 
     static func endLabel(
         for series: CodexUsageResetWindowOverlaySeries?,
+        endingAt: Int? = nil,
         calendar: Calendar = .current
     ) -> String {
         guard let series else { return "" }
-        return dayLabel(timestamp: series.key.resetsAt, calendar: calendar)
+        return "리셋 전 \(dayLabel(timestamp: endingAt ?? series.key.resetsAt, calendar: calendar))"
     }
 
     static func windowLabel(
         for window: CodexUsageResetWindowOverlayWindow,
+        endingAt: Int? = nil,
         calendar: Calendar = .current
     ) -> String {
         let start = shortDateLabel(timestamp: window.resetStartAt, calendar: calendar)
-        let end = shortDateLabel(timestamp: window.resetsAt, calendar: calendar)
+        let end = shortDateLabel(timestamp: endingAt ?? window.resetsAt, calendar: calendar)
         return "\(start)-\(end)"
     }
 

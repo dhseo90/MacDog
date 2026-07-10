@@ -16,7 +16,7 @@
 | v1.4.0 (2) | 플랜 tier 제외 경계 고정 | `Plus`/`Pro $100`/`Pro $200` 구분 불가 확정, raw `planType` 기존 표시만 유지, 가격 tier 추정 금지 문서화 |
 | v1.4.0 (3) | reset window history 계약 | `limitId` + `windowDurationMins` + `resetsAt` 기준 최소 history record schema 정의, 기존 `usage.json`/`usage-weekly-history.json` breaking change 금지 |
 | v1.4.0 (4) | history store 구현 | 별도 history 파일, atomic write, retention, dedupe, schema migration, token/session/raw response 저장 금지 |
-| v1.4.0 (5) | cache writer 축약 append | live fetch/cache writer 성공 시 weekly sample을 reset window history record로 축약 저장 |
+| v1.4.0 (5) | cache writer 축약 append | live fetch/cache writer 성공 시 weekly sample을 13주 보존하고 확인된 완료 창만 reset window history record로 reconcile |
 | v1.4.0 (6) | 현재 pace 예측 | 최근 sample delta로 reset 전 예상 final usage 계산, sample 부족/stale/error 상태 분리 |
 | v1.4.0 (7) | 지난 window 비교 모델 | 지난 weekly window 선택, 0-7일 timeline 정규화, 7일 끝 marker, final usage marker 생성 |
 | v1.4.0 (8) | Codex 탭 UI 반영 | 지난 window picker, 현재/지난/비교 전환, hover/tap으로 7일 끝 사용량 확인 |
@@ -92,11 +92,11 @@ record의 `key`는 저장 필드가 아니라 `limitId`, `windowDurationMins`, `
 기존 `usage.json`과 `usage-weekly-history.json` v1 key는 변경하지 않습니다.
 
 별도 store 파일명은 `usage-reset-window-history.json`입니다.
-store는 같은 key의 record를 하나로 upsert하고, 최근 12개 완료 weekly window와 현재 window에 해당하는 13개 record를 유지합니다.
+store는 같은 key의 record를 하나로 upsert하고, 최근 확인된 완료 weekly window 12개를 유지합니다.
 legacy schemaVersion은 읽을 때 현재 schemaVersion으로 migration합니다.
-cache writer는 live fetch 성공 후 생성한 weekly sample을 같은 디렉터리의 `usage-reset-window-history.json`에 `live-cache` source record로 축약 append합니다.
+cache writer는 live fetch 성공 후 생성한 weekly sample을 13주 동안 보존합니다. rolling `resetsAt`과 일시적인 100% snapshot은 영구 record로 직접 저장하지 않고, 후보 계보가 6시간 지속되거나 공식 current window로 확인되어 종료된 이전 창만 같은 디렉터리의 `usage-reset-window-history.json`에 `backfill` source record로 reconcile합니다.
 
-초기 retention은 최근 12개 완료 weekly window와 현재 window를 기본값으로 둡니다.
+초기 retention은 reset-window 완료 record 12개와 복구용 weekly sample 13주를 기본값으로 둡니다.
 장기 보관 설정은 v1.4.0 MVP 이후 별도 이슈로 분리합니다.
 
 ## Pace 예측

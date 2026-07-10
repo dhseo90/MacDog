@@ -103,8 +103,8 @@ public struct RateLimitResetCredit: Codable, Equatable, Sendable, Identifiable {
         self.status = try container.decodeIfPresent(String.self, forKey: .status)
         self.resetType = try container.decodeIfPresent(String.self, forKey: .resetType) ??
             container.decodeIfPresent(String.self, forKey: .reset_type)
-        self.expiresAt = try container.decodeIfPresent(String.self, forKey: .expiresAt) ??
-            container.decodeIfPresent(String.self, forKey: .expires_at)
+        self.expiresAt = try Self.decodeTimestampString(from: container, forKey: .expiresAt) ??
+            Self.decodeTimestampString(from: container, forKey: .expires_at)
         self.title = try container.decodeIfPresent(String.self, forKey: .title)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
     }
@@ -114,6 +114,31 @@ public struct RateLimitResetCredit: Codable, Equatable, Sendable, Identifiable {
         try container.encodeIfPresent(status, forKey: .status)
         try container.encodeIfPresent(resetType, forKey: .resetType)
         try container.encodeIfPresent(expiresAt, forKey: .expiresAt)
+    }
+
+    private static func decodeTimestampString(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) throws -> String? {
+        guard container.contains(key), try !container.decodeNil(forKey: key) else {
+            return nil
+        }
+        if let timestamp = try? container.decode(String.self, forKey: key) {
+            return timestamp
+        }
+        if let epochSeconds = try? container.decode(Int.self, forKey: key) {
+            return ISO8601DateFormatter().string(
+                from: Date(timeIntervalSince1970: TimeInterval(epochSeconds))
+            )
+        }
+
+        throw DecodingError.typeMismatch(
+            String.self,
+            DecodingError.Context(
+                codingPath: container.codingPath + [key],
+                debugDescription: "Expected an ISO 8601 string or Unix epoch seconds."
+            )
+        )
     }
 }
 

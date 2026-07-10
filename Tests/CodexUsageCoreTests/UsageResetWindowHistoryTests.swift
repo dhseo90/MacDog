@@ -127,61 +127,7 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertEqual(history.records.first?.sampleCount, 2)
     }
 
-    func testStoreMergesRollingResetTimestampSamplesIntoOneLogicalWeeklyWindow() throws {
-        let fileURL = temporaryResetHistoryFileURL()
-        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
-        let firstRecordedAt = 1_800_000_000
-        let durationSeconds = 10_080 * 60
-        let firstSample = Self.weeklySample(
-            recordedAt: firstRecordedAt,
-            remainingPercent: 100,
-            resetsAt: firstRecordedAt + durationSeconds
-        )
-        let laterSample = Self.weeklySample(
-            recordedAt: firstRecordedAt + 9 * 60,
-            remainingPercent: 99,
-            resetsAt: firstRecordedAt + durationSeconds + 9 * 60
-        )
-
-        XCTAssertTrue(try store.append(sample: firstSample, generatedAt: firstSample.recordedAt))
-        XCTAssertTrue(try store.append(sample: laterSample, generatedAt: laterSample.recordedAt))
-
-        let history = try store.read()
-        let record = try XCTUnwrap(history.records.first)
-        XCTAssertEqual(history.records.count, 1)
-        XCTAssertEqual(record.key.resetsAt, firstSample.resetsAt)
-        XCTAssertEqual(record.finalRemainingPercent, 99)
-        XCTAssertEqual(record.sampleCount, 2)
-        XCTAssertEqual(record.dailyEndSamples.count, 1)
-        XCTAssertEqual(record.dailyEndSamples.first?.remainingPercent, 99)
-    }
-
-    func testStoreKeepsSameDayObservedResetWindowsApart() throws {
-        let fileURL = temporaryResetHistoryFileURL()
-        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
-        let firstResetStart = 1_800_000_000
-        let durationSeconds = 10_080 * 60
-        let nextResetStart = firstResetStart + 11 * 60 * 60
-        let firstSample = Self.weeklySample(
-            recordedAt: firstResetStart + 10 * 60 * 60,
-            remainingPercent: 33,
-            resetsAt: firstResetStart + durationSeconds
-        )
-        let nextSample = Self.weeklySample(
-            recordedAt: nextResetStart + 60,
-            remainingPercent: 100,
-            resetsAt: nextResetStart + durationSeconds
-        )
-
-        XCTAssertTrue(try store.append(sample: firstSample, generatedAt: firstSample.recordedAt))
-        XCTAssertTrue(try store.append(sample: nextSample, generatedAt: nextSample.recordedAt))
-
-        let history = try store.read()
-        XCTAssertEqual(history.records.map(\.resetsAt), [firstSample.resetsAt, nextSample.resetsAt])
-        XCTAssertEqual(history.records.map(\.finalRemainingPercent), [33, 100])
-    }
-
-    func testStoreRetainsCurrentWindowAndTwelveCompletedWindowsPerLimitWindow() throws {
+    func testStoreRetainsTwelveConfirmedCompletedWindowsPerLimitWindow() throws {
         let fileURL = temporaryResetHistoryFileURL()
         let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
         let durationSeconds = 10_080 * 60
@@ -197,8 +143,8 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         }
 
         let history = try store.read()
-        XCTAssertEqual(history.records.count, 13)
-        XCTAssertEqual(history.records.first?.resetsAt, firstReset + durationSeconds)
+        XCTAssertEqual(history.records.count, 12)
+        XCTAssertEqual(history.records.first?.resetsAt, firstReset + 2 * durationSeconds)
         XCTAssertEqual(history.records.last?.resetsAt, firstReset + 13 * durationSeconds)
     }
 
@@ -265,6 +211,51 @@ final class UsageResetWindowHistoryTests: XCTestCase {
         XCTAssertEqual(record.source, .backfill)
         XCTAssertEqual(record.finalUsedPercent, 74)
         XCTAssertEqual(record.dailyEndSamples.first?.dayIndex, 7)
+    }
+
+    func testStoreReconcilesObservedRecordsWithConfirmedCompletedWindows() throws {
+        let fileURL = temporaryResetHistoryFileURL()
+        let store = CodexUsageResetWindowHistoryStore(fileURL: fileURL)
+        let observedSince = 1_800_000_000
+        let durationSeconds = 10_080 * 60
+        let olderReset = observedSince - 86_400
+        let falseReset = observedSince + durationSeconds
+        let confirmedReset = observedSince + 3 * 86_400 + durationSeconds
+
+        XCTAssertTrue(try store.append(Self.record(
+            generatedAt: observedSince - 60,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: olderReset
+        )))
+        XCTAssertTrue(try store.append(Self.record(
+            generatedAt: observedSince + 60,
+            limitId: "codex",
+            windowDurationMins: 10_080,
+            resetsAt: falseReset
+        )))
+
+        let changed = try store.reconcileConfirmedSummaries(
+            [CodexUsageResetWindowBackfillSummary(
+                generatedAt: confirmedReset - durationSeconds - 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: confirmedReset,
+                dailyEndSamples: [],
+                finalUsedPercent: 60,
+                finalRemainingPercent: 40,
+                sampleCount: 10
+            )],
+            observedSince: observedSince,
+            limitId: "codex",
+            windowDurationMins: 10_080
+        )
+
+        XCTAssertTrue(changed)
+        let history = try store.read()
+        XCTAssertEqual(history.records.map(\.resetsAt), [olderReset, confirmedReset])
+        XCTAssertFalse(history.records.contains { $0.resetsAt == falseReset })
+        XCTAssertEqual(history.records.last?.source, .backfill)
     }
 
     func testBackfillSummariesUseCompletedWeeklyHistoryAndExcludeCurrentFutureWindow() throws {
@@ -357,6 +348,139 @@ final class UsageResetWindowHistoryTests: XCTestCase {
             summaries.flatMap(\.dailyEndSamples).contains { $0.dayIndex == 7 },
             "Interrupted windows should leave the remaining 7-day graph tail empty"
         )
+    }
+
+    func testBackfillSummariesRequireSustainedRecoveryBeforeSplittingRollingResetTimestamps() throws {
+        let durationSeconds = 10_080 * 60
+        let firstResetStart = 1_800_000_000
+        let firstReset = firstResetStart + durationSeconds
+        let secondResetStart = firstResetStart + 3 * 86_400
+        let falseRollingStart = secondResetStart + 86_400
+        let currentResetStart = secondResetStart + 3 * 86_400
+        let currentReset = currentResetStart + durationSeconds
+        let stableSecondStart = secondResetStart + 60 * 60
+        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
+            Self.weeklySample(recordedAt: firstResetStart + 60 * 60, remainingPercent: 80, resetsAt: firstReset),
+            Self.weeklySample(recordedAt: secondResetStart - 60, remainingPercent: 6, resetsAt: firstReset),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 6 * 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + 5 * 60 + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 11 * 60,
+                remainingPercent: 100,
+                resetsAt: secondResetStart + 10 * 60 + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: secondResetStart + 60 * 60,
+                remainingPercent: 99,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart - 60,
+                remainingPercent: 91,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 60,
+                remainingPercent: 100,
+                resetsAt: falseRollingStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 2 * 60,
+                remainingPercent: 90,
+                resetsAt: falseRollingStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: falseRollingStart + 3 * 60,
+                remainingPercent: 90,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: currentResetStart - 60,
+                remainingPercent: 52,
+                resetsAt: stableSecondStart + durationSeconds
+            ),
+            Self.weeklySample(
+                recordedAt: currentResetStart + 60,
+                remainingPercent: 96,
+                resetsAt: currentReset
+            ),
+            Self.weeklySample(
+                recordedAt: currentResetStart + 6 * 60,
+                remainingPercent: 95,
+                resetsAt: currentReset
+            )
+        ])
+
+        let summaries = CodexUsageResetWindowBackfillBuilder().summaries(
+            from: weeklyHistory,
+            completedAtOrBefore: currentResetStart + 10 * 60,
+            excludingCurrentResetsAt: currentReset
+        )
+
+        XCTAssertEqual(
+            summaries.map { $0.resetsAt - durationSeconds },
+            [firstResetStart, secondResetStart]
+        )
+        XCTAssertEqual(
+            summaries.map(\.generatedAt),
+            [secondResetStart - 60, currentResetStart - 60]
+        )
+        XCTAssertFalse(
+            summaries.contains { $0.resetsAt - durationSeconds == falseRollingStart },
+            "An isolated 100% snapshot must not become a reset window"
+        )
+    }
+
+    func testExternalWeeklyHistoryRecoveryDiagnosticWhenRequested() throws {
+        guard let path = ProcessInfo.processInfo.environment["MACDOG_RECOVERY_WEEKLY_HISTORY_PATH"] else {
+            throw XCTSkip("External weekly history recovery diagnostic is opt-in.")
+        }
+
+        let history = try JSONDecoder().decode(
+            CodexUsageWeeklyHistory.self,
+            from: Data(contentsOf: URL(fileURLWithPath: path))
+        )
+        let latestSample = try XCTUnwrap(history.samples.last)
+        let summaries = CodexUsageResetWindowBackfillBuilder().summaries(
+            from: history,
+            completedAtOrBefore: latestSample.recordedAt,
+            excludingCurrentResetsAt: latestSample.resetsAt
+        )
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        formatter.timeZone = .current
+        let windows = summaries.map { summary in
+            let start = summary.resetsAt - summary.windowDurationMins * 60
+            return "\(formatter.string(from: Date(timeIntervalSince1970: TimeInterval(start))))" +
+                " -> \(formatter.string(from: Date(timeIntervalSince1970: TimeInterval(summary.generatedAt))))" +
+                " remaining=\(summary.finalRemainingPercent)% samples=\(summary.sampleCount)"
+        }
+
+        XCTAssertFalse(windows.isEmpty)
+        print("Recovered Codex history windows:\n\(windows.joined(separator: "\n"))")
+
+        if let outputPath = ProcessInfo.processInfo.environment["MACDOG_RECOVERY_RESET_HISTORY_OUTPUT_PATH"] {
+            let builder = CodexUsageResetWindowBackfillBuilder()
+            let recoveredHistory = CodexUsageResetWindowHistory(
+                records: summaries.map { builder.record(from: $0) }
+            )
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(recoveredHistory).write(
+                to: URL(fileURLWithPath: outputPath),
+                options: [.atomic]
+            )
+            print("Recovered reset-window history: \(outputPath)")
+        }
     }
 
     func testBackfillSummaryJSONDoesNotStoreRawLogOrSessionMaterial() throws {

@@ -33,8 +33,8 @@
 - `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
-- `script/cleanup_release_smoke_state.sh --apply`는 release smoke 뒤 남은 MacDog DMG 마운트, `~/Applications/MacDog.app`, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `dist/MacDog.app`을 정리합니다. 중복 앱과 stale plist는 삭제하지 않고 `/private/tmp/macdog-duplicate-app-cleanup` 아래로 격리하며, stale loaded job은 unload합니다.
-- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 상태, 마운트된 MacDog DMG, 남은 `dist/MacDog.app`을 확인합니다.
+- `script/cleanup_release_smoke_state.sh --apply`는 release smoke 뒤 남은 MacDog DMG 마운트, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job을 정리합니다. 중복 앱은 LaunchServices에서 unregister한 뒤 `/private/tmp/macdog-duplicate-app-cleanup.noindex` 아래 `.app.quarantined` 이름으로 격리하며, stale loaded job은 unload합니다.
+- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, Desktop·다른 worktree·임시 경로의 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 상태, 마운트된 MacDog DMG를 확인합니다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않고 Apple Developer 의존 항목이 현재 unsigned 릴리즈 계획에서 제외됐는지 검증합니다.
 - PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리합니다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용합니다.
 

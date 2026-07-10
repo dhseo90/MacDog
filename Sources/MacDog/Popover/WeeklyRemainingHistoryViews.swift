@@ -71,7 +71,10 @@ struct WeeklyRemainingHistoryBlock: View {
 
                             Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
                                 ForEach(comparisonModel.pastWindows) { window in
-                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(for: window))
+                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(
+                                        for: window,
+                                        endingAt: comparisonModel.displayEndAt(for: window)
+                                    ))
                                         .tag(Optional(window.id))
                                 }
                             }
@@ -213,7 +216,13 @@ struct WeeklyRemainingHistoryBlock: View {
         case .current:
             return model.currentChart.resetEndLabel
         case .past, .overlay:
-            return CodexUsageHistoryTimelineLabel.endLabel(for: selectedSeries)
+            let selectedWindow = selectedSeries.flatMap { series in
+                model.pastWindows.first { $0.key == series.key }
+            }
+            return CodexUsageHistoryTimelineLabel.endLabel(
+                for: selectedSeries,
+                endingAt: selectedWindow.map(model.displayEndAt(for:))
+            )
         }
     }
 
@@ -1037,6 +1046,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
     let resetsAt: Int?
     let resetStartLabel: String
     let resetEndLabel: String
+    let resetEventLabel: String
     let recordingStartLabel: String?
 
     init(
@@ -1057,6 +1067,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
             self.resetsAt = nil
             self.resetStartLabel = "시작"
             self.resetEndLabel = "종료"
+            self.resetEventLabel = "초기화 시각 필요"
             self.recordingStartLabel = nil
             return
         }
@@ -1149,6 +1160,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
         self.resetsAt = canonicalResetsAt
         self.resetStartLabel = Self.resetDayLabel(timestamp: resetStartAt, calendar: calendar)
         self.resetEndLabel = Self.resetDayLabel(timestamp: canonicalResetsAt, calendar: calendar)
+        self.resetEventLabel = "초기화 \(Self.resetDayTimeLabel(timestamp: resetStartAt, calendar: calendar))"
         self.recordingStartLabel = actualPoints.first.map {
             "기록 시작 \(Self.resetDayTimeLabel(timestamp: $0.recordedAt, calendar: calendar))"
         }
@@ -1162,7 +1174,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
     }
 
     var timelineStartDisplayLabel: String {
-        recordingStartLabel ?? resetStartLabel
+        resetEventLabel
     }
 
     var accessibilityValue: String {
