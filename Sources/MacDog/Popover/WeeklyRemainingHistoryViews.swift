@@ -71,7 +71,10 @@ struct WeeklyRemainingHistoryBlock: View {
 
                             Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
                                 ForEach(comparisonModel.pastWindows) { window in
-                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(for: window))
+                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(
+                                        for: window,
+                                        endingAt: comparisonModel.displayEndAt(for: window)
+                                    ))
                                         .tag(Optional(window.id))
                                 }
                             }
@@ -213,7 +216,13 @@ struct WeeklyRemainingHistoryBlock: View {
         case .current:
             return model.currentChart.resetEndLabel
         case .past, .overlay:
-            return CodexUsageHistoryTimelineLabel.endLabel(for: selectedSeries)
+            let selectedWindow = selectedSeries.flatMap { series in
+                model.pastWindows.first { $0.key == series.key }
+            }
+            return CodexUsageHistoryTimelineLabel.endLabel(
+                for: selectedSeries,
+                endingAt: selectedWindow.map(model.displayEndAt(for:))
+            )
         }
     }
 

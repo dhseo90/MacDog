@@ -480,6 +480,26 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(model.overlaySeries?.resetStartMarker.recordedAt, june28ResetStart)
         XCTAssertEqual(model.overlaySeries?.finalUsageMarker.recordedAt, june29ResetStart - 60)
         XCTAssertLessThan(try XCTUnwrap(model.overlaySeries?.finalUsageMarker.timelinePosition), 1)
+        let june28Window = try XCTUnwrap(model.pastWindows.first)
+        let june25Window = try XCTUnwrap(model.pastWindows.last)
+        XCTAssertEqual(model.displayEndAt(for: june28Window), june29ResetStart)
+        XCTAssertEqual(model.displayEndAt(for: june25Window), june28ResetStart)
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.windowLabel(
+                for: june28Window,
+                endingAt: model.displayEndAt(for: june28Window),
+                calendar: Self.utcCalendar
+            ),
+            "6/28-6/29"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.windowLabel(
+                for: june25Window,
+                endingAt: model.displayEndAt(for: june25Window),
+                calendar: Self.utcCalendar
+            ),
+            "6/25-6/28"
+        )
     }
 
     func testCodexHistoryMarkerLabelShowsSevenDayEndUsage() throws {
@@ -535,6 +555,14 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(
             CodexUsageHistoryTimelineLabel.windowLabel(for: window, calendar: Self.utcCalendar),
             "6/18-6/25"
+        )
+        XCTAssertEqual(
+            CodexUsageHistoryTimelineLabel.endLabel(
+                for: series,
+                endingAt: resetStart + 3 * 86_400,
+                calendar: Self.utcCalendar
+            ),
+            "6/21 일"
         )
         XCTAssertEqual(
             CodexUsageHistoryMarkerLabel.hoverText(for: firstDayMarker, calendar: Self.utcCalendar),

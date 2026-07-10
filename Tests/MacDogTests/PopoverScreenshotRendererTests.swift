@@ -218,6 +218,58 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertEqual(windowPickerFrame.maxX, hostingView.bounds.maxX, accuracy: 1)
     }
 
+    func testWeeklyHistoryWindowPickerUsesActualEndDatesForInterruptedWindows() throws {
+        let calendar = Calendar.current
+        let olderStart = Int(try XCTUnwrap(calendar.date(from: DateComponents(
+            year: 2026,
+            month: 7,
+            day: 7,
+            hour: 9
+        ))).timeIntervalSince1970.rounded())
+        let newerStart = olderStart + 3 * 60 * 60
+        let currentStart = olderStart + 23 * 60 * 60
+        let durationSeconds = 10_080 * 60
+        let records = [olderStart, newerStart].map { start in
+            CodexUsageResetWindowHistoryRecord(
+                generatedAt: start + 60,
+                limitId: "codex",
+                windowDurationMins: 10_080,
+                resetsAt: start + durationSeconds,
+                dailyEndSamples: [],
+                finalUsedPercent: 1,
+                finalRemainingPercent: 99,
+                sampleCount: 1,
+                source: .backfill
+            )
+        }
+        let weeklyWindow = UsageWindowReport(
+            kind: .weekly,
+            usedPercent: 1,
+            remainingPercent: 99,
+            windowDurationMins: 10_080,
+            resetsAt: currentStart + durationSeconds
+        )
+        let view = WeeklyRemainingHistoryBlock(
+            history: .empty,
+            resetWindowHistory: CodexUsageResetWindowHistory(records: records),
+            weeklyWindow: weeklyWindow,
+            currentReport: nil,
+            currentTimestamp: currentStart + 60,
+            initialMode: .past
+        )
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let picker = try XCTUnwrap(
+            allDescendants(of: hostingView).compactMap { $0 as? NSPopUpButton }.first
+        )
+        let itemTitles = (0..<picker.numberOfItems).map { picker.itemTitle(at: $0) }
+
+        XCTAssertEqual(itemTitles, ["7/7-7/8", "7/7-7/7"])
+        XCTAssertEqual(Set(itemTitles).count, itemTitles.count)
+    }
+
     func testWeeklyHistoryModeSwitchingDoesNotCrashAndCurrentHidesWindowPicker() throws {
         let view = try weeklyHistoryBlock(initialMode: .current)
         let hostingView = NSHostingView(rootView: view.frame(width: 292))

@@ -97,6 +97,15 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         overlayModel.selectedSeries
     }
 
+    func displayEndAt(for window: CodexUsageResetWindowOverlayWindow) -> Int {
+        let newerResetStarts = ([currentChart.resetStartAt] + pastWindows.map { Optional($0.resetStartAt) })
+            .compactMap { $0 }
+            .filter {
+                $0 > window.resetStartAt && $0 < window.resetsAt
+            }
+        return newerResetStarts.min() ?? window.resetsAt
+    }
+
     private static func resetWindowHistory(
         _ resetWindowHistory: CodexUsageResetWindowHistory,
         backfilledFrom weeklyHistory: CodexUsageWeeklyHistory,
@@ -157,18 +166,20 @@ enum CodexUsageHistoryTimelineLabel {
 
     static func endLabel(
         for series: CodexUsageResetWindowOverlaySeries?,
+        endingAt: Int? = nil,
         calendar: Calendar = .current
     ) -> String {
         guard let series else { return "" }
-        return dayLabel(timestamp: series.key.resetsAt, calendar: calendar)
+        return dayLabel(timestamp: endingAt ?? series.key.resetsAt, calendar: calendar)
     }
 
     static func windowLabel(
         for window: CodexUsageResetWindowOverlayWindow,
+        endingAt: Int? = nil,
         calendar: Calendar = .current
     ) -> String {
         let start = shortDateLabel(timestamp: window.resetStartAt, calendar: calendar)
-        let end = shortDateLabel(timestamp: window.resetsAt, calendar: calendar)
+        let end = shortDateLabel(timestamp: endingAt ?? window.resetsAt, calendar: calendar)
         return "\(start)-\(end)"
     }
 
