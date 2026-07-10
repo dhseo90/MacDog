@@ -11,8 +11,11 @@ SELF_TEST_TMP=""
 
 APPLICATIONS_DIR="${MACDOG_RELEASE_FINAL_APPLICATIONS_DIR:-/Applications}"
 USER_APPLICATIONS_DIR="${MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR:-$HOME/Applications}"
+DESKTOP_DIR="${MACDOG_RELEASE_FINAL_DESKTOP_DIR:-$HOME/Desktop}"
 DIST_DIR="${MACDOG_RELEASE_FINAL_DIST_DIR:-$ROOT_DIR/dist}"
 VOLUMES_DIR="${MACDOG_RELEASE_FINAL_VOLUMES_DIR:-/Volumes}"
+TEMP_ROOT="${MACDOG_RELEASE_FINAL_TEMP_ROOT:-/private/tmp}"
+WORKTREE_LIST_FILE="${MACDOG_RELEASE_FINAL_WORKTREE_LIST_FILE:-}"
 BIN_DIR="${MACDOG_RELEASE_FINAL_BIN_DIR:-$HOME/bin}"
 LAUNCH_AGENTS_DIR="${MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
@@ -28,6 +31,7 @@ usage: $0 --version VERSION
 
 Verify the local machine is clean after release smoke:
   - only /Applications/MacDog.app remains in user-visible app locations
+  - no Desktop, other git worktree dist, or /private/tmp MacDog.app duplicates remain
   - no MacDog DMG volumes remain mounted
   - dist/MacDog.app was cleaned up after packaging smoke
   - installed app CFBundleShortVersionString matches VERSION
@@ -38,6 +42,19 @@ USAGE
 die() {
   echo "error: $*" >&2
   exit 1
+}
+
+worktree_roots() {
+  if [[ -n "$WORKTREE_LIST_FILE" ]]; then
+    [[ -f "$WORKTREE_LIST_FILE" ]] && /bin/cat "$WORKTREE_LIST_FILE"
+    return 0
+  fi
+
+  /usr/bin/git -C "$ROOT_DIR" worktree list --porcelain 2>/dev/null | while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) printf '%s\n' "${line#worktree }" ;;
+    esac
+  done
 }
 
 plist_value() {
@@ -334,7 +351,13 @@ run_self_test() {
   tmp="$SELF_TEST_TMP"
   trap 'rm -rf "$SELF_TEST_TMP"' EXIT
 
-  mkdir -p "$tmp/Applications" "$tmp/UserApplications" "$tmp/dist" "$tmp/Volumes" "$tmp/bin" "$tmp/LaunchAgents"
+  mkdir -p "$tmp/Applications" "$tmp/UserApplications" "$tmp/Desktop" "$tmp/dist" \
+    "$tmp/OtherWorktree/dist" "$tmp/Temp/macdog-install-test/dist" "$tmp/Volumes" \
+    "$tmp/bin" "$tmp/LaunchAgents"
+  printf '%s\n' "$tmp/OtherWorktree" >"$tmp/worktrees"
+  export MACDOG_RELEASE_FINAL_DESKTOP_DIR="$tmp/Desktop"
+  export MACDOG_RELEASE_FINAL_TEMP_ROOT="$tmp/Temp"
+  export MACDOG_RELEASE_FINAL_WORKTREE_LIST_FILE="$tmp/worktrees"
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9"
   write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
   write_fixture_launchctl "$tmp/launchctl" "missing" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
@@ -450,6 +473,45 @@ run_self_test() {
     "$0" --version 9.9.9
   rm -rf "$tmp/dist/$APP_NAME.app"
 
+  write_fixture_app "$tmp/Desktop/$APP_NAME.app" "9.9.9"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    "$0" --version 9.9.9
+  rm -rf "$tmp/Desktop/$APP_NAME.app"
+
+  write_fixture_app "$tmp/OtherWorktree/dist/$APP_NAME.app" "9.9.9"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    "$0" --version 9.9.9
+  rm -rf "$tmp/OtherWorktree/dist/$APP_NAME.app"
+
+  write_fixture_app "$tmp/Temp/macdog-install-test/dist/$APP_NAME.app" "9.9.9"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    "$0" --version 9.9.9
+  rm -rf "$tmp/Temp/macdog-install-test/dist/$APP_NAME.app"
+
   mkdir -p "$tmp/Volumes/$APP_NAME 9.9.9"
   expect_failure env \
     MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
@@ -538,8 +600,27 @@ if [[ "$USER_APPLICATIONS_DIR" != "$APPLICATIONS_DIR" && -d "$USER_APPLICATIONS_
   failures+=("duplicate user app remains: $USER_APPLICATIONS_DIR/$APP_NAME.app")
 fi
 
+if [[ -d "$DESKTOP_DIR/$APP_NAME.app" ]]; then
+  failures+=("duplicate Desktop app remains: $DESKTOP_DIR/$APP_NAME.app")
+fi
+
 if [[ -d "$DIST_DIR/$APP_NAME.app" ]]; then
   failures+=("release build artifact remains: $DIST_DIR/$APP_NAME.app")
+fi
+
+while IFS= read -r worktree_root; do
+  [[ -n "$worktree_root" ]] || continue
+  worktree_app="$worktree_root/dist/$APP_NAME.app"
+  [[ "$worktree_app" != "$DIST_DIR/$APP_NAME.app" ]] || continue
+  if [[ -d "$worktree_app" ]]; then
+    failures+=("other worktree build artifact remains: $worktree_app")
+  fi
+done < <(worktree_roots)
+
+if [[ -d "$TEMP_ROOT" ]]; then
+  while IFS= read -r temp_app; do
+    failures+=("temporary MacDog app remains: $temp_app")
+  done < <(/usr/bin/find "$TEMP_ROOT" -maxdepth 5 -type d -name "$APP_NAME.app" -print | /usr/bin/sort)
 fi
 
 cli_link="$BIN_DIR/codex-usage"
