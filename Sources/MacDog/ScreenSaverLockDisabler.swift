@@ -17,7 +17,6 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
     private static let originalSystemDelaySecondsKey = "screenLockOriginalSystemDelaySeconds"
     private static let originalSystemDelayRawValueKey = "screenLockOriginalSystemDelayRawValue"
     private static let domain = "com.apple.screensaver"
-    private static let systemScreenLockCommand = "/usr/sbin/sysadminctl"
 
     private let defaults: UserDefaults
     private let commandRunner: CommandRunning
@@ -179,21 +178,6 @@ struct ScreenSaverLockDisabler: ScreenLockDisabling {
         guard result.exitCode == 0 || result.failureSummary.contains("does not exist") else {
             throw ScreenSaverLockDisablerError.commandFailed(detail: result.failureSummary)
         }
-    }
-
-    private func readSystemScreenLockDelay() throws -> ScreenLockDelay {
-        let result = try commandRunner.run(
-            executablePath: Self.systemScreenLockCommand,
-            arguments: ["-screenLock", "status"]
-        )
-        guard result.exitCode == 0 else {
-            throw ScreenSaverLockDisablerError.commandFailed(detail: result.failureSummary)
-        }
-
-        let output = [result.stdout, result.stderr]
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return ScreenLockDelayParser.parse(output)
     }
 
     private func clearStoredState() {

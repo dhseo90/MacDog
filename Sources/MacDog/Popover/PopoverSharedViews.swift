@@ -1,44 +1,6 @@
 import AppKit
 import SwiftUI
 
-struct ResourceMetricBlock: View {
-    let title: String
-    let systemImage: String
-    let value: String
-    let details: [String]
-    let progress: Double?
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 30, height: 30)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(title): \(value)")
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                ForEach(details, id: \.self) { detail in
-                    Text(detail)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let progress {
-                    ProgressView(value: progress)
-                        .tint(.accentColor)
-                        .padding(.top, 2)
-                }
-            }
-        }
-    }
-}
-
 struct PopoverFormSection<Content: View>: View {
     let title: String
     let systemImage: String
