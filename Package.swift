@@ -21,10 +21,6 @@ let package = Package(
             targets: ["MacDogPrivilegedHelperSupport"]
         ),
         .executable(
-            name: "codex-usage-probe",
-            targets: ["CodexUsageProbe"]
-        ),
-        .executable(
             name: "codex-usage",
             targets: ["CodexUsageCLI"]
         ),
@@ -47,10 +43,6 @@ let package = Package(
         ),
         .target(
             name: "MacDogPrivilegedHelperSupport"
-        ),
-        .executableTarget(
-            name: "CodexUsageProbe",
-            dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(
             name: "CodexUsageCLI",

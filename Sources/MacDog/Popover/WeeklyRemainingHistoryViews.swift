@@ -1467,47 +1467,6 @@ struct WeeklyRemainingHistoryInteraction {
     }
 }
 
-struct PressureBanner: View {
-    let message: String
-    let phase: UsagePressurePhase
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: phase == .limit ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
-                .font(.caption)
-            Text(message)
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(tint)
-        .padding(.vertical, 7)
-        .padding(.horizontal, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(tint.opacity(0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(tint.opacity(0.24), lineWidth: 1)
-        )
-    }
-
-    private var tint: Color {
-        switch phase {
-        case .calm:
-            .secondary
-        case .active:
-            .accentColor
-        case .fast:
-            .orange
-        case .sprint, .limit:
-            .red
-        }
-    }
-}
-
 struct UsageRow: View {
     let title: String
     let window: UsageWindowReport?
