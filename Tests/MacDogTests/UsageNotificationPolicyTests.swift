@@ -45,6 +45,44 @@ final class UsageNotificationPolicyTests: XCTestCase {
         XCTAssertEqual(candidates.first?.dedupeKey.rawValue, "usage.limitReached.fiveHour.reset.1800003600")
     }
 
+    func testPolicyUsesOnlyWeeklyWindowWhenFiveHourIsUnavailable() {
+        let state = Self.state(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 96,
+            weeklyResetsAt: 1_800_604_800
+        )
+
+        let candidates = UsageNotificationPolicy().candidates(
+            for: state,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(candidates.map(\.event), [.approachingLimit])
+        XCTAssertEqual(candidates.map(\.window), [.weekly])
+        XCTAssertEqual(candidates.map(\.dedupeKey.rawValue), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+    }
+
+    func testPolicyAssignsReachedTypeToWeeklyWhenFiveHourIsUnavailable() {
+        let state = Self.state(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 64,
+            weeklyResetsAt: 1_800_604_800,
+            rateLimitReachedType: "primary"
+        )
+
+        let candidates = UsageNotificationPolicy().candidates(
+            for: state,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(candidates.map(\.event), [.limitReached])
+        XCTAssertEqual(candidates.map(\.window), [.weekly])
+    }
+
     func testPolicyCreatesResetSoonOnlyForHighUsageWindowsInsideLeadTime() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let state = Self.state(
@@ -181,7 +219,7 @@ final class UsageNotificationPolicyTests: XCTestCase {
     }
 
     private static func state(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
@@ -201,19 +239,21 @@ final class UsageNotificationPolicyTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
         rateLimitReachedType: String?
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -224,8 +264,8 @@ final class UsageNotificationPolicyTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: rateLimitReachedType

@@ -1496,16 +1496,18 @@ struct UsageRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            RemainingUsageBar(value: progressValue, tint: tint)
-                .accessibilityLabel("\(title) 남은 사용량")
-                .accessibilityValue(summary)
+            if window != nil {
+                RemainingUsageBar(value: progressValue, tint: tint)
+                    .accessibilityLabel("\(title) 남은 사용량")
+                    .accessibilityValue(summary)
 
-            if let resetSummary {
-                Text(formattedResetSummary(resetSummary))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                if let resetSummary {
+                    Text(formattedResetSummary(resetSummary))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
             }
 
         }
@@ -1519,7 +1521,7 @@ struct UsageRow: View {
     }
 
     private var summary: String {
-        guard let window else { return "확인 불가" }
+        guard let window else { return "현재 제공되지 않음" }
         return "\(UsageMonitorState.percent(window.usedPercent))% 사용 / \(UsageMonitorState.percent(window.remainingPercent))% 남음"
     }
 

@@ -179,6 +179,43 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(source.contains("CodexWeeklyPacemakerBlock("))
     }
 
+    func testCodexUsagePanelKeepsWeeklyContentVisibleWhenFiveHourIsUnavailable() throws {
+        let report = Self.weeklyOnlyCodexReport()
+        let snapshot = CodexUsageCacheSnapshot(
+            cachedAt: report.generatedAt,
+            staleAfterSeconds: 120,
+            report: report,
+            error: nil
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil,
+            displayBasis: .fiveHour,
+            systemMetrics: .unavailable,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(report.generatedAt))
+        )
+        let view = CodexUsagePanel(state: state)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertNotNil(state.codexPanelSummary())
+        XCTAssertEqual(state.selectedWindowStatus?.label, "주간")
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+
+        let rowSource = try String(
+            contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
+        )
+        let stateSource = try String(contentsOfFile: "Sources/MacDog/UsageMonitorState.swift")
+        XCTAssertTrue(rowSource.contains("현재 제공되지 않음"))
+        XCTAssertTrue(rowSource.contains("if window != nil"))
+        XCTAssertTrue(stateSource.contains("guard codexLimit?.fiveHour != nil"))
+        XCTAssertFalse(state.codexDataStatus.title.contains("오류"))
+    }
+
     func testPlanTransitionUIIsRemovedAndPacemakerRemains() throws {
         let panelSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
@@ -809,6 +846,33 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                         windowDurationMins: 10_080,
                         resetsAt: 1_800_056_400
                     ),
+                    credits: nil,
+                    planType: "pro",
+                    rateLimitReachedType: nil
+                )
+            ]
+        )
+    }
+
+    private static func weeklyOnlyCodexReport() -> CodexUsageReport {
+        CodexUsageReport(
+            generatedAt: 1_800_000_000,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: [
+                "codex": UsageLimitReport(
+                    limitId: "codex",
+                    limitName: "Codex",
+                    primary: UsageWindowReport(
+                        kind: .weekly,
+                        usedPercent: 67,
+                        remainingPercent: 33,
+                        windowDurationMins: 10_080,
+                        resetsAt: 1_800_056_400
+                    ),
+                    secondary: nil,
                     credits: nil,
                     planType: "pro",
                     rateLimitReachedType: nil

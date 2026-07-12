@@ -129,6 +129,41 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertEqual(dedupeStore.ledger.deliveredKeys.map(\.rawValue), result.deliveredKeys.map(\.rawValue))
     }
 
+    func testDispatcherDeliversWeeklyOnlyCandidateWithoutFiveHourDedupe() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = RecordingUsageNotificationDeliveryClient()
+        let dedupeStore = InMemoryUsageNotificationDedupeStore()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: StaticUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: dedupeStore,
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 96,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+
+        let result = await dispatcher.dispatch(
+            for: state,
+            settings: UsageNotificationDeliverySettings(
+                usageNotificationsEnabled: true,
+                resetSoonNotificationsEnabled: true
+            )
+        )
+
+        XCTAssertEqual(result.deliveredKeys.map(\.rawValue), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+        XCTAssertEqual(deliveryClient.deliveredContents().map(\.identifier), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+        XCTAssertEqual(dedupeStore.ledger.deliveredKeys, result.deliveredKeys)
+    }
+
     func testResetSoonNotificationUsesRecoveryCopy() {
         let candidate = UsageNotificationCandidate(
             event: .resetSoon,
@@ -435,7 +470,7 @@ final class UsageNotificationDeliveryTests: XCTestCase {
     }
 
     private static func cachedState(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
@@ -461,18 +496,20 @@ final class UsageNotificationDeliveryTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -483,8 +520,8 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: nil

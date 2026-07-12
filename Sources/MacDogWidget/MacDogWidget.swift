@@ -391,18 +391,20 @@ private struct WidgetUsageRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            ProgressView(value: progress)
-                .tint(tint)
-            Text(resetText)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            if window != nil {
+                ProgressView(value: progress)
+                    .tint(tint)
+                Text(resetText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
         }
     }
 
     private var summary: String {
-        guard let window else { return "확인 불가" }
+        guard let window else { return "현재 제공되지 않음" }
         return "\(percent(window.usedPercent))% 사용 / \(percent(window.remainingPercent))% 남음"
     }
 

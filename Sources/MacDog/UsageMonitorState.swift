@@ -136,7 +136,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var codexFiveHourPaceProjection: CodexUsagePaceProjection? {
-        guard let cacheSnapshot else { return nil }
+        guard codexLimit?.fiveHour != nil, let cacheSnapshot else { return nil }
         return CodexFiveHourPaceProjectionBuilder().projection(
             snapshot: cacheSnapshot,
             history: fiveHourUsageHistory,
@@ -191,7 +191,7 @@ struct UsageMonitorState: Equatable {
         case .max:
             return limit.maxUsedPercent
         case .fiveHour:
-            return limit.fiveHour?.usedPercent ?? 0
+            return (limit.fiveHour ?? limit.weekly)?.usedPercent ?? 0
         case .weekly:
             return limit.weekly?.usedPercent ?? 0
         }
@@ -209,7 +209,8 @@ struct UsageMonitorState: Equatable {
             .compactMap(\.self)
             .max { $0.window.usedPercent < $1.window.usedPercent }
         case .fiveHour:
-            return UsageWindowStatus(label: "5시간", window: limit.fiveHour)
+            return UsageWindowStatus(label: "5시간", window: limit.fiveHour) ??
+                UsageWindowStatus(label: "주간", window: limit.weekly)
         case .weekly:
             return UsageWindowStatus(label: "주간", window: limit.weekly)
         }
@@ -301,7 +302,7 @@ struct UsageMonitorState: Equatable {
                 tone: .warning,
                 systemImage: "rectangle.badge.exclamationmark",
                 title: "프로토콜 확인 필요",
-                detail: "필수 5시간/주간 window 누락"
+                detail: "필수 주간 window 누락"
             )
         }
         if isRefreshing {
@@ -318,6 +319,14 @@ struct UsageMonitorState: Equatable {
                 systemImage: "hourglass",
                 title: "사용량 데이터 대기",
                 detail: "cache snapshot 또는 live report 필요"
+            )
+        }
+        if codexLimit?.fiveHour == nil {
+            return CodexUsageDataStatus(
+                tone: .warning,
+                systemImage: "minus.circle.fill",
+                title: "5시간 현재 미제공",
+                detail: "주간 cache와 history는 정상 갱신"
             )
         }
         if weeklyUsageHistory.samples.isEmpty || resetWindowHistory.records.isEmpty {
@@ -377,7 +386,8 @@ struct UsageMonitorState: Equatable {
         guard let limit = codexLimit else {
             return "코덱스 사용량 확인 불가"
         }
-        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5시간" } ?? "5시간 확인 불가"
+        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5시간" } ??
+            "5시간 현재 제공되지 않음"
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
         let motion = animationPaused ? ", 일시 정지" : ""
         return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"

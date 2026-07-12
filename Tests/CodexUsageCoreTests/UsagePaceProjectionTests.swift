@@ -116,6 +116,64 @@ final class UsagePaceProjectionTests: XCTestCase {
         XCTAssertNil(result.projectedFinalUsedPercent)
     }
 
+    func testWeeklyProjectionContinuesWhenFiveHourWindowIsUnavailable() throws {
+        let now = 1_800_000_000
+        let resetsAt = now + 3 * 60 * 60
+        let snapshot = Self.snapshot(
+            cachedAt: now,
+            staleAfterSeconds: 120,
+            report: Self.report(
+                weeklyUsedPercent: 46,
+                weeklyResetsAt: resetsAt,
+                fiveHourUsedPercent: nil
+            )
+        )
+        let previous = Self.weeklySample(
+            recordedAt: now - 60 * 60,
+            usedPercent: 40,
+            resetsAt: resetsAt
+        )
+
+        let result = CodexUsagePaceProjectionBuilder().projection(
+            snapshot: snapshot,
+            weeklyHistory: CodexUsageWeeklyHistory(samples: [previous]),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(result.state, .projected)
+        XCTAssertEqual(result.currentUsedPercent, 46)
+        XCTAssertEqual(try XCTUnwrap(result.usedPercentPerHour), 6, accuracy: 0.0001)
+    }
+
+    func testFiveHourProjectionIsUnavailableWhenCurrentWindowIsMissing() throws {
+        let now = 1_800_000_000
+        let previous = try XCTUnwrap(CodexUsageFiveHourHistorySample(
+            recordedAt: now - 30 * 60,
+            windowDurationMins: 300,
+            usedPercent: 20,
+            resetsAt: now + 2 * 60 * 60
+        ))
+        let snapshot = Self.snapshot(
+            cachedAt: now,
+            staleAfterSeconds: 120,
+            report: Self.report(
+                weeklyUsedPercent: 40,
+                weeklyResetsAt: now + 4 * 86_400,
+                fiveHourUsedPercent: nil
+            )
+        )
+
+        let result = CodexFiveHourPaceProjectionBuilder().projection(
+            snapshot: snapshot,
+            history: CodexUsageFiveHourHistory(samples: [previous]),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(result.state, .unavailable)
+        XCTAssertNil(result.currentUsedPercent)
+        XCTAssertEqual(result.sampleCount, 0)
+    }
+
     func testProjectsFiveHourPaceFromEpochFreeHistory() throws {
         let now = 1_800_000_000
         let fiveHourResetsAt = now + 2 * 60 * 60
@@ -207,16 +265,18 @@ final class UsagePaceProjectionTests: XCTestCase {
     private static func report(
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int,
-        fiveHourUsedPercent: Double = 12,
+        fiveHourUsedPercent: Double? = 12,
         fiveHourResetsAt: Int? = nil
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt ?? weeklyResetsAt - 7 * 24 * 60 * 60 + 5 * 60 * 60
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt ?? weeklyResetsAt - 7 * 24 * 60 * 60 + 5 * 60 * 60
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -227,8 +287,8 @@ final class UsagePaceProjectionTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: nil

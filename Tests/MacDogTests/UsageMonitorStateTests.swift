@@ -43,6 +43,54 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
+    func testWeeklyOnlyCodexUsageFallsBackFromFiveHourBasisAndKeepsPanelAvailable() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let weeklyResetsAt = 1_800_345_600
+        let report = Self.report(
+            fiveHourUsedPercent: nil,
+            weeklyUsedPercent: 82,
+            weeklyResetsAt: weeklyResetsAt
+        )
+        let snapshot = CodexUsageCacheSnapshot(
+            cachedAt: 1_800_000_000,
+            staleAfterSeconds: 120,
+            report: report,
+            error: nil
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            errorMessage: nil,
+            displayBasis: .fiveHour,
+            runnerEvaluationDate: now
+        )
+
+        XCTAssertEqual(state.selectedUsedPercent, 82)
+        XCTAssertEqual(state.selectedWindowStatus?.label, "주간")
+        XCTAssertEqual(state.phase, .fast)
+        XCTAssertEqual(
+            try XCTUnwrap(state.codexPanelSummary(now: now, calendar: Self.utcCalendar)).statusDetail,
+            "기준 주간 82% 사용 / 18% 남음"
+        )
+        XCTAssertEqual(state.nextResetGlance(now: now), "다음 초기화: 주간 96시간 후")
+        XCTAssertTrue(state.toolTip.contains("5시간 현재 제공되지 않음"))
+        XCTAssertEqual(state.codexDataStatus.title, "5시간 현재 미제공")
+        XCTAssertEqual(state.codexDataStatus.tone, .warning)
+        XCTAssertNil(state.codexFiveHourPaceProjection)
+    }
+
+    func testRestoredFiveHourWindowResumesFiveHourBasis() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 25, weeklyUsedPercent: 82),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            displayBasis: .fiveHour
+        )
+
+        XCTAssertEqual(state.selectedUsedPercent, 25)
+        XCTAssertEqual(state.selectedWindowStatus?.label, "5시간")
+    }
+
     func testSelectedProviderModeIsTheOnlyRunnerSourceAndNeverFallsBack() {
         let now = Int(Date().timeIntervalSince1970)
         let preview = Self.claudePreview(observedAt: now, usedPercent: 96)
@@ -479,7 +527,7 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(state.codexDataStatus.tone, .warning)
         XCTAssertEqual(state.codexDataStatus.title, "프로토콜 확인 필요")
-        XCTAssertEqual(state.codexDataStatus.detail, "필수 5시간/주간 window 누락")
+        XCTAssertEqual(state.codexDataStatus.detail, "필수 주간 window 누락")
     }
 
     func testRefreshingPreservesPrivilegedHelperInstallSnapshot() {
@@ -1516,19 +1564,21 @@ final class UsageMonitorStateTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         weeklyUsedPercent: Double,
         fiveHourResetsAt: Int? = nil,
         weeklyResetsAt: Int? = nil,
         rateLimitReachedType: String? = nil
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -1539,8 +1589,8 @@ final class UsageMonitorStateTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: rateLimitReachedType
