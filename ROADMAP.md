@@ -36,13 +36,13 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.6.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
 | Privileged Helper | 덮개 닫힘 보호와 잠금 화면 설정 변경 보조 | 구현 완료, 자동 검증 완료 | signed/stable 배포 UX는 Apple Developer Program 의존 범위라 현재 구현 계획에서 제외 |
 | WidgetKit | optional source/opt-in build 경계 | 기본 릴리즈 제외 | App Group provisioning 이후 실제 위젯 UI 검수 |
-| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.6.1 릴리즈 완료, published DMG 재다운로드와 설치본 UI smoke 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
+| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.7.0 릴리즈 완료, published DMG 재다운로드와 설치본 UI smoke 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
 | v1.3.0 | 알림 중심 사용량 인지와 탭별 UI 개선 | 릴리즈 완료 | 후속 이슈 없음 |
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
-| v1.7.0 | Codex Pro $100 Downgrade Readiness | 릴리즈 준비 중, 구현·자동 검증 완료 | 실제 전환 전후 관측 전 scenario 정확도와 Pro $100 적합성 확정 금지 |
+| v1.7.0 | Codex Pro $100 Downgrade Readiness | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 실제 전환 전후 관측 전 scenario 정확도와 Pro $100 적합성 확정 금지 |
 | v1.8.0 | Claude Usage Parity Preview | 로드맵 확정, 조사/개발 전 | 공식 status line 계약 probe, sanitize bridge, fixture/UI 검증, live 검수 분리 |
 | v1.9.0 | Codex + Claude AI Usage Tab | 로드맵 확정, 개발 전 | 1번 탭 AI 사용량 전환, 두 provider 상태 분리, 통합 pressure/알림 검증 |
 
@@ -348,7 +348,7 @@ v1.6.1 릴리즈 결과:
 Claude와 AI 통합 탭은 이 버전에 포함하지 않습니다.
 세부 범위와 검증 경계는 [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md)에 둡니다.
 
-상태: 릴리즈 준비 중 / 구현·자동 검증 완료 / 실제 전환 전후 관측 미수행
+상태: 릴리즈 완료 / 자동 검증·CI·published DMG 설치본 UI smoke 완료 / 실제 전환 전후 관측 미수행
 
 v1.7.0 구현 범위:
 
@@ -386,6 +386,23 @@ v1.7.0 구현 결과:
   active epoch history filtering과 graph 경계 표시를 구현했습니다.
 - Codex/설정 탭과 PNG export에서 공식 관측과 `사용자 설정 기반 예상`을 구분했습니다.
 - 실제 Pro $100 전환 전후 관측은 수행하지 않았으며 적합성 확정 범위에 포함하지 않습니다.
+
+v1.7.0 릴리즈 결과:
+
+- Signed annotated tag: `v1.7.0`, GitHub `Verified`
+- Published release head: `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
+- Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
+- Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
+- PR #31은 `static-gates`, `guardrails`, mergeable, unresolved conversation 0개를 확인한 뒤
+  작성자 self-review 불가만 admin bypass해 merge했습니다.
+- Release Candidate와 Draft Release workflow, checksum, `hdiutil verify`, payload version,
+  executable checksum, codesign 검증을 통과했습니다.
+- Published DMG를 Finder에서 실제 drag-and-drop 설치하고 설치본의 주요 탭, popover placement,
+  Codex `현재`/`지난`/`비교`, 플랜 전환 미확정 상태를 직접 확인했습니다.
+- 단발 `codex-usage status`와 `doctor`는 app-server timeout이었지만 usage cache LaunchAgent는
+  최근 종료 코드 0, fresh success cache와 5시간/주간 history append를 유지했습니다.
+- release smoke cleanup, `verify_release_final_state.sh --version 1.7.0`, Finder `응용 프로그램`
+  범위의 단일 `MacDog` 검색 결과를 확인했습니다.
 
 추천 모델: `5.6 Sol`
 추론 수준: 높음 (high)

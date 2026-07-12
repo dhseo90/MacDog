@@ -1,6 +1,6 @@
 # v1.7.0 릴리즈 준비 감사
 
-상태: 릴리즈 준비 중 / 구현·자동 검증 완료 / 실제 전환 전후 관측 미수행 / release smoke 미수행
+상태: 릴리즈 완료 / 자동 검증·CI·published DMG 설치본 UI smoke·final-state 통과 / 실제 전환 전후 관측 미수행
 작성일: 2026-07-12
 대상 버전: `1.7.0`
 
@@ -9,7 +9,7 @@
 - Release tag: `v1.7.0`
 - Release scope: Codex Pro $100 전환 위험을 위한 사용자 설정 기반 scenario, 별도 5시간 history, plan epoch 분리
 - 변경 문서: [V170CodexPro100Transition.md](V170CodexPro100Transition.md)
-- 최종 release head: PR merge 후 최신 `origin/main` SHA로 확정
+- 최종 release head: `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
 
 ## 실제 전환 미수행 경계
 
@@ -103,7 +103,7 @@ MACDOG_RELEASE_VERSION=1.7.0 ./script/check.sh --no-run
 - README와 ROADMAP의 현재 release 상태 갱신
 - branch 삭제는 release 완료 후 사용자 명시 승인이 있을 때만 수행
 
-## 준비 시작 시 확인됨
+## 준비 시작 당시 확인됨
 
 - `v1.7.0` branch는 원격과 동기화된 clean 상태입니다.
 - v1.7.0 구현 commit은 `6084b71394a7c54b52478c029444a87c264ac105`입니다.
@@ -111,17 +111,50 @@ MACDOG_RELEASE_VERSION=1.7.0 ./script/check.sh --no-run
 - v1.7.0 PR, CI run, tag, release, artifact는 아직 없습니다.
 - Git tag signing 설정은 존재하지만 v1.7.0 tag의 GitHub `Verified` 상태는 아직 확인하지 않았습니다.
 
-## 미수행 보고
+## 릴리즈 결과
+
+- PR: `#31` (`v1.7.0 -> main`)
+- Admin bypass 명령: `gh pr merge 31 --repo dhseo90/MacDog --merge --admin`
+- Admin bypass 사유: 작성자 본인 Code Owner review 불가만 남았고 `static-gates`, `guardrails`,
+  mergeable, unresolved review thread 0개를 확인했습니다.
+- Merge/release head: `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
+- Signed annotated tag: `v1.7.0`, GitHub verification `verified=true`, reason `valid`
+- Release Candidate run: `29182593941`, 통과
+- Draft Release run: `29182716678`, 통과
+- Published release: `https://github.com/dhseo90/MacDog/releases/tag/v1.7.0`
+- Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
+- Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
+- Published asset 재다운로드 checksum과 `hdiutil verify`: 통과
+- DMG payload와 설치본 version: `1.7.0`
+- DMG payload/설치본 app executable SHA-256:
+  `7a44220ea20b60a51a0928094db54ff1237fa5c96d73266860889b6ff2147eb5`
+- DMG payload/설치본 CLI SHA-256:
+  `30dda9314887a0b38edf3c51f3f71a47958fd78f60c814134d1a4e42789a7407`
+- 설치본 codesign `--deep --strict`: 통과
+- Finder drag-and-drop 대치: 사용자 수행, payload/설치본 checksum으로 교체 확인
+- 실행 중 app path: `/Applications/MacDog.app/Contents/MacOS/MacDog`
+- GUI smoke: menu bar runner, popover placement, Codex/활성 자원/잠들지 않기/배터리/설정 탭,
+  Codex `현재`/`지난`/`비교` mode를 직접 확인했습니다.
+- 플랜 전환 UI: 현재/목표 label 미입력, 예정일 꺼짐, `실제 전환 확인` 꺼짐을 확인했습니다.
+- 설치본 설정 UI: 로그인 실행 켜짐, 알림 허용, 권한 도우미 설치됨을 확인했습니다.
+- 단발 `verify_usage_fetch_cache_contract.sh`와 `codex-usage doctor`는 Codex app-server timeout으로
+  source unavailable이었습니다. usage cache LaunchAgent는 최근 종료 코드 0이며 fresh success cache,
+  5시간/주간 window와 history append를 유지했습니다.
+- 외부 install-state의 login item `notFound`는 설치본 설정 UI의 켜짐 상태와 공식 final-state 통과를
+  근거로 외부 진단 false negative로 분리합니다.
+- `./script/cleanup_release_smoke_state.sh --apply`: 통과
+- `./script/verify_release_final_state.sh --version 1.7.0`: 통과
+- Finder `응용 프로그램` 범위 `MacDog` 검색 결과: 1개
+- v1.6.1에서 추적 중인 usage cache stdout/stderr 로그 rotation은 이번 릴리즈에서 관찰됐지만
+  v1.7.0 scope 또는 release blocker로 재분류하지 않습니다.
+
+## 미수행
 
 ```text
 미실행:
 - 실제 Pro $100 전환: 실행하지 않음
 - target epoch 첫 7일 관측: 실행하지 않음
-- Release Candidate/Draft Release: 실행하지 않음
-- published DMG 재다운로드 검증: 실행하지 않음
-- Finder drag-and-drop 설치 smoke: 실행하지 않음
-- 설치본 GUI smoke: 실행하지 않음
-- release smoke cleanup/final-state: 실행하지 않음
 - WidgetKit 실제 UI: 실행하지 않음
 - 장시간 테스트: 실행하지 않음
+- markdownlint-cli2: 로컬 npm cache 부재로 실행하지 않음
 ```
