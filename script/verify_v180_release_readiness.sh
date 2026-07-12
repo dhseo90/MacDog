@@ -92,9 +92,14 @@ verify_contract() {
   require_match 'verification\.verified' "$DRAFT_WORKFLOW" "draft tag verification gate"
   require_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION' "$DRAFT_WORKFLOW" "version and tag identity gate"
   require_match '--target "\$GITHUB_SHA"' "$DRAFT_WORKFLOW" "draft target identity"
+  require_match 'gh api --method PATCH' "$DRAFT_WORKFLOW" "draft target metadata update"
+  require_match 'target_commitish="\$GITHUB_SHA"' "$DRAFT_WORKFLOW" "explicit target metadata"
+  require_match 'gh release delete "\$MACDOG_TAG" --yes' "$DRAFT_WORKFLOW" \
+    "failed draft cleanup without tag deletion"
   require_match 'target_commitish' "$DRAFT_WORKFLOW" "draft target readback"
   require_match 'asset_names' "$DRAFT_WORKFLOW" "draft asset readback"
   require_match 'is_draft.*true.*is_prerelease.*false' "$DRAFT_WORKFLOW" "draft state readback"
+  require_match 'verification_complete=1' "$DRAFT_WORKFLOW" "successful draft verification marker"
   require_match 'unsigned/ad-hoc 배포' "$PACKAGE_SCRIPT" "publish-safe unsigned release note"
   require_absent_match '릴리즈 후보' "$PACKAGE_SCRIPT" "stale release candidate copy"
 

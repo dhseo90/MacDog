@@ -94,6 +94,15 @@ jobs:
           MACDOG_VERSION: ${{ inputs.version }}
           MACDOG_TAG: ${{ inputs.tag }}
         run: |
+          draft_created=0
+          keep_draft=0
+          cleanup_failed_draft() {
+            if [[ "$draft_created" == "1" && "$keep_draft" != "1" ]]; then
+              gh release delete "$MACDOG_TAG" --yes || true
+            fi
+          }
+          trap cleanup_failed_draft EXIT
+
           args=(
             release create "$MACDOG_TAG"
             "dist/release/MacDog-$MACDOG_VERSION.dmg"
@@ -106,6 +115,12 @@ jobs:
           )
 
           gh "${args[@]}"
+          draft_created=1
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.id')"
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
+            -f target_commitish="$GITHUB_SHA" \
+            --silent
+          keep_draft=1
 
       - name: Verify draft GitHub Release
         env:
@@ -113,6 +128,14 @@ jobs:
           MACDOG_VERSION: ${{ inputs.version }}
           MACDOG_TAG: ${{ inputs.tag }}
         run: |
+          verification_complete=0
+          cleanup_unverified_draft() {
+            if [[ "$verification_complete" != "1" ]]; then
+              gh release delete "$MACDOG_TAG" --yes || true
+            fi
+          }
+          trap cleanup_unverified_draft EXIT
+
           is_draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.draft')"
           is_prerelease="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.prerelease')"
           target_commitish="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.target_commitish')"
@@ -132,3 +155,4 @@ jobs:
             echo "Draft release assets mismatch. actual=$asset_names expected=$expected_assets" >&2
             exit 1
           fi
+          verification_complete=1
