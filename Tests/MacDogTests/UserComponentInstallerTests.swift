@@ -54,7 +54,103 @@ final class UserComponentInstallerTests: XCTestCase {
         XCTAssertFalse(fileManager.fileExists(atPath: plist.path))
         XCTAssertEqual(try String(contentsOf: usageCache, encoding: .utf8), "cache")
         XCTAssertTrue(calls.contains(["bootout", "gui/\(getuid())/\(UserComponentInstaller.cacheLabel)"]))
+    }
+
+    func testClaudeModeFallsBackToPlistBootoutWhenLabelBootoutFails() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let plist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        try fileManager.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("plist".utf8).write(to: plist)
+        var calls: [[String]] = []
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                calls.append(arguments)
+                if arguments == ["bootout", "gui/\(getuid())/\(UserComponentInstaller.cacheLabel)"] {
+                    throw UserComponentInstallerError.launchctlFailed(arguments.joined(separator: " "), "not found")
+                }
+                return ""
+            }
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: .claude)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: plist.path))
         XCTAssertTrue(calls.contains(["bootout", "gui/\(getuid())", plist.path]))
+    }
+
+    func testClaudeModePreservesPlistAndThrowsWhenLoadedJobCannotBeRemoved() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let plist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        try fileManager.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("plist".utf8).write(to: plist)
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                if arguments.first == "print" {
+                    return "loaded"
+                }
+                throw UserComponentInstallerError.launchctlFailed(arguments.joined(separator: " "), "permission denied")
+            }
+        )
+
+        XCTAssertThrowsError(try installer.synchronizeUsageCacheAgent(for: .claude))
+        XCTAssertTrue(fileManager.fileExists(atPath: plist.path))
+    }
+
+    func testClaudeModeRemovesPlistWhenBootoutConfirmsJobWasAlreadyMissing() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let plist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        try fileManager.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("plist".utf8).write(to: plist)
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                throw UserComponentInstallerError.launchctlFailed(
+                    arguments.joined(separator: " "),
+                    "Could not find specified service"
+                )
+            }
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: .claude)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: plist.path))
+    }
+
+    func testClaudeModePreservesPlistWhenLoadedStateCannotBeVerified() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let plist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        try fileManager.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("plist".utf8).write(to: plist)
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                throw UserComponentInstallerError.launchctlFailed(
+                    arguments.joined(separator: " "),
+                    arguments.first == "print" ? "permission denied" : "bootout failed"
+                )
+            }
+        )
+
+        XCTAssertThrowsError(try installer.synchronizeUsageCacheAgent(for: .claude))
+        XCTAssertTrue(fileManager.fileExists(atPath: plist.path))
     }
 
     func testCodexModeCreatesCacheLaunchAgentAfterClaudeMode() throws {

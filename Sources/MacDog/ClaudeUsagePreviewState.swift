@@ -49,10 +49,10 @@ struct ClaudeUsagePreviewState: Equatable {
         return cacheSnapshot?.freshWindow(kind, now: now)
     }
 
-    var statusTitle: String {
+    func statusTitle(now: Date = Date()) -> String {
         if !isEnabled { return "연결 대기" }
         if loadIssue != nil { return "cache 확인 필요" }
-        switch cacheSnapshot?.status() ?? .waiting {
+        switch cacheSnapshot?.status(now: now) ?? .waiting {
         case .waiting: return "연결 대기"
         case .partial: return "일부 window 수신"
         case .available: return "데이터 정상"

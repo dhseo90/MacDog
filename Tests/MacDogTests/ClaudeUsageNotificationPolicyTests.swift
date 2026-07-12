@@ -113,6 +113,34 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         XCTAssertTrue(identifiers.allSatisfy { $0.hasPrefix("claude.usage.") })
     }
 
+    @MainActor
+    func testCancelledProviderDispatchStopsAfterAuthorizationWithoutDelivery() async throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let suite = "ClaudeUsageNotificationPolicyTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let delivery = RecordingDelivery()
+        let dispatcher = ClaudeUsageNotificationDispatcher(
+            authorizationClient: DelayedClaudeNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: delivery,
+            defaults: defaults,
+            now: { now }
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: makePreview(fiveHourUsed: 96, sevenDayUsed: 20, resetsAt: 1_900_010_000),
+                enabled: true,
+                resetSoonEnabled: true
+            )
+        }
+
+        task.cancel()
+        let delivered = await task.value
+
+        XCTAssertEqual(delivered, 0)
+        XCTAssertEqual(delivery.deliveredCount(), 0)
+    }
+
     private func makePreview(
         fiveHourUsed: Double,
         sevenDayUsed: Double,
@@ -150,4 +178,17 @@ private final class RecordingDelivery: UsageNotificationDelivering {
 
     func deliveredCount() -> Int { contents.count }
     func identifiers() -> [String] { contents.map(\.identifier) }
+}
+
+private struct DelayedClaudeNotificationAuthorizationClient: UsageNotificationAuthorizationProviding {
+    let status: UsageNotificationAuthorizationStatus
+
+    func authorizationStatus() async -> UsageNotificationAuthorizationStatus {
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return status
+    }
+
+    func requestAuthorization() async -> UsageNotificationAuthorizationStatus {
+        await authorizationStatus()
+    }
 }

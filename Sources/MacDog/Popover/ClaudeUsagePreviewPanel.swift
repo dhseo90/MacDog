@@ -87,7 +87,7 @@ struct ClaudeUsagePreviewPanel: View {
             Text("Claude 사용량")
                 .font(.caption.weight(.semibold))
             Spacer(minLength: 0)
-            Label(preview.statusTitle, systemImage: statusSystemImage)
+            Label(preview.statusTitle(now: now), systemImage: statusSystemImage)
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(statusColor)
                 .lineLimit(1)

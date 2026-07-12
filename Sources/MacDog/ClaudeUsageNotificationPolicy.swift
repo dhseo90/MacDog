@@ -147,6 +147,7 @@ final class ClaudeUsageNotificationDispatcher {
         }
         guard !candidates.isEmpty,
               (await authorizationClient.authorizationStatus()).allowsDelivery else { return 0 }
+        guard !Task.isCancelled else { return 0 }
 
         let ledger = loadLedger()
         let existing = Set(ledger.deliveredKeys)
@@ -159,8 +160,10 @@ final class ClaudeUsageNotificationDispatcher {
 
         var delivered: [ClaudeUsageNotificationDedupeKey] = []
         for candidate in deliverable {
+            guard !Task.isCancelled else { return 0 }
             do {
                 try await deliveryClient.deliver(candidate.content)
+                guard !Task.isCancelled else { return 0 }
                 delivered.append(candidate.dedupeKey)
             } catch {
                 continue

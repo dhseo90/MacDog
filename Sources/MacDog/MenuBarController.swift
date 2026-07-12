@@ -32,6 +32,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var refreshTimer: Timer?
     private var popoverMetricsTimer: Timer?
     private var usageCacheRefreshTask: Task<Void, Never>?
+    private var usageCacheRefreshGeneration = 0
+    private var usageNotificationTask: Task<Void, Never>?
     private var lastUsageCacheRefreshAttempt: Date?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
@@ -169,6 +171,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
+        if previousPreferences.usageProviderMode != preferences.usageProviderMode {
+            cancelProviderBoundWork(for: preferences.usageProviderMode)
+        }
         synchronizeInstalledUsageCacheAgentIfNeeded(
             from: previousPreferences.usageProviderMode,
             to: preferences.usageProviderMode
@@ -215,14 +220,25 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             codexUsageURL: codexUsageURL,
             widgetBundled: UsageCacheRefreshBundleLocator.isWidgetBundled(relativeTo: codexUsageURL)
         )
+        usageCacheRefreshGeneration &+= 1
+        let generation = usageCacheRefreshGeneration
         usageCacheRefreshTask = Task { [weak self] in
             await UsageCacheRefreshRunner.run(command: command)
             await MainActor.run {
-                guard let self else { return }
+                guard let self, self.usageCacheRefreshGeneration == generation else { return }
                 self.usageCacheRefreshTask = nil
                 self.refreshUsage(allowLiveRefresh: false)
             }
         }
+    }
+
+    private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
+        usageNotificationTask?.cancel()
+        usageNotificationTask = nil
+        guard currentMode == .claude else { return }
+        usageCacheRefreshGeneration &+= 1
+        usageCacheRefreshTask?.cancel()
+        usageCacheRefreshTask = nil
     }
 
     private func shouldAttemptUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
@@ -247,8 +263,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func scheduleUsageNotificationsIfNeeded(for loadedState: UsageMonitorState) {
         let settings = UsageNotificationDeliverySettings(preferences: preferences)
-        Task { @MainActor [weak self, loadedState, settings] in
-            guard let self else { return }
+        usageNotificationTask?.cancel()
+        usageNotificationTask = Task { @MainActor [weak self, loadedState, settings] in
+            guard let self, !Task.isCancelled else { return }
             switch UsageNotificationRoute(mode: loadedState.usageProviderMode) {
             case .codex:
                 _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)

@@ -386,7 +386,7 @@ struct UsageMonitorState: Equatable {
     private var claudeToolTip: String {
         let motion = animationPaused ? ", 일시 정지" : ""
         guard let usage = claudeUsagePreview.usage else {
-            return "Claude 사용량: \(claudeUsagePreview.statusTitle)\(motion)"
+            return "Claude 사용량: \(claudeUsagePreview.statusTitle())\(motion)"
         }
         let fiveHour = usage.fiveHour.map { "\(Self.percent($0.usedPercent ?? 0))% 5시간" } ?? "5시간 확인 불가"
         let sevenDay = usage.sevenDay.map { "\(Self.percent($0.usedPercent ?? 0))% 7일" } ?? "7일 확인 불가"

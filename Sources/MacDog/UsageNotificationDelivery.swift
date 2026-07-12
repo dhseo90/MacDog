@@ -44,6 +44,7 @@ enum UsageNotificationSkipReason: Equatable, Sendable {
     case notificationsUnauthorized
     case duplicateOnly
     case deliveryFailed
+    case cancelled
 }
 
 struct UsageNotificationDispatchResult: Equatable, Sendable {
@@ -148,6 +149,9 @@ final class UsageNotificationDispatcher {
         }
 
         let authorizationStatus = await authorizationClient.authorizationStatus()
+        guard !Task.isCancelled else {
+            return .skipped(.cancelled)
+        }
         guard authorizationStatus.allowsDelivery else {
             return .skipped(.notificationsUnauthorized)
         }
@@ -171,8 +175,14 @@ final class UsageNotificationDispatcher {
 
         var deliveredKeys: [UsageNotificationDedupeKey] = []
         for candidate in deliverableCandidates {
+            guard !Task.isCancelled else {
+                return .skipped(.cancelled)
+            }
             do {
                 try await deliveryClient.deliver(candidate.notificationContent)
+                guard !Task.isCancelled else {
+                    return .skipped(.cancelled)
+                }
                 deliveredKeys.append(candidate.dedupeKey)
             } catch {
                 continue

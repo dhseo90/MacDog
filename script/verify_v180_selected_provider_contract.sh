@@ -134,6 +134,12 @@ verify_contract() {
   require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
     "canonical provider mode"
   require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
+  require_match 'usageCacheRefreshTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
+    "provider switch Codex refresh cancellation"
+  require_match 'usageNotificationTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
+    "provider switch notification cancellation"
+  require_match 'withTaskCancellationHandler' "$ROOT_DIR/Sources/MacDog/MenuBar/UsageCacheRefresh.swift" \
+    "refresh process cancellation handler"
   require_match 'case \.claude:' "$STATE_SOURCE" "Claude runner state"
   require_match 'return \.calm' "$STATE_SOURCE" "no fallback runner state"
   require_match 'UsageNotificationRoute\(mode: loadedState\.usageProviderMode\)' "$CONTROLLER_SOURCE" \

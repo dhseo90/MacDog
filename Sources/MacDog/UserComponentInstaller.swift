@@ -193,8 +193,22 @@ struct UserComponentInstaller {
     }
 
     private func removeCacheLaunchAgentIfPresent() throws {
-        _ = try? launchctl(arguments: ["bootout", "\(guiTarget)/\(Self.cacheLabel)"])
-        _ = try? launchctl(arguments: ["bootout", guiTarget, cachePlistURL.path])
+        do {
+            try launchctl(arguments: ["bootout", "\(guiTarget)/\(Self.cacheLabel)"])
+        } catch {
+            do {
+                try launchctl(arguments: ["bootout", guiTarget, cachePlistURL.path])
+            } catch {
+                do {
+                    try launchctl(arguments: ["print", "\(guiTarget)/\(Self.cacheLabel)"])
+                    throw error
+                } catch let verificationError {
+                    guard Self.isMissingLaunchctlServiceError(verificationError) else {
+                        throw verificationError
+                    }
+                }
+            }
+        }
         if fileManager.fileExists(atPath: cachePlistURL.path) {
             try fileManager.removeItem(at: cachePlistURL)
         }
@@ -236,6 +250,16 @@ struct UserComponentInstaller {
             throw UserComponentInstallerError.launchctlFailed(arguments.joined(separator: " "), (output + error).trimmingCharacters(in: .whitespacesAndNewlines))
         }
         return output + error
+    }
+
+    private static func isMissingLaunchctlServiceError(_ error: Error) -> Bool {
+        guard case UserComponentInstallerError.launchctlFailed(_, let detail) = error else {
+            return false
+        }
+        let normalized = detail.lowercased()
+        return normalized.contains("could not find service") ||
+            normalized.contains("could not find specified service") ||
+            normalized.contains("service not found")
     }
 }
 

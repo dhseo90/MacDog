@@ -205,6 +205,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(settingsSource.contains("Claude 알림"))
         XCTAssertFalse(popoverSource.contains("Picker(\"사용량 provider\""))
         XCTAssertTrue(popoverSource.contains("state.usageProviderMode == .claude"))
+        XCTAssertTrue(popoverSource.contains("statusTitle(now: now)"))
+        XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
     }
 

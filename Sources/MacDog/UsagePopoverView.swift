@@ -5,6 +5,7 @@ struct UsagePopoverView: View {
     let onPreferencesChanged: () -> Void
     let onAction: (PetAction) -> Void
     let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
+    let now: Date
 
     @AppStorage(RunnerPreferences.popoverModuleKey) private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
 
@@ -12,12 +13,14 @@ struct UsagePopoverView: View {
         state: UsageMonitorState,
         onPreferencesChanged: @escaping () -> Void = {},
         onAction: @escaping (PetAction) -> Void = { _ in },
-        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
+        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient(),
+        now: Date = Date()
     ) {
         self.state = state
         self.onPreferencesChanged = onPreferencesChanged
         self.onAction = onAction
         self.notificationAuthorizationClient = notificationAuthorizationClient
+        self.now = now
     }
 
     var body: some View {
@@ -165,7 +168,7 @@ struct UsagePopoverView: View {
         switch selectedModule {
         case .codex:
             return state.usageProviderMode == .claude
-                ? state.claudeUsagePreview.statusTitle
+                ? state.claudeUsagePreview.statusTitle(now: now)
                 : state.codexPhase.statusLabel
         case .mac:
             return state.systemMetrics.cpuSummary
@@ -188,7 +191,7 @@ struct UsagePopoverView: View {
     @ViewBuilder
     private var usageProviderContent: some View {
         if state.usageProviderMode == .claude {
-            ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview)
+            ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
         } else {
             CodexUsagePanel(state: state)
         }

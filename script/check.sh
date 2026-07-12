@@ -50,8 +50,8 @@ Checks:
   36. Public repository guardrails are present and consistent.
   37. GitHub release candidate workflow contains the expected unsigned artifact gates.
   38. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
-  38. Privileged helper reinstall test plan is safe to stage before actual approval.
-  39. Unless --no-run is passed, the app launches and its process is detected.
+  39. Privileged helper reinstall test plan is safe to stage before actual approval.
+  40. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.

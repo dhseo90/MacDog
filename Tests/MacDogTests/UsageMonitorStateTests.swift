@@ -124,6 +124,7 @@ final class UsageMonitorStateTests: XCTestCase {
         )
 
         XCTAssertEqual(preview.status(now: now), .partial)
+        XCTAssertEqual(preview.statusTitle(now: now), "일부 window 수신")
         XCTAssertNil(preview.currentWindow(.fiveHour, now: now))
         XCTAssertEqual(preview.currentWindow(.sevenDay, now: now)?.usedPercent, 40)
         XCTAssertEqual(preview.runnerUsedPercent(now: now), 40)

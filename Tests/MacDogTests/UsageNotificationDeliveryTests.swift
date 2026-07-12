@@ -9,6 +9,39 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertEqual(UsageNotificationRoute(mode: .claude), .claude)
     }
 
+    func testCancelledProviderDispatchStopsAfterAuthorizationWithoutDelivery() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = RecordingUsageNotificationDeliveryClient()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: DelayedUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: InMemoryUsageNotificationDedupeStore(),
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: 96,
+            fiveHourResetsAt: 1_800_003_600,
+            weeklyUsedPercent: 42,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: state,
+                settings: UsageNotificationDeliverySettings(
+                    usageNotificationsEnabled: true,
+                    resetSoonNotificationsEnabled: true
+                )
+            )
+        }
+
+        task.cancel()
+        let result = await task.value
+
+        XCTAssertEqual(result.skipReason, .cancelled)
+        XCTAssertEqual(deliveryClient.deliveredContents(), [])
+    }
+
     func testDispatcherDeliversAuthorizedFreshCacheCandidatesAndPersistsDedupe() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()
@@ -460,6 +493,19 @@ private final class InMemoryUsageNotificationDedupeStore: UsageNotificationDedup
 private struct FailingUsageNotificationDeliveryClient: UsageNotificationDelivering {
     func deliver(_ content: UsageNotificationContent) async throws {
         throw NSError(domain: "UsageNotificationDeliveryTests", code: 1)
+    }
+}
+
+private struct DelayedUsageNotificationAuthorizationClient: UsageNotificationAuthorizationProviding {
+    let status: UsageNotificationAuthorizationStatus
+
+    func authorizationStatus() async -> UsageNotificationAuthorizationStatus {
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return status
+    }
+
+    func requestAuthorization() async -> UsageNotificationAuthorizationStatus {
+        await authorizationStatus()
     }
 }
 
