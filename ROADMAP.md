@@ -36,12 +36,12 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.6.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
 | Privileged Helper | 덮개 닫힘 보호와 잠금 화면 설정 변경 보조 | 구현 완료, 자동 검증 완료 | signed/stable 배포 UX는 Apple Developer Program 의존 범위라 현재 구현 계획에서 제외 |
 | WidgetKit | optional source/opt-in build 경계 | 기본 릴리즈 제외 | App Group provisioning 이후 실제 위젯 UI 검수 |
-| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.6.0 릴리즈 완료, published DMG 재다운로드와 설치본 smoke 검증 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
+| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.6.1 릴리즈 완료, published DMG 재다운로드와 설치본 UI smoke 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
 | v1.3.0 | 알림 중심 사용량 인지와 탭별 UI 개선 | 릴리즈 완료 | 후속 이슈 없음 |
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
-| v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 로컬 검증 완료, 릴리즈 준비 중 | release smoke에서 mode 전환과 dropdown 표시 조건 확인 |
+| v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex Pro $100 Downgrade Readiness | 로드맵 확정, 개발 전 | 5시간 history, 수동 플랜 전환 시나리오, 전환 epoch 구현과 검증 |
 | v1.8.0 | Claude Usage Parity Preview | 로드맵 확정, 조사/개발 전 | 공식 status line 계약 probe, sanitize bridge, fixture/UI 검증, live 검수 분리 |
 | v1.9.0 | Codex + Claude AI Usage Tab | 로드맵 확정, 개발 전 | 1번 탭 AI 사용량 전환, 두 provider 상태 분리, 통합 pressure/알림 검증 |
@@ -316,7 +316,7 @@ v1.6.0 제외 경계:
 세부 범위는 [Docs/V161HistoryControlPolish.md](Docs/V161HistoryControlPolish.md)에 둡니다.
 릴리즈 준비와 수동 smoke 경계는 [Docs/V161ReleaseReadiness.md](Docs/V161ReleaseReadiness.md)에 둡니다.
 
-상태: 로컬 검증 완료, 릴리즈 준비 중
+상태: 릴리즈 완료 / Finder 설치 smoke 완료 / Codex history mode UI와 final-state 확인 완료
 
 v1.6.1 구현 범위:
 
@@ -330,6 +330,16 @@ v1.6.1 완료 기준:
 - `PopoverScreenshotRendererTests`가 current mode의 dropdown 부재와 past mode의 dropdown 표시를 검증합니다.
 - README screenshot renderer가 Codex 탭을 정상 렌더링합니다.
 - release smoke에서 published DMG 설치본의 Codex 탭 mode 전환을 직접 확인합니다.
+
+v1.6.1 릴리즈 결과:
+
+- Release tag: signed annotated `v1.6.1`
+- Published release head: `62147e9d346094bf9d10920bd91b3186bc3e27dc`
+- Published asset: `MacDog-1.6.1.dmg`, `MacDog-1.6.1.dmg.sha256`
+- Published DMG SHA-256: `e145c34d98133d6f1db7fab100574ecb6c5901e75b867f2fe0e5e4baf5eba959`
+- 설치 smoke: Finder drag-and-drop 교체 뒤 설치본 checksum과 codesign을 확인하고 Codex `현재`/`지난`/`비교` mode와 dropdown 표시 조건을 직접 확인했습니다.
+- GitHub 검증: Release Candidate와 Draft Release가 통과했고, release head의 비결정적 screenshot test 최초 실패는 동일 tree 재실행에서 통과했습니다.
+- final-state: cleanup 뒤 Background Task DB에서 설치 앱과 usage cache LaunchAgent의 `[enabled, allowed, notified]` 상태를 확인했고 `./script/verify_release_final_state.sh --version 1.6.1`이 통과했습니다.
 
 ## v1.7.0: Codex Pro $100 Downgrade Readiness
 
