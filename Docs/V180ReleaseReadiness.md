@@ -120,7 +120,7 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 | 증거 | 현재 상태 |
 | --- | --- |
-| 전체 Swift test | 2026-07-12, 447개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
+| 전체 Swift test | 2026-07-13, 449개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
 | Xcode Debug no-sign build | 2026-07-12, 통과 |
 | `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run` | 2026-07-12, 통과 |
 | `main` branch protection | 2026-07-12, 승인 1회 / Code Owners / branch 최신화 / `static-gates` / `guardrails` / conversation resolution 확인 |

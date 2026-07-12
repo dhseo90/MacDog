@@ -73,7 +73,7 @@ struct ClaudeUsagePreviewPanel: View {
                 waitingContent
             }
 
-            Text("event-driven · 다음 Claude 응답 후 갱신 · live 구독 검수 미수행")
+            Text("event-driven · 다음 Claude 응답 후 갱신")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

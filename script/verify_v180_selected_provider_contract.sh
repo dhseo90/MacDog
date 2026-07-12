@@ -116,6 +116,7 @@ verify_contract() {
   require_match 'preview\.currentWindow' "$CLAUDE_PANEL_SOURCE" "fresh per-window display source"
   require_match 'window 만료 · 새 event 대기' "$CLAUDE_PANEL_SOURCE" "expired window state"
   reject_match '"[^"]*(Claude Preview|PREVIEW)' "$CLAUDE_PANEL_SOURCE" "preview product copy"
+  reject_match 'live 구독 검수 미수행' "$CLAUDE_PANEL_SOURCE" "release evidence in product UI"
   reject_match '"[^"]*(Claude Preview|PREVIEW)' "$BRIDGE_SOURCE" "preview bridge copy"
   require_match 'macdog-claude-statusline' "$INSTALL_VERIFIER" "installed bridge gate"
   require_match 'usage_provider_mode' "$INSTALL_VERIFIER" "mode-aware install verification"

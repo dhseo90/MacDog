@@ -160,10 +160,16 @@ final class ClaudeUsageNotificationDispatcher {
 
         var delivered: [ClaudeUsageNotificationDedupeKey] = []
         for candidate in deliverable {
-            guard !Task.isCancelled else { return 0 }
+            if Task.isCancelled {
+                if !delivered.isEmpty {
+                    saveLedger(ClaudeUsageNotificationLedger(
+                        deliveredKeys: Array(Set(ledger.deliveredKeys + delivered))
+                    ))
+                }
+                return delivered.count
+            }
             do {
                 try await deliveryClient.deliver(candidate.content)
-                guard !Task.isCancelled else { return 0 }
                 delivered.append(candidate.dedupeKey)
             } catch {
                 continue

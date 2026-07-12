@@ -47,7 +47,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
-| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 제품 코드 재작업 완료, 전체·live·설치·GUI·release 검증 전 | v1.7 과도 기능 제거, 5시간/주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
+| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 제품 코드 재작업·로컬 자동 검증 완료, live·설치·GUI·release 검증 전 | v1.7 과도 기능 제거, 5시간/주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -411,7 +411,7 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
 test로 연결했습니다. Claude sanitizer/cache/history backend, 사용률·잔여율 표시, cache 없음 수동 연결
 UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 기준 전체
-`swift test --no-parallel` 447개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
+`swift test --no-parallel` 449개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
 `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. 실제 Claude 구독
 `rate_limits`, GUI·설치·release 검수는 남았습니다.
 

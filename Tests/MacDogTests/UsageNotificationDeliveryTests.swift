@@ -42,6 +42,45 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertEqual(deliveryClient.deliveredContents(), [])
     }
 
+    func testCancellationDuringDeliveryStillRecordsDeliveredDedupeKey() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = CancellableUsageNotificationDeliveryClient()
+        let dedupeStore = InMemoryUsageNotificationDedupeStore()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: StaticUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: dedupeStore,
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: 96,
+            fiveHourResetsAt: 1_800_003_600,
+            weeklyUsedPercent: 42,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: state,
+                settings: UsageNotificationDeliverySettings(
+                    usageNotificationsEnabled: true,
+                    resetSoonNotificationsEnabled: true
+                )
+            )
+        }
+        while !deliveryClient.hasStartedDelivery() {
+            await Task.yield()
+        }
+
+        task.cancel()
+        let result = await task.value
+
+        XCTAssertEqual(result.deliveredKeys.map(\.rawValue), [
+            "usage.approachingLimit.fiveHour.reset.1800003600"
+        ])
+        XCTAssertEqual(dedupeStore.ledger.deliveredKeys, result.deliveredKeys)
+    }
+
     func testDispatcherDeliversAuthorizedFreshCacheCandidatesAndPersistsDedupe() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()
@@ -520,5 +559,19 @@ private final class SlowRecordingUsageNotificationDeliveryClient: UsageNotificat
 
     func deliveredContents() -> [UsageNotificationContent] {
         contents
+    }
+}
+
+@MainActor
+private final class CancellableUsageNotificationDeliveryClient: UsageNotificationDelivering {
+    private var started = false
+
+    func deliver(_ content: UsageNotificationContent) async throws {
+        started = true
+        try? await Task.sleep(nanoseconds: 10_000_000_000)
+    }
+
+    func hasStartedDelivery() -> Bool {
+        started
     }
 }

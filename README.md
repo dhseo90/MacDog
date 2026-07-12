@@ -139,7 +139,7 @@ live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-
 MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run
 ```
 
-2026-07-12 기준 전체 `swift test --no-parallel` 447개 통과(명시적 opt-in 4개 skip), Xcode Debug
+2026-07-13 기준 전체 `swift test --no-parallel` 449개 통과(명시적 opt-in 4개 skip), Xcode Debug
 no-sign build와 `check.sh --no-run`이 통과했습니다. 생성된 `dist/MacDog.app`은 개발 자동 검증
 산출물이며 published DMG 설치 검수의 대체물이 아닙니다.
 

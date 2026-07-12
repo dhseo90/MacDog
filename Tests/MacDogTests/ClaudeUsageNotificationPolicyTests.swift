@@ -141,6 +141,47 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         XCTAssertEqual(delivery.deliveredCount(), 0)
     }
 
+    @MainActor
+    func testCancellationDuringDeliveryStillRecordsDeliveredDedupeKey() async throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let suite = "ClaudeUsageNotificationPolicyTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let delivery = CancellableClaudeNotificationDelivery()
+        let dispatcher = ClaudeUsageNotificationDispatcher(
+            authorizationClient: StaticUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: delivery,
+            defaults: defaults,
+            now: { now }
+        )
+        let preview = makePreview(
+            fiveHourUsed: 96,
+            sevenDayUsed: 20,
+            resetsAt: 1_900_010_000
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: preview,
+                enabled: true,
+                resetSoonEnabled: true
+            )
+        }
+        while !delivery.hasStartedDelivery() {
+            await Task.yield()
+        }
+
+        task.cancel()
+        let deliveredCount = await task.value
+        let secondDispatchCount = await dispatcher.dispatch(
+            for: preview,
+            enabled: true,
+            resetSoonEnabled: true
+        )
+
+        XCTAssertEqual(deliveredCount, 1)
+        XCTAssertEqual(secondDispatchCount, 0)
+    }
+
     private func makePreview(
         fiveHourUsed: Double,
         sevenDayUsed: Double,
@@ -190,5 +231,19 @@ private struct DelayedClaudeNotificationAuthorizationClient: UsageNotificationAu
 
     func requestAuthorization() async -> UsageNotificationAuthorizationStatus {
         await authorizationStatus()
+    }
+}
+
+@MainActor
+private final class CancellableClaudeNotificationDelivery: UsageNotificationDelivering {
+    private var started = false
+
+    func deliver(_ content: UsageNotificationContent) async throws {
+        started = true
+        try? await Task.sleep(nanoseconds: 10_000_000_000)
+    }
+
+    func hasStartedDelivery() -> Bool {
+        started
     }
 }

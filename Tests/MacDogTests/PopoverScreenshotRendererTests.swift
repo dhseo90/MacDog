@@ -195,6 +195,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
     func testSelectedProviderUIUsesOnlySettingsModePicker() throws {
         let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
         let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
+        let claudePanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
 
         XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
@@ -207,6 +208,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("state.usageProviderMode == .claude"))
         XCTAssertTrue(popoverSource.contains("statusTitle(now: now)"))
         XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
+        XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
     }
 

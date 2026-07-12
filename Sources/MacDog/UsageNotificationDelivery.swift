@@ -175,14 +175,18 @@ final class UsageNotificationDispatcher {
 
         var deliveredKeys: [UsageNotificationDedupeKey] = []
         for candidate in deliverableCandidates {
-            guard !Task.isCancelled else {
-                return .skipped(.cancelled)
+            if Task.isCancelled {
+                guard !deliveredKeys.isEmpty else {
+                    return .skipped(.cancelled)
+                }
+                dedupeStore.saveLedger(ledger.recording(deliveredKeys))
+                return UsageNotificationDispatchResult(
+                    deliveredKeys: deliveredKeys,
+                    skipReason: .cancelled
+                )
             }
             do {
                 try await deliveryClient.deliver(candidate.notificationContent)
-                guard !Task.isCancelled else {
-                    return .skipped(.cancelled)
-                }
                 deliveredKeys.append(candidate.dedupeKey)
             } catch {
                 continue
