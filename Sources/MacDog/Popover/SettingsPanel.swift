@@ -286,12 +286,19 @@ private struct ClaudeUsagePreviewSettingsContent: View {
                     title: "statusLine command",
                     command: guide.standaloneCommand
                 )
-                connectionCommand(
-                    title: "기존 command 병합 preview",
-                    command: guide.mergeCommandPreview
-                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("기존 command 병합 preview")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(guide.mergeCommandPreview)
+                        .font(.system(size: 9, design: .monospaced))
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.72)
+                }
+                .padding(5)
+                .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.04)))
 
-                Text("기존 command가 있으면 자동 교체하지 말고 위 병합 preview의 placeholder를 검토해 수동 연결하세요. 복구 시 원래 command를 그대로 되돌립니다.")
+                Text("기존 command가 있으면 자동 교체하지 않습니다. raw JSON을 shell command로 중계하지 말고, 별도 감사된 wrapper가 준비되기 전에는 standalone 연결을 선택하세요. 복구 시 원래 command를 그대로 되돌립니다.")
                     .font(.caption2)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)

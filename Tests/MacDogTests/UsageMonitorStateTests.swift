@@ -51,21 +51,24 @@ final class UsageMonitorStateTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true
+            claudeRunnerPreviewEnabled: true,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
         let optedOut = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: false
+            claudeRunnerPreviewEnabled: false,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
         let stale = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: Self.claudePreview(observedAt: now - 1_000, usedPercent: 99),
-            claudeRunnerPreviewEnabled: true
+            claudeRunnerPreviewEnabled: true,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
 
         XCTAssertEqual(optedIn.phase, .sprint)
@@ -73,6 +76,31 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(optedOut.phase, .calm)
         XCTAssertEqual(stale.phase, .calm)
         XCTAssertEqual(optedIn.codexPanelSummary()?.statusTitle, optedIn.codexPhase.statusLabel)
+    }
+
+    func testRunnerPhaseCapturesFreshnessUntilNextStateLoad() {
+        let observedAt = 1_900_000_000
+        let preview = Self.claudePreview(observedAt: observedAt, usedPercent: 96)
+        let beforeStale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            claudeRunnerPreviewEnabled: true,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 899))
+        )
+        let afterStale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            claudeRunnerPreviewEnabled: true,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 901))
+        )
+
+        XCTAssertEqual(beforeStale.phase, .sprint)
+        XCTAssertEqual(afterStale.phase, .calm)
+        XCTAssertEqual(beforeStale.phase, .sprint, "old state must keep its captured phase for timer comparison")
     }
 
     func testStateCopiesPreserveClaudePreview() {
@@ -83,7 +111,8 @@ final class UsageMonitorStateTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true
+            claudeRunnerPreviewEnabled: true,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
 
         XCTAssertEqual(state.withRefreshing(true).claudeUsagePreview, preview)

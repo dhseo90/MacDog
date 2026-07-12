@@ -14,6 +14,9 @@ MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
 APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
 APP_HISTORY_FILE="$APP_CACHE_DIR/usage-weekly-history.json"
+CLAUDE_CACHE_FILE="$APP_CACHE_DIR/claude-usage.json"
+CLAUDE_HISTORY_FILE="$APP_CACHE_DIR/claude-usage-history.json"
+CLAUDE_LOCK_FILE="$APP_CACHE_DIR/claude-usage.lock"
 SHARED_CACHE_DIR="$HOME/Library/Group Containers/group.com.dhseo.macdog.MacDog"
 SHARED_CACHE_FILE="$SHARED_CACHE_DIR/usage.json"
 HELPER_LABEL="com.dhseo.macdog.helper"
@@ -197,6 +200,10 @@ case "$MODE" in
     echo "Would remove: $SYSTEM_APP_DEST if present"
     echo "Would remove cache file: $APP_CACHE_FILE"
     echo "Would remove usage history file: $APP_HISTORY_FILE"
+    echo "Would remove Claude Preview cache file: $CLAUDE_CACHE_FILE"
+    echo "Would remove Claude Preview history file: $CLAUDE_HISTORY_FILE"
+    echo "Would remove Claude Preview lock file: $CLAUDE_LOCK_FILE"
+    echo "Would preserve Claude statusLine settings; restore the previous command manually"
     echo "Would remove shared cache file: $SHARED_CACHE_FILE"
     echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
     if [[ "$RESET_PREFERENCES" == "1" ]]; then
@@ -241,7 +248,8 @@ disable_login_item_if_possible
 restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE"
+rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE" \
+  "$CLAUDE_CACHE_FILE" "$CLAUDE_HISTORY_FILE" "$CLAUDE_LOCK_FILE"
 if ! run_with_timeout 3 rm -f "$SHARED_CACHE_FILE"; then
   echo "Warning: failed to remove shared cache file within timeout: $SHARED_CACHE_FILE" >&2
 fi
@@ -251,6 +259,7 @@ run_with_timeout 3 rmdir "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
 reset_preferences_if_requested
 
 echo "Uninstalled MacDog"
+echo "Claude statusLine settings were not modified; restore the previous command manually if Preview was connected"
 if [[ "$WITH_HELPER" == "1" ]]; then
   echo "Removed privileged helper: $HELPER_TOOL_DEST"
   echo "Removed LaunchDaemon: $HELPER_PLIST_DEST"

@@ -127,6 +127,8 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_stable_match './script/build_and_run\.sh --no-run'
   require_stable_match 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
   require_stable_match 'Contents/MacOS/codex-usage'
+  require_stable_match 'Contents/MacOS/macdog-claude-statusline'
+  require_stable_match 'codesign --force --options runtime --timestamp --sign "\$DEVELOPER_ID_APPLICATION" "\$claude_bridge"'
   require_stable_match 'if \[\[ -d "\$appex" \]\]'
   require_stable_match 'notarytool submit'
   require_stable_match 'stapler staple'

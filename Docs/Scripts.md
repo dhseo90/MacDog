@@ -36,7 +36,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `MACDOG_APP_VERSION=<version> script/install.sh --with-helper` | 개발용 앱 설치와 optional 권한 도우미 설치 | user component와 `/Library/PrivilegedHelperTools`, `/Library/LaunchDaemons`를 변경합니다. 터미널 `sudo` 또는 명시 허용이 필요합니다. 사용자 drag-and-drop 설치 검수를 대체하지 않습니다. |
 | `MACDOG_APP_VERSION=<version> script/install.sh --helper-only` | helper만 설치 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 변경합니다. |
 | `script/uninstall.sh --dry-run` | 삭제 전 변경 대상 출력 | 파일/LaunchAgent를 바꾸지 않습니다. |
-| `script/uninstall.sh` | user component 삭제 | 앱, CLI symlink, user LaunchAgent, cache/history 파일을 제거합니다. helper는 유지합니다. |
+| `script/uninstall.sh` | user component 삭제 | 앱, CLI symlink, user LaunchAgent, Codex/Claude Preview cache/history 파일을 제거합니다. Claude statusLine 설정은 읽거나 수정하지 않으므로 수동 연결했다면 기존 command를 직접 복구해야 합니다. helper는 유지합니다. |
 | `script/uninstall.sh --reset-preferences` | user component 삭제와 설정 초기화 | 앱, CLI symlink, user LaunchAgent, cache/history 파일을 제거하고 MacDog UserDefaults를 초기화합니다. helper는 유지합니다. |
 | `script/uninstall.sh --with-helper` | user component와 optional helper 삭제 | user component와 `/Library` helper를 함께 제거합니다. |
 | `script/uninstall.sh --helper-only` | helper만 삭제 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 제거합니다. |
@@ -57,8 +57,8 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 
 | Script | 의미 | 영향 |
 | --- | --- | --- |
-| `script/verify_app_bundle.sh` | app bundle 구조 검증 | 지정 앱 번들의 실행 파일, helper, signature 구조를 읽고 기본 번들에 widget extension이 없는지 확인합니다. `--with-widget`은 opt-in `.appex` 포함을 확인합니다. |
-| `script/verify_app_privacy_boundaries.sh` | 앱 privacy boundary 검증 | menu bar UI가 live Codex app-server나 shared cache fallback을 직접 열지 않는지 코드 기준으로 확인합니다. |
+| `script/verify_app_bundle.sh` | app bundle 구조 검증 | 지정 앱 번들의 앱, `codex-usage`, `macdog-claude-statusline`, helper, signature 구조를 읽고 기본 번들에 widget extension이 없는지 확인합니다. `--with-widget`은 opt-in `.appex` 포함을 확인합니다. |
+| `script/verify_app_privacy_boundaries.sh` | 앱 privacy boundary 검증 | menu bar UI가 live Codex app-server나 shared cache fallback, Claude settings/auth/transcript/raw event를 직접 열지 않고 sanitized cache만 읽는지 코드 기준으로 확인합니다. |
 | `script/verify_autostart_contract.sh` | 로그인 자동 실행 계약 검증 | `loginLaunchEnabled` 설정, 실제 로그인 항목 status 조회, macOS 로그인 항목 등록 규칙을 확인합니다. |
 | `script/verify_cache_contract.sh` | cache schema와 stale/error/history 계약 검증 | cache 모델, 주간 잔여량 history, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | menu bar image, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
@@ -82,6 +82,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_v150_release_readiness.sh --self-test` | v1.5.0 릴리즈 준비 감사 자체검증 | 릴리즈 workflow나 GUI 실행 없이 Step 9-13 closure, 수동 UI/live fetch/published DMG smoke 경계, 운영 read-only guard 연결, release 실행 순서를 확인합니다. |
 | `script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약 자체검증 | live app-server, GUI 앱, 설치, LaunchAgent, push 없이 reset credit 모델, recovery/session plan 제거, 문서 경계, focused Swift tests를 실행합니다. |
 | `script/verify_v170_codex_pro100_transition_contract.sh --self-test` | v1.7.0 Codex Pro $100 전환 준비 계약 자체검증 | live app-server, network, GUI 앱, 설치, LaunchAgent, push 없이 별도 5시간 history/plan epoch 파일, 사용자 설정 기반 scenario, 자동 가격 tier 추정 금지, auth/raw/session privacy guard, focused Swift tests를 확인합니다. |
+| `script/verify_v180_claude_usage_preview_contract.sh --self-test` | v1.8.0 Claude Usage Preview 계약 자체검증 | Claude settings/auth/Keychain/transcript, network, GUI, 설치, LaunchAgent, push 없이 optional status line shape, sanitize bridge, 별도 atomic cache/history, Preview UI/runner/알림/PNG, synthetic privacy fixture와 focused Swift tests를 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |

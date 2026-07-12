@@ -1,77 +1,85 @@
 import CodexUsageCore
 import Foundation
 
-private func writeStatusLine(_ text: String, existingOutput: Data? = nil) {
-    if let existingOutput, !existingOutput.isEmpty {
-        FileHandle.standardOutput.write(existingOutput)
-        if existingOutput.last != 0x0A {
-            FileHandle.standardOutput.write(Data("\n".utf8))
-        }
-    }
+private func writeStatusLine(_ text: String) {
     FileHandle.standardOutput.write(Data((text + "\n").utf8))
 }
 
-private func existingStatusLineOutput(input: Data) -> Data? {
-    let arguments = Array(CommandLine.arguments.dropFirst())
-    guard arguments.count == 2,
-          arguments[0] == "--existing-command",
-          !arguments[1].isEmpty,
-          arguments[1].utf8.count <= 4_096 else {
-        return nil
+private func readBoundedStatusLineInput() throws -> Data {
+    var input = Data()
+    let maximum = ClaudeUsageCacheStore.maximumStatusLineBytes
+    while input.count <= maximum {
+        let remaining = maximum + 1 - input.count
+        guard let chunk = try FileHandle.standardInput.read(
+            upToCount: min(64 * 1_024, remaining)
+        ), !chunk.isEmpty else {
+            break
+        }
+        input.append(chunk)
     }
-    let process = Process()
-    let inputPipe = Pipe()
-    let outputPipe = Pipe()
-    process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    process.arguments = ["-lc", arguments[1]]
-    process.standardInput = inputPipe
-    process.standardOutput = outputPipe
-    process.standardError = FileHandle.nullDevice
-    do {
-        try process.run()
-        inputPipe.fileHandleForWriting.write(input)
-        try inputPipe.fileHandleForWriting.close()
-        let output = try outputPipe.fileHandleForReading.readToEnd()
-        process.waitUntilExit()
-        return output
-    } catch {
-        return nil
-    }
+    return input
 }
 
-guard let input = try? FileHandle.standardInput.read(
-    upToCount: ClaudeUsageCacheStore.maximumStatusLineBytes + 1
-), !input.isEmpty else {
+private func cacheStore(arguments: [String]) -> ClaudeUsageCacheStore? {
+    guard !arguments.isEmpty else { return ClaudeUsageCacheStore() }
+    guard arguments.count == 2, arguments[0] == "--test-cache-directory" else { return nil }
+
+    let requestedDirectory = URL(fileURLWithPath: arguments[1], isDirectory: true)
+        .standardizedFileURL
+        .resolvingSymlinksInPath()
+    let allowedRoots = [
+        FileManager.default.temporaryDirectory.standardizedFileURL.resolvingSymlinksInPath(),
+        URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+    ]
+    let requestedPath = requestedDirectory.path.hasSuffix("/")
+        ? requestedDirectory.path
+        : requestedDirectory.path + "/"
+    guard allowedRoots.contains(where: { root in
+        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        return requestedPath.hasPrefix(rootPath) && requestedPath != rootPath
+    }) else {
+        return nil
+    }
+
+    return ClaudeUsageCacheStore(
+        fileURL: requestedDirectory.appendingPathComponent("claude-usage.json"),
+        historyFileURL: requestedDirectory.appendingPathComponent("claude-usage-history.json")
+    )
+}
+
+let arguments = Array(CommandLine.arguments.dropFirst())
+guard let store = cacheStore(arguments: arguments) else {
+    writeStatusLine("Claude Preview · 설정 오류")
+    exit(EXIT_SUCCESS)
+}
+
+let input: Data
+do {
+    input = try readBoundedStatusLineInput()
+} catch {
+    writeStatusLine("Claude Preview · 입력 오류")
+    exit(EXIT_SUCCESS)
+}
+
+guard !input.isEmpty else {
     writeStatusLine("Claude Preview · 입력 대기")
     exit(EXIT_SUCCESS)
 }
-let existingOutput = existingStatusLineOutput(input: input)
 
 do {
-    let environment = ProcessInfo.processInfo.environment
-    let cacheURL = environment["MACDOG_CLAUDE_CACHE_PATH"].map {
-        URL(fileURLWithPath: $0)
-    } ?? ClaudeUsageCacheStore.defaultFileURL()
-    let historyURL = environment["MACDOG_CLAUDE_HISTORY_PATH"].map {
-        URL(fileURLWithPath: $0)
-    }
-    let result = try ClaudeUsageCacheStore(
-        fileURL: cacheURL,
-        historyFileURL: historyURL
-    ).ingest(statusLineData: input)
+    let result = try store.ingest(statusLineData: input)
     switch result {
     case .stored(let snapshot):
         let values: [String] = [
             snapshot.fiveHour?.usedPercent.map { "5시간 \(Int($0.rounded()))%" },
             snapshot.sevenDay?.usedPercent.map { "7일 \(Int($0.rounded()))%" }
         ].compactMap(\.self)
-        writeStatusLine(
-            values.isEmpty ? "Claude Preview · 사용량 대기" : "Claude · " + values.joined(separator: " · "),
-            existingOutput: existingOutput
-        )
+        writeStatusLine(values.isEmpty ? "Claude Preview · 사용량 대기" : "Claude · " + values.joined(separator: " · "))
     case .failed:
-        writeStatusLine("Claude Preview · 입력 오류", existingOutput: existingOutput)
+        writeStatusLine("Claude Preview · 입력 오류")
     }
 } catch {
-    writeStatusLine("Claude Preview · 저장 오류", existingOutput: existingOutput)
+    writeStatusLine("Claude Preview · 저장 오류")
 }

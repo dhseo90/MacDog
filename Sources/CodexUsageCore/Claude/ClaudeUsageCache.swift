@@ -47,34 +47,57 @@ public struct ClaudeUsageCacheSnapshot: Codable, Equatable, Sendable {
 
     public func status(now: Date = Date()) -> ClaudeUsageCacheStatus {
         if issue != nil { return .error }
-        guard let usage, let lastUsageObservedAt else { return .waiting }
-        let timestamp = Int(now.timeIntervalSince1970)
-        if timestamp - lastUsageObservedAt > staleAfterSeconds ||
-            freshWindows(now: timestamp).isEmpty {
+        guard usage != nil, lastUsageObservedAt != nil else { return .waiting }
+        let freshKinds = ClaudeUsageWindowKind.allCases.filter {
+            freshWindow($0, now: now) != nil
+        }
+        if freshKinds.isEmpty {
             return .stale
         }
-        return usage.fiveHour == nil || usage.sevenDay == nil ? .partial : .available
+        return freshKinds.count == ClaudeUsageWindowKind.allCases.count ? .available : .partial
     }
 
     public func freshMaxUsedPercent(now: Date = Date()) -> Double? {
-        let timestamp = Int(now.timeIntervalSince1970)
         guard status(now: now) == .available || status(now: now) == .partial else { return nil }
-        return freshWindows(now: timestamp).compactMap(\.usedPercent).max()
+        return ClaudeUsageWindowKind.allCases
+            .compactMap { freshWindow($0, now: now)?.usedPercent }
+            .max()
     }
 
-    private func freshWindows(now: Int) -> [ClaudeUsageWindowSnapshot] {
-        guard let usage else { return [] }
-        return [usage.fiveHour, usage.sevenDay]
-            .compactMap(\.self)
-            .filter { window in
-                window.usedPercent != nil && (window.resetsAt.map { $0 > now } ?? true)
-            }
+    public func freshWindow(
+        _ kind: ClaudeUsageWindowKind,
+        now: Date = Date()
+    ) -> ClaudeUsageWindowSnapshot? {
+        guard issue == nil,
+              let usage,
+              let lastUsageObservedAt else { return nil }
+        let timestamp = Int(now.timeIntervalSince1970)
+        guard timestamp - lastUsageObservedAt <= staleAfterSeconds,
+              let window = usage.window(kind),
+              window.usedPercent != nil,
+              window.resetsAt.map({ $0 > timestamp }) ?? true else {
+            return nil
+        }
+        return window
     }
 }
 
 public enum ClaudeUsageIngestResult: Equatable, Sendable {
     case stored(ClaudeStatusLineSnapshot)
     case failed(code: String)
+}
+
+public struct ClaudeUsageStoredState: Equatable, Sendable {
+    public let cacheSnapshot: ClaudeUsageCacheSnapshot?
+    public let history: ClaudeUsageHistory
+
+    public init(
+        cacheSnapshot: ClaudeUsageCacheSnapshot?,
+        history: ClaudeUsageHistory
+    ) {
+        self.cacheSnapshot = cacheSnapshot
+        self.history = history
+    }
 }
 
 public struct ClaudeUsageCacheStore {
@@ -120,10 +143,30 @@ public struct ClaudeUsageCacheStore {
     }
 
     public func read() throws -> ClaudeUsageCacheSnapshot {
-        try decoder.decode(ClaudeUsageCacheSnapshot.self, from: Data(contentsOf: fileURL))
+        try withFileLock(type: Int16(F_RDLCK)) {
+            try readCacheUnlocked()
+        }
     }
 
     public func readHistory() throws -> ClaudeUsageHistory {
+        try withFileLock(type: Int16(F_RDLCK)) {
+            try readHistoryUnlocked()
+        }
+    }
+
+    public func readState() throws -> ClaudeUsageStoredState {
+        try withFileLock(type: Int16(F_RDLCK)) {
+            let cacheSnapshot = fileManager.fileExists(atPath: fileURL.path)
+                ? try readCacheUnlocked()
+                : nil
+            return ClaudeUsageStoredState(
+                cacheSnapshot: cacheSnapshot,
+                history: try readHistoryUnlocked()
+            )
+        }
+    }
+
+    private func readHistoryUnlocked() throws -> ClaudeUsageHistory {
         try ClaudeUsageHistoryStore(
             fileURL: historyFileURL,
             fileManager: fileManager,
@@ -157,8 +200,8 @@ public struct ClaudeUsageCacheStore {
         _ incoming: ClaudeStatusLineSnapshot,
         staleAfterSeconds: Int = Self.defaultStaleAfterSeconds
     ) throws {
-        try withExclusiveLock {
-            let existing = try? read()
+        try withFileLock(type: Int16(F_WRLCK)) {
+            let existing = try? readCacheUnlocked()
             let persistedUsage = incoming.hasUsageData ? incoming : existing?.usage
             let usageObservedAt = incoming.hasUsageData
                 ? incoming.observedAt
@@ -198,8 +241,8 @@ public struct ClaudeUsageCacheStore {
         at timestamp: Int,
         staleAfterSeconds: Int = Self.defaultStaleAfterSeconds
     ) throws {
-        try withExclusiveLock {
-            let existing = try? read()
+        try withFileLock(type: Int16(F_WRLCK)) {
+            let existing = try? readCacheUnlocked()
             try write(ClaudeUsageCacheSnapshot(
                 lastEventAt: timestamp,
                 lastUsageObservedAt: existing?.lastUsageObservedAt,
@@ -213,16 +256,24 @@ public struct ClaudeUsageCacheStore {
     private func write(_ snapshot: ClaudeUsageCacheSnapshot) throws {
         let directory = fileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
         try dataWriter(try encoder.encode(snapshot), fileURL, [.atomic])
-        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
     }
 
-    private func withExclusiveLock<T>(_ body: () throws -> T) throws -> T {
+    private func readCacheUnlocked() throws -> ClaudeUsageCacheSnapshot {
+        try decoder.decode(ClaudeUsageCacheSnapshot.self, from: Data(contentsOf: fileURL))
+    }
+
+    private func withFileLock<T>(
+        type: Int16,
+        _ body: () throws -> T
+    ) throws -> T {
         Self.processLock.lock()
         defer { Self.processLock.unlock() }
         let directory = lockFileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
         let descriptor = lockFileURL.path.withCString {
             Darwin.open($0, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
         }
@@ -230,8 +281,11 @@ public struct ClaudeUsageCacheStore {
             throw CocoaError(.fileWriteUnknown)
         }
         defer { Darwin.close(descriptor) }
+        guard Darwin.fchmod(descriptor, S_IRUSR | S_IWUSR) == 0 else {
+            throw CocoaError(.fileWriteUnknown)
+        }
         var lock = Darwin.flock()
-        lock.l_type = Int16(F_WRLCK)
+        lock.l_type = type
         lock.l_whence = Int16(SEEK_SET)
         lock.l_start = 0
         lock.l_len = 0
@@ -246,10 +300,14 @@ public struct ClaudeUsageCacheStore {
     }
 
     private static func sanitizedIssueCode(_ code: String) -> String {
-        let allowed = code.unicodeScalars.filter {
-            CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789_").contains($0)
+        switch code {
+        case "status_line_decode_failed",
+             "invalid_usage_percent",
+             "invalid_reset_timestamp",
+             "status_line_too_large":
+            return code
+        default:
+            return "unknown_error"
         }
-        let sanitized = String(String.UnicodeScalarView(allowed)).prefix(64)
-        return sanitized.isEmpty ? "unknown_error" : String(sanitized)
     }
 }

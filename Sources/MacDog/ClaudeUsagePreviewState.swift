@@ -74,7 +74,7 @@ struct ClaudeStatusLineConnectionGuide: Equatable {
     }
 
     var mergeCommandPreview: String {
-        "\"\(bridgePath)\" --existing-command '<기존 statusLine command>'"
+        "기존 command 보존 + \"\(bridgePath)\" · 감사된 stdin fan-out wrapper 필요"
     }
 
     static var bundled: ClaudeStatusLineConnectionGuide {

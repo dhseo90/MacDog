@@ -41,7 +41,13 @@ struct ClaudeUsagePreviewPanel: View {
                     usageCard(kind: .sevenDay, window: usage.sevenDay)
                 }
 
-                paceSummary(for: usage)
+                if canProjectPace {
+                    paceSummary(for: usage)
+                } else {
+                    Text(paceUnavailableText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
 
                 Divider()
 
@@ -223,6 +229,19 @@ struct ClaudeUsagePreviewPanel: View {
         case .available: "checkmark.circle.fill"
         case .stale: "clock.badge.exclamationmark"
         case .error: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var canProjectPace: Bool {
+        preview.status(now: now) == .available || preview.status(now: now) == .partial
+    }
+
+    private var paceUnavailableText: String {
+        switch preview.status(now: now) {
+        case .stale: "pace 일시 중지 · 새 Claude event 대기"
+        case .error: "pace 일시 중지 · sanitize bridge 오류 확인"
+        case .waiting: "pace 계산을 위한 사용량 대기"
+        case .partial, .available: ""
         }
     }
 

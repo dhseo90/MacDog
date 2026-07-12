@@ -470,27 +470,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
         guard preferences.claudeUsagePreviewEnabled else { return .disabled }
-        let history = (try? claudeUsageCacheStore.readHistory()) ?? .empty
-        guard FileManager.default.fileExists(atPath: claudeUsageCacheStore.fileURL.path) else {
-            return ClaudeUsagePreviewState(
-                isEnabled: true,
-                cacheSnapshot: nil,
-                history: history,
-                loadIssue: nil
-            )
-        }
         do {
+            let storedState = try claudeUsageCacheStore.readState()
             return ClaudeUsagePreviewState(
                 isEnabled: true,
-                cacheSnapshot: try claudeUsageCacheStore.read(),
-                history: history,
+                cacheSnapshot: storedState.cacheSnapshot,
+                history: storedState.history,
                 loadIssue: nil
             )
         } catch {
             return ClaudeUsagePreviewState(
                 isEnabled: true,
                 cacheSnapshot: nil,
-                history: history,
+                history: .empty,
                 loadIssue: "Claude Preview cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
             )
         }

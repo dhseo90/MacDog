@@ -7,9 +7,11 @@ struct ClaudeUsageNotificationPolicy: Equatable {
         now: Date = Date()
     ) -> [ClaudeUsageNotificationCandidate] {
         guard preview.status(now: now) == .available || preview.status(now: now) == .partial,
-              let usage = preview.usage else { return [] }
+              let cacheSnapshot = preview.cacheSnapshot else { return [] }
         return ClaudeUsageWindowKind.allCases.flatMap { kind -> [ClaudeUsageNotificationCandidate] in
-            guard let window = usage.window(kind), let usedPercent = window.usedPercent else { return [] }
+            guard let window = cacheSnapshot.freshWindow(kind, now: now),
+                  let usedPercent = window.usedPercent,
+                  let resetsAt = window.resetsAt else { return [] }
             var candidates: [ClaudeUsageNotificationCandidate] = []
             let event: UsageNotificationEvent?
             switch usedPercent {
@@ -27,11 +29,10 @@ struct ClaudeUsageNotificationPolicy: Equatable {
                     event: event,
                     window: kind,
                     usedPercent: usedPercent,
-                    resetsAt: window.resetsAt
+                    resetsAt: resetsAt
                 ))
             }
-            if usedPercent >= UsageNotificationPolicy.highUsageThresholdPercent,
-               let resetsAt = window.resetsAt {
+            if usedPercent >= UsageNotificationPolicy.highUsageThresholdPercent {
                 let remaining = Date(timeIntervalSince1970: TimeInterval(resetsAt)).timeIntervalSince(now)
                 if remaining > 0, remaining <= UsageNotificationPolicy.resetSoonLeadTime {
                     candidates.append(ClaudeUsageNotificationCandidate(

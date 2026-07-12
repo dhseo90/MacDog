@@ -138,9 +138,9 @@ public struct ClaudeUsageHistoryStore {
     public func write(_ history: ClaudeUsageHistory) throws {
         let directory = fileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+        try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
         try dataWriter(try encoder.encode(history), fileURL, [.atomic])
-        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
     }
 
     private struct Key: Hashable {

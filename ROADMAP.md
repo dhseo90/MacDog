@@ -43,7 +43,7 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex Pro $100 Downgrade Readiness | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 실제 전환 전후 관측 전 scenario 정확도와 Pro $100 적합성 확정 금지 |
-| v1.8.0 | Claude Usage Parity Preview | 로드맵 확정, 조사/개발 전 | 공식 status line 계약 probe, sanitize bridge, fixture/UI 검증, live 검수 분리 |
+| v1.8.0 | Claude Usage Parity Preview | source·fixture·오프라인 자동 검증 완료, live Claude 구독 검수 미수행 | 실제 구독 `rate_limits` event와 reset 경계 live smoke 필요 |
 | v1.9.0 | Codex + Claude AI Usage Tab | 로드맵 확정, 개발 전 | 1번 탭 AI 사용량 전환, 두 provider 상태 분리, 통합 pressure/알림 검증 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
@@ -414,6 +414,10 @@ v1.7.0 릴리즈 결과:
 별도 preview로 구현하고 live 검수 가능성을 확인하는 milestone입니다.
 Codex와 Claude를 하나의 탭에 통합하는 작업은 `v1.9.0`으로 분리합니다.
 세부 범위와 검증 경계는 [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md)에 둡니다.
+
+구현 상태: source·fixture·오프라인 자동 검증 완료 / live Claude 구독 검수 미수행.
+Preview는 기본 꺼짐이며 실제 `rate_limits` event와 5시간/7일 reset 경계는 제품 완료로
+보고하지 않습니다.
 
 v1.8.0 구현 범위:
 

@@ -108,7 +108,7 @@ struct UsagePopoverView: View {
 
     private var usesScrollableSelectedContent: Bool {
         selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && claudeUsagePreviewEnabled)
+            (selectedModule == .codex && selectedUsageProvider == .claude)
     }
 
     @ViewBuilder

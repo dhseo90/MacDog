@@ -32,6 +32,51 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         XCTAssertTrue(ClaudeUsageNotificationPolicy().candidates(for: .disabled, now: now).isEmpty)
     }
 
+    func testExpiredWindowAndMissingResetDoNotCreateCandidatesWhenOtherWindowIsFresh() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let observedAt = 1_899_999_900
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            model: nil,
+            fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 99, resetsAt: 1_899_999_999),
+            sevenDay: try ClaudeUsageWindowSnapshot(usedPercent: 20, resetsAt: 1_900_100_000)
+        )
+        let preview = ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let noResetUsage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            model: nil,
+            fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 99, resetsAt: nil),
+            sevenDay: nil
+        )
+        let noResetPreview = ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: noResetUsage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+
+        XCTAssertEqual(preview.status(now: now), .partial)
+        XCTAssertTrue(ClaudeUsageNotificationPolicy().candidates(for: preview, now: now).isEmpty)
+        XCTAssertTrue(ClaudeUsageNotificationPolicy().candidates(for: noResetPreview, now: now).isEmpty)
+    }
+
     @MainActor
     func testDispatcherUsesSeparateLedgerAndDeduplicatesClaudeCandidates() async throws {
         let now = Date(timeIntervalSince1970: 1_900_000_000)

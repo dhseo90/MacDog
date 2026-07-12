@@ -29,6 +29,7 @@ struct UsageMonitorState: Equatable {
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let claudeUsagePreview: ClaudeUsagePreviewState
     let claudeRunnerPreviewEnabled: Bool
+    let runnerEvaluationDate: Date
 
     init(
         report: CodexUsageReport?,
@@ -49,7 +50,8 @@ struct UsageMonitorState: Equatable {
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing,
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
-        claudeRunnerPreviewEnabled: Bool = false
+        claudeRunnerPreviewEnabled: Bool = false,
+        runnerEvaluationDate: Date = Date()
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
@@ -70,6 +72,7 @@ struct UsageMonitorState: Equatable {
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
         self.claudeUsagePreview = claudeUsagePreview
         self.claudeRunnerPreviewEnabled = claudeRunnerPreviewEnabled
+        self.runnerEvaluationDate = runnerEvaluationDate
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -92,7 +95,8 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
-            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled
+            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled,
+            runnerEvaluationDate: runnerEvaluationDate
         )
     }
 
@@ -122,7 +126,8 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
-            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled
+            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled,
+            runnerEvaluationDate: runnerEvaluationDate
         )
     }
 
@@ -204,10 +209,10 @@ struct UsageMonitorState: Equatable {
 
     var phase: UsagePressurePhase {
         guard claudeRunnerPreviewEnabled,
-              let claudeUsedPercent = claudeUsagePreview.runnerUsedPercent() else {
+              let claudeUsedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
             return codexPhase
         }
-        return UsagePressurePhase(usedPercent: max(selectedUsedPercent, claudeUsedPercent))
+        return UsagePressurePhase(usedPercent: claudeUsedPercent)
     }
 
     var petReaction: PetStatusReaction {

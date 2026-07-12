@@ -56,10 +56,11 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | --- | --- |
 | 메뉴바 러너 | Codex 사용량 위험도를 작은 캐릭터 움직임으로 표시합니다. |
 | Codex 사용량 탭 | 5시간/주간 사용률, reset 시각, 주간 history와 사용자 설정 기반 플랜 전환 시나리오를 표시합니다. |
+| Claude Usage Preview | 기본 OFF입니다. opt-in 시 기존 Codex 탭 안에서 단일-provider 전환으로 5시간/7일, reset, history, pace를 표시합니다. Codex와 합산하거나 평균내지 않습니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | 플랜 label/상대 용량/reserve/전환일, 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
+| 설정 탭 | 플랜 label/상대 용량/reserve/전환일, 알림, Claude Preview 수동 연결 안내, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
 | 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
@@ -86,12 +87,15 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 플랜 전환 준비: 사용자가 직접 입력한 현재·목표 플랜, 상대 용량, reserve로 5시간/주간 P50·P90·최대와 reserve 미달/100% 초과 window를 계산합니다. 결과는 실제 한도가 아닌 `사용자 설정 기반 예상`으로 표시하며 가격 tier를 자동 판별하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
+- Claude Usage Preview: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`만 sanitize해 별도 cache/history에 저장합니다. Preview, 러너 반영, Claude 알림은 기본 OFF이며 각각 opt-in입니다.
+- Claude Preview 그래프 공유: current/past/compare 그래프를 provider label이 포함된 PNG로 복사하거나 저장합니다. Claude reset credit은 만들지 않습니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80-100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
 - 설정: Codex 사용량 알림, 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리합니다.
+- Claude 연결 경계: 기존 `~/.claude/settings.json`이나 auth store를 앱이 자동으로 읽거나 수정하지 않습니다. 설정 탭의 standalone/병합 command preview를 검토해 사용자가 수동 연결하며, 기존 status line을 자동 덮어쓰지 않습니다.
 
 ## 갱신 주기
 
@@ -101,6 +105,22 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존되며, `usage-plan-transition.json`의 사용자 설정과 확정 epoch를 적용합니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다.
+- Claude Preview는 polling/manual refresh를 만들지 않습니다. `macdog-claude-statusline`이 새 Claude 응답의 event를 받을 때 `claude-usage.json`과 `claude-usage-history.json`을 갱신하며, 마지막 정상 사용량 관측 후 15분이면 stale로 표시합니다.
+
+## Claude Usage Preview 검증 경계
+
+v1.8.0 source/fixture는 공식 status line shape, window 일부 누락, null/unknown field,
+sanitize/privacy, atomic cache/history, stale/error 회복, history/pace/알림/runner opt-in,
+screenshot/PNG export를 자동 검증합니다.
+
+```sh
+./script/verify_v180_claude_usage_preview_contract.sh --self-test
+```
+
+자동 검증은 Claude 설정, auth store, Keychain, transcript, network, GUI를 건드리지 않습니다.
+현재 로컬 Claude Code `2.1.39`에서는 실제 구독 `rate_limits` event를 확인하지 못했습니다.
+따라서 `Claude Usage Preview 자동 검증 완료 / live Claude 구독 검수 미수행`으로 구분하며,
+실제 5시간/7일 값과 reset 경계를 검증 완료로 주장하지 않습니다.
 
 ## 알림 경계
 
