@@ -8,6 +8,7 @@ struct CodexUsagePanel: View {
         VStack(alignment: .leading, spacing: CodexUsagePanelLayout.sectionSpacing) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
+                let panelTimestamp = Int(resetSummaryNow.timeIntervalSince1970)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("현재 사용량")
@@ -33,14 +34,26 @@ struct CodexUsagePanel: View {
                     )
                 }
 
+                CodexPlanTransitionReadinessBlock(
+                    configuration: state.planTransitionConfiguration,
+                    configurationError: state.planTransitionConfigurationError,
+                    scenario: state.planTransitionScenario(
+                        now: panelTimestamp
+                    )
+                )
+
                 CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
 
                 WeeklyRemainingHistoryBlock(
-                    history: state.weeklyUsageHistory,
-                    resetWindowHistory: state.resetWindowHistory,
+                    history: state.weeklyUsageHistoryForActivePlanEpoch(at: panelTimestamp),
+                    resetWindowHistory: state.resetWindowHistoryForActivePlanEpoch(at: panelTimestamp),
                     weeklyWindow: limit.weekly,
                     currentReport: state.report,
-                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
+                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
+                    planTransitionScenario: state.planTransitionScenario(
+                        now: panelTimestamp
+                    ),
+                    planTransitionConfiguration: state.planTransitionConfiguration
                 )
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)

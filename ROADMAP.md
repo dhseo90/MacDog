@@ -42,7 +42,7 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
-| v1.7.0 | Codex Pro $100 Downgrade Readiness | 로드맵 확정, 개발 전 | 5시간 history, 수동 플랜 전환 시나리오, 전환 epoch 구현과 검증 |
+| v1.7.0 | Codex Pro $100 Downgrade Readiness | 릴리즈 준비 중, 구현·자동 검증 완료 | 실제 전환 전후 관측 전 scenario 정확도와 Pro $100 적합성 확정 금지 |
 | v1.8.0 | Claude Usage Parity Preview | 로드맵 확정, 조사/개발 전 | 공식 status line 계약 probe, sanitize bridge, fixture/UI 검증, live 검수 분리 |
 | v1.9.0 | Codex + Claude AI Usage Tab | 로드맵 확정, 개발 전 | 1번 탭 AI 사용량 전환, 두 provider 상태 분리, 통합 pressure/알림 검증 |
 
@@ -348,6 +348,8 @@ v1.6.1 릴리즈 결과:
 Claude와 AI 통합 탭은 이 버전에 포함하지 않습니다.
 세부 범위와 검증 경계는 [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md)에 둡니다.
 
+상태: 릴리즈 준비 중 / 구현·자동 검증 완료 / 실제 전환 전후 관측 미수행
+
 v1.7.0 구현 범위:
 
 1. 사용자가 현재 플랜, 목표 플랜, 전환 예정일, 목표 상대 용량, reserve 기준을 직접 설정합니다.
@@ -372,6 +374,18 @@ v1.7.0 완료 기준:
 - 관측 sample이 부족하면 수치 확정 대신 `관측 부족` 상태를 표시합니다.
 - 플랜 epoch 경계, P50/P90/최대 peak, reserve 미달/초과 계산을 focused test로 검증합니다.
 - 실제 전환 전후 관측을 수행하지 않았다면 시뮬레이션 정확도 확인 완료로 보고하지 않습니다.
+
+v1.7.0 구현 결과:
+
+- 기존 cache/CLI JSON schema를 유지하면서 별도 5시간 history와 plan transition 설정 파일을 추가했습니다.
+- 5시간 history의 atomic write, 13주 retention, dense dedupe, reset/epoch 분리, legacy migration,
+  민감정보 미저장을 focused test로 고정했습니다.
+- 수동 label/상대 용량/reserve/전환일, P50/P90/최대, reserve 미달/100% 초과,
+  관측 부족과 전환 후 7일 상태를 구현했습니다.
+- target epoch 실제 P90과 전환 전 예상 P90 차이, backdated 전환 표본 재분류,
+  active epoch history filtering과 graph 경계 표시를 구현했습니다.
+- Codex/설정 탭과 PNG export에서 공식 관측과 `사용자 설정 기반 예상`을 구분했습니다.
+- 실제 Pro $100 전환 전후 관측은 수행하지 않았으며 적합성 확정 범위에 포함하지 않습니다.
 
 추천 모델: `5.6 Sol`
 추론 수준: 높음 (high)
