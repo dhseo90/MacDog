@@ -1,0 +1,27 @@
+{
+  "model": {
+    "id": "claude-sonnet",
+    "display_name": "Sonnet"
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 33.5,
+      "resets_at": 1900010000
+    },
+    "seven_day": {
+      "used_percentage": 44,
+      "resets_at": 1900600000
+    }
+  },
+  "session_id": "session-secret-123",
+  "prompt_id": "prompt-secret-456",
+  "transcript_path": "/Users/example/transcript-private.jsonl",
+  "cwd": "/Users/example/private-project",
+  "workspace": {
+    "current_dir": "/Users/example/private-project",
+    "repository": "private-repository"
+  },
+  "authorization": "Bearer secret-token",
+  "refresh_token": "refresh-token-secret",
+  "cookie": "cookie-secret"
+}
