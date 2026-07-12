@@ -137,6 +137,9 @@ require_contains "$v180_script_source" '단일 `사용량 mode`'
 require_contains "$v180_script_source" "사용률과 잔여율을 함께 표시"
 require_contains "$v180_script_source" "동시에 합산·비교"
 require_contains "$v180_script_source" "Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다"
+require_contains "$v180_script_source" "Codex/Claude 선택 mode"
+require_contains "$v180_script_source" '`codex-usage` CLI는 Codex 전용'
+require_contains "$v180_script_source" '`macdog-claude-statusline` bridge'
 
 if [[ -d "$APP_BUNDLE" && -n "${MACDOG_RELEASE_VERSION:-}" ]]; then
   version="$MACDOG_RELEASE_VERSION"

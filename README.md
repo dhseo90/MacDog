@@ -65,7 +65,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
 | 설정 탭 | v1.8.0에서는 provider mode 한 항목과 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태만 관리합니다. |
-| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
+| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
 
@@ -76,7 +76,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
 
-Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
+Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
 
 설치 검수 원칙:
 
@@ -114,7 +114,9 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- 첫 실행 마무리가 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 15`를 실행해 앱 cache를 갱신합니다.
+- Codex mode에서는 첫 실행 마무리가 usage cache LaunchAgent를 등록해 60초마다
+  `codex-usage status --write-cache --timeout 15`를 실행합니다. Claude mode로 바꾸면 이 Codex
+  LaunchAgent를 unload·제거하고, Codex mode로 돌아오면 다시 설치합니다.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존됩니다. v1.8.0에서
   `planEpochID` 신규 기록·계산 의존을 제거하고 단기 pace에 재사용합니다. 기존 파일의 legacy field는
@@ -134,7 +136,12 @@ live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-
 ```sh
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
 ./script/verify_v180_selected_provider_contract.sh --self-test
+MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run
 ```
+
+2026-07-12 기준 전체 `swift test --no-parallel` 440개 통과(명시적 opt-in 4개 skip), Xcode Debug
+no-sign build와 `check.sh --no-run`이 통과했습니다. 생성된 `dist/MacDog.app`은 개발 자동 검증
+산출물이며 published DMG 설치 검수의 대체물이 아닙니다.
 
 자동 검증은 Claude 설정, auth store, Keychain, transcript, network, GUI를 건드리지 않습니다.
 현재 로컬 Claude Code `2.1.39`에서는 실제 구독 `rate_limits` event를 확인하지 못했습니다.
@@ -223,6 +230,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
 | `./script/verify_v170_codex_pacemaker_contract.sh --self-test` | v1.7.0 주간 day slot, 5시간 history 보존, plan epoch 제거 목표와 legacy 파일 보존 경계를 검증합니다. |
 | `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
+| `./script/verify_v180_release_readiness.sh --self-test` | v1.8.0 PR·CI·release head, signed tag, artifact/draft/publish, live Claude, Finder 설치·GUI smoke와 증거 기록 계약을 offline 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
@@ -317,6 +325,7 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md): v1.7.0 Codex 주간 잔여량 페이스메이커와 legacy 제거 경계
 - [Docs/V170ReleaseReadiness.md](Docs/V170ReleaseReadiness.md): v1.7.0 릴리즈 준비, 실제 전환 미수행 경계와 release smoke 계약
 - [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md): v1.8.0 단일 provider mode, Claude backend, 안정화·release 완료 경계
+- [Docs/V180ReleaseReadiness.md](Docs/V180ReleaseReadiness.md): v1.8.0 PR·CI부터 live Claude, signed tag, published DMG 설치·GUI smoke까지의 실행·증거 계약
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

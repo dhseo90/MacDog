@@ -38,8 +38,16 @@ struct ClaudeUsagePreviewPanel: View {
 
             if let usage = preview.usage {
                 HStack(spacing: 8) {
-                    usageCard(kind: .fiveHour, window: usage.fiveHour)
-                    usageCard(kind: .sevenDay, window: usage.sevenDay)
+                    usageCard(
+                        kind: .fiveHour,
+                        window: preview.currentWindow(.fiveHour, now: now),
+                        hasStoredWindow: usage.fiveHour != nil
+                    )
+                    usageCard(
+                        kind: .sevenDay,
+                        window: preview.currentWindow(.sevenDay, now: now),
+                        hasStoredWindow: usage.sevenDay != nil
+                    )
                 }
 
                 if canProjectPace {
@@ -88,13 +96,14 @@ struct ClaudeUsagePreviewPanel: View {
 
     private func usageCard(
         kind: ClaudeUsageWindowKind,
-        window: ClaudeUsageWindowSnapshot?
+        window: ClaudeUsageWindowSnapshot?,
+        hasStoredWindow: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(kind == .fiveHour ? "5시간" : "7일")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(window?.usedPercent.map(usageSummary) ?? "사용량 대기")
+            Text(window?.usedPercent.map(usageSummary) ?? unavailableWindowText(hasStoredWindow: hasStoredWindow))
                 .font(.caption.weight(.semibold))
             Text(UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt, now: now))
                 .font(.caption2)
@@ -209,8 +218,21 @@ struct ClaudeUsagePreviewPanel: View {
         return "\(UsageMonitorState.percent(normalizedUsed))% 사용 · \(UsageMonitorState.percent(remainingPercent))% 남음"
     }
 
+    private func unavailableWindowText(hasStoredWindow: Bool) -> String {
+        switch preview.status(now: now) {
+        case .stale:
+            return "오래된 event · 갱신 대기"
+        case .error:
+            return "cache 확인 필요"
+        case .partial where hasStoredWindow:
+            return "window 만료 · 새 event 대기"
+        case .waiting, .partial, .available:
+            return "사용량 대기"
+        }
+    }
+
     private var currentResetsAt: Int? {
-        preview.usage?.window(selectedKind)?.resetsAt
+        preview.currentWindow(selectedKind, now: now)?.resetsAt
     }
 
     private var pastResets: [Int] {
@@ -248,7 +270,7 @@ struct ClaudeUsagePreviewPanel: View {
     }
 
     private var canProjectPace: Bool {
-        preview.status(now: now) == .available || preview.status(now: now) == .partial
+        preview.currentWindow(selectedKind, now: now)?.usedPercent != nil
     }
 
     private var paceUnavailableText: String {

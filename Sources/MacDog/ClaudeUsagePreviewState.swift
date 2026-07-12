@@ -41,6 +41,14 @@ struct ClaudeUsagePreviewState: Equatable {
         return cacheSnapshot?.freshMaxUsedPercent(now: now)
     }
 
+    func currentWindow(
+        _ kind: ClaudeUsageWindowKind,
+        now: Date = Date()
+    ) -> ClaudeUsageWindowSnapshot? {
+        guard isEnabled else { return nil }
+        return cacheSnapshot?.freshWindow(kind, now: now)
+    }
+
     var statusTitle: String {
         if !isEnabled { return "연결 대기" }
         if loadIssue != nil { return "cache 확인 필요" }

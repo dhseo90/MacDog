@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import MacDog
 
@@ -19,6 +20,67 @@ final class UserComponentInstallerTests: XCTestCase {
             appBundleURL: URL(fileURLWithPath: "/Users/test/workspace/MacDog/dist/MacDog.app", isDirectory: true),
             homeDirectory: home
         ))
+    }
+
+    func testUsageCacheLaunchAgentRunsOnlyInCodexMode() {
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .codex), .install)
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .claude), .remove)
+    }
+
+    func testClaudeModeRemovesCodexCacheLaunchAgentWithoutTouchingUsageCache() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let launchAgents = home
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("LaunchAgents", isDirectory: true)
+        let plist = launchAgents.appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        let usageCache = home.appendingPathComponent("Library/Application Support/MacDog/usage.json")
+        try fileManager.createDirectory(at: launchAgents, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: usageCache.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("plist".utf8).write(to: plist)
+        try Data("cache".utf8).write(to: usageCache)
+        var calls: [[String]] = []
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                calls.append(arguments)
+                return ""
+            }
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: .claude)
+
+        XCTAssertFalse(fileManager.fileExists(atPath: plist.path))
+        XCTAssertEqual(try String(contentsOf: usageCache, encoding: .utf8), "cache")
+        XCTAssertTrue(calls.contains(["bootout", "gui/\(getuid())/\(UserComponentInstaller.cacheLabel)"]))
+        XCTAssertTrue(calls.contains(["bootout", "gui/\(getuid())", plist.path]))
+    }
+
+    func testCodexModeCreatesCacheLaunchAgentAfterClaudeMode() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        var calls: [[String]] = []
+        let installer = UserComponentInstaller(
+            appBundleURL: URL(fileURLWithPath: "/Applications/MacDog.app", isDirectory: true),
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                calls.append(arguments)
+                return ""
+            }
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: .codex)
+
+        let plist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        let data = try Data(contentsOf: plist)
+        let propertyList = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+        XCTAssertEqual(propertyList["StartInterval"] as? Int, 60)
+        XCTAssertTrue(calls.contains(["bootstrap", "gui/\(getuid())", plist.path]))
     }
 
     func testCacheLaunchAgentPlistRunsBundledCLIAtSixtySecondCadenceWithoutWidgetMirrorByDefault() throws {

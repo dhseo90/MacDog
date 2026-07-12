@@ -169,6 +169,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
+        synchronizeInstalledUsageCacheAgentIfNeeded(
+            from: previousPreferences.usageProviderMode,
+            to: preferences.usageProviderMode
+        )
 
         if MacDogDemoData.isEnabled {
             applyState(MacDogDemoData.state(preferences: preferences))
@@ -269,7 +273,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func finishInstalledAppSetup() {
         preferences = RunnerPreferences()
         do {
-            try userComponentInstaller.installOrRepair(loginLaunchEnabled: preferences.loginLaunchEnabled)
+            try userComponentInstaller.installOrRepair(
+                loginLaunchEnabled: preferences.loginLaunchEnabled,
+                usageProviderMode: preferences.usageProviderMode
+            )
         } catch {
             showPrivilegedHelperAlert(
                 title: "설치 마무리 일부 실패",
@@ -280,6 +287,22 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         showInstallerCleanupPromptIfNeeded()
         showFirstRunHelperPromptIfNeeded()
+    }
+
+    private func synchronizeInstalledUsageCacheAgentIfNeeded(
+        from previousMode: UsageProviderMode,
+        to currentMode: UsageProviderMode
+    ) {
+        guard previousMode != currentMode, UserComponentInstaller.shouldManage() else { return }
+        do {
+            try userComponentInstaller.synchronizeUsageCacheAgent(for: currentMode)
+        } catch {
+            showPrivilegedHelperAlert(
+                title: "사용량 source 전환 일부 실패",
+                message: error.localizedDescription,
+                style: .warning
+            )
+        }
     }
 
     private func showInstallerCleanupPromptIfNeeded() {

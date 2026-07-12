@@ -95,7 +95,6 @@ final class ClaudeUsageCacheTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1_900_000_000)
         let usage = ClaudeStatusLineSnapshot(
             observedAt: 1_899_999_900,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 99, resetsAt: 1_899_999_999),
             sevenDay: try ClaudeUsageWindowSnapshot(usedPercent: 20, resetsAt: 1_900_100_000)
         )
@@ -183,7 +182,6 @@ final class ClaudeUsageCacheTests: XCTestCase {
 
         let lower = ClaudeStatusLineSnapshot(
             observedAt: fixture.timestamp,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 20, resetsAt: 1_900_010_000),
             sevenDay: nil
         )
@@ -196,7 +194,6 @@ final class ClaudeUsageCacheTests: XCTestCase {
         fixture.timestamp += 60
         let laterLower = ClaudeStatusLineSnapshot(
             observedAt: fixture.timestamp,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 10, resetsAt: 1_900_010_000),
             sevenDay: nil
         )
@@ -225,7 +222,6 @@ final class ClaudeUsageCacheTests: XCTestCase {
         ])
         let snapshot = ClaudeStatusLineSnapshot(
             observedAt: 1_900_003_600,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 30, resetsAt: resetsAt),
             sevenDay: nil
         )

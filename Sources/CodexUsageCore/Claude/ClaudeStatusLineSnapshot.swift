@@ -35,49 +35,21 @@ public struct ClaudeUsageWindowSnapshot: Codable, Equatable, Sendable {
     }
 }
 
-public struct ClaudeStatusLineModel: Codable, Equatable, Sendable {
-    public let id: String?
-    public let displayName: String?
-
-    public init(id: String?, displayName: String?) {
-        self.id = Self.sanitized(id)
-        self.displayName = Self.sanitized(displayName)
-    }
-
-    public var isEmpty: Bool {
-        id == nil && displayName == nil
-    }
-
-    private static func sanitized(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let scalars = value.unicodeScalars.filter { scalar in
-            !CharacterSet.controlCharacters.contains(scalar) && scalar.value != 0x1B
-        }
-        let trimmed = String(String.UnicodeScalarView(scalars))
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return String(trimmed.prefix(160))
-    }
-}
-
 public struct ClaudeStatusLineSnapshot: Codable, Equatable, Sendable {
     public static let providerID = "claude"
 
     public let provider: String
     public let observedAt: Int
-    public let model: ClaudeStatusLineModel?
     public let fiveHour: ClaudeUsageWindowSnapshot?
     public let sevenDay: ClaudeUsageWindowSnapshot?
 
     public init(
         observedAt: Int,
-        model: ClaudeStatusLineModel?,
         fiveHour: ClaudeUsageWindowSnapshot?,
         sevenDay: ClaudeUsageWindowSnapshot?
     ) {
         self.provider = Self.providerID
         self.observedAt = observedAt
-        self.model = model?.isEmpty == false ? model : nil
         self.fiveHour = fiveHour?.isEmpty == false ? fiveHour : nil
         self.sevenDay = sevenDay?.isEmpty == false ? sevenDay : nil
     }
@@ -145,9 +117,6 @@ public struct ClaudeStatusLineSanitizer: Sendable {
 
         return ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: payload.model.map {
-                ClaudeStatusLineModel(id: $0.id, displayName: $0.displayName)
-            },
             fiveHour: try sanitizedWindow(payload.rateLimits?.fiveHour),
             sevenDay: try sanitizedWindow(payload.rateLimits?.sevenDay)
         )
@@ -163,22 +132,10 @@ public struct ClaudeStatusLineSanitizer: Sendable {
     }
 
     private struct Payload: Decodable {
-        let model: Model?
         let rateLimits: RateLimits?
 
         enum CodingKeys: String, CodingKey {
-            case model
             case rateLimits = "rate_limits"
-        }
-
-        struct Model: Decodable {
-            let id: String?
-            let displayName: String?
-
-            enum CodingKeys: String, CodingKey {
-                case id
-                case displayName = "display_name"
-            }
         }
 
         struct RateLimits: Decodable {

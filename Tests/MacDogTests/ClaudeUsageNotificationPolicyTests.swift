@@ -37,7 +37,6 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         let observedAt = 1_899_999_900
         let usage = ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 99, resetsAt: 1_899_999_999),
             sevenDay: try ClaudeUsageWindowSnapshot(usedPercent: 20, resetsAt: 1_900_100_000)
         )
@@ -55,7 +54,6 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         )
         let noResetUsage = ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: nil,
             fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 99, resetsAt: nil),
             sevenDay: nil
         )
@@ -124,7 +122,6 @@ final class ClaudeUsageNotificationPolicyTests: XCTestCase {
         let observedAt = 1_900_000_000
         let usage = ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: nil,
             fiveHour: try! ClaudeUsageWindowSnapshot(usedPercent: fiveHourUsed, resetsAt: resetsAt),
             sevenDay: try! ClaudeUsageWindowSnapshot(usedPercent: sevenDayUsed, resetsAt: resetsAt + 10_000)
         )

@@ -46,7 +46,6 @@ enum MacDogDemoData {
         let pastSevenDayReset = sevenDayReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
         let usage = ClaudeStatusLineSnapshot(
             observedAt: now,
-            model: ClaudeStatusLineModel(id: "claude-opus", displayName: "Opus"),
             fiveHour: try? ClaudeUsageWindowSnapshot(usedPercent: 48, resetsAt: fiveHourReset),
             sevenDay: try? ClaudeUsageWindowSnapshot(usedPercent: 64, resetsAt: sevenDayReset)
         )

@@ -149,7 +149,7 @@ DMG layout:
   - Applications position: {${DMG_APPLICATIONS_ICON_X}, ${DMG_ICON_Y}}
 Install style: Docker-style drag-and-drop app installer
 Drag install: drag MacDog.app to Applications, then launch MacDog.
-First launch setup: MacDog creates the user codex-usage symlink, usage cache LaunchAgent, and macOS Login Item when enabled.
+First launch setup: MacDog creates the user codex-usage symlink, a Codex-mode usage cache LaunchAgent, and macOS Login Item when enabled.
 Widget setup: default release omits WidgetKit; opt-in widget builds mirror cache only when the extension is bundled.
 First launch cleanup: MacDog can offer to eject the installer disk and delete downloaded installer files.
 Privileged helper: first launch offers MacDog-owned helper installation; Settings can install or remove it later.
@@ -547,6 +547,20 @@ HIGHLIGHTS
     ;;
 esac
 
+case "$VERSION" in
+  1.8.0)
+    usage_support=$(cat <<'SUPPORT'
+- 앱 popover는 Codex/Claude 선택 mode를 지원하며 한 번에 선택한 provider 하나만 표시합니다.
+- `codex-usage` CLI는 Codex 전용입니다.
+- Claude 사용량은 앱에 포함된 `macdog-claude-statusline` bridge가 sanitize한 별도 cache를 사용합니다.
+SUPPORT
+)
+    ;;
+  *)
+    usage_support='- Codex 사용량 popover와 CLI를 지원합니다.'
+    ;;
+esac
+
 cat >"$NOTES_PATH" <<NOTES
 # MacDog $VERSION 릴리즈 노트
 
@@ -559,7 +573,7 @@ $release_highlights
 - DMG를 엽니다.
 - \`MacDog.app\`을 \`Applications\`로 드래그합니다.
 - Applications에서 MacDog를 실행합니다.
-- Finder 복사 자체는 앱을 실행하지 않습니다. \`/Applications/MacDog.app\` 첫 실행 시 MacDog가 터미널용 \`codex-usage\` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
+- Finder 복사 자체는 앱을 실행하지 않습니다. \`/Applications/MacDog.app\` 첫 실행 시 MacDog가 터미널용 \`codex-usage\` symlink, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Claude mode에서는 Codex LaunchAgent를 제거합니다.
 - 첫 실행 시 MacDog가 설치 디스크를 추출하고 다운로드한 설치 파일을 정리할지 물어볼 수 있습니다.
 - 첫 실행 시 MacDog가 덮개 닫힘 보호용 optional 권한 도우미 설치 여부를 물어봅니다. 동의하면 macOS가 MacDog 주체의 관리자 승인창을 표시합니다.
 - optional 권한 도우미는 나중에 MacDog 설정 탭에서도 설치하거나 제거할 수 있습니다.
@@ -573,7 +587,7 @@ $release_highlights
 
 ## 지원 범위
 
-- Codex 사용량 popover와 CLI를 지원합니다.
+$usage_support
 - Mac 자원, 잠들지 않기, native Charge Limit UI를 지원합니다.
 - Native Charge Limit은 Apple silicon과 macOS 26.4 이상이 필요합니다.
 - WidgetKit은 source/자동 검증 일부만 유지합니다. 실제 위젯 UI의 shared cache 표시, stale/error 반영, 클릭 deep link는 App Group provisioning 이후 단계라 현재 지원 범위에 포함하지 않습니다.

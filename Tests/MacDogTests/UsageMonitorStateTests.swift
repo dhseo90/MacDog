@@ -97,6 +97,38 @@ final class UsageMonitorStateTests: XCTestCase {
         )?.contains("5시간") == true)
     }
 
+    func testClaudeCurrentWindowExcludesExpiredWindowWhileKeepingFreshPartialWindow() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: Int(now.timeIntervalSince1970),
+            fiveHour: try ClaudeUsageWindowSnapshot(
+                usedPercent: 90,
+                resetsAt: Int(now.timeIntervalSince1970) - 1
+            ),
+            sevenDay: try ClaudeUsageWindowSnapshot(
+                usedPercent: 40,
+                resetsAt: Int(now.timeIntervalSince1970) + 60_000
+            )
+        )
+        let preview = ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: usage.observedAt,
+                lastUsageObservedAt: usage.observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+
+        XCTAssertEqual(preview.status(now: now), .partial)
+        XCTAssertNil(preview.currentWindow(.fiveHour, now: now))
+        XCTAssertEqual(preview.currentWindow(.sevenDay, now: now)?.usedPercent, 40)
+        XCTAssertEqual(preview.runnerUsedPercent(now: now), 40)
+    }
+
     func testRunnerPhaseCapturesFreshnessUntilNextStateLoad() {
         let observedAt = 1_900_000_000
         let preview = Self.claudePreview(observedAt: observedAt, usedPercent: 96)
@@ -1554,7 +1586,6 @@ final class UsageMonitorStateTests: XCTestCase {
     ) -> ClaudeUsagePreviewState {
         let usage = ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: nil,
             fiveHour: try! ClaudeUsageWindowSnapshot(
                 usedPercent: usedPercent,
                 resetsAt: observedAt + 3_600

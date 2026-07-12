@@ -694,7 +694,6 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let sevenDayReset = nowTimestamp + 500_000
         let usage = ClaudeStatusLineSnapshot(
             observedAt: observedAt,
-            model: ClaudeStatusLineModel(id: "claude-opus", displayName: "Opus"),
             fiveHour: try! ClaudeUsageWindowSnapshot(usedPercent: 44, resetsAt: fiveHourReset),
             sevenDay: includeSevenDay
                 ? try! ClaudeUsageWindowSnapshot(usedPercent: 67, resetsAt: sevenDayReset)

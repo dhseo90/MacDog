@@ -12,8 +12,6 @@ final class ClaudeStatusLineSnapshotTests: XCTestCase {
 
         XCTAssertEqual(snapshot.provider, "claude")
         XCTAssertEqual(snapshot.observedAt, 1_900_000_000)
-        XCTAssertEqual(snapshot.model?.id, "claude-opus-4-1")
-        XCTAssertEqual(snapshot.model?.displayName, "Opus")
         XCTAssertEqual(snapshot.fiveHour?.usedPercent, 42.5)
         XCTAssertEqual(snapshot.fiveHour?.resetsAt, 1_900_010_000)
         XCTAssertEqual(snapshot.sevenDay?.usedPercent, 61)
@@ -53,7 +51,6 @@ final class ClaudeStatusLineSnapshotTests: XCTestCase {
             observedAt: 4
         )
 
-        XCTAssertNil(snapshot.model)
         XCTAssertNil(snapshot.fiveHour)
         XCTAssertEqual(snapshot.sevenDay?.usedPercent, 12)
         XCTAssertNil(snapshot.sevenDay?.resetsAt)
@@ -66,6 +63,17 @@ final class ClaudeStatusLineSnapshotTests: XCTestCase {
             XCTAssertEqual(error as? ClaudeStatusLineSanitizationError, .invalidUsagePercent)
             XCTAssertFalse(error.localizedDescription.contains("101"))
         }
+    }
+
+    func testLegacySanitizedCacheModelKeyDecodesButNewEncodingOmitsIt() throws {
+        let legacy = Data(#"{"provider":"claude","observedAt":1900000000,"model":{"id":"legacy-model","displayName":"Legacy"},"fiveHour":{"usedPercent":10,"resetsAt":1900010000},"sevenDay":null}"#.utf8)
+        let snapshot = try JSONDecoder().decode(ClaudeStatusLineSnapshot.self, from: legacy)
+
+        XCTAssertEqual(snapshot.fiveHour?.usedPercent, 10)
+        let encoded = try JSONEncoder().encode(snapshot)
+        let output = try XCTUnwrap(String(data: encoded, encoding: .utf8))
+        XCTAssertFalse(output.contains("model"))
+        XCTAssertFalse(output.contains("legacy-model"))
     }
 
     private func fixture(named name: String) throws -> Data {

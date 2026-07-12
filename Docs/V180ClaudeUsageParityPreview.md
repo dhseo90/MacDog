@@ -34,6 +34,7 @@ v1.8.0은 다음 범위를 한 milestone에서 완료합니다.
 - 1번 탭 안에 provider picker를 중복 제공하지 않습니다.
 - 선택 provider가 stale/error이면 다른 provider로 자동 fallback하지 않습니다.
 - runner와 기존 사용량 알림은 선택 provider를 자동으로 따릅니다.
+- Codex usage cache LaunchAgent는 Codex mode에서만 실행하고 Claude mode에서는 unload·제거합니다.
 
 Claude mode에 sanitized cache가 없으면 1번 탭에 최소 empty state만 표시합니다.
 
@@ -74,8 +75,10 @@ Claude에는 Codex reset credit과 동등한 공식 status line field가 없습�
 - Claude 전용 cache/history/lock과 atomic write
 - `0700` directory, `0600` cache/history/lock 권한
 - missing/partial/available/stale/error와 복구 상태
+- window별 freshness를 적용해 만료 window의 과거 값을 현재 사용량으로 표시하지 않는 경계
 - 5시간/7일 history, reset 경계, selected-provider pace
 - raw JSON, token, cookie, session, transcript, cwd, repository 미저장 privacy fixture
+- UI에서 사용하지 않는 model id/display name 미저장과 legacy cache key decode 호환
 - app bundle, uninstall, packaging verifier의 bridge 경계
 
 Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다르므로 계속 분리합니다. 분리된

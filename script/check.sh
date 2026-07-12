@@ -38,17 +38,18 @@ Checks:
   24. v1.6.0 Codex Usage & Reset Credits contract is self-tested.
   25. v1.7.0 Codex weekly pacemaker and legacy migration contract is self-tested.
   26. v1.8.0 Claude backend, single-provider product routing, empty state, and release bridge gates are self-tested offline.
-  27. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
-  28. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
-  29. Shortcuts Charge Limit fallback parser is tested with a local fixture.
-  30. Shortcuts Charge Limit fallback availability is probed without changing settings.
-  31. Release/app scripts reject missing version metadata.
-  32. The current app/helper install state and dist freshness delta can be reported without changing the system.
-  33. Install freshness delta reporting is self-tested with local fixtures.
-  34. Release packaging, version metadata, and release smoke cleanup guardrails are stable.
-  35. Public repository guardrails are present and consistent.
-  36. GitHub release candidate workflow contains the expected unsigned artifact gates.
-  37. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
+  27. v1.8.0 PR, tag, artifact, live Claude, published DMG, and evidence boundaries are self-tested offline.
+  28. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
+  29. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
+  30. Shortcuts Charge Limit fallback parser is tested with a local fixture.
+  31. Shortcuts Charge Limit fallback availability is probed without changing settings.
+  32. Release/app scripts reject missing version metadata.
+  33. The current app/helper install state and dist freshness delta can be reported without changing the system.
+  34. Install freshness delta reporting is self-tested with local fixtures.
+  35. Release packaging, version metadata, and release smoke cleanup guardrails are stable.
+  36. Public repository guardrails are present and consistent.
+  37. GitHub release candidate workflow contains the expected unsigned artifact gates.
+  38. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
   38. Privileged helper reinstall test plan is safe to stage before actual approval.
   39. Unless --no-run is passed, the app launches and its process is detected.
 
@@ -175,6 +176,9 @@ echo "==> Verifying v1.7.0 Codex weekly pacemaker contract"
 
 echo "==> Verifying v1.8.0 selected-provider product contract"
 ./script/verify_v180_selected_provider_contract.sh --self-test
+
+echo "==> Verifying v1.8.0 release readiness"
+./script/verify_v180_release_readiness.sh --self-test
 
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test

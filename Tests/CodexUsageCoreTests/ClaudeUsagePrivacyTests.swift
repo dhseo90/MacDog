@@ -28,15 +28,17 @@ final class ClaudeUsagePrivacyTests: XCTestCase {
         XCTAssertTrue(output.contains("33.5"))
     }
 
-    func testSanitizedModelStringsAreTrimmedAndBounded() throws {
-        let longName = String(repeating: "x", count: 300)
-        let model = ClaudeStatusLineModel(
-            id: "  claude\n-model\u{001B}[31m  ",
-            displayName: longName
-        )
+    func testSanitizedSnapshotDropsUnusedModelValuesIncludingSensitiveLookingText() throws {
+        let input = Data(#"{"model":{"id":"/Users/private/token-secret","display_name":"Bearer session-secret"},"rate_limits":{"five_hour":{"used_percentage":12,"resets_at":1900010000}}}"#.utf8)
+        let snapshot = try ClaudeStatusLineSanitizer().snapshot(from: input, observedAt: 1_900_000_000)
+        let encoded = try JSONEncoder().encode(snapshot)
+        let output = try XCTUnwrap(String(data: encoded, encoding: .utf8))
 
-        XCTAssertEqual(model.id, "claude-model[31m")
-        XCTAssertEqual(model.displayName?.count, 160)
+        XCTAssertFalse(output.contains("model"))
+        XCTAssertFalse(output.contains("/Users/private"))
+        XCTAssertFalse(output.contains("token-secret"))
+        XCTAssertFalse(output.contains("session-secret"))
+        XCTAssertTrue(output.contains("12"))
     }
 
     private func fixture(named name: String) throws -> Data {

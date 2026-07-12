@@ -403,12 +403,17 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 정리부터 Claude live·설치·GUI·release 안정화까지 이 버전에서 모두 완료합니다. 이 프로젝트는
 두 provider 동시 사용을 고려하지 않으며 합산, 비교, 자동 fallback을 구현하지 않습니다.
 
+릴리즈 실행 순서와 미수행 증거 경계는 [Docs/V180ReleaseReadiness.md](Docs/V180ReleaseReadiness.md)에
+분리합니다.
+
 구현 상태: v1.7 plan transition/epoch runtime·UI 제거, legacy file inert 보존, 1/7 day 페이스메이커,
 5시간 단기 pace와 알림 focused test를 완료했습니다. 단일 `usageProviderMode` preference와 Codex 기본
 migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
 test로 연결했습니다. Claude sanitizer/cache/history backend, 사용률·잔여율 표시, cache 없음 수동 연결
-UI와 bundle/install/final-state bridge gate도 구현했습니다. 전체 build와 실제 Claude 구독 `rate_limits`,
-GUI·설치·release 검수는 남았습니다.
+UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 기준 전체
+`swift test --no-parallel` 440개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
+`MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. 실제 Claude 구독
+`rate_limits`, GUI·설치·release 검수는 남았습니다.
 
 구현 순서:
 
@@ -461,6 +466,7 @@ GUI·설치·release 검수는 남았습니다.
 2. 실제 Claude 구독의 첫 API 응답 뒤 5시간/7일 `rate_limits`와 reset 경계를 확인합니다.
 3. Claude event 중단, partial window, stale, malformed input, 복구 상태 전이를 검증합니다.
 4. 선택 provider runner와 알림이 다른 provider cache의 영향을 받지 않는지 반복 검증합니다.
+   Claude mode에서는 Codex usage cache LaunchAgent를 unload·제거하고 Codex mode에서만 다시 설치합니다.
 5. menu bar runner, 1번 탭, 설정 mode selector, popover placement를 실제 GUI에서 확인합니다.
 6. release app bundle의 bridge 포함, 업데이트·uninstall, published DMG Finder 설치와
    cleanup/final-state를 검증합니다.

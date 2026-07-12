@@ -13,6 +13,7 @@ CLI_DEST="$HOME/bin/codex-usage"
 CACHE_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
 LOGIN_LAUNCH_KEY="loginLaunchEnabled"
+USAGE_PROVIDER_MODE_KEY="usageProviderMode"
 
 case "$MODE" in
   report|--report) ;;
@@ -128,6 +129,16 @@ login_launch_enabled() {
   local value
   value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
   [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
+}
+
+usage_provider_mode() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$USAGE_PROVIDER_MODE_KEY" 2>/dev/null || true)"
+  if [[ "$value" == "claude" ]]; then
+    printf 'claude'
+  else
+    printf 'codex'
+  fi
 }
 
 login_item_status_from_output() {
@@ -345,6 +356,7 @@ print_state() {
   if executable "$CLI_DEST"; then echo "cli:executable $CLI_DEST"; else echo "cli:missing-or-not-executable $CLI_DEST"; fi
   if [[ -L "$CLI_DEST" ]]; then echo "cli-link:$(/bin/ls -l "$CLI_DEST" | /usr/bin/sed 's/^.* -> //')"; fi
   if present "$CACHE_PLIST"; then echo "cache-plist:present $CACHE_PLIST"; else echo "cache-plist:absent $CACHE_PLIST"; fi
+  echo "usage-provider-mode:$(usage_provider_mode)"
   if present "$CACHE_PLIST"; then echo "cache-executable:$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")"; fi
   if present "$CACHE_PLIST"; then
     if plist_contains_argument "$CACHE_PLIST" "--mirror-cache"; then
@@ -399,27 +411,34 @@ expect_installed() {
   else
     ! present "$widget_appex" || { echo "expected default install to omit widget extension: $widget_appex" >&2; return 1; }
   fi
-  present "$CACHE_PLIST" || { echo "expected cache LaunchAgent plist: $CACHE_PLIST" >&2; return 1; }
-  [[ "$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")" == "$app_cli_binary" ]] || {
-    echo "expected cache LaunchAgent to run bundled CLI: $app_cli_binary" >&2
-    return 1
-  }
-  [[ "$(plist_value ':StartInterval' "$CACHE_PLIST" 2>/dev/null || true)" == "60" ]] || {
-    echo "expected cache LaunchAgent StartInterval to be 60 seconds" >&2
-    return 1
-  }
-  ! plist_contains_argument "$CACHE_PLIST" "--watch" || {
-    echo "expected cache LaunchAgent to run one-shot writer without --watch" >&2
-    return 1
-  }
-  if [[ "$EXPECT_WIDGET" == "1" ]]; then
-    plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
-      echo "expected cache LaunchAgent to mirror cache for WidgetKit" >&2
+  if [[ "$(usage_provider_mode)" == "codex" ]]; then
+    present "$CACHE_PLIST" || { echo "expected Codex mode cache LaunchAgent plist: $CACHE_PLIST" >&2; return 1; }
+    [[ "$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")" == "$app_cli_binary" ]] || {
+      echo "expected cache LaunchAgent to run bundled CLI: $app_cli_binary" >&2
       return 1
     }
+    [[ "$(plist_value ':StartInterval' "$CACHE_PLIST" 2>/dev/null || true)" == "60" ]] || {
+      echo "expected cache LaunchAgent StartInterval to be 60 seconds" >&2
+      return 1
+    }
+    ! plist_contains_argument "$CACHE_PLIST" "--watch" || {
+      echo "expected cache LaunchAgent to run one-shot writer without --watch" >&2
+      return 1
+    }
+    if [[ "$EXPECT_WIDGET" == "1" ]]; then
+      plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
+        echo "expected cache LaunchAgent to mirror cache for WidgetKit" >&2
+        return 1
+      }
+    else
+      ! plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
+        echo "expected default cache LaunchAgent to omit WidgetKit mirror argument" >&2
+        return 1
+      }
+    fi
   else
-    ! plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
-      echo "expected default cache LaunchAgent to omit WidgetKit mirror argument" >&2
+    ! present "$CACHE_PLIST" || {
+      echo "expected Claude mode to remove Codex cache LaunchAgent plist: $CACHE_PLIST" >&2
       return 1
     }
   fi

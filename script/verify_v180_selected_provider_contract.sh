@@ -16,10 +16,12 @@ CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
 REFRESH_SOURCE="$ROOT_DIR/Sources/MacDog/CodexUsageCacheRefreshPolicy.swift"
+USER_COMPONENT_SOURCE="$ROOT_DIR/Sources/MacDog/UserComponentInstaller.swift"
 STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
 REFRESH_TEST="$ROOT_DIR/Tests/MacDogTests/CodexUsageCacheRefreshPolicyTests.swift"
 NOTIFICATION_TEST="$ROOT_DIR/Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
+USER_COMPONENT_TEST="$ROOT_DIR/Tests/MacDogTests/UserComponentInstallerTests.swift"
 INSTALL_VERIFIER="$ROOT_DIR/script/verify_install_state.sh"
 FINAL_STATE_VERIFIER="$ROOT_DIR/script/verify_release_final_state.sh"
 PACKAGING_VERIFIER="$ROOT_DIR/script/verify_release_packaging.sh"
@@ -66,6 +68,7 @@ verify_contract() {
     "$BRIDGE_SOURCE" "$PRIVACY_TEST" "$PREFERENCES_SOURCE" "$STATE_SOURCE" \
     "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$REFRESH_SOURCE" \
     "$STATE_TEST" "$REFRESH_TEST" "$NOTIFICATION_TEST" "$POPOVER_TEST" \
+    "$USER_COMPONENT_SOURCE" "$USER_COMPONENT_TEST" \
     "$CLAUDE_PANEL_SOURCE" "$INSTALL_VERIFIER" "$FINAL_STATE_VERIFIER" \
     "$PACKAGING_VERIFIER"; do
     require_file "$file"
@@ -98,14 +101,24 @@ verify_contract() {
   reject_match 'Process\(|/bin/zsh|--existing-command|MACDOG_CLAUDE_CACHE_PATH' "$BRIDGE_SOURCE" \
     "raw passthrough or production path override"
   require_match 'session-secret-123' "$PRIVACY_TEST" "privacy sentinel"
+  require_match 'testSanitizedSnapshotDropsUnusedModelValuesIncludingSensitiveLookingText' \
+    "$PRIVACY_TEST" "unused model privacy regression"
+  require_match 'testLegacySanitizedCacheModelKeyDecodesButNewEncodingOmitsIt' \
+    "$ROOT_DIR/Tests/CodexUsageCoreTests/ClaudeStatusLineSnapshotTests.swift" \
+    "legacy model cache decode regression"
+  reject_match 'ClaudeStatusLineModel|case model|let model' "$SNAPSHOT_SOURCE" \
+    "unused model persistence"
   require_match '% 사용 · .*% 남음' "$CLAUDE_PANEL_SOURCE" "used and remaining usage summary"
   require_match 'Claude 연결 필요' "$CLAUDE_PANEL_SOURCE" "missing cache empty state"
   require_match '연결 명령 복사' "$CLAUDE_PANEL_SOURCE" "manual connection action"
   require_match 'connectionGuide\.standaloneCommand' "$CLAUDE_PANEL_SOURCE" \
     "bounded manual connection command"
+  require_match 'preview\.currentWindow' "$CLAUDE_PANEL_SOURCE" "fresh per-window display source"
+  require_match 'window 만료 · 새 event 대기' "$CLAUDE_PANEL_SOURCE" "expired window state"
   reject_match '"[^"]*(Claude Preview|PREVIEW)' "$CLAUDE_PANEL_SOURCE" "preview product copy"
   reject_match '"[^"]*(Claude Preview|PREVIEW)' "$BRIDGE_SOURCE" "preview bridge copy"
   require_match 'macdog-claude-statusline' "$INSTALL_VERIFIER" "installed bridge gate"
+  require_match 'usage_provider_mode' "$INSTALL_VERIFIER" "mode-aware install verification"
   require_match 'installed Claude status line bridge is not runnable' "$FINAL_STATE_VERIFIER" \
     "release final-state bridge gate"
   require_match 'macdog-claude-statusline bridge' "$PACKAGING_VERIFIER" \
@@ -113,6 +126,11 @@ verify_contract() {
 
   require_match 'usageProviderModeKey' "$PREFERENCES_SOURCE" "single provider preference key"
   require_match 'migrateUsageProviderMode' "$PREFERENCES_SOURCE" "provider preference migration"
+  require_match 'cacheAgentAction\(for mode: UsageProviderMode\)' "$USER_COMPONENT_SOURCE" \
+    "mode-aware cache agent action"
+  require_match 'case \.remove:' "$USER_COMPONENT_SOURCE" "Claude cache agent removal"
+  require_match 'synchronizeInstalledUsageCacheAgentIfNeeded' "$CONTROLLER_SOURCE" \
+    "provider change cache agent synchronization"
   require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
     "canonical provider mode"
   require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
@@ -129,12 +147,20 @@ verify_contract() {
     "$STATE_TEST" "migration regression test"
   require_match 'testSelectedProviderModeIsTheOnlyRunnerSourceAndNeverFallsBack' \
     "$STATE_TEST" "no fallback regression test"
+  require_match 'testClaudeCurrentWindowExcludesExpiredWindowWhileKeepingFreshPartialWindow' \
+    "$STATE_TEST" "expired window display regression test"
   require_match 'testLiveCodexRefreshRunsOnlyInCodexMode' "$REFRESH_TEST" \
     "refresh routing regression test"
   require_match 'testNotificationRouteSelectsExactlyOneProvider' "$NOTIFICATION_TEST" \
     "notification routing regression test"
   require_match 'testSelectedProviderUIUsesOnlySettingsModePicker' "$POPOVER_TEST" \
     "single picker regression test"
+  require_match 'testUsageCacheLaunchAgentRunsOnlyInCodexMode' "$USER_COMPONENT_TEST" \
+    "mode-aware cache agent regression test"
+  require_match 'testClaudeModeRemovesCodexCacheLaunchAgentWithoutTouchingUsageCache' \
+    "$USER_COMPONENT_TEST" "Claude cache agent removal regression test"
+  require_match 'testCodexModeCreatesCacheLaunchAgentAfterClaudeMode' "$USER_COMPONENT_TEST" \
+    "Codex cache agent restore regression test"
 
   for file in "$STATE_SOURCE" "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE"; do
     reject_match 'claudeUsagePreviewEnabled|usagePreviewProvider|claudeRunnerPreviewEnabled|claudeUsageNotificationsEnabled' \
@@ -157,7 +183,8 @@ run_focused_tests() {
       --filter CodexUsageCacheRefreshPolicyTests \
       --filter UsageNotificationDeliveryTests \
       --filter UsageNotificationSettingsTests \
-      --filter PopoverScreenshotRendererTests
+      --filter PopoverScreenshotRendererTests \
+      --filter UserComponentInstallerTests
 
   "$INSTALL_VERIFIER" --self-test
   "$FINAL_STATE_VERIFIER" --self-test

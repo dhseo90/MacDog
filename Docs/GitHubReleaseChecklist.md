@@ -103,7 +103,7 @@ release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서�
 ./script/verify_release_final_state.sh --version <version>
 ```
 
-`verify_release_final_state.sh`는 `/Applications/MacDog.app`의 앱 번들 버전, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `/Volumes/MacDog*` 마운트 잔여물을 확인합니다. Finder 검색은 기본 `Mac` 범위가 아니라 `응용 프로그램` 범위를 선택해 `/Applications/MacDog.app` 하나만 나오는지 직접 확인합니다. 이 검증이 실패하면 release smoke를 완료로 기록하지 않습니다.
+`verify_release_final_state.sh`는 `/Applications/MacDog.app`의 앱 번들 버전과 app/CLI/`macdog-claude-statusline` 실행 파일, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, provider mode와 불일치한 usage cache LaunchAgent plist/loaded job, `/Volumes/MacDog*` 마운트 잔여물을 확인합니다. Finder 검색은 기본 `Mac` 범위가 아니라 `응용 프로그램` 범위를 선택해 `/Applications/MacDog.app` 하나만 나오는지 직접 확인합니다. 이 검증이 실패하면 release smoke를 완료로 기록하지 않습니다.
 
 ## 안정 릴리즈
 
