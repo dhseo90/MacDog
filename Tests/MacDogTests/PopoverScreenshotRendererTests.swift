@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
-    func testClaudeUsagePreviewWaitingPartialReadyStaleAndErrorStatesRender() throws {
+    func testClaudeUsageWaitingPartialReadyStaleAndErrorStatesRender() throws {
         let now = Date(timeIntervalSince1970: 1_900_000_000)
         let previews = [
             ClaudeUsagePreviewState(
@@ -29,8 +29,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         }
 
         let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
-        XCTAssertTrue(source.contains("Claude Usage"))
-        XCTAssertTrue(source.contains("PREVIEW"))
+        XCTAssertTrue(source.contains("Claude 사용량"))
+        XCTAssertTrue(source.contains("% 사용 · "))
+        XCTAssertTrue(source.contains("% 남음"))
+        XCTAssertTrue(source.contains("Claude 연결 필요"))
+        XCTAssertTrue(source.contains("연결 명령 복사"))
+        XCTAssertTrue(source.contains("connectionGuide.standaloneCommand"))
+        XCTAssertFalse(source.contains("PREVIEW"))
+        XCTAssertFalse(source.contains("Claude Preview"))
         XCTAssertFalse(source.contains("CodexResetCreditsBlock"))
     }
 
@@ -57,7 +63,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
         XCTAssertTrue(source.contains("macdog-claude-usage-"))
-        XCTAssertTrue(source.contains("Claude Preview ·"))
+        XCTAssertTrue(source.contains("Claude ·"))
     }
 
     func testCodexResetCreditsBlockBuildsCompactLayout() {

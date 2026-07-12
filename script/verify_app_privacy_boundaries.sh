@@ -42,6 +42,6 @@ reject_text_match \
   "menu bar app must read only sanitized Claude cache and must not inspect Claude settings, transcripts, raw events, or auth"
 
 /usr/bin/grep -Eq 'ClaudeUsageCacheStore' "$APP_SOURCE/MenuBarController.swift" \
-  || die "menu bar app must load Claude Preview from the dedicated sanitized cache"
+  || die "menu bar app must load Claude usage from the dedicated sanitized cache"
 
 echo "App privacy boundary verification ok"

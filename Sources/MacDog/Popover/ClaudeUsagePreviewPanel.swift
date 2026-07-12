@@ -21,6 +21,7 @@ enum ClaudeUsageHistoryGraphMode: String, CaseIterable, Identifiable {
 struct ClaudeUsagePreviewPanel: View {
     let preview: ClaudeUsagePreviewState
     let now: Date
+    private let connectionGuide = ClaudeStatusLineConnectionGuide.bundled
 
     @State private var selectedKind = ClaudeUsageWindowKind.sevenDay
     @State private var selectedMode = ClaudeUsageHistoryGraphMode.current
@@ -70,19 +71,13 @@ struct ClaudeUsagePreviewPanel: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
-        .accessibilityIdentifier("claude-usage-preview-panel")
+        .accessibilityIdentifier("claude-usage-panel")
     }
 
     private var statusHeader: some View {
         HStack(spacing: 6) {
-            Text("Claude Usage")
+            Text("Claude 사용량")
                 .font(.caption.weight(.semibold))
-            Text("PREVIEW")
-                .font(.system(size: 9, weight: .bold))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(Color.purple.opacity(0.18)))
-                .foregroundStyle(Color.purple)
             Spacer(minLength: 0)
             Label(preview.statusTitle, systemImage: statusSystemImage)
                 .font(.caption2.weight(.medium))
@@ -99,7 +94,7 @@ struct ClaudeUsagePreviewPanel: View {
             Text(kind == .fiveHour ? "5시간" : "7일")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(window?.usedPercent.map { "\(UsageMonitorState.percent($0))% 사용" } ?? "사용량 대기")
+            Text(window?.usedPercent.map(usageSummary) ?? "사용량 대기")
                 .font(.caption.weight(.semibold))
             Text(UsageWindowStatus.resetSummary(resetsAt: window?.resetsAt, now: now))
                 .font(.caption2)
@@ -169,7 +164,7 @@ struct ClaudeUsagePreviewPanel: View {
                 Image(systemName: "doc.on.doc")
             }
             .buttonStyle(.plain)
-            .help("Claude Preview PNG 복사")
+            .help("Claude 사용량 PNG 복사")
 
             Button {
                 exportGraph()
@@ -177,21 +172,41 @@ struct ClaudeUsagePreviewPanel: View {
                 Image(systemName: "square.and.arrow.down")
             }
             .buttonStyle(.plain)
-            .help("Claude Preview PNG 내보내기")
+            .help("Claude 사용량 PNG 내보내기")
         }
         .controlSize(.mini)
     }
 
     private var waitingContent: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Label("status line event를 기다리는 중", systemImage: "hourglass")
+            Label(
+                preview.loadIssue == nil ? "Claude 연결 필요" : "Claude cache 확인 필요",
+                systemImage: preview.loadIssue == nil ? "link.badge.plus" : "exclamationmark.triangle"
+            )
                 .font(.callout.weight(.medium))
-            Text(preview.loadIssue ?? "bridge 연결 후 Claude가 응답하면 5시간/7일 사용량이 표시됩니다.")
+            Text(preview.loadIssue ?? "status line 연결 후 첫 응답부터 5시간/7일 사용량이 표시됩니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if preview.loadIssue == nil {
+                Button("연결 명령 복사") {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(connectionGuide.standaloneCommand, forType: .string)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Claude settings를 읽거나 수정하지 않고 수동 연결 명령만 복사합니다.")
+            }
         }
-        .padding(.vertical, 28)
+        .padding(.vertical, 20)
+    }
+
+    private func usageSummary(_ usedPercent: Double) -> String {
+        let normalizedUsed = min(max(usedPercent, 0), 100)
+        let remainingPercent = 100 - normalizedUsed
+        return "\(UsageMonitorState.percent(normalizedUsed))% 사용 · \(UsageMonitorState.percent(remainingPercent))% 남음"
     }
 
     private var currentResetsAt: Int? {
@@ -302,7 +317,7 @@ struct ClaudeUsageGraphSnapshotView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack {
-                Text("Claude Preview · \(kind == .fiveHour ? "5시간" : "7일") 사용량")
+                Text("Claude · \(kind == .fiveHour ? "5시간" : "7일") 사용량")
                     .font(.caption2.weight(.semibold))
                 Spacer()
                 Text(mode.label)
@@ -334,7 +349,7 @@ struct ClaudeUsageGraphSnapshotView: View {
         }
         .padding(6)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Claude Preview \(kind == .fiveHour ? "5시간" : "7일") \(mode.label) 사용량 그래프")
+        .accessibilityLabel("Claude \(kind == .fiveHour ? "5시간" : "7일") \(mode.label) 사용량 그래프")
     }
 
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {

@@ -1,7 +1,8 @@
 # v1.8.0 선택형 Codex/Claude 사용량 mode와 안정화
 
-상태: backend sanitizer/cache/history, v1.7 제거·페이스메이커, 단일 provider preference migration과
-설정·1번 탭·러너·알림·Codex refresh routing 구현 / Claude 잔여율·empty state, live·설치·GUI 검증 전
+상태: backend sanitizer/cache/history, v1.7 제거·페이스메이커, 단일 provider preference migration,
+설정·1번 탭·러너·알림·Codex refresh routing, Claude 잔여율·empty state와 release bridge gate 구현 /
+전체 build, live·설치·GUI·release 검증 전
 작성일: 2026-07-12
 대상 버전: `1.8.0`
 

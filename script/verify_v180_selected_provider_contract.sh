@@ -8,6 +8,7 @@ SNAPSHOT_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeStatusLineSnapsho
 CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageCache.swift"
 HISTORY_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageHistory.swift"
 BRIDGE_SOURCE="$ROOT_DIR/Sources/ClaudeUsageBridgeCLI/main.swift"
+CLAUDE_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift"
 PRIVACY_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/ClaudeUsagePrivacyTests.swift"
 PREFERENCES_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift"
 STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
@@ -19,6 +20,9 @@ STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
 REFRESH_TEST="$ROOT_DIR/Tests/MacDogTests/CodexUsageCacheRefreshPolicyTests.swift"
 NOTIFICATION_TEST="$ROOT_DIR/Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
+INSTALL_VERIFIER="$ROOT_DIR/script/verify_install_state.sh"
+FINAL_STATE_VERIFIER="$ROOT_DIR/script/verify_release_final_state.sh"
+PACKAGING_VERIFIER="$ROOT_DIR/script/verify_release_packaging.sh"
 RUN_TESTS=1
 
 usage() {
@@ -61,7 +65,9 @@ verify_contract() {
   for file in "$ROADMAP" "$DOC" "$SNAPSHOT_SOURCE" "$CACHE_SOURCE" "$HISTORY_SOURCE" \
     "$BRIDGE_SOURCE" "$PRIVACY_TEST" "$PREFERENCES_SOURCE" "$STATE_SOURCE" \
     "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$REFRESH_SOURCE" \
-    "$STATE_TEST" "$REFRESH_TEST" "$NOTIFICATION_TEST" "$POPOVER_TEST"; do
+    "$STATE_TEST" "$REFRESH_TEST" "$NOTIFICATION_TEST" "$POPOVER_TEST" \
+    "$CLAUDE_PANEL_SOURCE" "$INSTALL_VERIFIER" "$FINAL_STATE_VERIFIER" \
+    "$PACKAGING_VERIFIER"; do
     require_file "$file"
   done
   [[ -x "$ROOT_DIR/script/verify_v180_selected_provider_contract.sh" ]] || \
@@ -77,7 +83,7 @@ verify_contract() {
   require_match '현재 대화 context' "$DOC" "context token distinction"
   require_match 'reset credit.*합성하지' "$DOC" "no synthetic reset credit"
   require_match '5시간 history.*planEpochID' "$DOC" "five-hour history reuse"
-  require_match 'live·설치·GUI 검증' "$DOC" "integrated stabilization scope"
+  require_match 'live·설치·GUI.*검증' "$DOC" "integrated stabilization scope"
 
   require_match 'rateLimits = "rate_limits"' "$SNAPSHOT_SOURCE" "rate limit coding key"
   require_match 'fiveHour = "five_hour"' "$SNAPSHOT_SOURCE" "five-hour coding key"
@@ -92,6 +98,18 @@ verify_contract() {
   reject_match 'Process\(|/bin/zsh|--existing-command|MACDOG_CLAUDE_CACHE_PATH' "$BRIDGE_SOURCE" \
     "raw passthrough or production path override"
   require_match 'session-secret-123' "$PRIVACY_TEST" "privacy sentinel"
+  require_match '% 사용 · .*% 남음' "$CLAUDE_PANEL_SOURCE" "used and remaining usage summary"
+  require_match 'Claude 연결 필요' "$CLAUDE_PANEL_SOURCE" "missing cache empty state"
+  require_match '연결 명령 복사' "$CLAUDE_PANEL_SOURCE" "manual connection action"
+  require_match 'connectionGuide\.standaloneCommand' "$CLAUDE_PANEL_SOURCE" \
+    "bounded manual connection command"
+  reject_match '"[^"]*(Claude Preview|PREVIEW)' "$CLAUDE_PANEL_SOURCE" "preview product copy"
+  reject_match '"[^"]*(Claude Preview|PREVIEW)' "$BRIDGE_SOURCE" "preview bridge copy"
+  require_match 'macdog-claude-statusline' "$INSTALL_VERIFIER" "installed bridge gate"
+  require_match 'installed Claude status line bridge is not runnable' "$FINAL_STATE_VERIFIER" \
+    "release final-state bridge gate"
+  require_match 'macdog-claude-statusline bridge' "$PACKAGING_VERIFIER" \
+    "release packaging bridge contract"
 
   require_match 'usageProviderModeKey' "$PREFERENCES_SOURCE" "single provider preference key"
   require_match 'migrateUsageProviderMode' "$PREFERENCES_SOURCE" "provider preference migration"
@@ -140,6 +158,11 @@ run_focused_tests() {
       --filter UsageNotificationDeliveryTests \
       --filter UsageNotificationSettingsTests \
       --filter PopoverScreenshotRendererTests
+
+  "$INSTALL_VERIFIER" --self-test
+  "$FINAL_STATE_VERIFIER" --self-test
+  "$ROOT_DIR/script/verify_app_privacy_boundaries.sh"
+  "$PACKAGING_VERIFIER"
 }
 
 verify_synthetic_bridge() {
@@ -152,6 +175,8 @@ verify_synthetic_bridge() {
     <"$ROOT_DIR/Tests/CodexUsageCoreTests/Fixtures/claude_status_line_sensitive.json" \
     >"$temp_dir/output.txt"
   require_match '^Claude · 5시간 34% · 7일 44%$' "$temp_dir/output.txt" "sanitized bridge output"
+  "$bridge" --test-cache-directory "$temp_dir" </dev/null >"$temp_dir/waiting.txt"
+  require_match '^Claude · 입력 대기$' "$temp_dir/waiting.txt" "non-preview waiting output"
   if /usr/bin/grep -R -E 'session-secret|transcript-private|secret-token|refresh-token-secret|cookie-secret' \
     "$temp_dir" >/dev/null; then
     die "privacy sentinel leaked into bridge output/cache/history"

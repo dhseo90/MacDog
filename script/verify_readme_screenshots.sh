@@ -58,20 +58,9 @@ required_images=(
   "Docs/Images/README/PopoverTabs/macdog-popover-mac.png"
   "Docs/Images/README/PopoverTabs/macdog-popover-sleep.png"
   "Docs/Images/README/PopoverTabs/macdog-popover-battery.png"
+  "Docs/Images/README/PopoverTabs/macdog-popover-settings.png"
   "Docs/Images/README/macdog-desktop-pet-front.png"
 )
-
-# The committed settings image documents the superseded plan-transition/Claude Preview UI.
-# Keep the file until v1.8.0 produces its replacement, but do not publish or pixel-verify it.
-deprecated_images=(
-  "Docs/Images/README/PopoverTabs/macdog-popover-settings.png"
-)
-
-for image in "${deprecated_images[@]}"; do
-  if /usr/bin/grep -Fq "$image" "$README"; then
-    die "README references a superseded settings screenshot: $image"
-  fi
-done
 
 for image in "${required_images[@]}"; do
   [[ -f "$ROOT_DIR/$image" ]] || die "README image missing: $image"
@@ -98,14 +87,6 @@ if [[ -d "$README_IMAGE_DIR" ]]; then
           break
         fi
       done
-      if [[ "$is_required" == "0" ]]; then
-        for deprecated_image in "${deprecated_images[@]}"; do
-          if [[ "$relative" == "$deprecated_image" ]]; then
-            is_required=1
-            break
-          fi
-        done
-      fi
       if [[ "$is_required" == "0" ]]; then
         printf '%s\n' "$relative"
       fi

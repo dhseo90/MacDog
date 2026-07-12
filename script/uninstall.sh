@@ -200,9 +200,9 @@ case "$MODE" in
     echo "Would remove: $SYSTEM_APP_DEST if present"
     echo "Would remove cache file: $APP_CACHE_FILE"
     echo "Would remove usage history file: $APP_HISTORY_FILE"
-    echo "Would remove Claude Preview cache file: $CLAUDE_CACHE_FILE"
-    echo "Would remove Claude Preview history file: $CLAUDE_HISTORY_FILE"
-    echo "Would remove Claude Preview lock file: $CLAUDE_LOCK_FILE"
+    echo "Would remove Claude usage cache file: $CLAUDE_CACHE_FILE"
+    echo "Would remove Claude usage history file: $CLAUDE_HISTORY_FILE"
+    echo "Would remove Claude usage lock file: $CLAUDE_LOCK_FILE"
     echo "Would preserve Claude statusLine settings; restore the previous command manually"
     echo "Would remove shared cache file: $SHARED_CACHE_FILE"
     echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
@@ -259,7 +259,7 @@ run_with_timeout 3 rmdir "$SHARED_CACHE_DIR" >/dev/null 2>&1 || true
 reset_preferences_if_requested
 
 echo "Uninstalled MacDog"
-echo "Claude statusLine settings were not modified; restore the previous command manually if Preview was connected"
+echo "Claude statusLine settings were not modified; restore the previous command manually if Claude mode was connected"
 if [[ "$WITH_HELPER" == "1" ]]; then
   echo "Removed privileged helper: $HELPER_TOOL_DEST"
   echo "Removed LaunchDaemon: $HELPER_PLIST_DEST"

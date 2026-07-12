@@ -455,7 +455,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 isEnabled: true,
                 cacheSnapshot: nil,
                 history: .empty,
-                loadIssue: "Claude Preview cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
+                loadIssue: "Claude cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
             )
         }
     }

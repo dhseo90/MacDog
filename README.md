@@ -48,7 +48,7 @@ MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바�
     <th>데스크톱 펫</th>
   </tr>
   <tr>
-    <td>v1.8.0 개발 브랜치에서 설정 탭을 단일 provider mode 기준으로 재작업했습니다. 실제 GUI 검수는 아직 진행 전입니다.</td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab with a single usage mode selector" width="360"></td>
     <td align="center"><img src="Docs/Images/README/macdog-desktop-pet-front.png" alt="MacDog desktop pet front sprite" width="160"></td>
   </tr>
 </table>
@@ -94,8 +94,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
   가격 플랜 적합성을 예측하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Claude backend: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`를 sanitize해
-  별도 cache/history에 저장하는 기반이 구현돼 있습니다. v1.8.0의 선택 mode에 연결했으며 잔여율·
-  empty state와 실제 구독 live 검증은 남았습니다.
+  별도 cache/history에 저장하고 v1.8.0의 선택 mode에 연결했습니다. 사용률·잔여율, cache 없음 수동
+  연결 상태와 bundle 검증 gate가 구현됐으며 실제 구독 live 검증은 남았습니다.
 - 선택 provider graph: current/past/compare와 pace를 유지하되 선택한 provider 하나만 평가합니다.
   Claude reset credit은 만들지 않습니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
@@ -128,8 +128,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, 5시간 pace와 v1.8 Claude
 sanitizer/cache/privacy backend, 단일 provider preference migration과 설정·1번 탭·runner·알림·Codex
-live refresh routing을 확인합니다. Claude 잔여율·cache 없음 UI, 실제 GUI·설치 검증은 완료로 주장하지
-않습니다.
+live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-state bridge gate를 확인합니다.
+실제 GUI·설치 검증은 완료로 주장하지 않습니다.
 
 ```sh
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
@@ -138,8 +138,8 @@ live refresh routing을 확인합니다. Claude 잔여율·cache 없음 UI, 실�
 
 자동 검증은 Claude 설정, auth store, Keychain, transcript, network, GUI를 건드리지 않습니다.
 현재 로컬 Claude Code `2.1.39`에서는 실제 구독 `rate_limits` event를 확인하지 못했습니다.
-따라서 `Claude backend·selected-provider routing 자동 검증 완료 / Claude 표시 보강·GUI 검수 전 /
-live Claude 구독 검수 미수행`으로 구분하며,
+따라서 `Claude backend·selected-provider routing·표시·release bridge gate 자동 검증 완료 /
+GUI 검수 전 / live Claude 구독 검수 미수행`으로 구분하며,
 실제 5시간/7일 값과 reset 경계를 검증 완료로 주장하지 않습니다.
 
 ## 알림 경계
@@ -222,7 +222,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
 | `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
 | `./script/verify_v170_codex_pacemaker_contract.sh --self-test` | v1.7.0 주간 day slot, 5시간 history 보존, plan epoch 제거 목표와 legacy 파일 보존 경계를 검증합니다. |
-| `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, 설정·탭·runner·알림·refresh routing과 재사용 가능한 Claude sanitizer/cache/privacy backend를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
+| `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |

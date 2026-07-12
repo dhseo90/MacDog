@@ -37,7 +37,7 @@ Checks:
   23. v1.5.0 release readiness separates implementation closure from manual release smoke.
   24. v1.6.0 Codex Usage & Reset Credits contract is self-tested.
   25. v1.7.0 Codex weekly pacemaker and legacy migration contract is self-tested.
-  26. v1.8.0 reusable Claude backend and selected-provider planning contract is self-tested offline.
+  26. v1.8.0 Claude backend, single-provider product routing, empty state, and release bridge gates are self-tested offline.
   27. Optional WidgetKit manual UI verification plan is self-tested without touching live cache.
   28. Optional WidgetKit manual cache fixture writer is tested without touching live cache.
   29. Shortcuts Charge Limit fallback parser is tested with a local fixture.
@@ -173,7 +173,7 @@ echo "==> Verifying v1.6.0 Codex Usage & Reset Credits contract"
 echo "==> Verifying v1.7.0 Codex weekly pacemaker contract"
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
 
-echo "==> Verifying v1.8.0 selected-provider backend contract"
+echo "==> Verifying v1.8.0 selected-provider product contract"
 ./script/verify_v180_selected_provider_contract.sh --self-test
 
 echo "==> Verifying WidgetKit manual UI plan"

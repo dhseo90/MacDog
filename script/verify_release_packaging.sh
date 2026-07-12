@@ -104,7 +104,7 @@ output="$(MACDOG_RELEASE_VERSION=9.9.9 "$PACKAGE_SCRIPT" --dry-run)"
 require_contains "$output" "MacDog release package dry run"
 require_contains "$output" "Version: 9.9.9"
 require_contains "$output" "Docker-style drag-and-drop app installer"
-require_contains "$output" "MacDog.app (includes bundled codex-usage and macdog-claude-statusline Preview bridge)"
+require_contains "$output" "MacDog.app (includes bundled codex-usage and macdog-claude-statusline bridge)"
 require_contains "$output" "Applications symlink"
 require_contains "$output" "Widget extension: omitted by default"
 require_contains "$output" "Widget setup: default release omits WidgetKit"
@@ -130,6 +130,13 @@ require_not_contains "$output" "Check Install Status.command"
 require_not_contains "$output" "README_FIRST.txt"
 require_not_contains "$output" "RELEASE_NOTES_DRAFT.md"
 require_not_contains "$output" "Privileged Helper.command"
+
+v180_script_source="$(cat "$PACKAGE_SCRIPT")"
+require_contains "$v180_script_source" "1.8.0)"
+require_contains "$v180_script_source" '단일 `사용량 mode`'
+require_contains "$v180_script_source" "사용률과 잔여율을 함께 표시"
+require_contains "$v180_script_source" "동시에 합산·비교"
+require_contains "$v180_script_source" "Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다"
 
 if [[ -d "$APP_BUNDLE" && -n "${MACDOG_RELEASE_VERSION:-}" ]]; then
   version="$MACDOG_RELEASE_VERSION"

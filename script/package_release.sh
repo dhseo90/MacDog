@@ -139,7 +139,7 @@ DMG path: $DMG_PATH
 SHA-256 path: $CHECKSUM_PATH
 Release notes path: $NOTES_PATH
 Payload:
-  - MacDog.app (includes bundled codex-usage and macdog-claude-statusline Preview bridge)
+  - MacDog.app (includes bundled codex-usage and macdog-claude-statusline bridge)
   - Applications symlink
   - Hidden DMG background artwork for drag-and-drop layout
 DMG layout:
@@ -520,6 +520,20 @@ HIGHLIGHTS
 - 로그인 항목 등록 후 macOS Login Item 상태가 enabled가 아니면 실패로 처리하고, 저장된 로그인 실행 선호값을 실제 결과 쪽으로 되돌립니다.
 - release 운영 guard를 보강해 runtime sampler, helper 상태, native Charge Limit read-only 확인, final-state 검증을 v1.5.0 release readiness에 연결했습니다.
 - JSON/cache/app-server 계약은 breaking change하지 않고, raw app-server response, auth token, cookie, session material, auth header 저장 또는 출력을 계속 금지합니다.
+HIGHLIGHTS
+)
+    ;;
+  1.8.0)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- 설정의 단일 `사용량 mode`에서 Codex 또는 Claude 중 하나를 선택하며, 1번 탭·메뉴바 러너·사용량 알림은 선택한 provider만 따릅니다.
+- v1.7.0의 과도한 plan transition scenario·epoch UI를 제거하고, 주간 1/7 day 목표와 5시간 pace 기반 페이스메이커로 단순화했습니다.
+- Claude Code status line의 optional 5시간·7일 사용률과 reset 시각을 allowlist sanitize해 별도 cache/history에 저장하고, 사용률과 잔여율을 함께 표시합니다.
+- Claude cache가 없으면 수동 연결 명령만 제공하며 Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다.
+- Codex와 Claude를 동시에 합산·비교하거나 선택하지 않은 provider로 자동 fallback하지 않습니다.
+- `macdog-claude-statusline` bridge를 앱 번들에 포함하고 설치·release final-state 검증에서 실행 파일 누락을 실패로 처리합니다.
+- 기존 Codex CLI JSON/cache/app-server 계약과 legacy history decode 호환은 유지합니다.
 HIGHLIGHTS
 )
     ;;

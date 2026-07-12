@@ -51,7 +51,7 @@ private func cacheStore(arguments: [String]) -> ClaudeUsageCacheStore? {
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 guard let store = cacheStore(arguments: arguments) else {
-    writeStatusLine("Claude Preview · 설정 오류")
+    writeStatusLine("Claude · 설정 오류")
     exit(EXIT_SUCCESS)
 }
 
@@ -59,12 +59,12 @@ let input: Data
 do {
     input = try readBoundedStatusLineInput()
 } catch {
-    writeStatusLine("Claude Preview · 입력 오류")
+    writeStatusLine("Claude · 입력 오류")
     exit(EXIT_SUCCESS)
 }
 
 guard !input.isEmpty else {
-    writeStatusLine("Claude Preview · 입력 대기")
+    writeStatusLine("Claude · 입력 대기")
     exit(EXIT_SUCCESS)
 }
 
@@ -76,10 +76,10 @@ do {
             snapshot.fiveHour?.usedPercent.map { "5시간 \(Int($0.rounded()))%" },
             snapshot.sevenDay?.usedPercent.map { "7일 \(Int($0.rounded()))%" }
         ].compactMap(\.self)
-        writeStatusLine(values.isEmpty ? "Claude Preview · 사용량 대기" : "Claude · " + values.joined(separator: " · "))
+        writeStatusLine(values.isEmpty ? "Claude · 사용량 대기" : "Claude · " + values.joined(separator: " · "))
     case .failed:
-        writeStatusLine("Claude Preview · 입력 오류")
+        writeStatusLine("Claude · 입력 오류")
     }
 } catch {
-    writeStatusLine("Claude Preview · 저장 오류")
+    writeStatusLine("Claude · 저장 오류")
 }
