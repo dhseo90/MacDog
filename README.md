@@ -262,6 +262,9 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md): v1.6.0 릴리즈 준비 감사와 완료 smoke 기록
 - [Docs/V161HistoryControlPolish.md](Docs/V161HistoryControlPolish.md): v1.6.1 Codex history control polish 범위와 UI 검증 계약
 - [Docs/V161ReleaseReadiness.md](Docs/V161ReleaseReadiness.md): v1.6.1 릴리즈 준비 감사와 release smoke 계약
+- [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md): v1.7.0 Codex Pro $100 전환 판단과 플랜 epoch 경계
+- [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md): v1.8.0 Claude 사용량 동등성 Preview와 live 검수 경계
+- [Docs/V190CodexClaudeAIUsageTab.md](Docs/V190CodexClaudeAIUsageTab.md): v1.9.0 Codex + Claude 전용 AI 사용량 탭 범위
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
