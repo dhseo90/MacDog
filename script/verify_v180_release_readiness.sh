@@ -11,6 +11,7 @@ SCRIPTS_DOC="$ROOT_DIR/Docs/Scripts.md"
 CHECK_SCRIPT="$ROOT_DIR/script/check.sh"
 PACKAGE_SCRIPT="$ROOT_DIR/script/package_release.sh"
 DRAFT_WORKFLOW="$ROOT_DIR/.github/workflows/release-draft.yml"
+LIVE_CACHE_VERIFIER="$ROOT_DIR/script/verify_usage_fetch_cache_contract.sh"
 
 usage() {
   cat <<USAGE
@@ -51,10 +52,12 @@ verify_contract() {
     "$CHECK_SCRIPT" "$PACKAGE_SCRIPT" "$DRAFT_WORKFLOW"; do
     require_file "$file"
   done
+  require_file "$LIVE_CACHE_VERIFIER"
   [[ -x "$ROOT_DIR/script/verify_v180_release_readiness.sh" ]] || \
     die "v1.8 release-readiness verifier is not executable"
 
-  require_match '상태: 로컬 개발 자동 검증 통과.*PR·CI·review.*미수행' "$DOC" "honest pending status"
+  require_match '^상태: .*PR·CI·review' "$DOC" "honest pending status"
+  require_match 'GUI·설치, tag·artifact·publish 미수행' "$DOC" "honest external gate status"
   require_match 'MACDOG_APP_VERSION=1\.8\.0 \./script/check\.sh --no-run' "$DOC" "versioned check gate"
   require_match '승인 1회.*Code Owners review.*branch 최신화' "$DOC" "review and up-to-date branch gate"
   require_match '필수 CI.*static-gates' "$DOC" "required static gate"
@@ -75,11 +78,24 @@ verify_contract() {
   require_match 'verify_release_final_state\.sh --version 1\.8\.0' "$DOC" "final-state gate"
   require_match '릴리즈 증거 기록' "$DOC" "evidence ledger"
   require_match '실제 Claude live smoke \| 미수행' "$DOC" "honest live evidence"
+  require_match 'weekly-only.*partial success' "$DOC" "Codex weekly-only release scope"
+  require_match '5시간 현재 제공되지 않음' "$DOC" "weekly-only GUI smoke"
+  require_match '5시간 window 복구 시' "$DOC" "five-hour recovery smoke"
+  require_match '자동 재개되는지도 확인' "$DOC" "five-hour recovery completion"
   require_match '`Stable Release` workflow' "$DOC" "stable workflow scope"
   require_match '승인되지 않았으므로 실행하지 않습니다' "$DOC" "stable workflow exclusion"
 
   require_match 'V180ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V180ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
+  require_match 'weekly-only.*partial' "$PRODUCT_DOC" "weekly-only product contract"
+  require_match 'weekly-only' "$README" "weekly-only README contract"
+  require_match '정상 partial success' "$README" "weekly-only success semantics"
+  require_match 'weekly-only.*partial success' "$AGENTS" "weekly-only agent data rule"
+  require_match '5-hour window is optional' "$LIVE_CACHE_VERIFIER" \
+    "weekly-required live cache verifier"
+  require_match '"weekly-only"' "$LIVE_CACHE_VERIFIER" "weekly-only live mode"
+  require_match 'usage-fetch:success windows=#\{mode\}' "$LIVE_CACHE_VERIFIER" \
+    "weekly-only live result marker"
   require_match 'verify_v180_release_readiness\.sh --self-test' "$SCRIPTS_DOC" "Scripts gate entry"
   require_match 'verify_v180_release_readiness\.sh --self-test' "$CHECK_SCRIPT" "check.sh gate"
   require_match 'verify_v180_selected_provider_contract\.sh --self-test' "$CHECK_SCRIPT" \

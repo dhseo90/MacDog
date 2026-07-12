@@ -60,7 +60,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | 영역 | 역할 |
 | --- | --- |
 | 메뉴바 러너 | 현재 release에서는 Codex 사용량 위험도를 표시하며 v1.8.0부터 선택 provider만 따릅니다. |
-| 사용량 탭 | 선택 provider의 5시간/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. v1.8.0 개발 목표입니다. |
+| 사용량 탭 | 선택 provider의 현재 제공되는 단기/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. Codex 5시간 window가 없으면 주간 정보는 계속 갱신합니다. v1.8.0 개발 목표입니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
@@ -86,7 +86,9 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
+- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태,
+  pace 예측, 현재/지난/비교 그래프를 표시합니다. 5시간 window가 일시 미제공되면 이를 `현재
+  제공되지 않음`으로 표시하고 주간 cache/history, runner, 알림은 계속 갱신합니다.
 - Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 페이스메이커: weekly window 시작부터 24시간 day slot을 나누고 일일 목표 약 14.3%,
@@ -120,7 +122,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존됩니다. v1.8.0에서
   `planEpochID` 신규 기록·계산 의존을 제거하고 단기 pace에 재사용합니다. 기존 파일의 legacy field는
-  decode 호환만 유지합니다.
+  decode 호환만 유지합니다. 5시간 window가 없을 때는 새 sample을 합성하지 않고 기존 history를
+  보존하며, window가 복구되면 자동으로 sample과 pace 갱신을 재개합니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다.
 - Claude mode는 polling/manual refresh를 만들지 않습니다. `macdog-claude-statusline`이 새 Claude
   응답 event를 받을 때 `claude-usage.json`과 `claude-usage-history.json`을 갱신하며, 마지막 정상
@@ -128,7 +131,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## v1.8.0 개발 검증 경계
 
-현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, 5시간 pace와 v1.8 Claude
+현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, Codex weekly-only partial cache/UI와
+5시간 자동 복구, 5시간 pace와 v1.8 Claude
 sanitizer/cache/privacy backend, 단일 provider preference migration과 설정·1번 탭·runner·알림·Codex
 live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-state bridge gate를 확인합니다.
 실제 GUI·설치 검증은 완료로 주장하지 않습니다.
@@ -139,7 +143,7 @@ live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-
 MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run
 ```
 
-2026-07-13 기준 전체 `swift test --no-parallel` 449개 통과(명시적 opt-in 4개 skip), Xcode Debug
+2026-07-13 기준 전체 `swift test --no-parallel` 464개 통과(명시적 opt-in 4개 skip), Xcode Debug
 no-sign build와 `check.sh --no-run`이 통과했습니다. 생성된 `dist/MacDog.app`은 개발 자동 검증
 산출물이며 published DMG 설치 검수의 대체물이 아닙니다.
 
@@ -168,14 +172,22 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 원시 history를 저장하고, 지속된 잔여량 회복과 새 current window로 확인된 완료 창만 v1.4.0 reset window history에 반영합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
+`status`는 현재 제공되는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary,
+갱신 상태를 출력합니다. 5시간 window가 없으면 `5h: unavailable`로 출력하되 주간 조회는 성공으로
+처리합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격
+tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로
+breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 원시 history를 저장하고,
+지속된 잔여량 회복과 새 current window로 확인된 완료 창만 v1.4.0 reset window history에 반영합니다.
+`--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 `doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름, 필드 목록, app-owned cache freshness, weekly history sample 수, reset-window history record 수, append/retention/pace 상태, 다음 조치 안내를 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 
 ## 데이터와 개인정보
 
 - Codex 사용량 기준은 로컬 Codex app-server의 `account/rateLimits/read` 응답입니다.
-- `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석합니다.
+- slot 이름과 관계없이 `windowDurationMins = 300`은 5시간 창, `10080`은 주간 창으로 해석합니다.
+- Codex 주간 window는 성공에 필수이며 5시간 window는 일시 미제공될 수 있습니다. weekly-only는
+  정상 partial success이고 5시간 값을 0% 또는 과거 값으로 합성하지 않습니다.
 - 사용자 초기화권 장수는 `rateLimitResetCredits`에서 읽고, 장별 유효기간은 ChatGPT backend의 reset credit 상세 응답에서 읽습니다.
 - 초기화권 유효기간은 장별 `expiresAt`만 표시하며, 5시간/주간 사용량 window와 섞어 추정하지 않습니다.
 - auth token, refresh token, cookie, session material은 출력하거나 저장하지 않습니다. reset credit 상세 조회에 필요한 access token은 메모리에서만 backend `Authorization` header로 사용합니다.
@@ -229,7 +241,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
 | `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
 | `./script/verify_v170_codex_pacemaker_contract.sh --self-test` | v1.7.0 주간 day slot, 5시간 history 보존, plan epoch 제거 목표와 legacy 파일 보존 경계를 검증합니다. |
-| `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
+| `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, Codex weekly-only cache/UI·5시간 복구, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
 | `./script/verify_v180_release_readiness.sh --self-test` | v1.8.0 PR·CI·release head, signed tag, artifact/draft/publish, live Claude, Finder 설치·GUI smoke와 증거 기록 계약을 offline 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |

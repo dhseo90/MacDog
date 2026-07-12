@@ -529,6 +529,7 @@ HIGHLIGHTS
 
 - 설정의 단일 `사용량 mode`에서 Codex 또는 Claude 중 하나를 선택하며, 1번 탭·메뉴바 러너·사용량 알림은 선택한 provider만 따릅니다.
 - v1.7.0의 과도한 plan transition scenario·epoch UI를 제거하고, 주간 1/7 day 목표와 5시간 pace 기반 페이스메이커로 단순화했습니다.
+- Codex 5시간 window가 일시 미제공되면 weekly-only success로 주간 cache/history·runner·알림을 계속 갱신하고, 1번 탭에는 현재 제공되지 않음으로 표시합니다.
 - Claude Code status line의 optional 5시간·7일 사용률과 reset 시각을 allowlist sanitize해 별도 cache/history에 저장하고, 사용률과 잔여율을 함께 표시합니다.
 - Claude cache가 없으면 수동 연결 명령만 제공하며 Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다.
 - Codex와 Claude를 동시에 합산·비교하거나 선택하지 않은 provider로 자동 fallback하지 않습니다.

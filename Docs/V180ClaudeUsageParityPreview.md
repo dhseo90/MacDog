@@ -2,8 +2,9 @@
 
 상태: backend sanitizer/cache/history, v1.7 제거·페이스메이커, 단일 provider preference migration,
 설정·1번 탭·러너·알림·Codex refresh routing, Claude 잔여율·empty state와 release bridge gate 구현 /
-전체 Swift test·Xcode Debug build·`check.sh --no-run` 통과 / live·설치·GUI·release 검증 전
-작성일: 2026-07-12
+Codex weekly-only partial·5시간 복구 구현 / 전체 Swift test·Xcode Debug build·`check.sh --no-run`
+재검증 완료 / live·설치·GUI·release 검증 전
+작성일: 2026-07-13
 대상 버전: `1.8.0`
 
 ## 목표
@@ -17,8 +18,9 @@ v1.8.0은 다음 범위를 한 milestone에서 완료합니다.
 1. v1.7.0 과도 plan transition 기능 제거와 페이스메이커 단순화
 2. 단일 provider mode와 preference migration
 3. Claude 공식 사용량 source 연결
-4. 실제 Claude 구독 live smoke
-5. GUI·설치·패키징·published DMG release smoke
+4. Codex 5시간 window 미제공 시 weekly-only partial 호환
+5. 실제 Claude 구독 live smoke
+6. GUI·설치·패키징·published DMG release smoke
 
 ## 단일 provider UI
 
@@ -85,6 +87,11 @@ Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다
 저장은 동시 사용을 의미하지 않으며 선택하지 않은 provider cache는 runner·알림에서 평가하지
 않습니다.
 
+Codex는 주간 window를 성공의 필수 기준으로 유지하고 5시간 window는 optional로 처리합니다.
+weekly-only 응답은 오류가 아니며 기존 schema version 1 안에서 5시간 field를 생략합니다. 이전
+5시간 값을 cache에 병합하거나 0%로 합성하지 않고, 주간 history·runner·알림은 계속 갱신합니다.
+5시간 window가 복구되면 보존한 history 파일에 새 sample을 append하고 표시·pace를 자동 재개합니다.
+
 ## 제거할 구현
 
 - 설정 탭 `플랜 전환` section
@@ -100,6 +107,7 @@ Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다
 
 - Codex 5시간 history는 `planEpochID` 의존만 제거하고 단기 pace에 재사용합니다.
 - Codex weekly history와 reset-window `dailyEndSamples`로 day 목표와 누적 pace를 계산합니다.
+- Codex weekly-only이면 주간 페이스메이커만 유지하고 5시간 pace를 `계산 중`으로 오인 표시하지 않습니다.
 - Claude 5시간/7일 history는 같은 window 내부 sample로 pace를 계산합니다.
 - 알림 dedupe key에는 provider를 남기되 선택 provider candidate만 생성합니다.
 - source sample이 부족하면 초과를 추정하거나 알림하지 않습니다.
@@ -110,7 +118,8 @@ Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다
 - status line 원문을 cache, history, stdout, stderr, fixture, 문서에 저장하지 않습니다.
 - auth token, cookie, session material, local path를 저장하거나 출력하지 않습니다.
 - bridge는 raw input을 임의 shell command나 child stdout으로 전달하지 않습니다.
-- 기존 Codex `status --json`, cache schema, app-server 계약은 변경하지 않습니다.
+- 기존 Codex `status --json`과 cache schema version은 유지하되 5시간 optional app-server 응답을
+  정상 partial로 수용합니다.
 
 ## 개발 완료 기준
 
@@ -120,6 +129,7 @@ Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다
 - 1번 탭, runner, notification source가 항상 같은 선택 provider를 사용합니다.
 - Claude subscription quota와 context token을 혼합하지 않고 reset credit을 합성하지 않습니다.
 - Codex/Claude mode, cache 없음, partial, stale, malformed, 복구를 fixture와 focused test로 검증합니다.
+- Codex weekly-only cache/UI/runner/notification과 5시간 window 복구를 fixture와 focused test로 검증합니다.
 
 ## 안정화·release 완료 기준
 

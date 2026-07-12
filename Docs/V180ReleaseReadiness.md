@@ -1,7 +1,8 @@
 # v1.8.0 릴리즈 준비 감사
 
-상태: 로컬 개발 자동 검증 통과 / PR·CI·review, live Claude, GUI·설치, tag·artifact·publish 미수행
-작성일: 2026-07-12
+상태: Codex weekly-only 호환성 구현 / 로컬 자동검증 완료 / PR·CI·review, live Claude,
+GUI·설치, tag·artifact·publish 미수행
+작성일: 2026-07-13
 대상 버전: `1.8.0`
 
 ## 릴리즈 범위
@@ -11,6 +12,8 @@
   제공하지 않습니다.
 - v1.7.0 plan transition scenario·epoch UI는 제거하고 주간 1/7 day 목표와 5시간 pace
   페이스메이커를 사용합니다.
+- Codex 5시간 window가 일시 미제공되면 weekly-only partial success로 저장하고, 1번 탭은
+  `현재 제공되지 않음`을 표시하면서 주간 history·runner·알림을 계속 갱신합니다.
 - Claude는 status line의 allowlist field만 별도 cache/history로 저장합니다. Claude settings,
   auth store, Keychain, transcript는 읽거나 수정하지 않습니다.
 - WidgetKit과 Apple Developer Program이 필요한 stable workflow는 이번 완료 조건에서 제외합니다.
@@ -37,6 +40,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 - app bundle 안의 `MacDog`, `codex-usage`, `macdog-claude-statusline`이 실행 가능합니다.
 - 기본 app bundle과 DMG에는 WidgetKit extension이 없습니다.
 - Codex CLI JSON/cache/app-server 계약과 legacy history decode 호환을 유지합니다.
+- weekly-only cache encode/decode, 주간 history append, 5시간 history 보존과 복구 재개를 확인합니다.
 - release branch worktree가 clean 상태입니다.
 
 ## PR, CI, review와 release head
@@ -93,9 +97,12 @@ Claude settings, auth store, Keychain, transcript 원문은 live smoke에서도 
 6. Codex/Claude mode 전환 시 1번 탭, 러너, 알림 source가 함께 바뀌고 다른 provider로 fallback하지
    않는지 확인합니다.
 7. Claude 사용률·잔여율·reset, cache 없음 연결 state, partial/stale/error/복구 표시를 확인합니다.
-8. runner, popover placement, 주요 탭, `~/bin/codex-usage`, Codex mode 전용 usage cache
+8. Codex live가 weekly-only이면 1번 탭의 `5시간 현재 제공되지 않음`, 주간 그래프·페이스메이커,
+   주간 runner·알림과 error 없는 success cache를 확인합니다. 5시간 window 복구 시 표시·history·pace가
+   자동 재개되는지도 확인합니다.
+9. runner, popover placement, 주요 탭, `~/bin/codex-usage`, Codex mode 전용 usage cache
    LaunchAgent의 설치·Claude mode 제거를 확인합니다.
-9. `./script/verify_usage_fetch_cache_contract.sh --cli <installed-codex-usage>`를 실행합니다.
+10. `./script/verify_usage_fetch_cache_contract.sh --cli <installed-codex-usage>`를 실행합니다.
 
 Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 설치·GUI smoke는 `미수행`으로
 보고합니다.
@@ -121,9 +128,11 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 | 증거 | 현재 상태 |
 | --- | --- |
-| 전체 Swift test | 2026-07-13, 449개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
+| 전체 Swift test | 2026-07-13, 464개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
 | Xcode Debug no-sign build | 2026-07-13, 통과 |
 | `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run` | 2026-07-13, 통과 |
+| Codex weekly-only focused test | v1.8 selected-provider 221개 중 218개 통과 / opt-in 3개 skip / 실패 0개 |
+| 실제 Codex weekly-only live cache | 2026-07-13, success / 주간 93% 남음 / weekly history sample 1개 / error 없음 |
 | `main` branch protection | 2026-07-12, 승인 1회 / Code Owners / branch 최신화 / `static-gates` / `guardrails` / conversation resolution 확인 |
 | PR, CI, review | 미수행 |
 | 최종 `origin/main` release head | 미기록 |

@@ -47,7 +47,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
-| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 제품 코드 재작업·로컬 자동 검증 완료, live·설치·GUI·release 검증 전 | v1.7 과도 기능 제거, 5시간/주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
+| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | Codex weekly-only 호환성 구현, 전체 자동 검증 완료 | v1.7 과도 기능 제거, optional 5시간/필수 주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -410,8 +410,10 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 5시간 단기 pace와 알림 focused test를 완료했습니다. 단일 `usageProviderMode` preference와 Codex 기본
 migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
 test로 연결했습니다. Claude sanitizer/cache/history backend, 사용률·잔여율 표시, cache 없음 수동 연결
-UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 기준 전체
-`swift test --no-parallel` 449개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
+UI와 bundle/install/final-state bridge gate도 구현했습니다. Codex 5시간 window가 일시 미제공되는
+weekly-only partial cache, 주간 history, runner·알림 fallback, 1번 탭 unavailable 표시와 5시간 복구
+전이도 v1.8.0에 포함했습니다. 2026-07-13 기준 전체
+`swift test --no-parallel` 464개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
 `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. 실제 Claude 구독
 `rate_limits`, GUI·설치·release 검수는 남았습니다.
 
@@ -424,13 +426,16 @@ UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 �
 3. 1번 탭은 선택한 provider 화면 하나만 표시하고 tab 내부 provider picker를 중복 제공하지 않습니다.
 4. 러너와 기존 사용량 알림은 선택한 provider를 유일한 source로 사용합니다. 선택하지 않은
    provider cache는 평가하거나 알림을 만들지 않습니다.
-5. Claude mode는 status line의 `rate_limits.five_hour`·`seven_day` 사용률과 reset 시각을
+5. Codex는 주간 window를 필수로 유지하되 5시간 window가 없으면 weekly-only partial success로
+   저장합니다. 1번 탭은 5시간을 `현재 제공되지 않음`으로 표시하고 주간 history·runner·알림을
+   계속 갱신하며, 5시간 window 복구 시 history와 pace를 자동 재개합니다.
+6. Claude mode는 status line의 `rate_limits.five_hour`·`seven_day` 사용률과 reset 시각을
    sanitize해 사용하며 잔여율은 `100 - used_percentage`로 계산합니다.
-6. Claude `context_window` token은 현재 대화 context 정보로만 표시할 수 있으며 구독 quota의
+7. Claude `context_window` token은 현재 대화 context 정보로만 표시할 수 있으며 구독 quota의
    절대 token 총량으로 표현하지 않습니다.
-7. Claude에는 Codex reset credit과 동등한 공식 field가 없으므로 reset credit UI를 만들지
+8. Claude에는 Codex reset credit과 동등한 공식 field가 없으므로 reset credit UI를 만들지
    않습니다. 5시간/7일 reset 시각만 표시합니다.
-8. Claude cache가 없으면 1번 탭에 최소 연결 필요 empty state와 수동 연결 command만 제공합니다.
+9. Claude cache가 없으면 1번 탭에 최소 연결 필요 empty state와 수동 연결 command만 제공합니다.
    MacDog는 Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다.
 
 제거 대상:
@@ -458,6 +463,8 @@ UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 �
 - Claude plan quota와 context token을 혼합하지 않고 reset credit을 합성하지 않습니다.
 - `usage-plan-transition.json`은 자동 삭제하지 않고 신규 read/write를 중단합니다.
 - 5시간 history는 `planEpochID` 없이 단기 pace에 계속 사용하고 기존 파일 decode 호환을 유지합니다.
+- Codex weekly-only partial은 오류가 아니며 주간 cache/history·runner·알림을 계속 갱신합니다.
+- Codex 5시간 window를 0%나 과거 값으로 합성하지 않고, 복구 시 5시간 표시·history·pace를 재개합니다.
 - 실제 GUI를 열어 확인하지 않았다면 UI 완료로 보고하지 않습니다.
 
 안정화·release 검증 범위:
@@ -504,11 +511,12 @@ RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이
 
 ## 사용량 단계
 
-러너 속도는 선택 provider의 5시간 사용률과 장기 window 사용률 중 더 높은 값을 기준으로
-정합니다. Codex의 장기 window는 주간, Claude의 장기 window는 7일입니다.
+러너 속도는 선택 provider에서 현재 제공되는 window 사용률 중 더 높은 값을 기준으로 정합니다.
+Codex의 장기 window는 주간, Claude의 장기 window는 7일이며 Codex weekly-only이면 주간 값만
+사용합니다.
 
 ```text
-usage = max(fiveHour.usedPercent, longWindow.usedPercent)
+usage = max(availableWindows.usedPercent)
 ```
 
 선택 provider가 stale/error이면 다른 provider로 fallback하지 않고 runner의 새 pressure 반영을

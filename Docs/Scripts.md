@@ -63,7 +63,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_cache_contract.sh` | cache schema와 stale/error/history 계약 검증 | cache 모델, 주간 잔여량 history, README/AGENTS 용어, token 저장 금지 규칙을 확인합니다. |
 | `script/verify_character_profile.sh` | 캐릭터 리소스 계약 검증 | menu bar image, desktop pet, tab artwork manifest와 실제 PNG를 확인합니다. |
 | `script/verify_character_asset_polish.sh --self-test` | 캐릭터 asset polish 점검 | 캐릭터 프로필, menu bar 기준선, README 이미지 hygiene/freshness, PNG 크기/alpha 계약을 확인합니다. 실제 UI는 열지 않습니다. |
-| `script/verify_codex_app_server_protocol_drift.sh --self-test` | Codex app-server protocol drift guardrail | live app-server를 호출하지 않고 redacted fixture schema, 기본 codex bucket, 5시간/주간 window, failure guide redaction 문구를 확인합니다. |
+| `script/verify_codex_app_server_protocol_drift.sh --self-test` | Codex app-server protocol drift guardrail | live app-server를 호출하지 않고 redacted fixture schema, 기본 codex bucket, 5시간/주간 mapping, Codex weekly-only partial 허용과 failure guide redaction 문구를 확인합니다. |
 | `script/verify_dist_hygiene.sh` | dist 산출물 hygiene 검증 | stale app bundle 복사본 같은 혼동 요소를 확인합니다. |
 | `script/verify_distribution_gate.sh` | public release gate 검증 | unsigned draft와 signed stable release 문구/워크플로 분리를 확인합니다. |
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인합니다. |

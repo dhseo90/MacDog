@@ -12,12 +12,18 @@ CLAUDE_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/ClaudeUsagePreviewPanel.sw
 PRIVACY_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/ClaudeUsagePrivacyTests.swift"
 PREFERENCES_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift"
 STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
+CODEX_REPORT_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Usage/CodexUsageReport.swift"
+CODEX_ROW_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
 CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
 REFRESH_SOURCE="$ROOT_DIR/Sources/MacDog/CodexUsageCacheRefreshPolicy.swift"
 USER_COMPONENT_SOURCE="$ROOT_DIR/Sources/MacDog/UserComponentInstaller.swift"
 STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
+CODEX_REPORT_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/CodexUsageReportTests.swift"
+CODEX_CACHE_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/CodexUsageCacheTests.swift"
+PACE_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/UsagePaceProjectionTests.swift"
+POLICY_TEST="$ROOT_DIR/Tests/MacDogTests/UsageNotificationPolicyTests.swift"
 REFRESH_TEST="$ROOT_DIR/Tests/MacDogTests/CodexUsageCacheRefreshPolicyTests.swift"
 NOTIFICATION_TEST="$ROOT_DIR/Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
@@ -66,6 +72,8 @@ verify_contract() {
   local file
   for file in "$ROADMAP" "$DOC" "$SNAPSHOT_SOURCE" "$CACHE_SOURCE" "$HISTORY_SOURCE" \
     "$BRIDGE_SOURCE" "$PRIVACY_TEST" "$PREFERENCES_SOURCE" "$STATE_SOURCE" \
+    "$CODEX_REPORT_SOURCE" "$CODEX_ROW_SOURCE" "$CODEX_REPORT_TEST" "$CODEX_CACHE_TEST" \
+    "$PACE_TEST" "$POLICY_TEST" \
     "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$REFRESH_SOURCE" \
     "$STATE_TEST" "$REFRESH_TEST" "$NOTIFICATION_TEST" "$POPOVER_TEST" \
     "$USER_COMPONENT_SOURCE" "$USER_COMPONENT_TEST" \
@@ -87,6 +95,7 @@ verify_contract() {
   require_match 'reset credit.*합성하지' "$DOC" "no synthetic reset credit"
   require_match '5시간 history.*planEpochID' "$DOC" "five-hour history reuse"
   require_match 'live·설치·GUI.*검증' "$DOC" "integrated stabilization scope"
+  require_match 'Codex.*weekly-only|weekly-only.*Codex' "$DOC" "Codex weekly-only product contract"
 
   require_match 'rateLimits = "rate_limits"' "$SNAPSHOT_SOURCE" "rate limit coding key"
   require_match 'fiveHour = "five_hour"' "$SNAPSHOT_SOURCE" "five-hour coding key"
@@ -135,6 +144,13 @@ verify_contract() {
   require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
     "canonical provider mode"
   require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
+  require_match 'if weekly == nil' "$CODEX_REPORT_SOURCE" "weekly-required Codex validation"
+  reject_match 'missing\.append\(\.fiveHour\)' "$CODEX_REPORT_SOURCE" \
+    "five-hour required validation"
+  require_match 'fiveHour \?\? limit\.weekly' "$STATE_SOURCE" \
+    "weekly fallback for five-hour display basis"
+  require_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only data status"
+  require_match '현재 제공되지 않음' "$CODEX_ROW_SOURCE" "weekly-only five-hour row copy"
   require_match 'usageCacheRefreshTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
     "provider switch Codex refresh cancellation"
   require_match 'usageNotificationTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
@@ -156,6 +172,20 @@ verify_contract() {
     "$STATE_TEST" "no fallback regression test"
   require_match 'testClaudeCurrentWindowExcludesExpiredWindowWhileKeepingFreshPartialWindow' \
     "$STATE_TEST" "expired window display regression test"
+  require_match 'testAcceptsWeeklyWindowWhenFiveHourWindowIsUnavailable' \
+    "$CODEX_REPORT_TEST" "weekly-only report regression test"
+  require_match 'testFullAndWeeklyOnlyTransitionsDoNotReuseStaleFiveHourWindowAndResumeHistory' \
+    "$CODEX_CACHE_TEST" "full and weekly-only cache transition regression test"
+  require_match 'testFiveHourProjectionIsUnavailableWhenCurrentWindowIsMissing' \
+    "$PACE_TEST" "missing five-hour pace regression test"
+  require_match 'testWeeklyOnlyCodexUsageFallsBackFromFiveHourBasisAndKeepsPanelAvailable' \
+    "$STATE_TEST" "weekly-only runner and panel regression test"
+  require_match 'testPolicyUsesOnlyWeeklyWindowWhenFiveHourIsUnavailable' \
+    "$POLICY_TEST" "weekly-only notification policy regression test"
+  require_match 'testDispatcherDeliversWeeklyOnlyCandidateWithoutFiveHourDedupe' \
+    "$NOTIFICATION_TEST" "weekly-only notification delivery regression test"
+  require_match 'testCodexUsagePanelKeepsWeeklyContentVisibleWhenFiveHourIsUnavailable' \
+    "$POPOVER_TEST" "weekly-only popover regression test"
   require_match 'testLiveCodexRefreshRunsOnlyInCodexMode' "$REFRESH_TEST" \
     "refresh routing regression test"
   require_match 'testNotificationRouteSelectsExactlyOneProvider' "$NOTIFICATION_TEST" \
@@ -186,11 +216,16 @@ run_focused_tests() {
       --filter ClaudeStatusLineSnapshotTests \
       --filter ClaudeUsageCacheTests \
       --filter ClaudeUsagePrivacyTests \
+      --filter CodexUsageReportTests \
+      --filter CodexUsageCacheTests \
+      --filter UsagePaceProjectionTests \
       --filter UsageMonitorStateTests \
+      --filter UsageNotificationPolicyTests \
       --filter CodexUsageCacheRefreshPolicyTests \
       --filter UsageNotificationDeliveryTests \
       --filter UsageNotificationSettingsTests \
       --filter PopoverScreenshotRendererTests \
+      --filter MacDogWidgetPresentationTests \
       --filter UserComponentInstallerTests
 
   "$INSTALL_VERIFIER" --self-test
