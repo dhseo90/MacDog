@@ -22,6 +22,15 @@ struct UsageNotificationDeliverySettings: Equatable, Sendable {
     }
 }
 
+enum UsageNotificationRoute: Equatable, Sendable {
+    case codex
+    case claude
+
+    init(mode: UsageProviderMode) {
+        self = mode == .codex ? .codex : .claude
+    }
+}
+
 struct UsageNotificationContent: Equatable, Sendable {
     let identifier: String
     let title: String

@@ -33,10 +33,10 @@ enum MacDogDemoData {
                 helperToolExists: false,
                 launchDaemonExists: false
             ),
-            claudeUsagePreview: preferences.claudeUsagePreviewEnabled
+            claudeUsagePreview: preferences.usageProviderMode == .claude
                 ? claudeUsagePreview(now: now)
                 : .disabled,
-            claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+            usageProviderMode: preferences.usageProviderMode
         )
     }
 

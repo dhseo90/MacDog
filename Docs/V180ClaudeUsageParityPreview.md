@@ -1,7 +1,7 @@
 # v1.8.0 선택형 Codex/Claude 사용량 mode와 안정화
 
-상태: backend sanitizer/cache/history와 v1.7 제거·페이스메이커 구현 / selected-provider UI·상태 전이,
-live·설치·GUI 검증 전
+상태: backend sanitizer/cache/history, v1.7 제거·페이스메이커, 단일 provider preference migration과
+설정·1번 탭·러너·알림·Codex refresh routing 구현 / Claude 잔여율·empty state, live·설치·GUI 검증 전
 작성일: 2026-07-12
 대상 버전: `1.8.0`
 
@@ -131,7 +131,7 @@ Codex와 Claude cache는 mode를 전환했다 돌아올 수 있고 schema가 다
 WidgetKit은 기본 DMG 완료 조건에서 제외하고 기존 opt-in source/test 경계만 유지합니다.
 Apple Developer Program이 필요한 stable workflow는 별도 승인 전 실행하지 않습니다.
 
-## 개발 전 계약 검증
+## 개발 계약 검증
 
 ```sh
 git diff --check

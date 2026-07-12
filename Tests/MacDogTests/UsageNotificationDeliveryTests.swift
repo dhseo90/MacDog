@@ -4,6 +4,11 @@ import CodexUsageCore
 
 @MainActor
 final class UsageNotificationDeliveryTests: XCTestCase {
+    func testNotificationRouteSelectsExactlyOneProvider() {
+        XCTAssertEqual(UsageNotificationRoute(mode: .codex), .codex)
+        XCTAssertEqual(UsageNotificationRoute(mode: .claude), .claude)
+    }
+
     func testDispatcherDeliversAuthorizedFreshCacheCandidatesAndPersistsDedupe() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()

@@ -7,8 +7,6 @@ struct UsagePopoverView: View {
     let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
 
     @AppStorage(RunnerPreferences.popoverModuleKey) private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
-    @AppStorage(RunnerPreferences.claudeUsagePreviewEnabledKey) private var claudeUsagePreviewEnabled = false
-    @AppStorage(RunnerPreferences.usagePreviewProviderKey) private var usagePreviewProviderRaw = UsagePreviewProvider.codex.rawValue
 
     init(
         state: UsageMonitorState,
@@ -108,7 +106,7 @@ struct UsagePopoverView: View {
 
     private var usesScrollableSelectedContent: Bool {
         selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && selectedUsageProvider == .claude)
+            (selectedModule == .codex && state.usageProviderMode == .claude)
     }
 
     @ViewBuilder
@@ -133,7 +131,6 @@ struct UsagePopoverView: View {
         case .settings:
             SettingsPanel(
                 privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
-                claudeUsagePreview: state.claudeUsagePreview,
                 onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged,
                 notificationAuthorizationClient: notificationAuthorizationClient
@@ -167,7 +164,7 @@ struct UsagePopoverView: View {
     private var selectedModuleSubtitle: String {
         switch selectedModule {
         case .codex:
-            return selectedUsageProvider == .claude
+            return state.usageProviderMode == .claude
                 ? state.claudeUsagePreview.statusTitle
                 : state.codexPhase.statusLabel
         case .mac:
@@ -181,43 +178,19 @@ struct UsagePopoverView: View {
         }
     }
 
-    private var selectedUsageProvider: UsagePreviewProvider {
-        guard claudeUsagePreviewEnabled else { return .codex }
-        return UsagePreviewProvider(rawValue: usagePreviewProviderRaw) ?? .codex
-    }
-
     private var selectedModuleTitle: String {
-        if selectedModule == .codex, selectedUsageProvider == .claude {
-            return "Claude 사용량 Preview"
+        if selectedModule == .codex, state.usageProviderMode == .claude {
+            return "Claude 사용량"
         }
         return selectedModule.title
     }
 
     @ViewBuilder
     private var usageProviderContent: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if claudeUsagePreviewEnabled {
-                Picker("사용량 provider", selection: $usagePreviewProviderRaw) {
-                    ForEach(UsagePreviewProvider.allCases) { provider in
-                        Text(provider.label).tag(provider.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .controlSize(.mini)
-                .onChange(of: usagePreviewProviderRaw) { _, rawValue in
-                    RunnerPreferences.setUsagePreviewProvider(
-                        UsagePreviewProvider(rawValue: rawValue) ?? .codex
-                    )
-                    onPreferencesChanged()
-                }
-            }
-
-            if selectedUsageProvider == .claude {
-                ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview)
-            } else {
-                CodexUsagePanel(state: state)
-            }
+        if state.usageProviderMode == .claude {
+            ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview)
+        } else {
+            CodexUsagePanel(state: state)
         }
     }
 

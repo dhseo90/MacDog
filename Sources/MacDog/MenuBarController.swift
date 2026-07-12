@@ -183,7 +183,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let systemMetrics = systemMetricsSnapshotForUsageRefresh()
         syncSleepPrevention(systemMetrics: systemMetrics)
         let loadedState = loadCachedState(systemMetrics: systemMetrics)
-        let shouldRefreshCache = allowLiveRefresh || loadedState.report == nil
+        let shouldRefreshCache = CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(
+            for: preferences.usageProviderMode
+        ) &&
+            (allowLiveRefresh || loadedState.report == nil)
         if shouldRefreshCache {
             requestUsageCacheRefresh(force: allowLiveRefresh)
         }
@@ -240,17 +243,18 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func scheduleUsageNotificationsIfNeeded(for loadedState: UsageMonitorState) {
         let settings = UsageNotificationDeliverySettings(preferences: preferences)
-        let claudeEnabled = preferences.claudeUsagePreviewEnabled &&
-            preferences.claudeUsageNotificationsEnabled &&
-            preferences.usageNotificationsEnabled
         Task { @MainActor [weak self, loadedState, settings] in
             guard let self else { return }
-            _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
-            _ = await claudeUsageNotificationDispatcher.dispatch(
-                for: loadedState.claudeUsagePreview,
-                enabled: claudeEnabled,
-                resetSoonEnabled: settings.resetSoonNotificationsEnabled
-            )
+            switch UsageNotificationRoute(mode: loadedState.usageProviderMode) {
+            case .codex:
+                _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+            case .claude:
+                _ = await claudeUsageNotificationDispatcher.dispatch(
+                    for: loadedState.claudeUsagePreview,
+                    enabled: settings.usageNotificationsEnabled,
+                    resetSoonEnabled: settings.resetSoonNotificationsEnabled
+                )
+            }
         }
     }
 
@@ -373,7 +377,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                         privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                         claudeUsagePreview: claudeUsagePreview,
-                        claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+                        usageProviderMode: preferences.usageProviderMode
                     )
                 }
                 return UsageMonitorState(
@@ -392,7 +396,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                     privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                     claudeUsagePreview: claudeUsagePreview,
-                    claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+                    usageProviderMode: preferences.usageProviderMode
                 )
             }
 
@@ -412,7 +416,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
-                claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+                usageProviderMode: preferences.usageProviderMode
             )
         }
 
@@ -432,12 +436,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
             claudeUsagePreview: claudeUsagePreview,
-            claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+            usageProviderMode: preferences.usageProviderMode
         )
     }
 
     private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
-        guard preferences.claudeUsagePreviewEnabled else { return .disabled }
+        guard preferences.usageProviderMode == .claude else { return .disabled }
         do {
             let storedState = try claudeUsageCacheStore.readState()
             return ClaudeUsagePreviewState(

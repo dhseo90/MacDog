@@ -26,7 +26,7 @@ struct UsageMonitorState: Equatable {
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let claudeUsagePreview: ClaudeUsagePreviewState
-    let claudeRunnerPreviewEnabled: Bool
+    let usageProviderMode: UsageProviderMode
     let runnerEvaluationDate: Date
 
     init(
@@ -46,7 +46,7 @@ struct UsageMonitorState: Equatable {
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing,
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
-        claudeRunnerPreviewEnabled: Bool = false,
+        usageProviderMode: UsageProviderMode = .codex,
         runnerEvaluationDate: Date = Date()
     ) {
         self.report = report
@@ -65,7 +65,7 @@ struct UsageMonitorState: Equatable {
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
         self.claudeUsagePreview = claudeUsagePreview
-        self.claudeRunnerPreviewEnabled = claudeRunnerPreviewEnabled
+        self.usageProviderMode = usageProviderMode
         self.runnerEvaluationDate = runnerEvaluationDate
     }
 
@@ -87,7 +87,7 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
-            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled,
+            usageProviderMode: usageProviderMode,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -116,7 +116,7 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
-            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled,
+            usageProviderMode: usageProviderMode,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -152,11 +152,15 @@ struct UsageMonitorState: Equatable {
     }
 
     var phase: UsagePressurePhase {
-        guard claudeRunnerPreviewEnabled,
-              let claudeUsedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
+        switch usageProviderMode {
+        case .codex:
             return codexPhase
+        case .claude:
+            guard let usedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
+                return .calm
+            }
+            return UsagePressurePhase(usedPercent: usedPercent)
         }
-        return UsagePressurePhase(usedPercent: claudeUsedPercent)
     }
 
     var petReaction: PetStatusReaction {
@@ -232,6 +236,15 @@ struct UsageMonitorState: Equatable {
     }
 
     func nextResetGlance(now: Date = Date()) -> String? {
+        switch usageProviderMode {
+        case .codex:
+            return codexNextResetGlance(now: now)
+        case .claude:
+            return claudeNextResetGlance(now: now)
+        }
+    }
+
+    private func codexNextResetGlance(now: Date) -> String? {
         let candidates = [
             UsageWindowStatus(label: "5시간", window: codexLimit?.fiveHour),
             UsageWindowStatus(label: "주간", window: codexLimit?.weekly)
@@ -249,6 +262,21 @@ struct UsageMonitorState: Equatable {
 
         guard let next = candidates.first else { return nil }
         return "다음 초기화: \(next.label) \(Self.relativeDuration(next.remainingSeconds))"
+    }
+
+    private func claudeNextResetGlance(now: Date) -> String? {
+        let candidates: [(label: String, resetsAt: Int?)] = [
+            ("5시간", claudeUsagePreview.usage?.fiveHour?.resetsAt),
+            ("7일", claudeUsagePreview.usage?.sevenDay?.resetsAt)
+        ]
+        let next = candidates.compactMap { candidate -> (String, Int)? in
+            guard let resetsAt = candidate.resetsAt else { return nil }
+            let remaining = Int(ceil(Date(timeIntervalSince1970: TimeInterval(resetsAt)).timeIntervalSince(now)))
+            return remaining > 0 ? (candidate.label, remaining) : nil
+        }
+        .min { $0.1 < $1.1 }
+        guard let next else { return nil }
+        return "다음 초기화: \(next.0) \(Self.relativeDuration(next.1))"
     }
 
     var codexDataStatus: CodexUsageDataStatus {
@@ -334,6 +362,15 @@ struct UsageMonitorState: Equatable {
     }
 
     var toolTip: String {
+        switch usageProviderMode {
+        case .codex:
+            return codexToolTip
+        case .claude:
+            return claudeToolTip
+        }
+    }
+
+    private var codexToolTip: String {
         if isRefreshing, codexLimit == nil {
             return "코덱스 사용량 새로고침 중"
         }
@@ -344,6 +381,16 @@ struct UsageMonitorState: Equatable {
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
         let motion = animationPaused ? ", 일시 정지" : ""
         return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"
+    }
+
+    private var claudeToolTip: String {
+        let motion = animationPaused ? ", 일시 정지" : ""
+        guard let usage = claudeUsagePreview.usage else {
+            return "Claude 사용량: \(claudeUsagePreview.statusTitle)\(motion)"
+        }
+        let fiveHour = usage.fiveHour.map { "\(Self.percent($0.usedPercent ?? 0))% 5시간" } ?? "5시간 확인 불가"
+        let sevenDay = usage.sevenDay.map { "\(Self.percent($0.usedPercent ?? 0))% 7일" } ?? "7일 확인 불가"
+        return "Claude 사용량: \(fiveHour), \(sevenDay)\(motion)"
     }
 
     static func percent(_ value: Double) -> String {

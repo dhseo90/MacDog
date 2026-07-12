@@ -39,7 +39,7 @@ enum UsageNotificationAuthorizationStatus: Equatable, Sendable {
 }
 
 enum UsageNotificationSettingsCopy {
-    static let usageToggleTitle = "Codex 사용량 알림"
+    static let usageToggleTitle = "사용량 알림"
     static let resetSoonToggleTitle = "회복 30분 전 알림"
 }
 

@@ -9,13 +9,23 @@ CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageCache.swift"
 HISTORY_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageHistory.swift"
 BRIDGE_SOURCE="$ROOT_DIR/Sources/ClaudeUsageBridgeCLI/main.swift"
 PRIVACY_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/ClaudeUsagePrivacyTests.swift"
+PREFERENCES_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift"
+STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
+CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
+POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
+SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
+REFRESH_SOURCE="$ROOT_DIR/Sources/MacDog/CodexUsageCacheRefreshPolicy.swift"
+STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
+REFRESH_TEST="$ROOT_DIR/Tests/MacDogTests/CodexUsageCacheRefreshPolicyTests.swift"
+NOTIFICATION_TEST="$ROOT_DIR/Tests/MacDogTests/UsageNotificationDeliveryTests.swift"
+POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
 RUN_TESTS=1
 
 usage() {
   cat <<USAGE
 usage: $0 [--self-test] [--skip-tests]
 
-Verify the reusable Claude backend and selected-provider v1.8.0 planning contract.
+Verify the reusable Claude backend and selected-provider v1.8.0 product contract.
 This script does not read Claude settings, auth stores, Keychain, or transcripts,
 use the network, run GUI apps, install components, or push.
 USAGE
@@ -49,7 +59,9 @@ reject_match() {
 verify_contract() {
   local file
   for file in "$ROADMAP" "$DOC" "$SNAPSHOT_SOURCE" "$CACHE_SOURCE" "$HISTORY_SOURCE" \
-    "$BRIDGE_SOURCE" "$PRIVACY_TEST"; do
+    "$BRIDGE_SOURCE" "$PRIVACY_TEST" "$PREFERENCES_SOURCE" "$STATE_SOURCE" \
+    "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$REFRESH_SOURCE" \
+    "$STATE_TEST" "$REFRESH_TEST" "$NOTIFICATION_TEST" "$POPOVER_TEST"; do
     require_file "$file"
   done
   [[ -x "$ROOT_DIR/script/verify_v180_selected_provider_contract.sh" ]] || \
@@ -80,6 +92,40 @@ verify_contract() {
   reject_match 'Process\(|/bin/zsh|--existing-command|MACDOG_CLAUDE_CACHE_PATH' "$BRIDGE_SOURCE" \
     "raw passthrough or production path override"
   require_match 'session-secret-123' "$PRIVACY_TEST" "privacy sentinel"
+
+  require_match 'usageProviderModeKey' "$PREFERENCES_SOURCE" "single provider preference key"
+  require_match 'migrateUsageProviderMode' "$PREFERENCES_SOURCE" "provider preference migration"
+  require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
+    "canonical provider mode"
+  require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
+  require_match 'case \.claude:' "$STATE_SOURCE" "Claude runner state"
+  require_match 'return \.calm' "$STATE_SOURCE" "no fallback runner state"
+  require_match 'UsageNotificationRoute\(mode: loadedState\.usageProviderMode\)' "$CONTROLLER_SOURCE" \
+    "selected notification route"
+  require_match 'shouldRunLiveRefresh\(for mode: UsageProviderMode\)' "$REFRESH_SOURCE" \
+    "selected refresh policy"
+  require_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "single settings mode picker"
+  require_match 'state\.usageProviderMode == \.claude' "$POPOVER_SOURCE" "selected usage tab"
+
+  require_match 'testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys' \
+    "$STATE_TEST" "migration regression test"
+  require_match 'testSelectedProviderModeIsTheOnlyRunnerSourceAndNeverFallsBack' \
+    "$STATE_TEST" "no fallback regression test"
+  require_match 'testLiveCodexRefreshRunsOnlyInCodexMode' "$REFRESH_TEST" \
+    "refresh routing regression test"
+  require_match 'testNotificationRouteSelectsExactlyOneProvider' "$NOTIFICATION_TEST" \
+    "notification routing regression test"
+  require_match 'testSelectedProviderUIUsesOnlySettingsModePicker' "$POPOVER_TEST" \
+    "single picker regression test"
+
+  for file in "$STATE_SOURCE" "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE"; do
+    reject_match 'claudeUsagePreviewEnabled|usagePreviewProvider|claudeRunnerPreviewEnabled|claudeUsageNotificationsEnabled' \
+      "$file" "legacy provider preference use"
+    reject_match 'Claude Usage Preview|Claude Preview 사용|러너 반영|Claude 알림|Picker\("사용량 provider"' \
+      "$file" "removed preview UI"
+  done
+
+  "$ROOT_DIR/script/verify_v170_codex_pacemaker_contract.sh" --skip-tests
 }
 
 run_focused_tests() {
@@ -88,7 +134,12 @@ run_focused_tests() {
     /usr/bin/xcrun swift test \
       --filter ClaudeStatusLineSnapshotTests \
       --filter ClaudeUsageCacheTests \
-      --filter ClaudeUsagePrivacyTests
+      --filter ClaudeUsagePrivacyTests \
+      --filter UsageMonitorStateTests \
+      --filter CodexUsageCacheRefreshPolicyTests \
+      --filter UsageNotificationDeliveryTests \
+      --filter UsageNotificationSettingsTests \
+      --filter PopoverScreenshotRendererTests
 }
 
 verify_synthetic_bridge() {

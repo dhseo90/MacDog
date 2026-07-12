@@ -68,4 +68,9 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
             force: false
         ))
     }
+
+    func testLiveCodexRefreshRunsOnlyInCodexMode() {
+        XCTAssertTrue(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .codex))
+        XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude))
+    }
 }

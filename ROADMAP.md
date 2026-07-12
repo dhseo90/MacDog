@@ -404,9 +404,10 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 두 provider 동시 사용을 고려하지 않으며 합산, 비교, 자동 fallback을 구현하지 않습니다.
 
 구현 상태: v1.7 plan transition/epoch runtime·UI 제거, legacy file inert 보존, 1/7 day 페이스메이커,
-5시간 단기 pace와 알림 focused test까지 완료했습니다. Claude sanitizer/cache/history backend와
-fixture 자동검증은 존재하지만 Claude Preview 설정 UI 및 동시 provider 전제 기능은 재작업해야 합니다.
-실제 Claude 구독 `rate_limits` event는 아직 live 검수하지 않았습니다.
+5시간 단기 pace와 알림 focused test를 완료했습니다. 단일 `usageProviderMode` preference와 Codex 기본
+migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
+test로 연결했습니다. Claude sanitizer/cache/history backend와 fixture 자동검증은 존재합니다. Claude
+잔여율 표시·cache 없음 연결 UI, 설치/패키징 gate와 실제 Claude 구독 `rate_limits` live 검수는 남았습니다.
 
 구현 순서:
 

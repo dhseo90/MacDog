@@ -1,7 +1,7 @@
 import CodexUsageCore
 import Foundation
 
-enum UsagePreviewProvider: String, CaseIterable, Identifiable {
+enum UsageProviderMode: String, CaseIterable, Identifiable {
     case codex
     case claude
 
@@ -10,7 +10,7 @@ enum UsagePreviewProvider: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .codex: "Codex"
-        case .claude: "Claude Preview"
+        case .claude: "Claude"
         }
     }
 }
@@ -42,26 +42,14 @@ struct ClaudeUsagePreviewState: Equatable {
     }
 
     var statusTitle: String {
-        if !isEnabled { return "Preview 꺼짐" }
+        if !isEnabled { return "연결 대기" }
         if loadIssue != nil { return "cache 확인 필요" }
         switch cacheSnapshot?.status() ?? .waiting {
         case .waiting: return "연결 대기"
         case .partial: return "일부 window 수신"
-        case .available: return "Preview 데이터 정상"
+        case .available: return "데이터 정상"
         case .stale: return "오래된 event"
         case .error: return "sanitize bridge 오류"
-        }
-    }
-}
-
-enum ClaudeStatusLineConnectionState: Equatable {
-    case previewDisabled
-    case manualReviewRequired
-
-    var title: String {
-        switch self {
-        case .previewDisabled: "연결하지 않음"
-        case .manualReviewRequired: "수동 연결 검토 필요"
         }
     }
 }
@@ -71,10 +59,6 @@ struct ClaudeStatusLineConnectionGuide: Equatable {
 
     var standaloneCommand: String {
         "\"\(bridgePath)\""
-    }
-
-    var mergeCommandPreview: String {
-        "기존 command 보존 + \"\(bridgePath)\" · 감사된 stdin fan-out wrapper 필요"
     }
 
     static var bundled: ClaudeStatusLineConnectionGuide {

@@ -5,7 +5,6 @@ import SwiftUI
 
 struct SettingsPanel: View {
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
-    let claudeUsagePreview: ClaudeUsagePreviewState
     let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
     let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
@@ -16,9 +15,7 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.loginLaunchEnabledKey) private var loginLaunchEnabled = RunnerPreferences.defaultLoginLaunchEnabled
     @AppStorage(RunnerPreferences.usageNotificationsEnabledKey) private var usageNotificationsEnabled = RunnerPreferences.defaultUsageNotificationsEnabled
     @AppStorage(RunnerPreferences.usageResetSoonNotificationsEnabledKey) private var usageResetSoonNotificationsEnabled = RunnerPreferences.defaultUsageResetSoonNotificationsEnabled
-    @AppStorage(RunnerPreferences.claudeUsagePreviewEnabledKey) private var claudeUsagePreviewEnabled = RunnerPreferences.defaultClaudeUsagePreviewEnabled
-    @AppStorage(RunnerPreferences.claudeRunnerPreviewEnabledKey) private var claudeRunnerPreviewEnabled = RunnerPreferences.defaultClaudeRunnerPreviewEnabled
-    @AppStorage(RunnerPreferences.claudeUsageNotificationsEnabledKey) private var claudeUsageNotificationsEnabled = RunnerPreferences.defaultClaudeUsageNotificationsEnabled
+    @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw = RunnerPreferences.defaultUsageProviderMode.rawValue
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
     @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
@@ -27,13 +24,11 @@ struct SettingsPanel: View {
 
     init(
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot,
-        claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
         onAction: @escaping (PetAction) -> Void,
         onPreferencesChanged: @escaping () -> Void,
         notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
     ) {
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
-        self.claudeUsagePreview = claudeUsagePreview
         self.onAction = onAction
         self.onPreferencesChanged = onPreferencesChanged
         self.notificationAuthorizationClient = notificationAuthorizationClient
@@ -68,23 +63,23 @@ struct SettingsPanel: View {
 
             Divider()
 
+            PopoverFormSection(title: "사용량", systemImage: "gauge.with.dots.needle.33percent") {
+                Picker("사용량 mode", selection: $usageProviderModeRaw) {
+                    ForEach(UsageProviderMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+            }
+
+            Divider()
+
             PopoverFormSection(title: "알림", systemImage: "bell.badge") {
                 UsageNotificationSettingsContent(
                     snapshot: notificationSettingsSnapshot,
                     usageNotificationsEnabled: $usageNotificationsEnabled,
                     resetSoonNotificationsEnabled: $usageResetSoonNotificationsEnabled
-                )
-            }
-
-            Divider()
-
-            PopoverFormSection(title: "Claude Usage Preview", systemImage: "sparkles") {
-                ClaudeUsagePreviewSettingsContent(
-                    preview: claudeUsagePreview,
-                    previewEnabled: $claudeUsagePreviewEnabled,
-                    runnerEnabled: $claudeRunnerPreviewEnabled,
-                    notificationsEnabled: $claudeUsageNotificationsEnabled,
-                    masterNotificationsEnabled: usageNotificationsEnabled
                 )
             }
 
@@ -164,20 +159,10 @@ struct SettingsPanel: View {
             RunnerPreferences.setUsageResetSoonNotificationsEnabled(enabled)
             deferredPreferencesChanged()
         }
-        .onChange(of: claudeUsagePreviewEnabled) { _, enabled in
-            RunnerPreferences.setClaudeUsagePreviewEnabled(enabled)
-            if !enabled {
-                claudeRunnerPreviewEnabled = false
-                claudeUsageNotificationsEnabled = false
-            }
-            deferredPreferencesChanged()
-        }
-        .onChange(of: claudeRunnerPreviewEnabled) { _, enabled in
-            RunnerPreferences.setClaudeRunnerPreviewEnabled(enabled)
-            deferredPreferencesChanged()
-        }
-        .onChange(of: claudeUsageNotificationsEnabled) { _, enabled in
-            RunnerPreferences.setClaudeUsageNotificationsEnabled(enabled)
+        .onChange(of: usageProviderModeRaw) { _, rawValue in
+            RunnerPreferences.setUsageProviderMode(
+                UsageProviderMode(rawValue: rawValue) ?? .codex
+            )
             deferredPreferencesChanged()
         }
     }
@@ -213,106 +198,6 @@ struct SettingsPanel: View {
     @MainActor
     private func requestNotificationAuthorization() async {
         notificationAuthorizationStatus = await notificationAuthorizationClient.requestAuthorization()
-    }
-}
-
-private struct ClaudeUsagePreviewSettingsContent: View {
-    let preview: ClaudeUsagePreviewState
-    @Binding var previewEnabled: Bool
-    @Binding var runnerEnabled: Bool
-    @Binding var notificationsEnabled: Bool
-    let masterNotificationsEnabled: Bool
-
-    private let guide = ClaudeStatusLineConnectionGuide.bundled
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Toggle("Claude Preview 사용", isOn: $previewEnabled)
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .font(.caption2.weight(.medium))
-                Spacer(minLength: 0)
-                Text(previewEnabled ? preview.statusTitle : "기본 꺼짐")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
-
-            Text((previewEnabled
-                ? ClaudeStatusLineConnectionState.manualReviewRequired
-                : .previewDisabled).title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Text("기존 Claude statusLine 설정과 auth store를 읽거나 덮어쓰지 않습니다.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if previewEnabled {
-                HStack(spacing: 12) {
-                    Toggle("러너 반영", isOn: $runnerEnabled)
-                        .toggleStyle(.checkbox)
-                    Toggle("Claude 알림", isOn: $notificationsEnabled)
-                        .toggleStyle(.checkbox)
-                        .disabled(!masterNotificationsEnabled)
-                }
-                .controlSize(.small)
-                .font(.caption2.weight(.medium))
-
-                if !masterNotificationsEnabled {
-                    Text("Claude 알림은 위의 기본 사용량 알림을 먼저 켜야 합니다.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                connectionCommand(
-                    title: "statusLine command",
-                    command: guide.standaloneCommand
-                )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("기존 command 병합 preview")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text(guide.mergeCommandPreview)
-                        .font(.system(size: 9, design: .monospaced))
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.72)
-                }
-                .padding(5)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.04)))
-
-                Text("기존 command가 있으면 자동 교체하지 않습니다. raw JSON을 shell command로 중계하지 말고, 별도 감사된 wrapper가 준비되기 전에는 standalone 연결을 선택하세요. 복구 시 원래 command를 그대로 되돌립니다.")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    private func connectionCommand(title: String, command: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("복사") {
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(command, forType: .string)
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 9, weight: .semibold))
-            }
-            Text(command)
-                .font(.system(size: 9, design: .monospaced))
-                .textSelection(.enabled)
-                .lineLimit(2)
-                .minimumScaleFactor(0.72)
-        }
-        .padding(5)
-        .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.04)))
     }
 }
 

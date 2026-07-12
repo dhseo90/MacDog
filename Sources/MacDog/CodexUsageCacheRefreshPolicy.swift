@@ -6,4 +6,8 @@ enum CodexUsageCacheRefreshPolicy {
     static let requestTimeout: TimeInterval = 15
     static let processTimeout: TimeInterval = 17
     static let minimumRetryInterval: TimeInterval = 60
+
+    static func shouldRunLiveRefresh(for mode: UsageProviderMode) -> Bool {
+        mode == .codex
+    }
 }

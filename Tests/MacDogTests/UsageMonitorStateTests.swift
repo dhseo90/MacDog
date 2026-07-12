@@ -43,39 +43,58 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
-    func testClaudeRunnerPreviewOnlyAffectsRunnerWhenFreshAndOptedIn() {
+    func testSelectedProviderModeIsTheOnlyRunnerSourceAndNeverFallsBack() {
         let now = Int(Date().timeIntervalSince1970)
         let preview = Self.claudePreview(observedAt: now, usedPercent: 96)
-        let optedIn = UsageMonitorState(
+        let claudeMode = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true,
+            usageProviderMode: .claude,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
-        let optedOut = UsageMonitorState(
+        let codexMode = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: false,
+            usageProviderMode: .codex,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
         let stale = UsageMonitorState(
-            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: Self.claudePreview(observedAt: now - 1_000, usedPercent: 99),
-            claudeRunnerPreviewEnabled: true,
+            usageProviderMode: .claude,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
 
-        XCTAssertEqual(optedIn.phase, .sprint)
-        XCTAssertEqual(optedIn.codexPhase, .calm)
-        XCTAssertEqual(optedOut.phase, .calm)
+        XCTAssertEqual(claudeMode.phase, .sprint)
+        XCTAssertEqual(claudeMode.codexPhase, .calm)
+        XCTAssertEqual(codexMode.phase, .calm)
         XCTAssertEqual(stale.phase, .calm)
-        XCTAssertEqual(optedIn.codexPanelSummary()?.statusTitle, optedIn.codexPhase.statusLabel)
+        XCTAssertEqual(stale.codexPhase, .sprint)
+        XCTAssertEqual(claudeMode.codexPanelSummary()?.statusTitle, claudeMode.codexPhase.statusLabel)
+    }
+
+    func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
+        let now = 1_900_000_000
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now, usedPercent: 40),
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertTrue(state.toolTip.hasPrefix("Claude 사용량:"))
+        XCTAssertFalse(state.toolTip.contains("코덱스"))
+        XCTAssertTrue(state.nextResetGlance(
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )?.contains("5시간") == true)
     }
 
     func testRunnerPhaseCapturesFreshnessUntilNextStateLoad() {
@@ -86,7 +105,7 @@ final class UsageMonitorStateTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true,
+            usageProviderMode: .claude,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 899))
         )
         let afterStale = UsageMonitorState(
@@ -94,7 +113,7 @@ final class UsageMonitorStateTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true,
+            usageProviderMode: .claude,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 901))
         )
 
@@ -103,7 +122,7 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(beforeStale.phase, .sprint, "old state must keep its captured phase for timer comparison")
     }
 
-    func testStateCopiesPreserveClaudePreview() {
+    func testStateCopiesPreserveUsageProviderMode() {
         let now = Int(Date().timeIntervalSince1970)
         let preview = Self.claudePreview(observedAt: now, usedPercent: 55)
         let state = UsageMonitorState(
@@ -111,12 +130,12 @@ final class UsageMonitorStateTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             claudeUsagePreview: preview,
-            claudeRunnerPreviewEnabled: true,
+            usageProviderMode: .claude,
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
         )
 
         XCTAssertEqual(state.withRefreshing(true).claudeUsagePreview, preview)
-        XCTAssertTrue(state.withRefreshing(true).claudeRunnerPreviewEnabled)
+        XCTAssertEqual(state.withRefreshing(true).usageProviderMode, .claude)
         XCTAssertEqual(
             state.withSystemMetrics(
                 .unavailable,
@@ -128,28 +147,37 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
-    func testClaudePreviewPreferencesDefaultOffAndDisableDependentFeatures() throws {
+    func testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys() throws {
         let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "claudeUsagePreviewEnabled")
+        defaults.set("claude", forKey: "usagePreviewProvider")
+        defaults.set(true, forKey: "claudeRunnerPreviewEnabled")
+        defaults.set(true, forKey: "claudeUsageNotificationsEnabled")
         RunnerPreferences.registerDefaults(defaults: defaults)
 
-        var preferences = RunnerPreferences(defaults: defaults)
-        XCTAssertFalse(preferences.claudeUsagePreviewEnabled)
-        XCTAssertEqual(preferences.usagePreviewProvider, .codex)
-        XCTAssertFalse(preferences.claudeRunnerPreviewEnabled)
-        XCTAssertFalse(preferences.claudeUsageNotificationsEnabled)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
+        XCTAssertNil(defaults.object(forKey: "claudeUsagePreviewEnabled"))
+        XCTAssertNil(defaults.object(forKey: "usagePreviewProvider"))
+        XCTAssertNil(defaults.object(forKey: "claudeRunnerPreviewEnabled"))
+        XCTAssertNil(defaults.object(forKey: "claudeUsageNotificationsEnabled"))
+    }
 
-        RunnerPreferences.setClaudeUsagePreviewEnabled(true, defaults: defaults)
-        RunnerPreferences.setUsagePreviewProvider(.claude, defaults: defaults)
-        RunnerPreferences.setClaudeRunnerPreviewEnabled(true, defaults: defaults)
-        RunnerPreferences.setClaudeUsageNotificationsEnabled(true, defaults: defaults)
-        RunnerPreferences.setClaudeUsagePreviewEnabled(false, defaults: defaults)
-        preferences = RunnerPreferences(defaults: defaults)
+    func testUsageProviderMigrationPreservesValidModeAndNormalizesInvalidMode() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
 
-        XCTAssertEqual(preferences.usagePreviewProvider, .codex)
-        XCTAssertFalse(preferences.claudeRunnerPreviewEnabled)
-        XCTAssertFalse(preferences.claudeUsageNotificationsEnabled)
+        defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+
+        defaults.set("invalid", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
     }
 
     func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {

@@ -186,6 +186,22 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(graphSource.contains("P90"))
     }
 
+    func testSelectedProviderUIUsesOnlySettingsModePicker() throws {
+        let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
+        let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
+        let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
+
+        XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
+        XCTAssertTrue(settingsSource.contains("UsageProviderMode.allCases"))
+        XCTAssertFalse(settingsSource.contains("Claude Usage Preview"))
+        XCTAssertFalse(settingsSource.contains("Claude Preview 사용"))
+        XCTAssertFalse(settingsSource.contains("러너 반영"))
+        XCTAssertFalse(settingsSource.contains("Claude 알림"))
+        XCTAssertFalse(popoverSource.contains("Picker(\"사용량 provider\""))
+        XCTAssertTrue(popoverSource.contains("state.usageProviderMode == .claude"))
+        XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
+    }
+
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
         let state = UsageMonitorState(
             report: Self.codexReportWithResetCredits(Self.resetCredits(count: 6, shuffled: true)),
@@ -429,7 +445,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.chargeLimitTargetPercentKey,
             RunnerPreferences.loginLaunchEnabledKey,
             RunnerPreferences.usageNotificationsEnabledKey,
-            RunnerPreferences.usageResetSoonNotificationsEnabledKey
+            RunnerPreferences.usageResetSoonNotificationsEnabledKey,
+            RunnerPreferences.usageProviderModeKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -614,6 +631,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
         RunnerPreferences.setSleepPreventionControlMode(.off, defaults: defaults)
+        RunnerPreferences.setUsageProviderMode(.codex, defaults: defaults)
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
         if module == .sleep {

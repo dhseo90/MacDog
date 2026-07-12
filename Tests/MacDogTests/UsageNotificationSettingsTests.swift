@@ -52,7 +52,7 @@ final class UsageNotificationSettingsTests: XCTestCase {
             ready.deliveryStatusDetail,
             "일일·누적 페이스, 80%, 95%, 한도 도달, 회복 30분 전 기준을 확인합니다."
         )
-        XCTAssertEqual(ready.visibleControlTitles, ["Codex 사용량 알림", "회복 30분 전 알림"])
+        XCTAssertEqual(ready.visibleControlTitles, ["사용량 알림", "회복 30분 전 알림"])
         XCTAssertEqual(UsageNotificationSettingsCopy.resetSoonToggleTitle, "회복 30분 전 알림")
         XCTAssertFalse(ready.visibleControlTitles.contains("테스트 알림"))
     }
