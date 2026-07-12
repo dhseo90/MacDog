@@ -64,7 +64,7 @@ verify_contract() {
   require_match 'GitHub tag verification.*`Verified`' "$DOC" "GitHub verified tag rule"
   require_match 'Release Candidate' "$DOC" "release candidate step"
   require_match 'MacDog-1\.8\.0\.dmg.*MacDog-1\.8\.0\.dmg\.sha256' "$DOC" "artifact pair"
-  require_match 'isDraft=true.*isPrerelease=false.*targetCommitish' "$DOC" "draft state gate"
+  require_match 'isDraft=true.*isPrerelease=false.*signed tag target SHA' "$DOC" "draft state gate"
   require_match 'rate_limits\.five_hour.*seven_day' "$DOC" "live Claude rate limits"
   require_match 'Claude settings, auth store, Keychain, transcript.*읽거나 저장하지' "$DOC" \
     "live privacy boundary"
@@ -91,15 +91,15 @@ verify_contract() {
   require_match '--verify-tag' "$DRAFT_WORKFLOW" "pre-existing release tag gate"
   require_match 'verification\.verified' "$DRAFT_WORKFLOW" "draft tag verification gate"
   require_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION' "$DRAFT_WORKFLOW" "version and tag identity gate"
-  require_match '--target "\$GITHUB_SHA"' "$DRAFT_WORKFLOW" "draft target identity"
-  require_match 'gh api --method PATCH' "$DRAFT_WORKFLOW" "draft target metadata update"
-  require_match 'target_commitish="\$GITHUB_SHA"' "$DRAFT_WORKFLOW" "explicit target metadata"
   require_match 'gh release delete "\$MACDOG_TAG" --yes' "$DRAFT_WORKFLOW" \
     "failed draft cleanup without tag deletion"
-  require_match 'target_commitish' "$DRAFT_WORKFLOW" "draft target readback"
+  require_match 'target_sha.*GITHUB_SHA' "$DRAFT_WORKFLOW" "signed tag target identity readback"
+  require_match 'target_commitish.*informational' "$DRAFT_WORKFLOW" "informational target metadata readback"
   require_match 'asset_names' "$DRAFT_WORKFLOW" "draft asset readback"
   require_match 'is_draft.*true.*is_prerelease.*false' "$DRAFT_WORKFLOW" "draft state readback"
   require_match 'verification_complete=1' "$DRAFT_WORKFLOW" "successful draft verification marker"
+  require_absent_match '--target "\$GITHUB_SHA"|target_commitish="\$GITHUB_SHA"|gh api --method PATCH' \
+    "$DRAFT_WORKFLOW" "unsupported existing-tag target metadata mutation"
   require_match 'unsigned/ad-hoc 배포' "$PACKAGE_SCRIPT" "publish-safe unsigned release note"
   require_absent_match '릴리즈 후보' "$PACKAGE_SCRIPT" "stale release candidate copy"
 

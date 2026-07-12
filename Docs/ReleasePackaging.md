@@ -31,9 +31,10 @@
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관합니다.
 - `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력, `tag == v<version>`, 기존
   signed/Verified tag의 release head 일치를 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft
-  release에 첨부합니다. 기존 tag와 별개인 release `target_commitish`도 release head SHA로 명시하고,
-  생성 후 draft/prerelease/target/tag/asset 두 개를 다시 읽어 확인합니다. metadata 갱신이나 readback이
-  실패하면 방금 생성한 draft release만 삭제하고 signed tag는 보존합니다.
+  release에 첨부합니다. 기존 tag가 있으면 `target_commitish`는 release identity로 사용되지 않으므로
+  정보로만 기록하고, signed annotated tag를 역참조한 commit SHA를 release head와 다시 대조합니다.
+  생성 후 draft/prerelease/tag target/tag/asset 두 개를 확인하며 readback이 실패하면 방금 생성한
+  draft release만 삭제하고 signed tag는 보존합니다.
 - `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload의 app/CLI/Claude bridge 구조, Applications symlink, version별 release note와 지원 범위, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
@@ -123,7 +124,7 @@
 9. `Release Candidate` workflow와 `Draft Release` workflow를 최신 release head 기준으로 실행합니다.
 10. 최신 release head에 대해 signed annotated tag를 만들고 push한 뒤 GitHub에서 tag가 `Verified`인지 확인합니다.
 11. workflow 또는 `gh release create`가 unsigned/lightweight tag를 자동 생성하지 않도록 `--verify-tag` 또는 동등한 검증을 사용합니다.
-12. artifact, checksum, draft `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+12. artifact, checksum, draft `isDraft`, `isPrerelease`, signed tag target SHA, asset 목록을 확인합니다.
 13. GitHub Releases 화면에서 stale draft가 아니고 tag가 `Verified`임을 확인한 뒤 publish합니다.
 14. publish 후 `isDraft=false`, 원격 tag, tag `Verified` 상태를 확인합니다.
 15. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.

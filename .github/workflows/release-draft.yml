@@ -94,33 +94,17 @@ jobs:
           MACDOG_VERSION: ${{ inputs.version }}
           MACDOG_TAG: ${{ inputs.tag }}
         run: |
-          draft_created=0
-          keep_draft=0
-          cleanup_failed_draft() {
-            if [[ "$draft_created" == "1" && "$keep_draft" != "1" ]]; then
-              gh release delete "$MACDOG_TAG" --yes || true
-            fi
-          }
-          trap cleanup_failed_draft EXIT
-
           args=(
             release create "$MACDOG_TAG"
             "dist/release/MacDog-$MACDOG_VERSION.dmg"
             "dist/release/MacDog-$MACDOG_VERSION.dmg.sha256"
             --draft
             --verify-tag
-            --target "$GITHUB_SHA"
             --title "MacDog $MACDOG_VERSION"
             --notes-file "dist/release/MacDog-$MACDOG_VERSION-release-notes.md"
           )
 
           gh "${args[@]}"
-          draft_created=1
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.id')"
-          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" \
-            -f target_commitish="$GITHUB_SHA" \
-            --silent
-          keep_draft=1
 
       - name: Verify draft GitHub Release
         env:
@@ -140,6 +124,9 @@ jobs:
           is_prerelease="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.prerelease')"
           target_commitish="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.target_commitish')"
           tag_name="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.tag_name')"
+          tag_object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$MACDOG_TAG" --jq '.object.sha')"
+          target_type="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.type')"
+          target_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.sha')"
           asset_names="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '[.assets[].name] | sort | join(",")')"
           expected_assets="MacDog-$MACDOG_VERSION.dmg,MacDog-$MACDOG_VERSION.dmg.sha256"
 
@@ -147,10 +134,11 @@ jobs:
             echo "Draft release state mismatch. draft=$is_draft prerelease=$is_prerelease" >&2
             exit 1
           fi
-          if [[ "$target_commitish" != "$GITHUB_SHA" || "$tag_name" != "$MACDOG_TAG" ]]; then
-            echo "Draft release identity mismatch. target=$target_commitish head=$GITHUB_SHA tag=$tag_name expected=$MACDOG_TAG" >&2
+          if [[ "$target_type" != "commit" || "$target_sha" != "$GITHUB_SHA" || "$tag_name" != "$MACDOG_TAG" ]]; then
+            echo "Draft release identity mismatch. tag_target=$target_sha head=$GITHUB_SHA type=$target_type tag=$tag_name expected=$MACDOG_TAG" >&2
             exit 1
           fi
+          echo "Draft release target_commitish is informational for an existing tag: $target_commitish"
           if [[ "$asset_names" != "$expected_assets" ]]; then
             echo "Draft release assets mismatch. actual=$asset_names expected=$expected_assets" >&2
             exit 1

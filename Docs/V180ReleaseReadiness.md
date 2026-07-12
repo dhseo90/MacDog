@@ -59,8 +59,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 5. GitHub tag verification이 `Verified`인지 확인합니다.
 6. 이미 존재하는 signed tag를 사용해 `Draft Release` workflow를 실행합니다. workflow가 tag를
    자동 생성하게 두지 않습니다.
-7. draft의 `isDraft=true`, `isPrerelease=false`, `targetCommitish`, tag, 두 asset을 확인합니다.
-8. target과 asset이 최신 release head와 일치하고 tag가 `Verified`일 때만 publish합니다.
+7. draft의 `isDraft=true`, `isPrerelease=false`, signed tag target SHA, tag, 두 asset을 확인합니다.
+   기존 tag가 있는 release의 `targetCommitish`는 identity가 아니라 정보로만 기록합니다.
+8. signed tag target과 asset이 최신 release head와 일치하고 tag가 `Verified`일 때만 publish합니다.
 9. publish 후 `isDraft=false`, asset download URL과 tag target을 다시 확인합니다.
 
 `Stable Release` workflow는 Developer ID signing, notarization과 App Group provisioning이 별도
@@ -121,14 +122,14 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 | 증거 | 현재 상태 |
 | --- | --- |
 | 전체 Swift test | 2026-07-13, 449개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
-| Xcode Debug no-sign build | 2026-07-12, 통과 |
-| `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run` | 2026-07-12, 통과 |
+| Xcode Debug no-sign build | 2026-07-13, 통과 |
+| `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run` | 2026-07-13, 통과 |
 | `main` branch protection | 2026-07-12, 승인 1회 / Code Owners / branch 최신화 / `static-gates` / `guardrails` / conversation resolution 확인 |
 | PR, CI, review | 미수행 |
 | 최종 `origin/main` release head | 미기록 |
 | signed annotated `v1.8.0` tag / GitHub `Verified` | 미수행 |
 | Release Candidate run / DMG checksum / `hdiutil verify` | 미수행 |
-| Draft `targetCommitish` / asset / state 확인 | 미수행 |
+| Draft signed tag target / asset / state 확인 | 미수행 |
 | 실제 Claude live smoke | 미수행 |
 | Published release와 재다운로드 검증 | 미수행 |
 | Finder drag-and-drop와 GUI smoke | 미수행 |
