@@ -12,8 +12,11 @@ struct UsageMonitorState: Equatable {
 
     let report: CodexUsageReport?
     let cacheSnapshot: CodexUsageCacheSnapshot?
+    let fiveHourUsageHistory: CodexUsageFiveHourHistory
     let weeklyUsageHistory: CodexUsageWeeklyHistory
     let resetWindowHistory: CodexUsageResetWindowHistory
+    let planTransitionConfiguration: CodexPlanTransitionConfiguration?
+    let planTransitionConfigurationError: String?
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
@@ -28,8 +31,11 @@ struct UsageMonitorState: Equatable {
     init(
         report: CodexUsageReport?,
         cacheSnapshot: CodexUsageCacheSnapshot?,
+        fiveHourUsageHistory: CodexUsageFiveHourHistory = .empty,
         weeklyUsageHistory: CodexUsageWeeklyHistory = .empty,
         resetWindowHistory: CodexUsageResetWindowHistory = .empty,
+        planTransitionConfiguration: CodexPlanTransitionConfiguration? = nil,
+        planTransitionConfigurationError: String? = nil,
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
         reducedMotion: Bool = false,
@@ -43,8 +49,11 @@ struct UsageMonitorState: Equatable {
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
+        self.fiveHourUsageHistory = fiveHourUsageHistory
         self.weeklyUsageHistory = weeklyUsageHistory
         self.resetWindowHistory = resetWindowHistory
+        self.planTransitionConfiguration = planTransitionConfiguration
+        self.planTransitionConfigurationError = planTransitionConfigurationError
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
@@ -61,8 +70,11 @@ struct UsageMonitorState: Equatable {
         UsageMonitorState(
             report: report,
             cacheSnapshot: cacheSnapshot,
+            fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
+            planTransitionConfiguration: planTransitionConfiguration,
+            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -86,8 +98,11 @@ struct UsageMonitorState: Equatable {
         UsageMonitorState(
             report: report,
             cacheSnapshot: cacheSnapshot,
+            fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
+            planTransitionConfiguration: planTransitionConfiguration,
+            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -103,6 +118,71 @@ struct UsageMonitorState: Equatable {
 
     var codexLimit: UsageLimitReport? {
         report?.codexLimit
+    }
+
+    func planTransitionScenario(now: Int = Int(Date().timeIntervalSince1970)) -> CodexPlanTransitionScenario? {
+        guard let planTransitionConfiguration else { return nil }
+        let fiveHourObservations = fiveHourUsageHistory.samples.compactMap { sample in
+            try? CodexPlanTransitionObservation(
+                window: .fiveHour,
+                windowStartedAt: sample.resetsAt - sample.windowDurationMins * 60,
+                windowEndedAt: sample.resetsAt,
+                recordedAt: sample.recordedAt,
+                planEpochID: sample.planEpochID,
+                usedPercent: sample.usedPercent
+            )
+        }
+        let weeklyObservations: [CodexPlanTransitionObservation] = resetWindowHistory.records.compactMap { record in
+            guard record.limitId == "codex", record.windowDurationMins == 10_080 else {
+                return nil
+            }
+            return try? CodexPlanTransitionObservation(
+                window: .weekly,
+                windowStartedAt: record.resetsAt - record.windowDurationMins * 60,
+                windowEndedAt: record.resetsAt,
+                recordedAt: record.generatedAt,
+                planEpochID: CodexPlanTransitionEpochs(
+                    configuration: planTransitionConfiguration
+                ).planEpochID(at: record.resetsAt - 1),
+                usedPercent: record.finalUsedPercent
+            )
+        }
+        return CodexPlanTransitionScenarioBuilder().scenario(
+            configuration: planTransitionConfiguration,
+            observations: fiveHourObservations + weeklyObservations,
+            now: now
+        )
+    }
+
+    func weeklyUsageHistoryForActivePlanEpoch(
+        at timestamp: Int
+    ) -> CodexUsageWeeklyHistory {
+        guard let configuration = planTransitionConfiguration,
+              configuration.confirmedTransitionAt != nil
+        else {
+            return weeklyUsageHistory
+        }
+        let epochs = CodexPlanTransitionEpochs(configuration: configuration)
+        let activeEpoch = epochs.target.contains(timestamp) ? epochs.target : epochs.current
+        return CodexUsageWeeklyHistory(samples: weeklyUsageHistory.samples.filter {
+            activeEpoch.contains($0.recordedAt)
+        })
+    }
+
+    func resetWindowHistoryForActivePlanEpoch(
+        at timestamp: Int
+    ) -> CodexUsageResetWindowHistory {
+        guard let configuration = planTransitionConfiguration,
+              configuration.confirmedTransitionAt != nil
+        else {
+            return resetWindowHistory
+        }
+        let epochs = CodexPlanTransitionEpochs(configuration: configuration)
+        let activeEpoch = epochs.target.contains(timestamp) ? epochs.target : epochs.current
+        return CodexUsageResetWindowHistory(records: resetWindowHistory.records.filter { record in
+            let startsAt = record.resetsAt - record.windowDurationMins * 60
+            return activeEpoch.contains(startsAt) && activeEpoch.contains(record.resetsAt - 1)
+        })
     }
 
     var phase: UsagePressurePhase {

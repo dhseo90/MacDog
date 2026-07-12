@@ -232,6 +232,20 @@ public struct CodexUsageCacheStore {
     ) throws -> CodexUsageCacheWriteResult {
         try report.validateRequiredCodexUsageWindows()
         let now = Int(dateProvider().timeIntervalSince1970)
+        let planConfigurationFileURL = CodexPlanTransitionConfigurationStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+        let planEpochID: String
+        if fileManager.fileExists(atPath: planConfigurationFileURL.path) {
+            let configuration = try CodexPlanTransitionConfigurationStore(
+                fileURL: planConfigurationFileURL,
+                fileManager: fileManager
+            ).read()
+            planEpochID = CodexPlanTransitionEpochs(configuration: configuration)
+                .planEpochID(at: now)
+        } else {
+            planEpochID = CodexUsageFiveHourHistorySample.legacyPlanEpochID
+        }
         let snapshot = CodexUsageCacheSnapshot(
             cachedAt: now,
             staleAfterSeconds: staleAfterSeconds,
@@ -239,6 +253,25 @@ public struct CodexUsageCacheStore {
             error: nil
         )
         try write(snapshot)
+        let fiveHourHistoryFileURL = CodexUsageFiveHourHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+        if let fiveHour = report.codexLimit?.fiveHour,
+           let windowDurationMins = fiveHour.windowDurationMins,
+           let resetsAt = fiveHour.resetsAt,
+           let sample = CodexUsageFiveHourHistorySample(
+               recordedAt: now,
+               windowDurationMins: windowDurationMins,
+               usedPercent: fiveHour.usedPercent,
+               resetsAt: resetsAt,
+               planEpochID: planEpochID
+           ) {
+            let historyStore = CodexUsageFiveHourHistoryStore(
+                fileURL: fiveHourHistoryFileURL,
+                fileManager: fileManager
+            )
+            try historyStore.append(sample)
+        }
         let historyFileURL = CodexUsageWeeklyHistoryStore.defaultFileURL(adjacentToCacheFileURL: fileURL)
         let resetWindowHistoryFileURL = CodexUsageResetWindowHistoryStore.defaultFileURL(
             adjacentToCacheFileURL: fileURL

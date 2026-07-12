@@ -9,9 +9,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
+    private let fiveHourHistoryStore = CodexUsageFiveHourHistoryStore(
+        fileURL: CodexUsageFiveHourHistoryStore.defaultFileURL()
+    )
     private let weeklyHistoryStore = CodexUsageWeeklyHistoryStore(fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL())
     private let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
         fileURL: CodexUsageResetWindowHistoryStore.defaultFileURL()
+    )
+    private let planTransitionConfigurationStore = CodexPlanTransitionConfigurationStore(
+        fileURL: CodexPlanTransitionConfigurationStore.defaultFileURL()
     )
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
@@ -336,8 +342,30 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
+        var fiveHourUsageHistory = (try? fiveHourHistoryStore.read()) ?? .empty
         let weeklyUsageHistory = (try? weeklyHistoryStore.read()) ?? .empty
         let resetWindowHistory = (try? resetWindowHistoryStore.read()) ?? .empty
+        let planConfigurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL()
+        let planTransitionConfiguration: CodexPlanTransitionConfiguration?
+        let planTransitionConfigurationError: String?
+        if FileManager.default.fileExists(atPath: planConfigurationURL.path) {
+            do {
+                let configuration = try planTransitionConfigurationStore.read()
+                _ = try CodexPlanTransitionSettingsPersistence.reconcile(
+                    configuration,
+                    historyStore: fiveHourHistoryStore
+                )
+                fiveHourUsageHistory = try fiveHourHistoryStore.read()
+                planTransitionConfiguration = configuration
+                planTransitionConfigurationError = nil
+            } catch {
+                planTransitionConfiguration = nil
+                planTransitionConfigurationError = "플랜 전환 설정 또는 history epoch를 동기화할 수 없습니다. 파일을 덮어쓰지 말고 복구가 필요합니다."
+            }
+        } else {
+            planTransitionConfiguration = nil
+            planTransitionConfigurationError = nil
+        }
 
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
@@ -345,8 +373,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     return UsageMonitorState(
                         report: nil,
                         cacheSnapshot: snapshot,
+                        fiveHourUsageHistory: fiveHourUsageHistory,
                         weeklyUsageHistory: weeklyUsageHistory,
                         resetWindowHistory: resetWindowHistory,
+                        planTransitionConfiguration: planTransitionConfiguration,
+                        planTransitionConfigurationError: planTransitionConfigurationError,
                         errorMessage: errorMessage ?? snapshot.error?.message ?? validationError.localizedDescription,
                         displayBasis: preferences.displayBasis,
                         reducedMotion: preferences.reducedMotion,
@@ -361,8 +392,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 return UsageMonitorState(
                     report: report,
                     cacheSnapshot: snapshot,
+                    fiveHourUsageHistory: fiveHourUsageHistory,
                     weeklyUsageHistory: weeklyUsageHistory,
                     resetWindowHistory: resetWindowHistory,
+                    planTransitionConfiguration: planTransitionConfiguration,
+                    planTransitionConfigurationError: planTransitionConfigurationError,
                     errorMessage: errorMessage ?? snapshot.error?.message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
@@ -378,8 +412,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             return UsageMonitorState(
                 report: nil,
                 cacheSnapshot: snapshot,
+                fiveHourUsageHistory: fiveHourUsageHistory,
                 weeklyUsageHistory: weeklyUsageHistory,
                 resetWindowHistory: resetWindowHistory,
+                planTransitionConfiguration: planTransitionConfiguration,
+                planTransitionConfigurationError: planTransitionConfigurationError,
                 errorMessage: errorMessage ?? snapshot.error?.message ?? "사용량 캐시가 아직 없습니다.",
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
@@ -395,8 +432,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         return UsageMonitorState(
             report: nil,
             cacheSnapshot: nil,
+            fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
+            planTransitionConfiguration: planTransitionConfiguration,
+            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,

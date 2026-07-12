@@ -8,6 +8,8 @@ struct WeeklyRemainingHistoryBlock: View {
     let weeklyWindow: UsageWindowReport?
     let currentReport: CodexUsageReport?
     let currentTimestamp: Int?
+    let planTransitionScenario: CodexPlanTransitionScenario?
+    let planTransitionConfiguration: CodexPlanTransitionConfiguration?
 
     @State private var selectedMode: CodexUsageHistoryGraphMode = .current
     @State private var selectedPastWindowID: String?
@@ -18,6 +20,8 @@ struct WeeklyRemainingHistoryBlock: View {
         weeklyWindow: UsageWindowReport?,
         currentReport: CodexUsageReport?,
         currentTimestamp: Int?,
+        planTransitionScenario: CodexPlanTransitionScenario? = nil,
+        planTransitionConfiguration: CodexPlanTransitionConfiguration? = nil,
         initialMode: CodexUsageHistoryGraphMode = .current,
         initialPastWindowID: String? = nil
     ) {
@@ -26,6 +30,8 @@ struct WeeklyRemainingHistoryBlock: View {
         self.weeklyWindow = weeklyWindow
         self.currentReport = currentReport
         self.currentTimestamp = currentTimestamp
+        self.planTransitionScenario = planTransitionScenario
+        self.planTransitionConfiguration = planTransitionConfiguration
         _selectedMode = State(initialValue: initialMode)
         _selectedPastWindowID = State(initialValue: initialPastWindowID)
     }
@@ -112,7 +118,8 @@ struct WeeklyRemainingHistoryBlock: View {
         CodexUsageGraphDisplay(
             mode: mode,
             currentChart: model.currentChart,
-            selectedSeries: selectedSeries
+            selectedSeries: selectedSeries,
+            epochBoundaryAt: planTransitionConfiguration?.confirmedTransitionAt
         )
     }
 
@@ -274,7 +281,9 @@ struct WeeklyRemainingHistoryBlock: View {
             for: CodexUsageGraphSnapshotView(
                 mode: mode,
                 currentChart: model.currentChart,
-                selectedSeries: selectedSeries
+                selectedSeries: selectedSeries,
+                planTransitionScenario: mode == .current ? planTransitionScenario : nil,
+                epochBoundaryAt: planTransitionConfiguration?.confirmedTransitionAt
             ),
             size: CodexUsageGraphImageExporter.defaultImageSize,
             scale: 2
@@ -392,11 +401,12 @@ private struct CodexUsageGraphDisplay: View {
     let mode: CodexUsageHistoryGraphMode
     let currentChart: WeeklyRemainingHistoryChart
     let selectedSeries: CodexUsageResetWindowOverlaySeries?
+    let epochBoundaryAt: Int?
 
     var body: some View {
         switch mode {
         case .current:
-            WeeklyRemainingHistoryGraph(chart: currentChart)
+            WeeklyRemainingHistoryGraph(chart: currentChart, epochBoundaryAt: epochBoundaryAt)
         case .past:
             if let selectedSeries {
                 ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
@@ -417,18 +427,24 @@ private struct CodexUsageGraphSnapshotView: View {
     let mode: CodexUsageHistoryGraphMode
     let currentChart: WeeklyRemainingHistoryChart
     let selectedSeries: CodexUsageResetWindowOverlaySeries?
+    let planTransitionScenario: CodexPlanTransitionScenario?
+    let epochBoundaryAt: Int?
 
     var body: some View {
         VStack(spacing: 8) {
             CodexUsageGraphDisplay(
                 mode: mode,
                 currentChart: currentChart,
-                selectedSeries: selectedSeries
+                selectedSeries: selectedSeries,
+                epochBoundaryAt: epochBoundaryAt
             )
             WeeklyRemainingTimelineLabels(
                 startLabel: snapshotStartLabel,
                 endLabel: snapshotEndLabel
             )
+            if mode == .current, let planTransitionScenario {
+                CodexPlanTransitionExportLegend(scenario: planTransitionScenario)
+            }
         }
         .padding(12)
     }
@@ -449,6 +465,45 @@ private struct CodexUsageGraphSnapshotView: View {
         case .past, .overlay:
             return CodexUsageHistoryTimelineLabel.endLabel(for: selectedSeries)
         }
+    }
+}
+
+private struct CodexPlanTransitionExportLegend: View {
+    let scenario: CodexPlanTransitionScenario
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Label(officialText, systemImage: "chart.line.uptrend.xyaxis")
+                .foregroundStyle(.primary)
+            Label(projectedText, systemImage: "function")
+                .foregroundStyle(Color.accentColor)
+            Spacer(minLength: 0)
+        }
+        .font(.caption2.weight(.medium))
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+        .accessibilityLabel("공식 관측과 사용자 설정 기반 예상 구분")
+    }
+
+    private var officialText: String {
+        if let value = scenario.targetFiveHour.observedP90Percent {
+            return "전환 후 실제 5시간 P90 \(percent(value))%"
+        }
+        guard let value = scenario.fiveHour.observedP90Percent else {
+            return "공식 관측: 관측 부족"
+        }
+        return "공식 5시간 P90 \(percent(value))%"
+    }
+
+    private var projectedText: String {
+        guard let value = scenario.fiveHour.projectedP90Percent else {
+            return "사용자 설정 기반 예상: 관측 부족"
+        }
+        return "사용자 설정 기반 예상 P90 \(percent(value))%"
+    }
+
+    private func percent(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0...1)))
     }
 }
 
@@ -499,6 +554,7 @@ private struct WeeklyRemainingTimelineLabels: View {
 
 private struct WeeklyRemainingHistoryGraph: View {
     let chart: WeeklyRemainingHistoryChart
+    let epochBoundaryAt: Int?
 
     var body: some View {
         GeometryReader { geometry in
@@ -506,7 +562,11 @@ private struct WeeklyRemainingHistoryGraph: View {
                 WeeklyRemainingHistoryYAxisLabels()
                     .frame(width: CodexUsagePanelLayout.weeklyGraphYAxisWidth, height: geometry.size.height)
 
-                WeeklyRemainingHistoryPlot(chart: chart, tint: tint)
+                WeeklyRemainingHistoryPlot(
+                    chart: chart,
+                    tint: tint,
+                    epochBoundaryAt: epochBoundaryAt
+                )
                     .frame(
                         width: max(
                             0,
@@ -584,6 +644,7 @@ private struct ResetWindowHistoryUnavailableGraph: View {
 private struct WeeklyRemainingHistoryPlot: View {
     let chart: WeeklyRemainingHistoryChart
     let tint: Color
+    let epochBoundaryAt: Int?
 
     @State private var hoveredMarkerID: Int?
 
@@ -595,6 +656,21 @@ private struct WeeklyRemainingHistoryPlot: View {
 
                 guideLines(in: geometry.size)
                     .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 0.7, dash: [3, 4]))
+
+                if let position = chart.epochBoundaryPosition(at: epochBoundaryAt) {
+                    let x = geometry.size.width * CGFloat(position)
+                    Path { path in
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geometry.size.height))
+                    }
+                    .stroke(Color.accentColor.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+
+                    Text("epoch")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .position(x: min(max(x + 15, 16), geometry.size.width - 16), y: 6)
+                        .allowsHitTesting(false)
+                }
 
                 chartLine(in: geometry.size)
                     .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt, lineJoin: .round))
@@ -1182,6 +1258,18 @@ struct WeeklyRemainingHistoryChart: Equatable {
             return summaryText
         }
         return "최근 주간 잔여량 \(UsageMonitorState.percent(latestActualPoint.remainingPercent))%, 샘플 \(actualSampleCount)개"
+    }
+
+    func epochBoundaryPosition(at timestamp: Int?) -> Double? {
+        guard let timestamp,
+              let resetStartAt,
+              let resetsAt,
+              timestamp > resetStartAt,
+              timestamp < resetsAt
+        else {
+            return nil
+        }
+        return Double(timestamp - resetStartAt) / Double(resetsAt - resetStartAt)
     }
 
     private static func xPosition(

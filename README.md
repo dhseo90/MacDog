@@ -54,11 +54,11 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | 영역 | 역할 |
 | --- | --- |
 | 메뉴바 러너 | Codex 사용량 위험도를 작은 캐릭터 움직임으로 표시합니다. |
-| Codex 사용량 탭 | 5시간/주간 사용률, 남은 비율, reset 시각, 알림 기준, pace 예측, 주간 잔여량/지난 window/비교 그래프를 표시합니다. |
+| Codex 사용량 탭 | 5시간/주간 사용률, reset 시각, 주간 history와 사용자 설정 기반 플랜 전환 시나리오를 표시합니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | 알림, 로그인 실행, 데스크톱 펫, 움직임 줄이기, 러너 일시 정지, 권한 도우미 상태를 관리합니다. |
+| 설정 탭 | 플랜 label/상대 용량/reserve/전환일, 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
 | 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
@@ -83,6 +83,7 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
 - Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
+- Codex 플랜 전환 준비: 사용자가 직접 입력한 현재·목표 플랜, 상대 용량, reserve로 5시간/주간 P50·P90·최대와 reserve 미달/100% 초과 window를 계산합니다. 결과는 실제 한도가 아닌 `사용자 설정 기반 예상`으로 표시하며 가격 tier를 자동 판별하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
@@ -97,6 +98,7 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
 - 첫 실행 마무리가 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 15`를 실행해 앱 cache를 갱신합니다.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
+- 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존되며, `usage-plan-transition.json`의 사용자 설정과 확정 epoch를 적용합니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다.
 
 ## 알림 경계
@@ -134,6 +136,8 @@ codex-usage doctor
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
 - v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 확인된 완료 창의 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장합니다. 현재 창은 공식 current usage로 그리며 영구 완료 record로 미리 저장하지 않습니다.
 - `usage-weekly-history.json`은 완료 창 재구성을 위해 13주를 보존하고, reset-window history는 최근 확인된 완료 창 12개를 보존합니다. 두 파일의 schema는 그대로 유지합니다.
+- v1.7.0 5시간 history는 5분/0.25% 미만 dense sample을 건너뛰고 logical reset window별 peak를 계산합니다. 설정 탭의 첫 저장은 기존 `legacy` sample을 현재 epoch로 이어주며, 실제 전환 확인 뒤에만 새 target epoch가 활성화됩니다.
+- v1.7.0 scenario는 사용자 label/상대 용량/reserve/예정일·확정일만 별도 저장하고 기존 `status --json`, `usage.json`, weekly/reset-window schema를 변경하지 않습니다.
 - v1.5.0 reliability 진단은 `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json`을 읽어 missing, stale, error, waiting, ok 상태를 분리하지만 schema를 바꾸지 않습니다.
 - weekly reset 이후 새 `resetsAt` window가 감지되면 이전 history와 새 timeline을 분리하고, rolling reset timestamp duplicate는 같은 logical weekly window로 dedupe합니다.
 - 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.
@@ -158,6 +162,7 @@ npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v140_usage_intelligence_contract.sh --self-test
 ./script/verify_v150_usage_reliability_contract.sh --self-test
 ./script/verify_v160_codex_recovery_planner_contract.sh --self-test
+./script/verify_v170_codex_pro100_transition_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -172,6 +177,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
 | `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
+| `./script/verify_v170_codex_pro100_transition_contract.sh --self-test` | v1.7.0 별도 5시간 history, 사용자 설정 scenario, plan epoch, 자동 tier 추정 금지와 privacy 경계를 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |

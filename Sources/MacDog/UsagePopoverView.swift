@@ -125,6 +125,8 @@ struct UsagePopoverView: View {
             BatteryPanel(snapshot: state.systemMetrics)
         case .settings:
             SettingsPanel(
+                planTransitionConfiguration: state.planTransitionConfiguration,
+                planTransitionConfigurationError: state.planTransitionConfigurationError,
                 privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
                 onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged,

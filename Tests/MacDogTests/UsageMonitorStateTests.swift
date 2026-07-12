@@ -338,6 +338,158 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.withRefreshing(true).weeklyUsageHistory, history)
     }
 
+    func testRefreshingPreservesFiveHourUsageHistory() throws {
+        let history = CodexUsageFiveHourHistory(samples: [
+            try XCTUnwrap(CodexUsageFiveHourHistorySample(
+                recordedAt: 1_000,
+                windowDurationMins: 300,
+                usedPercent: 24,
+                resetsAt: 1_000 + 18_000,
+                planEpochID: "before-transition"
+            ))
+        ])
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            fiveHourUsageHistory: history,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(state.withRefreshing(true).fiveHourUsageHistory, history)
+    }
+
+    func testRefreshingPreservesPlanTransitionConfiguration() throws {
+        let configuration = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            plannedTransitionAt: 1_900_000_000,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            planTransitionConfiguration: configuration,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(
+            state.withRefreshing(true).planTransitionConfiguration,
+            configuration
+        )
+    }
+
+    func testPlanTransitionScenarioUsesFiveHourWindowPeaksFromCurrentEpoch() throws {
+        let now = 1_900_000_000
+        let configuration = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        let samples = try (1...6).map { index in
+            let resetsAt = now - (7 - index) * 5 * 60 * 60
+            return try XCTUnwrap(CodexUsageFiveHourHistorySample(
+                recordedAt: resetsAt - 60,
+                windowDurationMins: 300,
+                usedPercent: Double(index * 10),
+                resetsAt: resetsAt,
+                planEpochID: "current"
+            ))
+        }
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            fiveHourUsageHistory: CodexUsageFiveHourHistory(samples: samples),
+            planTransitionConfiguration: configuration,
+            errorMessage: nil
+        )
+
+        let scenario = try XCTUnwrap(state.planTransitionScenario(now: now))
+
+        XCTAssertEqual(scenario.fiveHour.observationStatus, .sufficient)
+        XCTAssertEqual(scenario.fiveHour.observedP90Percent, 60)
+        XCTAssertEqual(scenario.fiveHour.projectedP90Percent, 120)
+        XCTAssertEqual(scenario.fiveHour.limitExceededWindowCount, 1)
+    }
+
+    func testActivePlanEpochFiltersWeeklySamplesAndCompletedWindows() throws {
+        let transitionAt = 1_900_000_000
+        let configuration = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            confirmedTransitionAt: transitionAt,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
+            CodexUsageWeeklyHistorySample(
+                recordedAt: transitionAt - 60,
+                usedPercent: 20,
+                remainingPercent: 80,
+                resetsAt: transitionAt,
+                windowDurationMins: 10_080
+            ),
+            CodexUsageWeeklyHistorySample(
+                recordedAt: transitionAt + 60,
+                usedPercent: 2,
+                remainingPercent: 98,
+                resetsAt: transitionAt + 604_800,
+                windowDurationMins: 10_080
+            )
+        ])
+        let resetHistory = CodexUsageResetWindowHistory(records: [
+            Self.resetWindowRecord(resetsAt: transitionAt, finalUsedPercent: 70),
+            Self.resetWindowRecord(resetsAt: transitionAt + 3 * 86_400, finalUsedPercent: 40),
+            Self.resetWindowRecord(resetsAt: transitionAt + 10 * 86_400, finalUsedPercent: 30)
+        ])
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            weeklyUsageHistory: weeklyHistory,
+            resetWindowHistory: resetHistory,
+            planTransitionConfiguration: configuration,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(
+            state.weeklyUsageHistoryForActivePlanEpoch(at: transitionAt + 1).samples.map(\.recordedAt),
+            [transitionAt + 60]
+        )
+        XCTAssertEqual(
+            state.resetWindowHistoryForActivePlanEpoch(at: transitionAt + 10 * 86_400).records.map(\.resetsAt),
+            [transitionAt + 10 * 86_400]
+        )
+    }
+
+    func testWeeklyChartLocatesConfirmedEpochBoundaryInsideWindow() throws {
+        let resetStart = 1_900_000_000
+        let resetsAt = resetStart + 7 * 86_400
+        let chart = WeeklyRemainingHistoryChart(
+            history: .empty,
+            weeklyWindow: UsageWindowReport(
+                kind: .weekly,
+                usedPercent: 0,
+                remainingPercent: 100,
+                windowDurationMins: 10_080,
+                resetsAt: resetsAt
+            )
+        )
+
+        XCTAssertEqual(
+            try XCTUnwrap(chart.epochBoundaryPosition(at: resetStart + 3 * 86_400 + 43_200)),
+            0.5,
+            accuracy: 0.0001
+        )
+        XCTAssertNil(chart.epochBoundaryPosition(at: resetStart))
+    }
+
     func testRefreshingPreservesResetWindowHistory() {
         let resetHistory = CodexUsageResetWindowHistory(records: [
             Self.resetWindowRecord(resetsAt: 1_800_604_800, finalUsedPercent: 74)
@@ -690,6 +842,33 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(updated.privilegedHelperInstallSnapshot, snapshot)
         XCTAssertEqual(updated.systemMetricsHistory, history)
+    }
+
+    func testSystemMetricsUpdatePreservesFiveHourUsageHistory() throws {
+        let history = CodexUsageFiveHourHistory(samples: [
+            try XCTUnwrap(CodexUsageFiveHourHistorySample(
+                recordedAt: 1_000,
+                windowDurationMins: 300,
+                usedPercent: 24,
+                resetsAt: 1_000 + 18_000,
+                planEpochID: "before-transition"
+            ))
+        ])
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            fiveHourUsageHistory: history,
+            errorMessage: nil
+        )
+
+        let updated = state.withSystemMetrics(
+            .unavailable,
+            sleepPreventionStatus: .disabled,
+            sleepPreventionTriggerStatus: .disabled,
+            privilegedHelperInstallSnapshot: .missing
+        )
+
+        XCTAssertEqual(updated.fiveHourUsageHistory, history)
     }
 
     func testEmptyStateDoesNotCaptureSystemMetrics() {

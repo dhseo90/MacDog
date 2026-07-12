@@ -18,8 +18,10 @@ enum MacDogDemoData {
         return UsageMonitorState(
             report: report(now: now),
             cacheSnapshot: nil,
+            fiveHourUsageHistory: fiveHourUsageHistory(now: now),
             weeklyUsageHistory: weeklyUsageHistory(now: now),
             resetWindowHistory: resetWindowHistory(now: now),
+            planTransitionConfiguration: planTransitionConfiguration(now: now),
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -127,6 +129,34 @@ enum MacDogDemoData {
             )
         }
         return CodexUsageWeeklyHistory(samples: samples)
+    }
+
+    private static func fiveHourUsageHistory(now: Int) -> CodexUsageFiveHourHistory {
+        let values = [28.0, 34, 41, 38, 49, 56, 45, 52]
+        let duration = 300 * 60
+        let samples = values.enumerated().compactMap { index, usedPercent in
+            let resetsAt = now - (values.count - index) * duration
+            return CodexUsageFiveHourHistorySample(
+                recordedAt: resetsAt - 60,
+                windowDurationMins: 300,
+                usedPercent: usedPercent,
+                resetsAt: resetsAt,
+                planEpochID: "demo-current"
+            )
+        }
+        return CodexUsageFiveHourHistory(samples: samples)
+    }
+
+    private static func planTransitionConfiguration(now: Int) -> CodexPlanTransitionConfiguration? {
+        try? CodexPlanTransitionConfiguration(
+            currentPlanLabel: "현재 플랜",
+            targetPlanLabel: "목표 플랜",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            plannedTransitionAt: now + 14 * 24 * 60 * 60,
+            currentPlanEpochID: "demo-current",
+            targetPlanEpochID: "demo-target"
+        )
     }
 
     private static func resetWindowHistory(now: Int) -> CodexUsageResetWindowHistory {

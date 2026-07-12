@@ -116,6 +116,161 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             source.contains("spacing: CodexUsagePanelLayout.sectionSpacing"),
             "Codex tab should separate current usage, reset credits, history, and data status as major sections"
         )
+        XCTAssertTrue(source.contains("CodexPlanTransitionReadinessBlock("))
+        XCTAssertTrue(source.contains("planTransitionScenario:"))
+    }
+
+    func testPlanTransitionUIKeepsExplicitScenarioAndSettingsLabels() throws {
+        let transitionSource = try String(
+            contentsOfFile: "Sources/MacDog/Popover/CodexPlanTransitionViews.swift"
+        )
+        let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
+        let graphSource = try String(
+            contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
+        )
+
+        XCTAssertTrue(transitionSource.contains("플랜 전환 준비"))
+        XCTAssertTrue(transitionSource.contains("사용자 설정 기반 예상"))
+        XCTAssertTrue(transitionSource.contains("현재 플랜"))
+        XCTAssertTrue(transitionSource.contains("목표 플랜"))
+        XCTAssertTrue(transitionSource.contains("실제 전환 확인"))
+        XCTAssertTrue(settingsSource.contains("CodexPlanTransitionSettingsEditor("))
+        XCTAssertTrue(graphSource.contains("공식 5시간 P90"))
+        XCTAssertTrue(graphSource.contains("사용자 설정 기반 예상 P90"))
+        XCTAssertTrue(graphSource.contains("epochBoundaryPosition"))
+        XCTAssertTrue(transitionSource.contains("전환 후 실제 P90"))
+    }
+
+    func testPlanTransitionSettingsPersistenceMigratesBackdatedFiveHourWindows() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configurationStore = CodexPlanTransitionConfigurationStore(
+            fileURL: directory.appendingPathComponent("usage-plan-transition.json")
+        )
+        let historyStore = CodexUsageFiveHourHistoryStore(
+            fileURL: directory.appendingPathComponent("usage-five-hour-history.json")
+        )
+        let transitionAt = 1_900_000_000
+        let previous = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        let confirmed = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            confirmedTransitionAt: transitionAt,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        _ = try historyStore.append(try XCTUnwrap(CodexUsageFiveHourHistorySample(
+            recordedAt: transitionAt + 20_000,
+            windowDurationMins: 300,
+            usedPercent: 50,
+            resetsAt: transitionAt + 38_000,
+            planEpochID: "current"
+        )))
+
+        let migrated = try CodexPlanTransitionSettingsPersistence.save(
+            confirmed,
+            replacing: previous,
+            configurationStore: configurationStore,
+            historyStore: historyStore
+        )
+
+        XCTAssertEqual(migrated, 1)
+        XCTAssertEqual(try configurationStore.read(), confirmed)
+        XCTAssertEqual(try historyStore.read().samples.first?.planEpochID, "target")
+    }
+
+    func testPlanTransitionSettingsPersistenceReconcilesAfterConfigurationWasAlreadyConfirmed() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configurationStore = CodexPlanTransitionConfigurationStore(
+            fileURL: directory.appendingPathComponent("usage-plan-transition.json")
+        )
+        let historyStore = CodexUsageFiveHourHistoryStore(
+            fileURL: directory.appendingPathComponent("usage-five-hour-history.json")
+        )
+        let transitionAt = 1_900_000_000
+        let confirmed = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            confirmedTransitionAt: transitionAt,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "target"
+        )
+        try configurationStore.write(confirmed)
+        _ = try historyStore.append(try XCTUnwrap(CodexUsageFiveHourHistorySample(
+            recordedAt: transitionAt + 20_000,
+            windowDurationMins: 300,
+            usedPercent: 50,
+            resetsAt: transitionAt + 38_000,
+            planEpochID: "current"
+        )))
+
+        let migrated = try CodexPlanTransitionSettingsPersistence.save(
+            confirmed,
+            replacing: confirmed,
+            configurationStore: configurationStore,
+            historyStore: historyStore
+        )
+
+        XCTAssertEqual(migrated, 1)
+        XCTAssertEqual(try historyStore.read().samples.first?.planEpochID, "target")
+        XCTAssertEqual(
+            try CodexPlanTransitionSettingsPersistence.reconcile(
+                confirmed,
+                historyStore: historyStore
+            ),
+            0
+        )
+    }
+
+    func testPlanTransitionSettingsPersistenceRotatesTargetEpochOnlyWhenTransitionIsFirstConfirmed() throws {
+        let unconfirmed = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "draft-target"
+        )
+        let confirmed = try CodexPlanTransitionConfiguration(
+            currentPlanLabel: "Current",
+            targetPlanLabel: "Target",
+            targetRelativeCapacity: 0.5,
+            reservePercent: 20,
+            confirmedTransitionAt: 1_900_000_000,
+            currentPlanEpochID: "current",
+            targetPlanEpochID: "confirmed-target"
+        )
+
+        XCTAssertEqual(
+            CodexPlanTransitionSettingsPersistence.targetEpochID(
+                previousConfiguration: unconfirmed,
+                confirmedAt: 1_900_000_000,
+                makeID: { "new-target" }
+            ),
+            "new-target"
+        )
+        XCTAssertEqual(
+            CodexPlanTransitionSettingsPersistence.targetEpochID(
+                previousConfiguration: confirmed,
+                confirmedAt: 1_900_000_000,
+                makeID: { "unexpected" }
+            ),
+            "confirmed-target"
+        )
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
