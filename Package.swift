@@ -25,6 +25,10 @@ let package = Package(
             targets: ["CodexUsageCLI"]
         ),
         .executable(
+            name: "macdog-claude-statusline",
+            targets: ["ClaudeUsageBridgeCLI"]
+        ),
+        .executable(
             name: "MacDog",
             targets: ["MacDog"]
         ),
@@ -46,6 +50,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "CodexUsageCLI",
+            dependencies: ["CodexUsageCore"]
+        ),
+        .executableTarget(
+            name: "ClaudeUsageBridgeCLI",
             dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(
