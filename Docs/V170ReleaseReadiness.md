@@ -4,6 +4,11 @@
 작성일: 2026-07-12
 대상 버전: `1.7.0`
 
+> 제품 방향 정정: 이 문서는 published v1.7.0에 실제로 포함된 plan transition scenario와
+> release smoke 사실을 보존하는 역사적 기록입니다. 해당 release는 취소하지 않습니다.
+> 현재 제품 정의는 [V170CodexPro100Transition.md](V170CodexPro100Transition.md)의 주간 잔여량
+> 페이스메이커이며, 과도한 scenario·epoch UI와 write path는 v1.8.0에서 제거합니다.
+
 ## 릴리즈 범위
 
 - Release tag: `v1.7.0`
@@ -40,7 +45,7 @@ Release note에는 다음 사실을 명시합니다.
 ```sh
 git diff --check
 MACDOG_RELEASE_VERSION=1.7.0 ./script/check.sh --no-run
-./script/verify_v170_codex_pro100_transition_contract.sh --self-test
+./script/verify_v170_codex_pacemaker_contract.sh --self-test
 ```
 
 추가 확인:

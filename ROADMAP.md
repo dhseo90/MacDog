@@ -2,18 +2,22 @@
 
 ## 제품 방향
 
-MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하게 해주는 macOS 유틸리티입니다. 작은 강아지 러너가 메뉴바에 상주하고, 사용량이 높아질수록 더 빠르게 움직입니다. 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를 보여줍니다.
+MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에서 즉시 확인하게 해주는 macOS
+유틸리티입니다. v1.7.0까지는 Codex 전용이며, v1.8.0부터 `Codex` 또는 `Claude` 중 하나만
+사용량 mode로 선택합니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다. 작은 강아지
+러너가 메뉴바에 상주하고 선택한 provider 사용량이 높아질수록 더 빠르게 움직입니다. 기본
+캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를 보여줍니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
 
 핵심 경험은 다음과 같습니다.
 
-- 터미널에서는 `codex-usage status` 한 줄로 사용량을 확인합니다.
+- Codex mode에서는 터미널에서 `codex-usage status` 한 줄로 사용량을 확인합니다.
 - 메뉴바에서는 러너 속도만 봐도 위험도를 알 수 있습니다.
-- 클릭하면 5시간/주간 사용량과 주간 잔여량 추이를 명확히 봅니다.
+- 클릭하면 선택한 provider의 단기/주간 사용량과 잔여량 추이를 명확히 봅니다.
 - Codex Pup의 기본 위치는 메뉴바이고, 사용자가 원할 때만 데스크톱으로 나와 뛰어다닙니다.
-- 메뉴바 popover는 Codex, Mac, Sleep, Battery, Settings 탭으로 나뉩니다.
+- 메뉴바 popover는 선택 provider 사용량, Mac, Sleep, Battery, Settings 탭으로 나뉩니다.
 - WidgetKit 코드는 보존하지만 기본 릴리즈 범위에서는 제외합니다. 현재 확인 범위는 source/test/opt-in build 경계까지이며, Apple Developer Program과 App Group provisioning이 필요한 실제 위젯 UI는 확인하지 못했습니다. 이 검수는 현재 구현 계획에서 제외합니다.
 
 ## 진행 상태 요약
@@ -42,9 +46,8 @@ MacDog는 Codex의 5시간/주간 사용량을 메뉴바에서 즉시 감지하�
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
-| v1.7.0 | Codex Pro $100 Downgrade Readiness | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 실제 전환 전후 관측 전 scenario 정확도와 Pro $100 적합성 확정 금지 |
-| v1.8.0 | Claude Usage Parity Preview | source·fixture·오프라인 자동 검증 완료, live Claude 구독 검수 미수행 | 실제 구독 `rate_limits` event와 reset 경계 live smoke 필요 |
-| v1.9.0 | Codex + Claude AI Usage Tab | 로드맵 확정, 개발 전 | 1번 탭 AI 사용량 전환, 두 provider 상태 분리, 통합 pressure/알림 검증 |
+| v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
+| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | backend preview 구현 후 제품 범위 재정의, UI·기능 재작업 필요 | v1.7 과도 기능 제거, 5시간/주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -341,144 +344,139 @@ v1.6.1 릴리즈 결과:
 - GitHub 검증: Release Candidate와 Draft Release가 통과했고, release head의 비결정적 screenshot test 최초 실패는 동일 tree 재실행에서 통과했습니다.
 - final-state: cleanup 뒤 Background Task DB에서 설치 앱과 usage cache LaunchAgent의 `[enabled, allowed, notified]` 상태를 확인했고 `./script/verify_release_final_state.sh --version 1.6.1`이 통과했습니다.
 
-## v1.7.0: Codex Pro $100 Downgrade Readiness
+## v1.7.0: Codex 주간 잔여량 페이스메이커
 
-`v1.7.0`은 현재 Codex Pro $200 사용 패턴을 근거로 Pro $100 전환 위험을 사전에 판단하고,
-전환 이후에는 서로 다른 플랜 epoch의 history를 섞지 않도록 정리하는 milestone입니다.
-Claude와 AI 통합 탭은 이 버전에 포함하지 않습니다.
-세부 범위와 검증 경계는 [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md)에 둡니다.
+`v1.7.0`의 제품 목적은 특정 유료 플랜의 절대 한도를 예측하는 것이 아니라, 현재 활성화된
+Codex 주간 window의 사용률과 잔여량을 7개 day slot으로 나눠 사용 속도를 관리하는 것입니다.
+MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 사용자에게 그 비율을
+대신 입력하게 하지 않습니다.
 
-상태: 릴리즈 완료 / 자동 검증·CI·published DMG 설치본 UI smoke 완료 / 실제 전환 전후 관측 미수행
+상태: `v1.7.0` 릴리즈 완료 / 당시 플랜 전환 scenario·epoch UI는 과도 구현으로 재분류 / 실제
+코드 단순화는 `v1.8.0` 선행 작업으로 진행.
 
-v1.7.0 구현 범위:
+목표 동작:
 
-1. 사용자가 현재 플랜, 목표 플랜, 전환 예정일, 목표 상대 용량, reserve 기준을 직접 설정합니다.
-2. raw `planType`이나 사용률을 근거로 `Pro $100`/`Pro $200` 가격 tier를 자동 추정하지 않습니다.
-3. 기존 weekly history와 별도로 5시간 window history를 수집해 peak와 관측 신뢰도를 계산합니다.
-4. 목표 상대 용량을 적용한 5시간/주간 예상 사용률과 reserve 미달/100% 초과 window를 표시합니다.
-5. 전환일을 기준으로 플랜 epoch를 분리하고 전환 전후 백분율을 같은 절대 사용량처럼 비교하지 않습니다.
-6. 기존 `codex-usage status --json`, app-owned cache, weekly/reset-window history schema는 breaking change 없이 유지합니다.
+1. weekly window 시작점은 `resetsAt - windowDurationMins`로 계산하고 달력 자정이 아니라
+   해당 시각부터 24시간씩 최대 7개 day slot으로 나눕니다.
+2. 7일 window의 기본 일일 목표는 전체 사용량의 `1/7`, 약 `14.3%`입니다.
+3. 현재 day 사용량, day 목표까지 남은 비율, 주간 누적 목표 대비 실제 사용량을 표시합니다.
+4. history sample이 day 시작점을 확인할 만큼 충분할 때만 day 사용량과 초과 여부를 확정합니다.
+5. 기존 로컬 알림 master opt-in 아래에서 day 목표 접근·초과와 주간 누적 페이스 초과를
+   weekly window/day/event별 한 번만 알립니다.
+6. 현재 활성 플랜의 공식 사용률만 사용하며 `$100에서도 충분함` 같은 적합성 예측을 하지 않습니다.
 
-v1.7.0 제외 경계:
+제거 대상:
 
-- Claude/Grok/Gemini provider 구현
-- 1번 탭의 AI 통합 탭 전환
-- 가격 tier 자동 감지, 프로모션 배수 추정, 원격 가격표 자동 갱신
-- 자동 플랜 변경, 자동 reset credit 사용, provider 자동 전환
-- 사용자 명시 요청 없는 GUI 실행, 장시간 테스트, 설치/LaunchAgent/helper 변경, push
+- 현재/목표 플랜 label, 목표 상대 용량, reserve, 전환 예정일·확정일
+- `planEpochID`, 전환 전후 P50/P90/최대 비교와 target epoch 재분류
+- 별도 `usage-plan-transition.json` 읽기·쓰기와 5시간 history의 `planEpochID` 연동
+- Codex 탭 전환 readiness block, 설정 탭 plan editor, graph epoch overlay, export scenario 범례
 
-v1.7.0 완료 기준:
+호환성 경계:
 
-- 5시간 history store가 atomic write, retention, dedupe, migration, 민감정보 미저장 테스트를 갖습니다.
-- 시나리오는 실제 관측값과 사용자 입력값을 구분하고 `사용자 설정 기반 예상`으로 표시합니다.
-- 관측 sample이 부족하면 수치 확정 대신 `관측 부족` 상태를 표시합니다.
-- 플랜 epoch 경계, P50/P90/최대 peak, reserve 미달/초과 계산을 focused test로 검증합니다.
-- 실제 전환 전후 관측을 수행하지 않았다면 시뮬레이션 정확도 확인 완료로 보고하지 않습니다.
+- 기존 `usage-plan-transition.json`은 자동 삭제하지 않고 더 이상 읽거나 쓰지 않습니다.
+- `usage-five-hour-history.json`은 단기 pace와 burst 관측에 계속 사용하되 `planEpochID`는 신규
+  계산과 UI에 사용하지 않습니다. 기존 schema는 decode 호환을 유지하고 migration을 테스트합니다.
+- 기존 `codex-usage status --json`, `usage.json`, weekly/reset-window history schema는 breaking
+  change 없이 유지합니다.
+- day pace는 기존 `usage-weekly-history.json`과 weekly reset-window history를 사용하고, 5시간
+  pace는 기존 5시간 history의 atomic write, retention, dense dedupe, reset 분리를 재사용합니다.
 
-v1.7.0 구현 결과:
-
-- 기존 cache/CLI JSON schema를 유지하면서 별도 5시간 history와 plan transition 설정 파일을 추가했습니다.
-- 5시간 history의 atomic write, 13주 retention, dense dedupe, reset/epoch 분리, legacy migration,
-  민감정보 미저장을 focused test로 고정했습니다.
-- 수동 label/상대 용량/reserve/전환일, P50/P90/최대, reserve 미달/100% 초과,
-  관측 부족과 전환 후 7일 상태를 구현했습니다.
-- target epoch 실제 P90과 전환 전 예상 P90 차이, backdated 전환 표본 재분류,
-  active epoch history filtering과 graph 경계 표시를 구현했습니다.
-- Codex/설정 탭과 PNG export에서 공식 관측과 `사용자 설정 기반 예상`을 구분했습니다.
-- 실제 Pro $100 전환 전후 관측은 수행하지 않았으며 적합성 확정 범위에 포함하지 않습니다.
-
-v1.7.0 릴리즈 결과:
+릴리즈 기록:
 
 - Signed annotated tag: `v1.7.0`, GitHub `Verified`
 - Published release head: `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
 - Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
 - Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
-- PR #31은 `static-gates`, `guardrails`, mergeable, unresolved conversation 0개를 확인한 뒤
-  작성자 self-review 불가만 admin bypass해 merge했습니다.
-- Release Candidate와 Draft Release workflow, checksum, `hdiutil verify`, payload version,
-  executable checksum, codesign 검증을 통과했습니다.
-- Published DMG를 Finder에서 실제 drag-and-drop 설치하고 설치본의 주요 탭, popover placement,
-  Codex `현재`/`지난`/`비교`, 플랜 전환 미확정 상태를 직접 확인했습니다.
-- 단발 `codex-usage status`와 `doctor`는 app-server timeout이었지만 usage cache LaunchAgent는
-  최근 종료 코드 0, fresh success cache와 5시간/주간 history append를 유지했습니다.
-- release smoke cleanup, `verify_release_final_state.sh --version 1.7.0`, Finder `응용 프로그램`
-  범위의 단일 `MacDog` 검색 결과를 확인했습니다.
-
-추천 모델: `5.6 Sol`
-추론 수준: 높음 (high)
-선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 기존 history와 별도 5시간 history, 시나리오 오차, 플랜 epoch를 함께 보호해야 합니다.
-
-## v1.8.0: Claude Usage Parity Preview
-
-`v1.8.0`은 현재 Codex 사용량 기능 중 Claude Code의 공식 계약으로 표현할 수 있는 기능을
-별도 preview로 구현하고 live 검수 가능성을 확인하는 milestone입니다.
-Codex와 Claude를 하나의 탭에 통합하는 작업은 `v1.9.0`으로 분리합니다.
-세부 범위와 검증 경계는 [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md)에 둡니다.
-
-구현 상태: source·fixture·오프라인 자동 검증 완료 / live Claude 구독 검수 미수행.
-Preview는 기본 꺼짐이며 실제 `rate_limits` event와 5시간/7일 reset 경계는 제품 완료로
-보고하지 않습니다.
-
-v1.8.0 구현 범위:
-
-1. Claude Code status line JSON의 5시간/7일 사용률과 reset 시각을 optional 입력으로 해석합니다.
-2. status line 입력은 sanitize bridge에서 필요한 사용량 필드만 추출하고 session, transcript, cwd, repository 정보는 저장하지 않습니다.
-3. Claude 전용 cache/history를 Codex 파일과 분리하고 missing/stale/error 상태를 event-driven source에 맞게 정의합니다.
-4. 5시간/7일 사용량, reset countdown, history 현재/지난/비교, pace, 알림, PNG export, runner preview를 검토합니다.
-5. Claude에는 Codex reset credit과 같은 계약이 없으므로 대응 기능을 만들지 않습니다.
-6. 기존 status line 설정은 자동으로 덮어쓰지 않으며 충돌 시 preview와 수동 연결 절차를 먼저 제시합니다.
-
-v1.8.0 검증 경계:
-
-- 공식 shape 기반 fixture, window 일부 누락 fixture, sanitize/privacy, atomic cache/history, screenshot test를 자동 검증합니다.
-- 실제 Claude 구독 계정의 status line event, 5시간/7일 값, reset 경계는 별도 live smoke로만 확인합니다.
-- live smoke를 수행하지 않았다면 `Claude Usage Preview 자동 검증 완료 / live Claude 구독 검수 미수행`으로 보고합니다.
-- 현재 설치된 Claude Code에서 `rate_limits` 필드가 확인되지 않으면 fixture/source 구현까지만 진행하고 제품 완료로 보고하지 않습니다.
+- Published DMG 설치본 smoke와 release final-state는 완료했지만 당시 포함된 plan transition UI는
+  현재 제품 방향에 맞는 기능으로 유지하지 않습니다.
 
 추천 모델: `5.6 Sol`
 추론 수준: 매우 높음 (xhigh)
-선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점. 사용자 status line 설정 충돌, 민감정보 제거, optional payload, live 미검수 경계를 함께 처리해야 합니다.
+선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점. 이미 배포된 파일을
+삭제하지 않으면서 scenario·epoch 경계를 제거하고 weekly history 기반 day pace로 교체해야 합니다.
 
-## v1.9.0: Codex + Claude AI Usage Tab
+## v1.8.0: 선택형 Codex/Claude 사용량 mode와 안정화
 
-`v1.9.0`은 1번 탭을 `AI 사용량`으로 전환하고 Codex와 Claude 상태를 같은 화면에서 보되,
-각 provider의 한도와 history를 섞지 않는 milestone입니다.
-지원 provider는 Codex와 Claude 두 개로 고정하며 Grok, Gemini, 기타 provider는 현재 로드맵에서 제외합니다.
-세부 범위와 검증 경계는 [Docs/V190CodexClaudeAIUsageTab.md](Docs/V190CodexClaudeAIUsageTab.md)에 둡니다.
+`v1.8.0`은 사용자가 설정에서 `Codex` 또는 `Claude` 중 하나를 현재 사용량 provider로 선택하고,
+1번 탭·러너·알림이 선택한 provider만 사용하게 만드는 milestone입니다. v1.7.0의 과도 구현
+정리부터 Claude live·설치·GUI·release 안정화까지 이 버전에서 모두 완료합니다. 이 프로젝트는
+두 provider 동시 사용을 고려하지 않으며 합산, 비교, 자동 fallback을 구현하지 않습니다.
 
-v1.9.0 구현 범위:
+구현 상태: Claude sanitizer/cache/history backend와 fixture 자동검증은 존재하지만, 플랜 전환과
+Claude Preview 설정 UI 및 동시 provider 전제 기능은 제품 범위에 맞게 재작업해야 합니다.
+실제 Claude 구독 `rate_limits` event는 아직 live 검수하지 않았습니다.
 
-1. 1번 탭 표시명을 `Codex`에서 `AI 사용량`으로 바꾸고 기존 tab preference/deep link를 migration 또는 alias로 보존합니다.
-2. Codex는 5시간/주간/reset credit/history를, Claude는 5시간/7일/history를 provider별 section으로 표시합니다.
-3. 통합 summary는 가장 높은 pressure와 가장 먼저 reset되는 provider를 보여주되 퍼센트를 합산하거나 평균내지 않습니다.
-4. 러너 기준은 `max(Codex pressure, Claude pressure)`를 기본으로 하고 설정에서 provider 고정을 허용합니다.
-5. 알림 dedupe와 stale/error/source 상태를 provider별로 분리합니다.
-6. 기존 `codex-usage`를 유지하고 공통 CLI가 필요하면 별도 `macdog-usage` 계약으로 추가합니다.
-7. tab artwork, character profile manifest, screenshot test를 1번 탭 변경과 함께 갱신합니다.
+구현 순서:
 
-v1.9.0 제외 경계:
+1. v1.7.0에서 과도 구현된 plan transition scenario·epoch·UI·export 연동을 제거합니다.
+   5시간 history는 삭제하지 않고 `planEpochID` 의존만 제거해 단기 pace 관측에 재사용합니다.
+2. 설정 탭에는 `사용량 mode: Codex | Claude` 한 항목만 추가하고 별도 Claude 설정 section을
+   만들지 않습니다. 기본값과 기존 사용자 migration은 `Codex`입니다.
+3. 1번 탭은 선택한 provider 화면 하나만 표시하고 tab 내부 provider picker를 중복 제공하지 않습니다.
+4. 러너와 기존 사용량 알림은 선택한 provider를 유일한 source로 사용합니다. 선택하지 않은
+   provider cache는 평가하거나 알림을 만들지 않습니다.
+5. Claude mode는 status line의 `rate_limits.five_hour`·`seven_day` 사용률과 reset 시각을
+   sanitize해 사용하며 잔여율은 `100 - used_percentage`로 계산합니다.
+6. Claude `context_window` token은 현재 대화 context 정보로만 표시할 수 있으며 구독 quota의
+   절대 token 총량으로 표현하지 않습니다.
+7. Claude에는 Codex reset credit과 동등한 공식 field가 없으므로 reset credit UI를 만들지
+   않습니다. 5시간/7일 reset 시각만 표시합니다.
+8. Claude cache가 없으면 1번 탭에 최소 연결 필요 empty state와 수동 연결 command만 제공합니다.
+   MacDog는 Claude settings, auth store, Keychain, transcript를 읽거나 수정하지 않습니다.
 
-- Grok, Gemini, 임의 provider 추가 UI
-- provider 잔여량 합산, 평균, `통합 잔여량` 표현
-- provider 또는 모델 자동 전환/자동 실행
-- Codex/Claude auth store 읽기 또는 token/session material 저장
-- 기존 Codex JSON/cache/history schema breaking change
+제거 대상:
 
-v1.9.0 완료 기준:
+- 설정 탭 `플랜 전환`과 상세 `Claude Usage Preview` section
+- `Claude Preview 사용`, Claude runner, Claude 알림 별도 toggle
+- tab 내부 segmented provider picker와 `Preview` enable 상태
+- Codex/Claude 동시 pressure, `max(Codex, Claude)`, 병렬 notification dispatcher
+- 선택하지 않은 provider로 자동 fallback하는 동작
 
-- Codex-only, Claude-only, 양쪽 정상, provider별 stale/error 조합을 fixture와 screenshot test로 검증합니다.
-- Claude 영역에 reset credit처럼 존재하지 않는 Codex 전용 개념을 표시하지 않습니다.
-- AI 탭과 러너/알림이 provider별 데이터 경계를 유지합니다.
-- Claude live 검수가 끝나지 않았으면 Claude section을 Preview로 표시합니다.
-- 실제 AI 탭 GUI를 열어보지 않았다면 UI 검수 완료로 보고하지 않습니다.
+보존 대상:
+
+- Claude status line sanitizer와 `macdog-claude-statusline` bridge
+- Claude 전용 cache/history/lock, atomic write, stale/error/privacy guard
+- Claude 5시간/7일 사용률·잔여율·reset, history와 선택 provider pace
+- Codex 5시간 history의 atomic write, retention, dense dedupe, reset 분리
+- weekly history와 reset-window day marker 기반 일일·누적 페이스메이커
+- 기존 Codex CLI/JSON/cache/history와 reset credit 계약
+
+완료 기준:
+
+- Codex mode와 Claude mode가 한 번에 하나만 활성화됩니다.
+- mode 전환 뒤 1번 탭, runner, notification source가 함께 바뀝니다.
+- 선택 provider가 stale/error이면 다른 provider로 fallback하지 않고 해당 상태를 표시합니다.
+- Claude plan quota와 context token을 혼합하지 않고 reset credit을 합성하지 않습니다.
+- `usage-plan-transition.json`은 자동 삭제하지 않고 신규 read/write를 중단합니다.
+- 5시간 history는 `planEpochID` 없이 단기 pace에 계속 사용하고 기존 파일 decode 호환을 유지합니다.
+- 실제 GUI를 열어 확인하지 않았다면 UI 완료로 보고하지 않습니다.
+
+안정화·release 검증 범위:
+
+1. Codex↔Claude mode preference migration, 앱 재시작, cold start, cache 없음 상태를 검증합니다.
+2. 실제 Claude 구독의 첫 API 응답 뒤 5시간/7일 `rate_limits`와 reset 경계를 확인합니다.
+3. Claude event 중단, partial window, stale, malformed input, 복구 상태 전이를 검증합니다.
+4. 선택 provider runner와 알림이 다른 provider cache의 영향을 받지 않는지 반복 검증합니다.
+5. menu bar runner, 1번 탭, 설정 mode selector, popover placement를 실제 GUI에서 확인합니다.
+6. release app bundle의 bridge 포함, 업데이트·uninstall, published DMG Finder 설치와
+   cleanup/final-state를 검증합니다.
+7. focused test, 전체 `swift test`, Xcode Debug build, release bundle/packaging 검증을 통과합니다.
+8. published DMG를 재다운로드해 checksum과 `hdiutil verify`를 확인하고 Finder drag-and-drop
+   설치 뒤 `verify_release_final_state.sh --version 1.8.0`을 통과합니다.
+9. WidgetKit은 기본 DMG 완료 조건에서 제외하고 기존 opt-in source/test 경계를 유지합니다.
+10. 실행하지 않은 live/GUI/설치 검증은 `미수행`으로 분리 보고합니다.
 
 추천 모델: `5.6 Sol`
-추론 수준: 높음 (high)
-선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 첫 탭, 러너, 알림, cache, CLI, character manifest 경계를 함께 변경합니다.
+추론 수준: 매우 높음 (xhigh)
+선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점. v1.7 제거·호환성과
+Claude privacy/live source, 설정·탭·runner·알림의 단일 provider 상태 전이를 함께 검증해야 합니다.
 
 ## RunCat UI 참고 방향
 
-RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이며, 시스템 부하에 따라 속도가 달라지는 상태 표시"입니다. 이 프로젝트는 CPU 부하 대신 Codex 사용률을 속도 입력으로 사용합니다.
+RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이며, 시스템 부하에 따라 속도가
+달라지는 상태 표시"입니다. 이 프로젝트는 CPU 부하 대신 현재 선택한 provider 사용률을 속도
+입력으로 사용합니다.
 
 적용할 원칙:
 
@@ -497,11 +495,15 @@ RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이
 
 ## 사용량 단계
 
-러너 속도는 5시간 사용률과 주간 사용률 중 더 높은 값을 기준으로 정합니다.
+러너 속도는 선택 provider의 5시간 사용률과 장기 window 사용률 중 더 높은 값을 기준으로
+정합니다. Codex의 장기 window는 주간, Claude의 장기 window는 7일입니다.
 
 ```text
-usage = max(fiveHour.usedPercent, weekly.usedPercent)
+usage = max(fiveHour.usedPercent, longWindow.usedPercent)
 ```
+
+선택 provider가 stale/error이면 다른 provider로 fallback하지 않고 runner의 새 pressure 반영을
+일시 중지합니다.
 
 | 단계 | 사용률 | 메뉴바 속도 | UI 상태 |
 | --- | ---: | --- | --- |

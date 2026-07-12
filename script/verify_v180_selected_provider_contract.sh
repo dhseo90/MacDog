@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROADMAP="$ROOT_DIR/ROADMAP.md"
+DOC="$ROOT_DIR/Docs/V180ClaudeUsageParityPreview.md"
+SNAPSHOT_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeStatusLineSnapshot.swift"
+CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageCache.swift"
+HISTORY_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Claude/ClaudeUsageHistory.swift"
+BRIDGE_SOURCE="$ROOT_DIR/Sources/ClaudeUsageBridgeCLI/main.swift"
+PRIVACY_TEST="$ROOT_DIR/Tests/CodexUsageCoreTests/ClaudeUsagePrivacyTests.swift"
+RUN_TESTS=1
+
+usage() {
+  cat <<USAGE
+usage: $0 [--self-test] [--skip-tests]
+
+Verify the reusable Claude backend and selected-provider v1.8.0 planning contract.
+This script does not read Claude settings, auth stores, Keychain, or transcripts,
+use the network, run GUI apps, install components, or push.
+USAGE
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_file() {
+  [[ -f "$1" ]] || die "missing required file: $1"
+}
+
+require_match() {
+  local pattern="$1"
+  local file="$2"
+  local description="$3"
+  /usr/bin/grep -Eq -- "$pattern" "$file" || die "missing $description in $file"
+}
+
+reject_match() {
+  local pattern="$1"
+  local file="$2"
+  local description="$3"
+  if /usr/bin/grep -Eiq -- "$pattern" "$file"; then
+    die "unexpected $description in $file"
+  fi
+}
+
+verify_contract() {
+  local file
+  for file in "$ROADMAP" "$DOC" "$SNAPSHOT_SOURCE" "$CACHE_SOURCE" "$HISTORY_SOURCE" \
+    "$BRIDGE_SOURCE" "$PRIVACY_TEST"; do
+    require_file "$file"
+  done
+  [[ -x "$ROOT_DIR/script/verify_v180_selected_provider_contract.sh" ]] || \
+    die "v1.8 selected-provider verifier is not executable"
+
+  require_match '선택형 Codex/Claude 사용량 mode와 안정화' "$ROADMAP" "selected-provider roadmap"
+  reject_match 'v1\.8\.1|v1\.9\.0' "$ROADMAP" "removed future milestone"
+  require_match '두 provider 동시 사용' "$DOC" "single-provider boundary"
+  require_match '합산·비교.*구현하지 않습니다' "$DOC" "no combined usage boundary"
+  require_match '사용량 mode.*Codex' "$DOC" "single mode setting"
+  require_match '다른 provider로 자동 fallback하지' "$DOC" "no fallback boundary"
+  require_match 'context_window' "$DOC" "context token input"
+  require_match '현재 대화 context' "$DOC" "context token distinction"
+  require_match 'reset credit.*합성하지' "$DOC" "no synthetic reset credit"
+  require_match '5시간 history.*planEpochID' "$DOC" "five-hour history reuse"
+  require_match 'live·설치·GUI 검증' "$DOC" "integrated stabilization scope"
+
+  require_match 'rateLimits = "rate_limits"' "$SNAPSHOT_SOURCE" "rate limit coding key"
+  require_match 'fiveHour = "five_hour"' "$SNAPSHOT_SOURCE" "five-hour coding key"
+  require_match 'sevenDay = "seven_day"' "$SNAPSHOT_SOURCE" "seven-day coding key"
+  require_match 'usedPercentage = "used_percentage"' "$SNAPSHOT_SOURCE" "usage coding key"
+  require_match 'resetsAt = "resets_at"' "$SNAPSHOT_SOURCE" "reset coding key"
+  require_match 'maximumStatusLineBytes' "$CACHE_SOURCE" "bounded input"
+  require_match 'claude-usage\.json' "$CACHE_SOURCE" "separate cache"
+  require_match 'claude-usage-history\.json' "$HISTORY_SOURCE" "separate history"
+  require_match 'F_SETLKW' "$CACHE_SOURCE" "cross-process lock"
+  require_match 'readBoundedStatusLineInput' "$BRIDGE_SOURCE" "complete stdin reader"
+  reject_match 'Process\(|/bin/zsh|--existing-command|MACDOG_CLAUDE_CACHE_PATH' "$BRIDGE_SOURCE" \
+    "raw passthrough or production path override"
+  require_match 'session-secret-123' "$PRIVACY_TEST" "privacy sentinel"
+}
+
+run_focused_tests() {
+  DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+  CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-/private/tmp/macdog-clang-module-cache}" \
+    /usr/bin/xcrun swift test \
+      --filter ClaudeStatusLineSnapshotTests \
+      --filter ClaudeUsageCacheTests \
+      --filter ClaudeUsagePrivacyTests
+}
+
+verify_synthetic_bridge() {
+  local bridge="$ROOT_DIR/.build/debug/macdog-claude-statusline"
+  [[ -x "$bridge" ]] || die "focused tests did not build bridge executable: $bridge"
+  local temp_dir
+  temp_dir="$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/macdog-v180-selected.XXXXXX")"
+  trap 'rm -rf "$temp_dir"' EXIT
+  "$bridge" --test-cache-directory "$temp_dir" \
+    <"$ROOT_DIR/Tests/CodexUsageCoreTests/Fixtures/claude_status_line_sensitive.json" \
+    >"$temp_dir/output.txt"
+  require_match '^Claude · 5시간 34% · 7일 44%$' "$temp_dir/output.txt" "sanitized bridge output"
+  if /usr/bin/grep -R -E 'session-secret|transcript-private|secret-token|refresh-token-secret|cookie-secret' \
+    "$temp_dir" >/dev/null; then
+    die "privacy sentinel leaked into bridge output/cache/history"
+  fi
+  trap - EXIT
+  rm -rf "$temp_dir"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --self-test) ;;
+    --skip-tests) RUN_TESTS=0 ;;
+    -h|--help|help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+cd "$ROOT_DIR"
+verify_contract
+if [[ "$RUN_TESTS" == "1" ]]; then
+  run_focused_tests
+  verify_synthetic_bridge
+fi
+echo "v1.8.0 selected-provider contract ok"
