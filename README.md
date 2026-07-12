@@ -6,15 +6,16 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.6.1](https://github.com/dhseo90/MacDog/releases/tag/v1.6.1)입니다.
+현재 GitHub Release는 [v1.7.0](https://github.com/dhseo90/MacDog/releases/tag/v1.7.0)입니다.
 
-- Published release head: signed `v1.6.1` tag target `62147e9d346094bf9d10920bd91b3186bc3e27dc`
-- Published asset: `MacDog-1.6.1.dmg`, `MacDog-1.6.1.dmg.sha256`
-- Published DMG SHA-256: `e145c34d98133d6f1db7fab100574ecb6c5901e75b867f2fe0e5e4baf5eba959`
+- Published release head: signed `v1.7.0` tag target `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
+- Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
+- Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex `현재`/`지난`/`비교` mode 전환과 dropdown 표시 조건, CLI/cache LaunchAgent 경로를 확인했습니다.
-- v1.6.1에는 Codex history mode control compact layout과 지난 window dropdown 표시 조건 정리가 포함됩니다.
-- 로그인 항목은 앱 설정 끄기/켜기, Background Task DB의 `[enabled, allowed, notified]`, 공식 release final-state 검증으로 확인했습니다.
+- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, 주요 탭과 Codex `현재`/`지난`/`비교` mode, 플랜 전환 미확정 상태, CLI/cache LaunchAgent 경로를 확인했습니다.
+- v1.7.0에는 별도 5시간 history, 사용자 설정 기반 플랜 전환 scenario, plan epoch 분리와 전환 후 첫 7일 실제 관측 비교가 포함됩니다.
+- 실제 Pro $100 전환과 target epoch 첫 7일 관측은 수행하지 않았으므로 Pro $100 적합성 또는 scenario 정확도를 검증 완료로 주장하지 않습니다.
+- 로그인 항목은 설치본 설정 UI의 켜짐 상태와 공식 release final-state 검증으로 확인했습니다.
 
 ## 화면
 
