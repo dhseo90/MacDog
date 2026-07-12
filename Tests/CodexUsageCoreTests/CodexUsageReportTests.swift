@@ -154,11 +154,110 @@ final class CodexUsageReportTests: XCTestCase {
         )
     }
 
-    func testRejectsCodexBucketWithoutFiveHourAndWeeklyWindows() throws {
+    func testAcceptsWeeklyWindowWhenFiveHourWindowIsUnavailable() throws {
+        let weeklyOnlyBucket = RateLimitSnapshot(
+            limitId: "codex",
+            limitName: nil,
+            primary: RateLimitWindow(
+                usedPercent: 41,
+                windowDurationMins: 10_080,
+                resetsAt: 1_800_604_800
+            ),
+            secondary: nil,
+            credits: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0"),
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let response = RateLimitsResponse(
+            rateLimits: weeklyOnlyBucket,
+            rateLimitsByLimitId: ["codex": weeklyOnlyBucket]
+        )
+
+        let report = try CodexUsageReportBuilder().build(from: response)
+        let text = CodexUsageFormatter().text(from: report)
+
+        XCTAssertNotNil(report.codexLimit)
+        XCTAssertNil(report.codexLimit?.fiveHour)
+        XCTAssertEqual(report.codexLimit?.weekly?.usedPercent, 41)
+        XCTAssertEqual(report.codexLimit?.missingRequiredCodexUsageWindows, [])
+        XCTAssertTrue(text.contains("5h: unavailable"))
+        XCTAssertTrue(text.contains("Weekly: 41% used, 59% remaining"))
+    }
+
+    func testAcceptsWeeklyWindowFromSecondarySlotWhenPrimaryIsMissing() throws {
+        let weeklyOnlyBucket = RateLimitSnapshot(
+            limitId: "codex",
+            limitName: nil,
+            primary: nil,
+            secondary: RateLimitWindow(
+                usedPercent: 42,
+                windowDurationMins: 10_080,
+                resetsAt: 1_800_604_800
+            ),
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let response = RateLimitsResponse(
+            rateLimits: weeklyOnlyBucket,
+            rateLimitsByLimitId: ["codex": weeklyOnlyBucket]
+        )
+
+        let report = try CodexUsageReportBuilder().build(from: response)
+
+        XCTAssertEqual(report.codexLimit?.limitId, "codex")
+        XCTAssertNil(report.codexLimit?.fiveHour)
+        XCTAssertEqual(report.codexLimit?.weekly?.usedPercent, 42)
+    }
+
+    func testPrefersWeeklyOnlyCodexBucketOverFullAdvancedBucket() throws {
+        let weekly = RateLimitWindow(
+            usedPercent: 43,
+            windowDurationMins: 10_080,
+            resetsAt: 1_800_604_800
+        )
+        let codex = RateLimitSnapshot(
+            limitId: "codex",
+            limitName: "Codex",
+            primary: weekly,
+            secondary: nil,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let advanced = RateLimitSnapshot(
+            limitId: "codex_bengalfox",
+            limitName: "Codex Bengalfox",
+            primary: RateLimitWindow(
+                usedPercent: 10,
+                windowDurationMins: 300,
+                resetsAt: 1_800_018_000
+            ),
+            secondary: weekly,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        let response = RateLimitsResponse(
+            rateLimits: codex,
+            rateLimitsByLimitId: [
+                "codex": codex,
+                "codex_bengalfox": advanced
+            ]
+        )
+
+        let report = try CodexUsageReportBuilder().build(from: response)
+
+        XCTAssertEqual(report.codexLimit?.limitId, "codex")
+        XCTAssertNil(report.codexLimit?.fiveHour)
+        XCTAssertEqual(report.codexLimit?.weekly?.usedPercent, 43)
+    }
+
+    func testRejectsCodexBucketWithoutWeeklyWindow() throws {
         let incompleteCodexBucket = RateLimitSnapshot(
             limitId: "codex",
             limitName: nil,
-            primary: RateLimitWindow(usedPercent: 0, windowDurationMins: nil, resetsAt: nil),
+            primary: RateLimitWindow(usedPercent: 0, windowDurationMins: 300, resetsAt: nil),
             secondary: nil,
             credits: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0"),
             planType: "pro",
@@ -171,8 +270,8 @@ final class CodexUsageReportTests: XCTestCase {
 
         XCTAssertThrowsError(try CodexUsageReportBuilder().build(from: response)) { error in
             XCTAssertTrue(error.localizedDescription.contains("missing required codex usage windows"))
-            XCTAssertTrue(error.localizedDescription.contains("5-hour"))
             XCTAssertTrue(error.localizedDescription.contains("weekly"))
+            XCTAssertFalse(error.localizedDescription.contains("5-hour"))
         }
     }
 

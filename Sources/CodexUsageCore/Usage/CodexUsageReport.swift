@@ -38,7 +38,6 @@ public struct CodexUsageReport: Codable, Equatable, Sendable {
     public func validateRequiredCodexUsageWindows() throws {
         guard let candidate = limits["codex"] ?? limits.values.first else {
             throw CodexUsageReportValidationError.missingRequiredCodexWindows([
-                .fiveHour,
                 .weekly
             ])
         }
@@ -138,9 +137,6 @@ public struct UsageLimitReport: Codable, Equatable, Sendable {
 
     public var missingRequiredCodexUsageWindows: [UsageWindowKind] {
         var missing: [UsageWindowKind] = []
-        if fiveHour == nil {
-            missing.append(.fiveHour)
-        }
         if weekly == nil {
             missing.append(.weekly)
         }
