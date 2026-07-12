@@ -33,7 +33,67 @@ enum MacDogDemoData {
             privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot(
                 helperToolExists: false,
                 launchDaemonExists: false
+            ),
+            claudeUsagePreview: preferences.claudeUsagePreviewEnabled
+                ? claudeUsagePreview(now: now)
+                : .disabled,
+            claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
+        )
+    }
+
+    private static func claudeUsagePreview(now: Int) -> ClaudeUsagePreviewState {
+        let fiveHourReset = now + 8_400
+        let sevenDayReset = now + 410_000
+        let pastSevenDayReset = sevenDayReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: now,
+            model: ClaudeStatusLineModel(id: "claude-opus", displayName: "Opus"),
+            fiveHour: try? ClaudeUsageWindowSnapshot(usedPercent: 48, resetsAt: fiveHourReset),
+            sevenDay: try? ClaudeUsageWindowSnapshot(usedPercent: 64, resetsAt: sevenDayReset)
+        )
+        let history = ClaudeUsageHistory(samples: [
+            ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: now - 1_800,
+                usedPercent: 38,
+                resetsAt: fiveHourReset
+            ),
+            ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: now,
+                usedPercent: 48,
+                resetsAt: fiveHourReset
+            ),
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: now - 86_400,
+                usedPercent: 52,
+                resetsAt: sevenDayReset
+            ),
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: now,
+                usedPercent: 64,
+                resetsAt: sevenDayReset
+            ),
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: pastSevenDayReset - 86_400,
+                usedPercent: 76,
+                resetsAt: pastSevenDayReset
             )
+        ].compactMap(\.self))
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: history,
+            loadIssue: nil
         )
     }
 

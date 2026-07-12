@@ -120,6 +120,44 @@ final class ClaudeUsageCacheTests: XCTestCase {
         )
     }
 
+    func testPaceProjectionUsesConsecutiveSamplesWithinSameWindow() throws {
+        let resetsAt = 1_900_010_000
+        let history = ClaudeUsageHistory(samples: [
+            try XCTUnwrap(ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: 1_900_000_000,
+                usedPercent: 20,
+                resetsAt: resetsAt
+            )),
+            try XCTUnwrap(ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: 1_900_003_600,
+                usedPercent: 30,
+                resetsAt: resetsAt
+            ))
+        ])
+        let snapshot = ClaudeStatusLineSnapshot(
+            observedAt: 1_900_003_600,
+            model: nil,
+            fiveHour: try ClaudeUsageWindowSnapshot(usedPercent: 30, resetsAt: resetsAt),
+            sevenDay: nil
+        )
+
+        let projection = ClaudeUsagePaceProjectionBuilder().projection(
+            kind: .fiveHour,
+            snapshot: snapshot,
+            history: history
+        )
+
+        XCTAssertEqual(projection.state, .projected)
+        XCTAssertEqual(try XCTUnwrap(projection.usedPercentPerHour), 10, accuracy: 0.0001)
+        XCTAssertEqual(
+            try XCTUnwrap(projection.projectedFinalUsedPercent),
+            47.77777777777778,
+            accuracy: 0.0001
+        )
+    }
+
     private final class Fixture {
         let directory: URL
         let cacheURL: URL

@@ -43,6 +43,86 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
+    func testClaudeRunnerPreviewOnlyAffectsRunnerWhenFreshAndOptedIn() {
+        let now = Int(Date().timeIntervalSince1970)
+        let preview = Self.claudePreview(observedAt: now, usedPercent: 96)
+        let optedIn = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            claudeRunnerPreviewEnabled: true
+        )
+        let optedOut = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            claudeRunnerPreviewEnabled: false
+        )
+        let stale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now - 1_000, usedPercent: 99),
+            claudeRunnerPreviewEnabled: true
+        )
+
+        XCTAssertEqual(optedIn.phase, .sprint)
+        XCTAssertEqual(optedIn.codexPhase, .calm)
+        XCTAssertEqual(optedOut.phase, .calm)
+        XCTAssertEqual(stale.phase, .calm)
+        XCTAssertEqual(optedIn.codexPanelSummary()?.statusTitle, optedIn.codexPhase.statusLabel)
+    }
+
+    func testStateCopiesPreserveClaudePreview() {
+        let now = Int(Date().timeIntervalSince1970)
+        let preview = Self.claudePreview(observedAt: now, usedPercent: 55)
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            claudeRunnerPreviewEnabled: true
+        )
+
+        XCTAssertEqual(state.withRefreshing(true).claudeUsagePreview, preview)
+        XCTAssertTrue(state.withRefreshing(true).claudeRunnerPreviewEnabled)
+        XCTAssertEqual(
+            state.withSystemMetrics(
+                .unavailable,
+                sleepPreventionStatus: .disabled,
+                sleepPreventionTriggerStatus: .disabled,
+                privilegedHelperInstallSnapshot: .missing
+            ).claudeUsagePreview,
+            preview
+        )
+    }
+
+    func testClaudePreviewPreferencesDefaultOffAndDisableDependentFeatures() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        RunnerPreferences.registerDefaults(defaults: defaults)
+
+        var preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertFalse(preferences.claudeUsagePreviewEnabled)
+        XCTAssertEqual(preferences.usagePreviewProvider, .codex)
+        XCTAssertFalse(preferences.claudeRunnerPreviewEnabled)
+        XCTAssertFalse(preferences.claudeUsageNotificationsEnabled)
+
+        RunnerPreferences.setClaudeUsagePreviewEnabled(true, defaults: defaults)
+        RunnerPreferences.setUsagePreviewProvider(.claude, defaults: defaults)
+        RunnerPreferences.setClaudeRunnerPreviewEnabled(true, defaults: defaults)
+        RunnerPreferences.setClaudeUsageNotificationsEnabled(true, defaults: defaults)
+        RunnerPreferences.setClaudeUsagePreviewEnabled(false, defaults: defaults)
+        preferences = RunnerPreferences(defaults: defaults)
+
+        XCTAssertEqual(preferences.usagePreviewProvider, .codex)
+        XCTAssertFalse(preferences.claudeRunnerPreviewEnabled)
+        XCTAssertFalse(preferences.claudeUsageNotificationsEnabled)
+    }
+
     func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {
         let state = UsageMonitorState(
             report: Self.incompleteCodexReport(),
@@ -1542,6 +1622,36 @@ final class UsageMonitorStateTests: XCTestCase {
             credits: nil,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static func claudePreview(
+        observedAt: Int,
+        usedPercent: Double
+    ) -> ClaudeUsagePreviewState {
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            model: nil,
+            fiveHour: try! ClaudeUsageWindowSnapshot(
+                usedPercent: usedPercent,
+                resetsAt: observedAt + 3_600
+            ),
+            sevenDay: try! ClaudeUsageWindowSnapshot(
+                usedPercent: max(0, usedPercent - 10),
+                resetsAt: observedAt + 86_400
+            )
+        )
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
         )
     }
 

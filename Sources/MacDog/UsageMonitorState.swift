@@ -27,6 +27,8 @@ struct UsageMonitorState: Equatable {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
+    let claudeUsagePreview: ClaudeUsagePreviewState
+    let claudeRunnerPreviewEnabled: Bool
 
     init(
         report: CodexUsageReport?,
@@ -45,7 +47,9 @@ struct UsageMonitorState: Equatable {
         systemMetricsHistory: SystemMetricsHistory = .empty,
         sleepPreventionStatus: SleepPreventionStatus = .disabled,
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
-        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing
+        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing,
+        claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
+        claudeRunnerPreviewEnabled: Bool = false
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
@@ -64,6 +68,8 @@ struct UsageMonitorState: Equatable {
         self.sleepPreventionStatus = sleepPreventionStatus
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
+        self.claudeUsagePreview = claudeUsagePreview
+        self.claudeRunnerPreviewEnabled = claudeRunnerPreviewEnabled
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -84,7 +90,9 @@ struct UsageMonitorState: Equatable {
             systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
+            claudeUsagePreview: claudeUsagePreview,
+            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled
         )
     }
 
@@ -112,7 +120,9 @@ struct UsageMonitorState: Equatable {
             systemMetricsHistory: systemMetricsHistory ?? self.systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
+            claudeUsagePreview: claudeUsagePreview,
+            claudeRunnerPreviewEnabled: claudeRunnerPreviewEnabled
         )
     }
 
@@ -185,11 +195,19 @@ struct UsageMonitorState: Equatable {
         })
     }
 
-    var phase: UsagePressurePhase {
+    var codexPhase: UsagePressurePhase {
         if codexLimit?.rateLimitReachedType != nil {
             return .limit
         }
         return UsagePressurePhase(usedPercent: selectedUsedPercent)
+    }
+
+    var phase: UsagePressurePhase {
+        guard claudeRunnerPreviewEnabled,
+              let claudeUsedPercent = claudeUsagePreview.runnerUsedPercent() else {
+            return codexPhase
+        }
+        return UsagePressurePhase(usedPercent: max(selectedUsedPercent, claudeUsedPercent))
     }
 
     var petReaction: PetStatusReaction {
@@ -254,7 +272,7 @@ struct UsageMonitorState: Equatable {
         }
 
         return CodexUsagePanelSummary(
-            statusTitle: phase.statusLabel,
+            statusTitle: codexPhase.statusLabel,
             statusDetail: "기준 \(status.summary)",
             notificationThresholdSummary: Self.notificationThresholdSummary,
             resetCountdowns: [

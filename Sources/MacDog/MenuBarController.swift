@@ -9,6 +9,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
+    private let claudeUsageCacheStore = ClaudeUsageCacheStore()
     private let fiveHourHistoryStore = CodexUsageFiveHourHistoryStore(
         fileURL: CodexUsageFiveHourHistoryStore.defaultFileURL()
     )
@@ -27,6 +28,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let installerCleanupController = InstallerCleanupController()
     private let sleepPreventionController = SleepPreventionController()
     private let usageNotificationDispatcher = UsageNotificationDispatcher()
+    private let claudeUsageNotificationDispatcher = ClaudeUsageNotificationDispatcher()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
@@ -241,9 +243,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func scheduleUsageNotificationsIfNeeded(for loadedState: UsageMonitorState) {
         let settings = UsageNotificationDeliverySettings(preferences: preferences)
+        let claudeEnabled = preferences.claudeUsagePreviewEnabled &&
+            preferences.claudeUsageNotificationsEnabled &&
+            preferences.usageNotificationsEnabled
         Task { @MainActor [weak self, loadedState, settings] in
             guard let self else { return }
             _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+            _ = await claudeUsageNotificationDispatcher.dispatch(
+                for: loadedState.claudeUsagePreview,
+                enabled: claudeEnabled,
+                resetSoonEnabled: settings.resetSoonNotificationsEnabled
+            )
         }
     }
 
@@ -348,6 +358,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let planConfigurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL()
         let planTransitionConfiguration: CodexPlanTransitionConfiguration?
         let planTransitionConfigurationError: String?
+        let claudeUsagePreview = loadClaudeUsagePreview()
         if FileManager.default.fileExists(atPath: planConfigurationURL.path) {
             do {
                 let configuration = try planTransitionConfigurationStore.read()
@@ -386,7 +397,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         systemMetricsHistory: systemMetricsHistory,
                         sleepPreventionStatus: sleepPreventionController.status,
                         sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                        privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                        privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                        claudeUsagePreview: claudeUsagePreview,
+                        claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
                     )
                 }
                 return UsageMonitorState(
@@ -405,7 +418,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     systemMetricsHistory: systemMetricsHistory,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                    claudeUsagePreview: claudeUsagePreview,
+                    claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
                 )
             }
 
@@ -425,7 +440,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 systemMetricsHistory: systemMetricsHistory,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                claudeUsagePreview: claudeUsagePreview,
+                claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
             )
         }
 
@@ -445,8 +462,38 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionController.status,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+            claudeUsagePreview: claudeUsagePreview,
+            claudeRunnerPreviewEnabled: preferences.claudeRunnerPreviewEnabled
         )
+    }
+
+    private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
+        guard preferences.claudeUsagePreviewEnabled else { return .disabled }
+        let history = (try? claudeUsageCacheStore.readHistory()) ?? .empty
+        guard FileManager.default.fileExists(atPath: claudeUsageCacheStore.fileURL.path) else {
+            return ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: history,
+                loadIssue: nil
+            )
+        }
+        do {
+            return ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: try claudeUsageCacheStore.read(),
+                history: history,
+                loadIssue: nil
+            )
+        } catch {
+            return ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: history,
+                loadIssue: "Claude Preview cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
+            )
+        }
     }
 
     private nonisolated static func validationError(for report: CodexUsageReport) -> Error? {

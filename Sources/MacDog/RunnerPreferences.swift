@@ -30,6 +30,10 @@ struct RunnerPreferences: Equatable {
     static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
+    static let claudeUsagePreviewEnabledKey = "claudeUsagePreviewEnabled"
+    static let usagePreviewProviderKey = "usagePreviewProvider"
+    static let claudeRunnerPreviewEnabledKey = "claudeRunnerPreviewEnabled"
+    static let claudeUsageNotificationsEnabledKey = "claudeUsageNotificationsEnabled"
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
@@ -50,6 +54,10 @@ struct RunnerPreferences: Equatable {
     static let defaultLoginLaunchEnabled = true
     static let defaultUsageNotificationsEnabled = false
     static let defaultUsageResetSoonNotificationsEnabled = true
+    static let defaultClaudeUsagePreviewEnabled = false
+    static let defaultUsagePreviewProvider = UsagePreviewProvider.codex
+    static let defaultClaudeRunnerPreviewEnabled = false
+    static let defaultClaudeUsageNotificationsEnabled = false
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -86,7 +94,11 @@ struct RunnerPreferences: Equatable {
             sleepPreventionDisableScreenLockKey: defaultSleepPreventionDisableScreenLock,
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent,
             usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
-            usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled
+            usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled,
+            claudeUsagePreviewEnabledKey: defaultClaudeUsagePreviewEnabled,
+            usagePreviewProviderKey: defaultUsagePreviewProvider.rawValue,
+            claudeRunnerPreviewEnabledKey: defaultClaudeRunnerPreviewEnabled,
+            claudeUsageNotificationsEnabledKey: defaultClaudeUsageNotificationsEnabled
         ])
     }
 
@@ -117,6 +129,10 @@ struct RunnerPreferences: Equatable {
     let chargeLimitTargetPercent: Int
     let usageNotificationsEnabled: Bool
     let usageResetSoonNotificationsEnabled: Bool
+    let claudeUsagePreviewEnabled: Bool
+    let usagePreviewProvider: UsagePreviewProvider
+    let claudeRunnerPreviewEnabled: Bool
+    let claudeUsageNotificationsEnabled: Bool
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -192,6 +208,10 @@ struct RunnerPreferences: Equatable {
         self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
         self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
+        self.claudeUsagePreviewEnabled = Self.claudeUsagePreviewEnabled(defaults: defaults)
+        self.usagePreviewProvider = Self.usagePreviewProvider(defaults: defaults)
+        self.claudeRunnerPreviewEnabled = Self.claudeRunnerPreviewEnabled(defaults: defaults)
+        self.claudeUsageNotificationsEnabled = Self.claudeUsageNotificationsEnabled(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -396,6 +416,43 @@ struct RunnerPreferences: Equatable {
 
     static func setUsageResetSoonNotificationsEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: usageResetSoonNotificationsEnabledKey)
+    }
+
+    static func claudeUsagePreviewEnabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: claudeUsagePreviewEnabledKey)
+    }
+
+    static func setClaudeUsagePreviewEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: claudeUsagePreviewEnabledKey)
+        if !isEnabled {
+            defaults.set(UsagePreviewProvider.codex.rawValue, forKey: usagePreviewProviderKey)
+            defaults.set(false, forKey: claudeRunnerPreviewEnabledKey)
+            defaults.set(false, forKey: claudeUsageNotificationsEnabledKey)
+        }
+    }
+
+    static func usagePreviewProvider(defaults: UserDefaults = .standard) -> UsagePreviewProvider {
+        UsagePreviewProvider(rawValue: defaults.string(forKey: usagePreviewProviderKey) ?? "") ?? .codex
+    }
+
+    static func setUsagePreviewProvider(_ provider: UsagePreviewProvider, defaults: UserDefaults = .standard) {
+        defaults.set(provider.rawValue, forKey: usagePreviewProviderKey)
+    }
+
+    static func claudeRunnerPreviewEnabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: claudeRunnerPreviewEnabledKey)
+    }
+
+    static func setClaudeRunnerPreviewEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: claudeRunnerPreviewEnabledKey)
+    }
+
+    static func claudeUsageNotificationsEnabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: claudeUsageNotificationsEnabledKey)
+    }
+
+    static func setClaudeUsageNotificationsEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: claudeUsageNotificationsEnabledKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {

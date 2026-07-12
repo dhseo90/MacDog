@@ -139,7 +139,7 @@ DMG path: $DMG_PATH
 SHA-256 path: $CHECKSUM_PATH
 Release notes path: $NOTES_PATH
 Payload:
-  - MacDog.app (includes bundled codex-usage)
+  - MacDog.app (includes bundled codex-usage and macdog-claude-statusline Preview bridge)
   - Applications symlink
   - Hidden DMG background artwork for drag-and-drop layout
 DMG layout:

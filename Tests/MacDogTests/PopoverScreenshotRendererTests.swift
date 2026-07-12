@@ -6,6 +6,60 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
+    func testClaudeUsagePreviewWaitingPartialReadyStaleAndErrorStatesRender() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let previews = [
+            ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: .empty,
+                loadIssue: nil
+            ),
+            Self.claudePreview(now: now, includeSevenDay: false),
+            Self.claudePreview(now: now),
+            Self.claudePreview(now: now, observedAtOffset: -1_000, staleAfterSeconds: 60),
+            Self.claudePreview(now: now, issueCode: "status_line_decode_failed")
+        ]
+
+        for preview in previews {
+            let view = ClaudeUsagePreviewPanel(preview: preview, now: now)
+                .frame(width: 254, alignment: .topLeading)
+            let image = render(view: view, size: NSSize(width: 254, height: 310), scale: 2)
+            XCTAssertGreaterThan(image.tiffRepresentation?.count ?? 0, 100)
+        }
+
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
+        XCTAssertTrue(source.contains("Claude Usage"))
+        XCTAssertTrue(source.contains("PREVIEW"))
+        XCTAssertFalse(source.contains("CodexResetCreditsBlock"))
+    }
+
+    func testClaudeHistoryCurrentPastCompareGraphsExportProviderLabeledPNG() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let preview = Self.claudePreview(now: now)
+        let currentReset = try XCTUnwrap(preview.usage?.sevenDay?.resetsAt)
+        let pastReset = currentReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
+
+        for mode in ClaudeUsageHistoryGraphMode.allCases {
+            let data = CodexUsageGraphImageExporter.pngData(
+                for: ClaudeUsageGraphSnapshotView(
+                    kind: .sevenDay,
+                    mode: mode,
+                    currentResetsAt: currentReset,
+                    pastResetsAt: pastReset,
+                    history: preview.history
+                ),
+                size: CGSize(width: 520, height: 180),
+                scale: 2
+            )
+            XCTAssertEqual(data?.prefix(8), Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+        }
+
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
+        XCTAssertTrue(source.contains("macdog-claude-usage-"))
+        XCTAssertTrue(source.contains("Claude Preview ·"))
+    }
+
     func testCodexResetCreditsBlockBuildsCompactLayout() {
         let resetCredits = RateLimitResetCreditsSummary(
             availableCount: 3,
@@ -736,6 +790,66 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private static func codexReportWithThreeResetCreditExpiries() -> CodexUsageReport {
         codexReportWithResetCredits(resetCredits(count: 3, shuffled: false))
+    }
+
+    private static func claudePreview(
+        now: Date,
+        observedAtOffset: Int = 0,
+        staleAfterSeconds: Int = 900,
+        includeSevenDay: Bool = true,
+        issueCode: String? = nil
+    ) -> ClaudeUsagePreviewState {
+        let nowTimestamp = Int(now.timeIntervalSince1970)
+        let observedAt = nowTimestamp + observedAtOffset
+        let fiveHourReset = nowTimestamp + 10_000
+        let sevenDayReset = nowTimestamp + 500_000
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            model: ClaudeStatusLineModel(id: "claude-opus", displayName: "Opus"),
+            fiveHour: try! ClaudeUsageWindowSnapshot(usedPercent: 44, resetsAt: fiveHourReset),
+            sevenDay: includeSevenDay
+                ? try! ClaudeUsageWindowSnapshot(usedPercent: 67, resetsAt: sevenDayReset)
+                : nil
+        )
+        let pastReset = sevenDayReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
+        let history = ClaudeUsageHistory(samples: [
+            ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: observedAt,
+                usedPercent: 44,
+                resetsAt: fiveHourReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: observedAt - 20_000,
+                usedPercent: 55,
+                resetsAt: sevenDayReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: observedAt,
+                usedPercent: 67,
+                resetsAt: sevenDayReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: pastReset - 40_000,
+                usedPercent: 72,
+                resetsAt: pastReset
+            )!
+        ])
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: staleAfterSeconds,
+                usage: usage,
+                issue: issueCode.map { ClaudeUsageCacheIssue(code: $0, recordedAt: observedAt) }
+            ),
+            history: history,
+            loadIssue: nil
+        )
     }
 
     private func weeklyHistoryBlock(
