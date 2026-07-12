@@ -1,4 +1,5 @@
 import Foundation
+import CodexUsageCore
 import UserNotifications
 
 struct UsageNotificationDeliverySettings: Equatable, Sendable {
@@ -208,6 +209,12 @@ extension UsageNotificationCandidate {
             "Codex 한도 도달"
         case .resetSoon:
             "Codex 회복 임박"
+        case .dailyTargetApproaching:
+            "Codex 오늘 목표 접근"
+        case .dailyTargetExceeded:
+            "Codex 오늘 목표 초과"
+        case .cumulativePaceExceeded:
+            "Codex 주간 페이스 초과"
         }
     }
 
@@ -222,6 +229,12 @@ extension UsageNotificationCandidate {
             return "\(window.label) 사용량이 \(percent)%입니다. 한도 도달 상태를 확인하세요."
         case .resetSoon:
             return "5시간 한도가 곧 회복됩니다.\(resetSuffix)"
+        case .dailyTargetApproaching:
+            return "오늘 사용량이 일일 목표의 80%에 도달했습니다."
+        case .dailyTargetExceeded:
+            return "오늘 사용량이 일일 목표 \(UsageMonitorState.percent(CodexWeeklyPacemaker.dailyTargetUsedPercent))%를 넘었습니다."
+        case .cumulativePaceExceeded:
+            return "주간 누적 사용량이 Day \(dayIndex ?? 1) 목표 페이스를 넘었습니다."
         }
     }
 

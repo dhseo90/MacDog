@@ -21,7 +21,6 @@ enum MacDogDemoData {
             fiveHourUsageHistory: fiveHourUsageHistory(now: now),
             weeklyUsageHistory: weeklyUsageHistory(now: now),
             resetWindowHistory: resetWindowHistory(now: now),
-            planTransitionConfiguration: planTransitionConfiguration(now: now),
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -200,23 +199,10 @@ enum MacDogDemoData {
                 recordedAt: resetsAt - 60,
                 windowDurationMins: 300,
                 usedPercent: usedPercent,
-                resetsAt: resetsAt,
-                planEpochID: "demo-current"
+                resetsAt: resetsAt
             )
         }
         return CodexUsageFiveHourHistory(samples: samples)
-    }
-
-    private static func planTransitionConfiguration(now: Int) -> CodexPlanTransitionConfiguration? {
-        try? CodexPlanTransitionConfiguration(
-            currentPlanLabel: "현재 플랜",
-            targetPlanLabel: "목표 플랜",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            plannedTransitionAt: now + 14 * 24 * 60 * 60,
-            currentPlanEpochID: "demo-current",
-            targetPlanEpochID: "demo-target"
-        )
     }
 
     private static func resetWindowHistory(now: Int) -> CodexUsageResetWindowHistory {

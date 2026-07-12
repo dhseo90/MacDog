@@ -19,8 +19,45 @@ struct UsageNotificationPolicy: Equatable {
             hasReachedLimit: state.report?.rateLimitReachedType != nil || limit.rateLimitReachedType != nil
         )
         let resetSoonCandidates = windows.compactMap { resetSoonCandidate(for: $0, now: now) }
+        let pacemakerCandidates = pacemakerCandidates(for: state)
 
-        return usageCandidates + resetSoonCandidates
+        return usageCandidates + resetSoonCandidates + pacemakerCandidates
+    }
+
+    private func pacemakerCandidates(for state: UsageMonitorState) -> [UsageNotificationCandidate] {
+        guard let pacemaker = state.codexWeeklyPacemaker,
+              let currentDayUsedPercent = pacemaker.currentDayUsedPercent else {
+            return []
+        }
+
+        var candidates: [UsageNotificationCandidate] = []
+        if pacemaker.isDailyTargetExceeded {
+            candidates.append(UsageNotificationCandidate(
+                event: .dailyTargetExceeded,
+                window: .weekly,
+                usedPercent: currentDayUsedPercent,
+                resetsAt: pacemaker.resetsAt,
+                dayIndex: pacemaker.dayIndex
+            ))
+        } else if pacemaker.isDailyTargetApproaching {
+            candidates.append(UsageNotificationCandidate(
+                event: .dailyTargetApproaching,
+                window: .weekly,
+                usedPercent: currentDayUsedPercent,
+                resetsAt: pacemaker.resetsAt,
+                dayIndex: pacemaker.dayIndex
+            ))
+        }
+        if pacemaker.isCumulativeTargetExceeded {
+            candidates.append(UsageNotificationCandidate(
+                event: .cumulativePaceExceeded,
+                window: .weekly,
+                usedPercent: pacemaker.currentUsedPercent,
+                resetsAt: pacemaker.resetsAt,
+                dayIndex: pacemaker.dayIndex
+            ))
+        }
+        return candidates
     }
 
     private func usageThresholdCandidates(
@@ -95,9 +132,29 @@ struct UsageNotificationCandidate: Equatable, Sendable {
     let window: UsageNotificationWindow
     let usedPercent: Double
     let resetsAt: Int?
+    let dayIndex: Int?
+
+    init(
+        event: UsageNotificationEvent,
+        window: UsageNotificationWindow,
+        usedPercent: Double,
+        resetsAt: Int?,
+        dayIndex: Int? = nil
+    ) {
+        self.event = event
+        self.window = window
+        self.usedPercent = usedPercent
+        self.resetsAt = resetsAt
+        self.dayIndex = dayIndex
+    }
 
     var dedupeKey: UsageNotificationDedupeKey {
-        UsageNotificationDedupeKey(event: event, window: window, resetsAt: resetsAt)
+        UsageNotificationDedupeKey(
+            event: event,
+            window: window,
+            resetsAt: resetsAt,
+            dayIndex: dayIndex
+        )
     }
 }
 
@@ -106,6 +163,9 @@ enum UsageNotificationEvent: String, Codable, Equatable, Sendable {
     case approachingLimit
     case limitReached
     case resetSoon
+    case dailyTargetApproaching
+    case dailyTargetExceeded
+    case cumulativePaceExceeded
 }
 
 enum UsageNotificationWindow: String, Codable, Equatable, Sendable {
@@ -126,9 +186,23 @@ struct UsageNotificationDedupeKey: Codable, Hashable, Sendable {
     let event: UsageNotificationEvent
     let window: UsageNotificationWindow
     let resetsAt: Int?
+    let dayIndex: Int?
+
+    init(
+        event: UsageNotificationEvent,
+        window: UsageNotificationWindow,
+        resetsAt: Int?,
+        dayIndex: Int? = nil
+    ) {
+        self.event = event
+        self.window = window
+        self.resetsAt = resetsAt
+        self.dayIndex = dayIndex
+    }
 
     var rawValue: String {
-        "usage.\(event.rawValue).\(window.rawValue).reset.\(resetsAt.map(String.init) ?? "unknown")"
+        let base = "usage.\(event.rawValue).\(window.rawValue).reset.\(resetsAt.map(String.init) ?? "unknown")"
+        return dayIndex.map { base + ".day.\($0)" } ?? base
     }
 }
 

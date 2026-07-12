@@ -351,8 +351,8 @@ Codex 주간 window의 사용률과 잔여량을 7개 day slot으로 나눠 사�
 MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 사용자에게 그 비율을
 대신 입력하게 하지 않습니다.
 
-상태: `v1.7.0` 릴리즈 완료 / 당시 플랜 전환 scenario·epoch UI는 과도 구현으로 재분류 / 실제
-코드 단순화는 `v1.8.0` 선행 작업으로 진행.
+상태: `v1.7.0` 릴리즈 완료 / 당시 플랜 전환 scenario·epoch UI는 과도 구현으로 재분류 /
+`v1.8.0` 개발 브랜치에서 제거와 페이스메이커 focused test 완료.
 
 목표 동작:
 
@@ -403,8 +403,9 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 정리부터 Claude live·설치·GUI·release 안정화까지 이 버전에서 모두 완료합니다. 이 프로젝트는
 두 provider 동시 사용을 고려하지 않으며 합산, 비교, 자동 fallback을 구현하지 않습니다.
 
-구현 상태: Claude sanitizer/cache/history backend와 fixture 자동검증은 존재하지만, 플랜 전환과
-Claude Preview 설정 UI 및 동시 provider 전제 기능은 제품 범위에 맞게 재작업해야 합니다.
+구현 상태: v1.7 plan transition/epoch runtime·UI 제거, legacy file inert 보존, 1/7 day 페이스메이커,
+5시간 단기 pace와 알림 focused test까지 완료했습니다. Claude sanitizer/cache/history backend와
+fixture 자동검증은 존재하지만 Claude Preview 설정 UI 및 동시 provider 전제 기능은 재작업해야 합니다.
 실제 Claude 구독 `rate_limits` event는 아직 live 검수하지 않았습니다.
 
 구현 순서:

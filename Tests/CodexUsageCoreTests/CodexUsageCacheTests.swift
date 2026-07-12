@@ -143,7 +143,7 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.count, 1)
         XCTAssertEqual(sample.recordedAt, now)
         XCTAssertEqual(sample.windowDurationMins, 300)
-        XCTAssertEqual(sample.planEpochID, CodexUsageFiveHourHistorySample.legacyPlanEpochID)
+        XCTAssertFalse(String(decoding: try Data(contentsOf: historyURL), as: UTF8.self).contains("planEpochID"))
         XCTAssertEqual(Set(cacheObject.keys), [
             "cachedAt",
             "report",
@@ -152,57 +152,28 @@ final class CodexUsageCacheTests: XCTestCase {
         ])
     }
 
-    func testWriteSuccessAssignsConfirmedPlanEpochToFiveHourSample() throws {
+    func testWriteSuccessIgnoresAndPreservesCorruptLegacyPlanConfiguration() throws {
         let fileURL = temporaryFileURL()
-        let now = 1_779_800_000
-        let configurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
-        let configuration = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            plannedTransitionAt: now - 3_600,
-            confirmedTransitionAt: now - 60,
-            currentPlanEpochID: "before-transition",
-            targetPlanEpochID: "after-transition"
-        )
-        try CodexPlanTransitionConfigurationStore(fileURL: configurationURL).write(configuration)
-        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
-            Date(timeIntervalSince1970: TimeInterval(now))
-        })
-
-        try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60)
-
-        let historyURL = CodexUsageFiveHourHistoryStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
-        let history = try CodexUsageFiveHourHistoryStore(fileURL: historyURL).read()
-        XCTAssertEqual(history.samples.first?.planEpochID, "after-transition")
-    }
-
-    func testWriteSuccessRejectsCorruptPlanConfigurationBeforeWritingCacheOrHistory() throws {
-        let fileURL = temporaryFileURL()
-        let configurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
+        let configurationURL = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("usage-plan-transition.json")
         try FileManager.default.createDirectory(
             at: configurationURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try Data("{not-json".utf8).write(to: configurationURL, options: [.atomic])
+        let legacyBytes = Data("{not-json".utf8)
+        try legacyBytes.write(to: configurationURL, options: [.atomic])
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
             Date(timeIntervalSince1970: 1_779_800_000)
         })
 
-        XCTAssertThrowsError(try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath:
+        try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath:
             CodexUsageFiveHourHistoryStore.defaultFileURL(
                 adjacentToCacheFileURL: fileURL
             ).path
         ))
+        XCTAssertEqual(try Data(contentsOf: configurationURL), legacyBytes)
     }
 
     func testWriteSuccessDoesNotPersistUnconfirmedCurrentResetWindow() throws {

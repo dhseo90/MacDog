@@ -81,8 +81,8 @@ struct UsageNotificationSettingsSnapshot: Equatable, Sendable {
         switch authorizationStatus {
         case .authorized:
             return resetSoonNotificationsEnabled
-                ? "80%, 95%, 한도 도달, 회복 30분 전 기준을 확인합니다."
-                : "80%, 95%, 한도 도달 기준을 확인합니다."
+                ? "일일·누적 페이스, 80%, 95%, 한도 도달, 회복 30분 전 기준을 확인합니다."
+                : "일일·누적 페이스, 80%, 95%, 한도 도달 기준을 확인합니다."
         case .denied:
             return "macOS 알림 설정에서 MacDog 알림을 허용해야 발송됩니다."
         case .notDetermined:

@@ -72,6 +72,8 @@ struct ClaudeUsageNotificationCandidate: Equatable, Sendable {
         case .approachingLimit: "Claude 한도 임박"
         case .limitReached: "Claude 한도 도달"
         case .resetSoon: "Claude 회복 임박"
+        case .dailyTargetApproaching, .dailyTargetExceeded, .cumulativePaceExceeded:
+            "Claude 사용량"
         }
     }
 
@@ -87,6 +89,8 @@ struct ClaudeUsageNotificationCandidate: Equatable, Sendable {
             "\(label) 사용량이 \(percent)%입니다. 한도 도달 상태를 확인하세요."
         case .resetSoon:
             "\(label) 한도가 곧 회복됩니다."
+        case .dailyTargetApproaching, .dailyTargetExceeded, .cumulativePaceExceeded:
+            "\(label) 사용량 상태를 확인하세요."
         }
     }
 }

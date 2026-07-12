@@ -1,6 +1,7 @@
 # v1.8.0 선택형 Codex/Claude 사용량 mode와 안정화
 
-상태: backend sanitizer/cache/history 구현 / 제품 범위 재정의 / UI·기능 재작업과 live·설치·GUI 검증 전
+상태: backend sanitizer/cache/history와 v1.7 제거·페이스메이커 구현 / selected-provider UI·상태 전이,
+live·설치·GUI 검증 전
 작성일: 2026-07-12
 대상 버전: `1.8.0`
 

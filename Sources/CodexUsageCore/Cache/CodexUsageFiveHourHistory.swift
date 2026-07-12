@@ -19,7 +19,7 @@ public struct CodexUsageFiveHourHistory: Codable, Equatable, Sendable {
             if lhs.resetsAt != rhs.resetsAt {
                 return lhs.resetsAt < rhs.resetsAt
             }
-            return lhs.planEpochID < rhs.planEpochID
+            return lhs.usedPercent < rhs.usedPercent
         }
     }
 
@@ -42,26 +42,21 @@ public struct CodexUsageFiveHourHistorySample: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 1
     public static let expectedWindowDurationMins = 300
     public static let logicalWindowTimestampToleranceSeconds = 5 * 60
-    public static let legacyPlanEpochID = "legacy"
-
     public let schemaVersion: Int
     public let recordedAt: Int
     public let windowDurationMins: Int
     public let usedPercent: Double
     public let resetsAt: Int
-    public let planEpochID: String
 
     public init?(
         schemaVersion: Int = Self.currentSchemaVersion,
         recordedAt: Int,
         windowDurationMins: Int,
         usedPercent: Double,
-        resetsAt: Int,
-        planEpochID: String
+        resetsAt: Int
     ) {
         guard windowDurationMins == Self.expectedWindowDurationMins,
-              usedPercent.isFinite,
-              !planEpochID.isEmpty
+              usedPercent.isFinite
         else {
             return nil
         }
@@ -71,44 +66,47 @@ public struct CodexUsageFiveHourHistorySample: Codable, Equatable, Sendable {
         self.windowDurationMins = windowDurationMins
         self.usedPercent = min(max(usedPercent, 0), 100)
         self.resetsAt = resetsAt
-        self.planEpochID = planEpochID
     }
 
     public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let container = try decoder.container(keyedBy: LegacyCodingKeys.self)
         let recordedAt = try container.decode(Int.self, forKey: .recordedAt)
         let windowDurationMins = try container.decode(Int.self, forKey: .windowDurationMins)
         let usedPercent = try container.decode(Double.self, forKey: .usedPercent)
         let resetsAt = try container.decode(Int.self, forKey: .resetsAt)
-        let planEpochID = try container.decodeIfPresent(String.self, forKey: .planEpochID) ??
-            Self.legacyPlanEpochID
+        _ = try container.decodeIfPresent(String.self, forKey: .planEpochID)
 
         guard let migrated = Self.init(
             recordedAt: recordedAt,
             windowDurationMins: windowDurationMins,
             usedPercent: usedPercent,
-            resetsAt: resetsAt,
-            planEpochID: planEpochID
+            resetsAt: resetsAt
         ) else {
             throw DecodingError.dataCorruptedError(
                 forKey: .windowDurationMins,
                 in: container,
-                debugDescription: "Five-hour history samples require a 300-minute window, finite usage, and a plan epoch."
+                debugDescription: "Five-hour history samples require a 300-minute window and finite usage."
             )
         }
         self = migrated
     }
 
     public func matchesLogicalWindow(_ other: Self) -> Bool {
-        guard planEpochID == other.planEpochID,
-              windowDurationMins == other.windowDurationMins
-        else {
+        guard windowDurationMins == other.windowDurationMins else {
             return false
         }
         return abs(resetsAt - other.resetsAt) <= Self.logicalWindowTimestampToleranceSeconds
     }
 
     private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case recordedAt
+        case windowDurationMins
+        case usedPercent
+        case resetsAt
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
         case schemaVersion
         case recordedAt
         case windowDurationMins
@@ -212,35 +210,6 @@ public struct CodexUsageFiveHourHistoryStore {
         retained.append(sample)
         try write(CodexUsageFiveHourHistory(samples: retained))
         return true
-    }
-
-    @discardableResult
-    public func reassignPlanEpoch(
-        forWindowsStartingAtOrAfter transitionAt: Int,
-        from sourceEpochID: String,
-        to targetEpochID: String
-    ) throws -> Int {
-        let existing = try read()
-        var changedCount = 0
-        let migrated = existing.samples.compactMap { sample -> CodexUsageFiveHourHistorySample? in
-            let windowStartsAt = sample.resetsAt - sample.windowDurationMins * 60
-            guard sample.planEpochID == sourceEpochID,
-                  windowStartsAt >= transitionAt
-            else {
-                return sample
-            }
-            changedCount += 1
-            return CodexUsageFiveHourHistorySample(
-                recordedAt: sample.recordedAt,
-                windowDurationMins: sample.windowDurationMins,
-                usedPercent: sample.usedPercent,
-                resetsAt: sample.resetsAt,
-                planEpochID: targetEpochID
-            )
-        }
-        guard changedCount > 0 else { return 0 }
-        try write(CodexUsageFiveHourHistory(samples: migrated))
-        return changedCount
     }
 
     private func shouldSkip(

@@ -18,8 +18,8 @@ MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바�
   `/Applications/MacDog.app` 첫 실행, 주요 탭과 Codex `현재`/`지난`/`비교` mode, CLI/cache
   LaunchAgent 경로를 확인했습니다.
 - v1.7.0에 실제 포함된 plan transition scenario·epoch UI는 과도 구현으로 재분류했습니다.
-  release는 취소하지 않으며 v1.8.0에서 해당 기능을 제거하고 5시간/주간 잔여량 페이스메이커로
-  단순화합니다.
+  release는 취소하지 않으며 v1.8.0 개발 브랜치에서 해당 기능을 제거하고 5시간/주간 잔여량
+  페이스메이커로 단순화했습니다. 전체 v1.8 release 검증은 아직 진행 전입니다.
 - 로그인 항목은 설치본 설정 UI의 켜짐 상태와 공식 release final-state 검증으로 확인했습니다.
 
 ## 화면
@@ -90,8 +90,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 페이스메이커: weekly window 시작부터 24시간 day slot을 나누고 일일 목표 약 14.3%,
-  현재 day 사용량과 누적 페이스를 계산합니다. v1.8.0 개발 목표이며 가격 플랜 적합성을 예측하지
-  않습니다.
+  현재 day 사용량과 누적 페이스를 계산합니다. v1.8.0 개발 브랜치 source·focused test가 구현됐고
+  가격 플랜 적합성을 예측하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Claude backend: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`를 sanitize해
   별도 cache/history에 저장하는 기반이 구현돼 있습니다. v1.8.0에서 Claude mode로 연결하고 실제
@@ -117,7 +117,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 첫 실행 마무리가 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 15`를 실행해 앱 cache를 갱신합니다.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존됩니다. v1.8.0에서
-  `planEpochID` 의존을 제거하고 단기 pace에 재사용합니다.
+  `planEpochID` 신규 기록·계산 의존을 제거하고 단기 pace에 재사용합니다. 기존 파일의 legacy field는
+  decode 호환만 유지합니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다.
 - Claude mode는 polling/manual refresh를 만들지 않습니다. `macdog-claude-statusline`이 새 Claude
   응답 event를 받을 때 `claude-usage.json`과 `claude-usage-history.json`을 갱신하며, 마지막 정상
@@ -125,9 +126,9 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## v1.8.0 개발 전 검증 경계
 
-현재 검증은 v1.7 페이스메이커로 재사용할 history 계층과 v1.8 Claude sanitizer/cache/privacy
-backend를 확인합니다. 아직 시작하지 않은 설정·1번 탭·runner·알림 재작업을 완료로 주장하지
-않습니다.
+현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, 5시간 pace와 v1.8 Claude
+sanitizer/cache/privacy backend를 확인합니다. 아직 시작하지 않은 단일 provider 설정·1번 탭·runner·알림
+재작업을 완료로 주장하지 않습니다.
 
 ```sh
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test

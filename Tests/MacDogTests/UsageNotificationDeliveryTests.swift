@@ -79,6 +79,31 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertFalse(candidate.notificationContent.body.contains("주간 한도가 곧 회복됩니다."))
     }
 
+    func testPacemakerNotificationUsesDayScopedIdentifierAndCopy() {
+        let candidate = UsageNotificationCandidate(
+            event: .dailyTargetExceeded,
+            window: .weekly,
+            usedPercent: 16,
+            resetsAt: 1_800_604_800,
+            dayIndex: 3
+        )
+
+        XCTAssertEqual(
+            candidate.notificationContent.identifier,
+            "usage.dailyTargetExceeded.weekly.reset.1800604800.day.3"
+        )
+        XCTAssertEqual(candidate.notificationContent.title, "Codex 오늘 목표 초과")
+        XCTAssertTrue(candidate.notificationContent.body.contains("일일 목표"))
+    }
+
+    func testLegacyDedupeKeyDecodesWithoutDayIndex() throws {
+        let data = Data(#"{"event":"highUsage","window":"fiveHour","resetsAt":1800001800}"#.utf8)
+        let key = try JSONDecoder().decode(UsageNotificationDedupeKey.self, from: data)
+
+        XCTAssertNil(key.dayIndex)
+        XCTAssertEqual(key.rawValue, "usage.highUsage.fiveHour.reset.1800001800")
+    }
+
     func testDispatcherFiltersResetSoonAndAlreadyDeliveredKeys() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()

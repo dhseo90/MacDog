@@ -4,8 +4,6 @@ import MacDogPrivilegedHelperSupport
 import SwiftUI
 
 struct SettingsPanel: View {
-    let planTransitionConfiguration: CodexPlanTransitionConfiguration?
-    let planTransitionConfigurationError: String?
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let claudeUsagePreview: ClaudeUsagePreviewState
     let onAction: (PetAction) -> Void
@@ -28,16 +26,12 @@ struct SettingsPanel: View {
     private let loginLaunchPreferenceCoordinator = LoginLaunchPreferenceCoordinator()
 
     init(
-        planTransitionConfiguration: CodexPlanTransitionConfiguration? = nil,
-        planTransitionConfigurationError: String? = nil,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot,
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
         onAction: @escaping (PetAction) -> Void,
         onPreferencesChanged: @escaping () -> Void,
         notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
     ) {
-        self.planTransitionConfiguration = planTransitionConfiguration
-        self.planTransitionConfigurationError = planTransitionConfigurationError
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
         self.claudeUsagePreview = claudeUsagePreview
         self.onAction = onAction
@@ -91,16 +85,6 @@ struct SettingsPanel: View {
                     runnerEnabled: $claudeRunnerPreviewEnabled,
                     notificationsEnabled: $claudeUsageNotificationsEnabled,
                     masterNotificationsEnabled: usageNotificationsEnabled
-                )
-            }
-
-            Divider()
-
-            PopoverFormSection(title: "플랜 전환", systemImage: "arrow.left.arrow.right") {
-                CodexPlanTransitionSettingsEditor(
-                    configuration: planTransitionConfiguration,
-                    configurationError: planTransitionConfigurationError,
-                    onSaved: onPreferencesChanged
                 )
             }
 

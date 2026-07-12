@@ -8,7 +8,6 @@ struct CodexUsagePanel: View {
         VStack(alignment: .leading, spacing: CodexUsagePanelLayout.sectionSpacing) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
-                let panelTimestamp = Int(resetSummaryNow.timeIntervalSince1970)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text("현재 사용량")
@@ -17,7 +16,7 @@ struct CodexUsagePanel: View {
                         Spacer(minLength: 6)
                         CodexUsageSummaryInline(
                             summary: summary,
-                            phase: state.phase,
+                            phase: state.codexPhase,
                             selectedBasisLabel: state.selectedWindowStatus?.label
                         )
                     }
@@ -34,26 +33,19 @@ struct CodexUsagePanel: View {
                     )
                 }
 
-                CodexPlanTransitionReadinessBlock(
-                    configuration: state.planTransitionConfiguration,
-                    configurationError: state.planTransitionConfigurationError,
-                    scenario: state.planTransitionScenario(
-                        now: panelTimestamp
-                    )
+                CodexWeeklyPacemakerBlock(
+                    pacemaker: state.codexWeeklyPacemaker,
+                    fiveHourPace: state.codexFiveHourPaceProjection
                 )
 
                 CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
 
                 WeeklyRemainingHistoryBlock(
-                    history: state.weeklyUsageHistoryForActivePlanEpoch(at: panelTimestamp),
-                    resetWindowHistory: state.resetWindowHistoryForActivePlanEpoch(at: panelTimestamp),
+                    history: state.weeklyUsageHistory,
+                    resetWindowHistory: state.resetWindowHistory,
                     weeklyWindow: limit.weekly,
                     currentReport: state.report,
-                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
-                    planTransitionScenario: state.planTransitionScenario(
-                        now: panelTimestamp
-                    ),
-                    planTransitionConfiguration: state.planTransitionConfiguration
+                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
                 )
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)

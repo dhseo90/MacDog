@@ -1,6 +1,7 @@
 # v1.7.0 Codex 주간 잔여량 페이스메이커
 
-상태: v1.7.0 릴리즈 완료 / 당시 전환 scenario·epoch UI는 과도 구현으로 재분류 / v1.8.0에서 단순화 예정
+상태: v1.7.0 릴리즈 완료 / 당시 전환 scenario·epoch UI는 과도 구현으로 재분류 /
+v1.8.0 개발 브랜치 source·focused test 단순화 완료 / 전체 build·release 검증 전
 작성일: 2026-07-12
 대상 버전: `1.7.0`
 
@@ -60,7 +61,7 @@ v1.8.0에서는 `planEpochID`를 신규 계산과 UI에서 제거하되 기존 �
 - 자동 플랜 변경 또는 reset credit 사용
 - 기존 CLI JSON/cache/history schema breaking change
 
-## v1.8.0 구현 전 검증 계약
+## v1.8.0 구현 검증 계약
 
 ```sh
 git diff --check
@@ -68,8 +69,10 @@ npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
 ```
 
-v1.8.0 개발 완료 시에는 plan transition source/UI/configuration write가 제거됐고 5시간 history가
-`planEpochID` 없이 단기 pace에 사용되는지 별도 source·fixture test로 확인합니다.
+v1.8.0 개발 브랜치에서는 plan transition source/UI/configuration read·write를 제거했고,
+기존 legacy 파일을 읽거나 수정·삭제하지 않습니다. 5시간 history는 과거 `planEpochID`를 decode할
+수 있지만 신규 encoding과 logical-window 계산에는 사용하지 않으며 단기 pace에 재사용합니다.
+주간 history는 reset 기준 7개 day slot, 일일 `1/7` 목표, sample 부족 상태와 day별 알림을 제공합니다.
 
 ## published v1.7.0 기록
 
