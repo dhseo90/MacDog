@@ -1,7 +1,7 @@
 # v1.6.1 History Control Polish
 
 작성일: 2026-07-09
-상태: 로컬 검증 완료, 릴리즈 준비 중
+상태: 릴리즈 완료, published DMG 설치본 UI smoke 완료
 대상 버전: `1.6.1`
 
 ## 목표
@@ -37,3 +37,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild bui
 ```
 
 릴리즈 smoke에서는 published DMG 설치본 기준으로 Codex 탭을 열고 `현재`/`지난`/`비교` mode를 직접 전환해, `현재`에는 dropdown이 없고 `지난`/`비교`에는 dropdown이 표시되는지 확인합니다.
+
+## 릴리즈 결과
+
+- signed annotated `v1.6.1` tag와 GitHub Release publish를 확인했습니다.
+- published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 통과했습니다.
+- Finder drag-and-drop으로 `/Applications/MacDog.app`을 교체하고 payload와 설치본 executable checksum이 일치함을 확인했습니다.
+- 실제 설치본에서 `현재` mode의 dropdown 부재와 `지난`/`비교` mode의 dropdown 표시를 확인했습니다.
+- 로그인 항목 교차 검증 결과와 cache 로그 후속 이슈는 [V161ReleaseReadiness.md](V161ReleaseReadiness.md)에 기록합니다.

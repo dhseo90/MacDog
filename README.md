@@ -6,14 +6,15 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.6.0](https://github.com/dhseo90/MacDog/releases/tag/v1.6.0)입니다.
+현재 GitHub Release는 [v1.6.1](https://github.com/dhseo90/MacDog/releases/tag/v1.6.1)입니다.
 
-- Published release head: signed `v1.6.0` tag target `600b8d546b0bbbbef8b4a8a8e9b01b3f39eab16e`
-- Published asset: `MacDog-1.6.0.dmg`, `MacDog-1.6.0.dmg.sha256`
-- Published DMG SHA-256: `bb443361809c6655002747c6f057f28bf440378ce69b3af2d7209f12b053f242`
+- Published release head: signed `v1.6.1` tag target `62147e9d346094bf9d10920bd91b3186bc3e27dc`
+- Published asset: `MacDog-1.6.1.dmg`, `MacDog-1.6.1.dmg.sha256`
+- Published DMG SHA-256: `e145c34d98133d6f1db7fab100574ecb6c5901e75b867f2fe0e5e4baf5eba959`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex/활성 자원/잠들지 않기/배터리/설정 탭 전환, 사용자 초기화권 장수/장별 유효기간 표시, CLI/cache smoke 실행, live fetch timeout 분리 보고, release final-state 검증.
-- v1.6.0에는 Codex 탭의 중복 회복 일정 제거, 5시간/주간 사용량 단일 표시, 사용자 초기화권 장수와 장별 유효기간 표시, 초기화권 상세 조회 sanitize, README Codex 탭 screenshot 갱신이 포함됩니다.
+- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, Codex `현재`/`지난`/`비교` mode 전환과 dropdown 표시 조건, CLI/cache LaunchAgent 경로를 확인했습니다.
+- v1.6.1에는 Codex history mode control compact layout과 지난 window dropdown 표시 조건 정리가 포함됩니다.
+- 로그인 항목은 앱 설정 끄기/켜기, Background Task DB의 `[enabled, allowed, notified]`, 공식 release final-state 검증으로 확인했습니다.
 
 ## 화면
 
@@ -262,6 +263,9 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md): v1.6.0 릴리즈 준비 감사와 완료 smoke 기록
 - [Docs/V161HistoryControlPolish.md](Docs/V161HistoryControlPolish.md): v1.6.1 Codex history control polish 범위와 UI 검증 계약
 - [Docs/V161ReleaseReadiness.md](Docs/V161ReleaseReadiness.md): v1.6.1 릴리즈 준비 감사와 release smoke 계약
+- [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md): v1.7.0 Codex Pro $100 전환 판단과 플랜 epoch 경계
+- [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md): v1.8.0 Claude 사용량 동등성 Preview와 live 검수 경계
+- [Docs/V190CodexClaudeAIUsageTab.md](Docs/V190CodexClaudeAIUsageTab.md): v1.9.0 Codex + Claude 전용 AI 사용량 탭 범위
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
