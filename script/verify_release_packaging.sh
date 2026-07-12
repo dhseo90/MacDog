@@ -140,6 +140,8 @@ require_contains "$v180_script_source" "Claude settings, auth store, Keychain, t
 require_contains "$v180_script_source" "Codex/Claude 선택 mode"
 require_contains "$v180_script_source" '`codex-usage` CLI는 Codex 전용'
 require_contains "$v180_script_source" '`macdog-claude-statusline` bridge'
+require_contains "$v180_script_source" 'unsigned/ad-hoc 배포'
+require_not_contains "$v180_script_source" '릴리즈 후보'
 
 if [[ -d "$APP_BUNDLE" && -n "${MACDOG_RELEASE_VERSION:-}" ]]; then
   version="$MACDOG_RELEASE_VERSION"

@@ -94,7 +94,10 @@ git push origin v<version>
 gh release create v<version> dist/release/MacDog-<version>.dmg dist/release/MacDog-<version>.dmg.sha256 --verify-tag --draft
 ```
 
-GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다. 이 workflow도 원격에 이미 존재하는 signed/Verified tag만 사용해야 하며, tag를 자동 생성하면 안 됩니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
+GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다.
+`tag == v<version>`이고 원격에 이미 존재하는 signed/Verified tag가 release head를 가리킬 때만
+진행하며 tag를 자동 생성하면 안 됩니다. 생성 직후 draft/prerelease/target/tag와 DMG·checksum asset
+두 개를 readback합니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
 
 release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서로 종료 상태를 확인합니다.
 

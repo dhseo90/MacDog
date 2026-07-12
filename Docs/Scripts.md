@@ -69,7 +69,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_install_dry_run.sh` | install/uninstall dry-run 출력 검증 | 설치/삭제 계획 문구와 helper 경계를 확인합니다. |
 | `script/verify_public_repo_guardrails.sh` | public repo guardrail 검증 | 필수 문서, CODEOWNERS, Dependabot, Actions 권한, workflow action allowlist, secret/대형 파일/생성 산출물 추적 여부를 확인합니다. |
 | `script/verify_readme_screenshots.sh` | README 이미지 hygiene/freshness 검증 | README가 참조하는 공식 이미지, 임시 이미지 삭제 상태, README renderer 산출물과 커밋 이미지의 일치 여부를 확인합니다. GitHub Actions에서는 SwiftUI PNG rasterization 차이를 피하기 위해 렌더 산출물과 이미지 크기까지 확인하고, byte 일치는 로컬 또는 `MACDOG_README_SCREENSHOT_STRICT=1`에서 강제합니다. |
-| `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, draft, stable workflow의 gate를 확인합니다. |
+| `script/verify_release_workflow.sh` | GitHub release workflow 검증 | release candidate, version/tag/target/asset readback을 포함한 draft, stable workflow gate를 확인합니다. |
 | `script/verify_release_final_state.sh --version <version>` | 릴리즈 smoke 종료 상태 검증 | `/Applications/MacDog.app` 버전과 app/CLI/Claude bridge 실행 파일, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, provider mode와 불일치한 usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 status, `/Volumes/MacDog*` 잔여 마운트를 읽기 전용으로 확인합니다. |
 | `script/verify_menu_bar_character.sh` | 메뉴바 캐릭터 기준선 검증 | menu bar image가 현재 desktop pet run-right 프레임에서 파생되는지 확인합니다. |
 | `script/verify_runtime_contract.sh` | runtime sampling 계약 검증 | runtime smoke 명령과 문서의 연결을 확인합니다. |

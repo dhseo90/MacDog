@@ -564,7 +564,7 @@ esac
 cat >"$NOTES_PATH" <<NOTES
 # MacDog $VERSION 릴리즈 노트
 
-상태: GitHub v$VERSION 로컬/unsigned 검증용 릴리즈 후보입니다. 이 DMG는 ad-hoc signed build이며 Apple notarization은 적용되지 않습니다.
+상태: GitHub v$VERSION unsigned/ad-hoc 배포입니다. Apple notarization은 적용되지 않았습니다.
 
 $release_highlights
 

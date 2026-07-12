@@ -101,6 +101,7 @@ require_match '\.dmg\.sha256'
 require_draft_match 'workflow_dispatch'
 require_draft_match 'contents: write'
 require_draft_match 'UNSIGNED-DRAFT'
+require_draft_match 'Required existing signed Git tag'
 require_draft_match 'MACDOG_RELEASE_VERSION: \$\{\{ inputs\.version \}\}'
 require_verify_step_version_env "$DRAFT_WORKFLOW" "draft release"
 require_draft_match './script/check\.sh --no-run'
@@ -109,9 +110,15 @@ require_draft_match 'hdiutil verify'
 require_draft_match 'shasum -a 256 -c'
 require_draft_match 'gh "\$\{args\[@\]\}"'
 require_draft_match '--draft'
+require_draft_match '--target "\$GITHUB_SHA"'
 require_draft_match '--notes-file'
 require_draft_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
 require_draft_match '\.dmg\.sha256'
+require_draft_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION'
+require_draft_match 'target_commitish'
+require_draft_match 'tag_name'
+require_draft_match 'asset_names'
+require_draft_match 'is_draft.*true.*is_prerelease.*false'
 if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
   die "draft release workflow must not mark unsigned draft releases as prerelease"
 fi

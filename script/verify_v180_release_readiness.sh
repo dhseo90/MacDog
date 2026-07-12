@@ -38,6 +38,13 @@ require_match() {
   /usr/bin/grep -Eq -- "$pattern" "$file" || die "missing $description in $file"
 }
 
+require_absent_match() {
+  local pattern="$1"
+  local file="$2"
+  local description="$3"
+  ! /usr/bin/grep -Eq -- "$pattern" "$file" || die "found $description in $file"
+}
+
 verify_contract() {
   local file
   for file in "$DOC" "$PRODUCT_DOC" "$README" "$ROADMAP" "$AGENTS" "$SCRIPTS_DOC" \
@@ -47,7 +54,7 @@ verify_contract() {
   [[ -x "$ROOT_DIR/script/verify_v180_release_readiness.sh" ]] || \
     die "v1.8 release-readiness verifier is not executable"
 
-  require_match '상태: 개발 자동 검증 통과.*PR·CI·review.*미수행' "$DOC" "honest pending status"
+  require_match '상태: 로컬 개발 자동 검증 통과.*PR·CI·review.*미수행' "$DOC" "honest pending status"
   require_match 'MACDOG_APP_VERSION=1\.8\.0 \./script/check\.sh --no-run' "$DOC" "versioned check gate"
   require_match '승인 1회.*Code Owners review.*branch 최신화' "$DOC" "review and up-to-date branch gate"
   require_match '필수 CI.*static-gates' "$DOC" "required static gate"
@@ -83,6 +90,13 @@ verify_contract() {
   require_match '`macdog-claude-statusline` bridge' "$PACKAGE_SCRIPT" "Claude bridge support"
   require_match '--verify-tag' "$DRAFT_WORKFLOW" "pre-existing release tag gate"
   require_match 'verification\.verified' "$DRAFT_WORKFLOW" "draft tag verification gate"
+  require_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION' "$DRAFT_WORKFLOW" "version and tag identity gate"
+  require_match '--target "\$GITHUB_SHA"' "$DRAFT_WORKFLOW" "draft target identity"
+  require_match 'target_commitish' "$DRAFT_WORKFLOW" "draft target readback"
+  require_match 'asset_names' "$DRAFT_WORKFLOW" "draft asset readback"
+  require_match 'is_draft.*true.*is_prerelease.*false' "$DRAFT_WORKFLOW" "draft state readback"
+  require_match 'unsigned/ad-hoc 배포' "$PACKAGE_SCRIPT" "publish-safe unsigned release note"
+  require_absent_match '릴리즈 후보' "$PACKAGE_SCRIPT" "stale release candidate copy"
 
   echo "v1.8.0 release readiness ok"
 }

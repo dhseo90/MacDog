@@ -411,7 +411,7 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
 test로 연결했습니다. Claude sanitizer/cache/history backend, 사용률·잔여율 표시, cache 없음 수동 연결
 UI와 bundle/install/final-state bridge gate도 구현했습니다. 2026-07-12 기준 전체
-`swift test --no-parallel` 440개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
+`swift test --no-parallel` 447개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
 `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. 실제 Claude 구독
 `rate_limits`, GUI·설치·release 검수는 남았습니다.
 
