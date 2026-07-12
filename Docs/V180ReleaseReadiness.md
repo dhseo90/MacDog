@@ -42,7 +42,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 ## PR, CI, review와 release head
 
 1. release branch를 push하고 `<release-branch> -> main` PR을 생성합니다.
-2. 필수 CI `static-gates`, `guardrails`, review, unresolved conversation 0개를 확인합니다.
+2. `main` 보호 규칙의 승인 1회, Code Owners review, branch 최신화, 필수 CI `static-gates`와
+   `guardrails`, unresolved conversation 0개를 확인합니다.
 3. 실패가 있으면 같은 branch에서 수정, focused/전체 검증, 커밋, push를 반복합니다.
 4. blocker가 작성자 본인 review 불가뿐이어도 사용자 명시 승인 전 admin bypass를 사용하지 않습니다.
 5. merge 후 최신 `origin/main` SHA를 v1.8.0 최종 release head로 기록합니다.
@@ -122,6 +123,7 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 | 전체 Swift test | 2026-07-12, 440개 통과 / 명시적 opt-in 4개 skip / 실패 0개 |
 | Xcode Debug no-sign build | 2026-07-12, 통과 |
 | `MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run` | 2026-07-12, 통과 |
+| `main` branch protection | 2026-07-12, 승인 1회 / Code Owners / branch 최신화 / `static-gates` / `guardrails` / conversation resolution 확인 |
 | PR, CI, review | 미수행 |
 | 최종 `origin/main` release head | 미기록 |
 | signed annotated `v1.8.0` tag / GitHub `Verified` | 미수행 |

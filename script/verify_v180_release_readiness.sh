@@ -49,7 +49,9 @@ verify_contract() {
 
   require_match '상태: 개발 자동 검증 통과.*PR·CI·review.*미수행' "$DOC" "honest pending status"
   require_match 'MACDOG_APP_VERSION=1\.8\.0 \./script/check\.sh --no-run' "$DOC" "versioned check gate"
-  require_match 'static-gates.*guardrails.*review' "$DOC" "PR and CI gate"
+  require_match '승인 1회.*Code Owners review.*branch 최신화' "$DOC" "review and up-to-date branch gate"
+  require_match '필수 CI.*static-gates' "$DOC" "required static gate"
+  require_match 'guardrails.*unresolved conversation 0개' "$DOC" "guardrails and conversation gate"
   require_match '최신 `origin/main` SHA.*release head' "$DOC" "release head rule"
   require_match 'signed annotated `v1\.8\.0` tag' "$DOC" "signed tag rule"
   require_match 'GitHub tag verification.*`Verified`' "$DOC" "GitHub verified tag rule"
