@@ -1,7 +1,7 @@
 # v1.8.0 릴리즈 준비 감사
 
-상태: Codex weekly-only 호환성 구현 / 로컬 자동검증 완료 / PR·CI·review, live Claude,
-GUI·설치, tag·artifact·publish 미수행
+상태: v1.8.0 GitHub Release publish / published DMG Finder 설치·설치본 UI·final-state 확인 /
+실제 Claude 구독 live smoke 미수행
 작성일: 2026-07-13
 대상 버전: `1.8.0`
 
@@ -89,8 +89,10 @@ Claude settings, auth store, Keychain, transcript 원문은 live smoke에서도 
 ## Published DMG 설치와 GUI smoke
 
 1. published DMG와 checksum을 새로 내려받아 checksum과 `hdiutil verify`를 재확인합니다.
-2. DMG payload version, app/CLI/Claude bridge executable checksum이 release head artifact와
-   일치하는지 확인합니다.
+2. DMG payload version과 workflow head SHA가 signed release head와 일치하는지 확인합니다.
+   Release Candidate와 Draft Release는 같은 head에서 별도 build하므로 ad-hoc signed executable의
+   bit-for-bit 동일성을 주장하지 않습니다. 설치본 executable은 published DMG payload와 직접
+   checksum을 대조합니다.
 3. Finder에서 published DMG를 열고 보이는 `MacDog.app`을 `Applications`로 실제
    drag-and-drop합니다.
 4. `/Applications/MacDog.app`의 version, executable checksum, codesign과 실행 중 app path를
@@ -136,38 +138,35 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 | Codex weekly-only focused test | v1.8 selected-provider 221개 중 218개 통과 / opt-in 3개 skip / 실패 0개 |
 | 실제 Codex weekly-only live cache | 2026-07-13, success / 주간 93% 남음 / weekly history sample 1개 / error 없음 |
 | `main` branch protection | 2026-07-12, 승인 1회 / Code Owners / branch 최신화 / `static-gates` / `guardrails` / conversation resolution 확인 |
-| PR, CI, review | 미수행 |
-| 최종 `origin/main` release head | 미기록 |
-| signed annotated `v1.8.0` tag / GitHub `Verified` | 미수행 |
-| Release Candidate run / DMG checksum / `hdiutil verify` | 미수행 |
-| Draft signed tag target / asset / state 확인 | 미수행 |
+| PR, CI, review | PR #35·#36 필수 CI 통과 / self-review 제한만 남은 상태에서 사용자 승인 admin bypass merge |
+| 최종 `origin/main` release head | `14d716a88ea10a77344a4f9aa3651c23b1160f8c` |
+| signed annotated `v1.8.0` tag / GitHub `Verified` | tag object `1d9748753761f0dfeca1b2f3c4aeebccd2389aba` / target `14d716a88ea10a77344a4f9aa3651c23b1160f8c` / `Verified` |
+| Release Candidate run / DMG checksum / `hdiutil verify` | run `29253650552` 통과 / artifact checksum·`hdiutil verify` 통과 |
+| Draft signed tag target / asset / state 확인 | run `29254330686` 통과 / tag target `14d716a...` / `isDraft=true`, `isPrerelease=false`, asset 2개 확인 뒤 publish |
 | 실제 Claude live smoke | 미수행 |
-| Published release와 재다운로드 검증 | 미수행 |
-| Finder drag-and-drop와 GUI smoke | 미수행 |
-| cleanup / final-state | 미수행 |
+| Published release와 재다운로드 검증 | release ID `353177762`, `isDraft=false`, `isPrerelease=false` / DMG SHA-256 `056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af` / checksum·`hdiutil verify` 통과 |
+| Finder drag-and-drop와 GUI smoke | 사용자 Finder 대치 / 설치본 v1.8.0 / executable SHA-256 `4526329e79f5cebfd5897830ac3d8037948589ece6c7f9af5529b41da50c910b` / codesign 통과 / 설치본 UI 직접 1번 탭 compact layout·설정 불필요 UI 제거·Claude empty state 확인 |
+| 선택 provider 왕복 | `Codex → Claude`에서 Codex cache LaunchAgent plist/job 제거 / `Claude → Codex`에서 weekly-only 화면·LaunchAgent 설치본 CLI 복구 / 최근 종료 코드 0 |
+| Codex 설치 component와 live cache | `~/bin/codex-usage` 설치본 symlink / 60초 one-shot LaunchAgent / weekly-only success cache 35% 사용·65% 남음 / 금지 key 없음 |
+| 단발 installed CLI live verifier | app-server 10초 timeout을 invalid success가 아닌 `usage-fetch:source-unavailable`로 정상 분리 |
+| 로그인 항목 | 외부 `SMAppService.mainApp.status`는 `notFound`였지만 Background Task DB의 설치 앱은 `[enabled, allowed, notified]` / 공식 final-state 교차검증 통과 |
+| cleanup / final-state | 중복 `dist/MacDog.app` 격리·DMG eject / `./script/verify_release_final_state.sh --version 1.8.0` 통과 / Finder `응용 프로그램` 범위 `MacDog` 1개 확인 |
+
+Release Candidate app executable SHA-256은 `27001012e6694d00e4ef497a705114e777e4c323760e2c4f5293e140242ce2de`,
+published DMG app executable SHA-256은
+`4526329e79f5cebfd5897830ac3d8037948589ece6c7f9af5529b41da50c910b`입니다. 두 workflow가 같은
+release head를 별도 build하므로 checksum이 다르며, bit-for-bit 동등성 통과로 기록하지 않습니다.
+published payload와 `/Applications/MacDog.app` executable checksum은 서로 일치합니다.
 
 검증하지 않은 항목은 완료로 바꾸지 않습니다. 결과를 기록할 때 run ID, SHA, checksum, tag verification,
 실제 설치 경로와 확인 화면을 확인된 사실로 남깁니다.
 
 ## 릴리즈 잔여 이슈
 
-### P0 — PR·CI·review와 release head 확정
-
-추천 모델: `5.6 Sol`
-추론 수준: 높음 (high)
-선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 6점. 보호 규칙과 최종
-release head 정합성을 함께 확인해야 합니다.
-
-### P0 — 실제 Claude live와 선택 provider GUI smoke
+### P0 — 실제 Claude 구독 live smoke
 
 추천 모델: `5.6 Sol`
 추론 수준: 매우 높음 (xhigh)
-선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 1 = 7점. 외부 event 상태 전이와
-privacy 경계를 실제 UI에서 함께 검증해야 합니다.
-
-### P0 — signed tag, artifact, draft, publish와 published DMG 설치
-
-추천 모델: `5.6 Sol`
-추론 수준: 매우 높음 (xhigh)
-선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. tag·artifact·설치본의
-동일성과 사용자 환경 변경을 포함합니다.
+선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 1 = 7점. 현재 환경에서 실제
+`rate_limits.five_hour`·`seven_day` event가 제공되지 않아, 외부 event 상태 전이와 privacy 경계를
+live data로 검증하지 못했습니다. synthetic fixture 통과를 live 완료로 대체하지 않습니다.

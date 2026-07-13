@@ -3,7 +3,7 @@
 상태: backend sanitizer/cache/history, v1.7 제거·페이스메이커, 단일 provider preference migration,
 설정·1번 탭·러너·알림·Codex refresh routing, Claude 잔여율·empty state와 release bridge gate 구현 /
 Codex weekly-only partial·5시간 복구 구현 / 전체 Swift test·Xcode Debug build·`check.sh --no-run`
-재검증 완료 / live·설치·GUI·release 검증 전
+재검증 완료 / v1.8.0 publish·published DMG Finder 설치·final-state 완료 / 실제 Claude live 미수행
 작성일: 2026-07-13
 대상 버전: `1.8.0`
 
@@ -144,6 +144,32 @@ weekly-only 응답은 오류가 아니며 기존 schema version 1 안에서 5시
 
 WidgetKit은 기본 DMG 완료 조건에서 제외하고 기존 opt-in source/test 경계만 유지합니다.
 Apple Developer Program이 필요한 stable workflow는 별도 승인 전 실행하지 않습니다.
+
+## v1.8.0 릴리즈 결과
+
+- Published release: <https://github.com/dhseo90/MacDog/releases/tag/v1.8.0>
+- Release head: `14d716a88ea10a77344a4f9aa3651c23b1160f8c`
+- Signed annotated tag: `v1.8.0`, GitHub `Verified`
+- Published DMG SHA-256:
+  `056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af`
+- Finder drag-and-drop 설치 뒤 `/Applications/MacDog.app` v1.8.0, published payload와 동일한 app
+  executable SHA-256 `4526329e79f5cebfd5897830ac3d8037948589ece6c7f9af5529b41da50c910b`,
+  codesign과 final-state를 확인했습니다.
+- 설치본 UI에서 1번 탭의 compact `현재`/`지난`/`비교` 배치와 설정 탭의 불필요한 plan
+  transition·Claude Preview UI 제거를 직접 확인했습니다. `Codex → Claude` 전환 시 Claude
+  empty state와 Codex cache LaunchAgent 제거, `Claude → Codex` 복귀 시 weekly-only 화면과
+  LaunchAgent 재설치·종료 코드 0을 확인했습니다.
+- Codex mode cache는 5시간 window가 없는 weekly-only 정상 success로 갱신됐습니다. 단발 live
+  verifier는 별도 app-server request timeout을 invalid success가 아닌 source unavailable로 분리했습니다.
+- cleanup과 final-state를 통과한 뒤 Finder `응용 프로그램` 범위의 `MacDog` 검색 결과가 설치 앱
+  하나인지 직접 확인했습니다.
+- 실제 Claude 구독 `rate_limits.five_hour`·`seven_day` event는 현재 환경에서 제공되지 않아 live
+  smoke를 미수행으로 남깁니다. synthetic fixture와 privacy 테스트 통과를 live 완료로 표현하지 않습니다.
+
+Release Candidate와 Draft Release는 같은 release head에서 별도 build합니다. ad-hoc signed Mach-O와
+DMG는 build마다 bit-for-bit 동일성을 보장하지 않으므로 RC executable checksum과 published
+executable checksum의 동일성을 주장하지 않습니다. release identity는 signed tag target, 각 workflow
+head SHA, published asset digest로 고정하고 설치본 executable은 published DMG payload와 직접 대조합니다.
 
 ## 개발 계약 검증
 

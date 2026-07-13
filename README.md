@@ -1,26 +1,30 @@
 # MacDog
 
 MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS
-유틸리티입니다. 현재 published release는 Codex 전용이며 v1.8.0에서 `Codex` 또는 `Claude` 중
-하나를 선택하는 mode를 개발합니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
+유틸리티입니다. 현재 published release부터 `Codex` 또는 `Claude` 중 하나를 선택하는 mode를
+제공합니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
 
 기본 캐릭터는 `Codex Pup`입니다. 같은 캐릭터 세트가 메뉴바 러너, 데스크톱 펫, 우측 탭 버튼 이미지에 함께 적용되므로 나중에 캐릭터를 바꿀 때도 한 묶음으로 교체할 수 있습니다.
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.7.0](https://github.com/dhseo90/MacDog/releases/tag/v1.7.0)입니다.
+현재 GitHub Release는 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
 
-- Published release head: signed `v1.7.0` tag target `9d4c7d610827aa889f6dc9e5845ed4bd0f99ac56`
-- Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
-- Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
+- Published release head: signed `v1.8.0` tag target `14d716a88ea10a77344a4f9aa3651c23b1160f8c`
+- GitHub tag verification: `Verified`
+- Published asset: `MacDog-1.8.0.dmg`, `MacDog-1.8.0.dmg.sha256`
+- Published DMG SHA-256: `056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
 - 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치,
-  `/Applications/MacDog.app` 첫 실행, 주요 탭과 Codex `현재`/`지난`/`비교` mode, CLI/cache
-  LaunchAgent 경로를 확인했습니다.
-- v1.7.0에 실제 포함된 plan transition scenario·epoch UI는 과도 구현으로 재분류했습니다.
-  release는 취소하지 않으며 v1.8.0 개발 브랜치에서 해당 기능을 제거하고 5시간/주간 잔여량
-  페이스메이커로 단순화했습니다. 전체 v1.8 release 검증은 아직 진행 전입니다.
-- 로그인 항목은 설치본 설정 UI의 켜짐 상태와 공식 release final-state 검증으로 확인했습니다.
+  `/Applications/MacDog.app` v1.8.0과 published payload executable checksum 일치, codesign,
+  `~/bin/codex-usage`, Codex mode cache LaunchAgent, weekly-only success cache와 공식 release
+  final-state를 확인했습니다.
+- 설치본 UI에서 1번 탭의 compact `현재`/`지난`/`비교` 배치와 설정 탭의 불필요한 plan
+  transition·Claude Preview UI 제거를 직접 확인했습니다. `Codex → Claude → Codex` 전환에서
+  Claude empty state, Codex cache LaunchAgent 제거·복구와 weekly-only 화면 복귀도 확인했습니다.
+- 실제 Claude 구독 `rate_limits` event는 현재 환경에서 제공되지 않아 live smoke를 미수행으로
+  분리합니다. sanitizer/cache/privacy와 selected-provider 상태 전이는 fixture와 자동 테스트로
+  검증했습니다.
 
 ## 화면
 
@@ -59,19 +63,19 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 | 영역 | 역할 |
 | --- | --- |
-| 메뉴바 러너 | 현재 release에서는 Codex 사용량 위험도를 표시하며 v1.8.0부터 선택 provider만 따릅니다. |
-| 사용량 탭 | 선택 provider의 현재 제공되는 단기/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. Codex 5시간 window가 없으면 주간 정보는 계속 갱신합니다. v1.8.0 개발 목표입니다. |
+| 메뉴바 러너 | 선택 provider 하나의 사용량 위험도를 표시합니다. |
+| 사용량 탭 | 선택 provider의 현재 제공되는 단기/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. Codex 5시간 window가 없으면 주간 정보는 계속 갱신합니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | v1.8.0에서는 provider mode 한 항목과 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태만 관리합니다. |
+| 설정 탭 | provider mode 한 항목과 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태만 관리합니다. |
 | 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
 
 사용자 설치는 GitHub Release의 DMG를 기준으로 합니다.
 
-1. [v1.7.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.7.0)에서 `MacDog-1.7.0.dmg`를 내려받습니다.
+1. [v1.8.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)에서 `MacDog-1.8.0.dmg`를 내려받습니다.
 2. DMG를 Finder에서 엽니다.
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
@@ -92,12 +96,11 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
 - Codex 페이스메이커: weekly window 시작부터 24시간 day slot을 나누고 일일 목표 약 14.3%,
-  현재 day 사용량과 누적 페이스를 계산합니다. v1.8.0 개발 브랜치 source·focused test가 구현됐고
-  가격 플랜 적합성을 예측하지 않습니다.
+  현재 day 사용량과 누적 페이스를 계산합니다. 가격 플랜 적합성을 예측하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Claude backend: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`를 sanitize해
-  별도 cache/history에 저장하고 v1.8.0의 선택 mode에 연결했습니다. 사용률·잔여율, cache 없음 수동
-  연결 상태와 bundle 검증 gate가 구현됐으며 실제 구독 live 검증은 남았습니다.
+  별도 cache/history에 저장하고 선택 mode에 연결합니다. 사용률·잔여율, cache 없음 수동 연결
+  상태와 bundle 검증 gate를 구현했으며 실제 구독 live 검증은 미수행으로 분리합니다.
 - 선택 provider graph: current/past/compare와 pace를 유지하되 선택한 provider 하나만 평가합니다.
   Claude reset credit은 만들지 않습니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
@@ -106,8 +109,8 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80-100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
 - 설정: 로그인 시 실행, 데스크톱 펫, 움직임 줄이기, 러너 일시 정지, 권한 도우미와 기존
-  사용량 알림 opt-in을 관리합니다. v1.8.0 개발 브랜치에는 `Codex` 또는 `Claude` 중 하나를 고르는
-  `사용량 mode` 한 항목만 남기고 별도 플랜 전환·Claude Preview 설정을 제거했습니다.
+  사용량 알림 opt-in을 관리합니다. `Codex` 또는 `Claude` 중 하나를 고르는 `사용량 mode`
+  한 항목만 두고 별도 플랜 전환·Claude Preview 설정은 제거했습니다.
 - Claude 연결 경계: 기존 `~/.claude/settings.json`이나 auth store를 앱이 자동으로 읽거나 수정하지
   않습니다. Claude mode의 cache 없음 empty state에서 수동 연결 command만 제공하고 기존 status
   line을 자동 덮어쓰지 않습니다.
@@ -129,13 +132,12 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
   응답 event를 받을 때 `claude-usage.json`과 `claude-usage-history.json`을 갱신하며, 마지막 정상
   사용량 관측 후 15분이면 stale로 표시합니다.
 
-## v1.8.0 개발 검증 경계
+## v1.8.0 검증과 릴리즈 경계
 
-현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, Codex weekly-only partial cache/UI와
+v1.8.0 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, Codex weekly-only partial cache/UI와
 5시간 자동 복구, 5시간 pace와 v1.8 Claude
 sanitizer/cache/privacy backend, 단일 provider preference migration과 설정·1번 탭·runner·알림·Codex
 live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-state bridge gate를 확인합니다.
-실제 GUI·설치 검증은 완료로 주장하지 않습니다.
 
 ```sh
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
@@ -144,8 +146,10 @@ MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run
 ```
 
 2026-07-13 기준 전체 `swift test --no-parallel` 464개 통과(명시적 opt-in 4개 skip), Xcode Debug
-no-sign build와 `check.sh --no-run`이 통과했습니다. 생성된 `dist/MacDog.app`은 개발 자동 검증
-산출물이며 published DMG 설치 검수의 대체물이 아닙니다.
+no-sign build와 `check.sh --no-run`이 통과했습니다. Release Candidate run `29253650552`와
+Draft Release run `29254330686`도 release head `14d716a88ea10a77344a4f9aa3651c23b1160f8c`
+기준으로 통과했습니다. published DMG 설치와 final-state 결과는
+[Docs/V180ReleaseReadiness.md](Docs/V180ReleaseReadiness.md)에 기록합니다.
 
 자동 검증은 Claude 설정, auth store, Keychain, transcript, network, GUI를 건드리지 않습니다.
 현재 로컬 Claude Code `2.1.39`에서는 실제 구독 `rate_limits` event를 확인하지 못했습니다.
