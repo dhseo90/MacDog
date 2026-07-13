@@ -117,24 +117,40 @@ jobs:
         run: |
           verification_complete=0
           release_id=""
+          DRAFT_RELEASE_LOOKUP_ATTEMPTS=10
+          DRAFT_RELEASE_LOOKUP_DELAY_SECONDS=2
           resolve_created_draft_id() {
-            local release_rows candidate_id candidate_url
-            release_id=""
-            if ! release_rows="$(
-              gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-                --jq '.[] | [.id, .html_url] | @tsv'
-            )"; then
-              return 1
-            fi
-            while IFS=$'\t' read -r candidate_id candidate_url; do
-              if [[ "$candidate_url" == "$DRAFT_RELEASE_URL" ]]; then
-                if [[ -n "$release_id" ]]; then
+            local attempt release_rows candidate_id candidate_url match_count
+            attempt=1
+            while (( attempt <= DRAFT_RELEASE_LOOKUP_ATTEMPTS )); do
+              release_id=""
+              match_count=0
+              release_rows=""
+              if release_rows="$(
+                gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+                  --jq '.[] | [.id, .html_url] | @tsv'
+              )"; then
+                while IFS=$'\t' read -r candidate_id candidate_url; do
+                  if [[ "$candidate_url" == "$DRAFT_RELEASE_URL" ]]; then
+                    match_count=$((match_count + 1))
+                    release_id="$candidate_id"
+                  fi
+                done <<< "$release_rows"
+                if (( match_count == 1 )); then
+                  return 0
+                fi
+                if (( match_count > 1 )); then
+                  release_id=""
                   return 1
                 fi
-                release_id="$candidate_id"
               fi
-            done <<< "$release_rows"
-            [[ -n "$release_id" ]]
+              if (( attempt < DRAFT_RELEASE_LOOKUP_ATTEMPTS )); then
+                echo "Created draft release is not visible yet; retrying readback ($attempt/$DRAFT_RELEASE_LOOKUP_ATTEMPTS)." >&2
+                sleep "$DRAFT_RELEASE_LOOKUP_DELAY_SECONDS"
+              fi
+              attempt=$((attempt + 1))
+            done
+            return 1
           }
           cleanup_unverified_draft() {
             if [[ "$verification_complete" != "1" ]]; then

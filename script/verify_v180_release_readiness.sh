@@ -112,9 +112,17 @@ verify_contract() {
     "created draft URL output"
   require_match 'DRAFT_RELEASE_URL: \$\{\{ steps\.create_draft\.outputs\.url \}\}' \
     "$DRAFT_WORKFLOW" "created draft URL readback"
+  require_match 'DRAFT_RELEASE_LOOKUP_ATTEMPTS=10' \
+    "$DRAFT_WORKFLOW" "eventually consistent draft lookup attempts"
+  require_match 'DRAFT_RELEASE_LOOKUP_DELAY_SECONDS=2' \
+    "$DRAFT_WORKFLOW" "eventually consistent draft lookup delay"
   require_match 'releases\?per_page=100' "$DRAFT_WORKFLOW" "draft release list lookup"
   require_match '\[\.id, \.html_url\] \| @tsv' "$DRAFT_WORKFLOW" \
     "created draft URL to release ID lookup"
+  require_match 'Created draft release is not visible yet; retrying readback' \
+    "$DRAFT_WORKFLOW" "eventually consistent draft readback retry"
+  require_match 'sleep "\$DRAFT_RELEASE_LOOKUP_DELAY_SECONDS"' \
+    "$DRAFT_WORKFLOW" "eventually consistent draft readback backoff"
   require_match 'gh api --method DELETE "repos/\$GITHUB_REPOSITORY/releases/\$release_id"' \
     "$DRAFT_WORKFLOW" "failed draft cleanup by release ID"
   require_match 'releases/\$release_id' "$DRAFT_WORKFLOW" "draft readback by release ID"
