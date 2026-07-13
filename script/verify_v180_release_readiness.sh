@@ -56,8 +56,10 @@ verify_contract() {
   [[ -x "$ROOT_DIR/script/verify_v180_release_readiness.sh" ]] || \
     die "v1.8 release-readiness verifier is not executable"
 
-  require_match '^상태: .*PR·CI·review' "$DOC" "honest pending status"
-  require_match 'GUI·설치, tag·artifact·publish 미수행' "$DOC" "honest external gate status"
+  require_match '^상태: v1\.8\.0 GitHub Release publish' "$DOC" "published release status"
+  require_match 'published DMG Finder 설치.*final-state 확인' "$DOC" \
+    "published install and final-state status"
+  require_match '실제 Claude 구독 live smoke 미수행' "$DOC" "honest live status"
   require_match 'MACDOG_APP_VERSION=1\.8\.0 \./script/check\.sh --no-run' "$DOC" "versioned check gate"
   require_match '승인 1회.*Code Owners review.*branch 최신화' "$DOC" "review and up-to-date branch gate"
   require_match '필수 CI.*static-gates' "$DOC" "required static gate"
@@ -78,6 +80,31 @@ verify_contract() {
   require_match 'verify_release_final_state\.sh --version 1\.8\.0' "$DOC" "final-state gate"
   require_match '릴리즈 증거 기록' "$DOC" "evidence ledger"
   require_match '실제 Claude live smoke \| 미수행' "$DOC" "honest live evidence"
+  require_match '14d716a88ea10a77344a4f9aa3651c23b1160f8c' "$DOC" "published release head evidence"
+  require_match '1d9748753761f0dfeca1b2f3c4aeebccd2389aba' "$DOC" "signed tag object evidence"
+  require_match '29253650552' "$DOC" "release candidate run evidence"
+  require_match '29254330686' "$DOC" "draft release run evidence"
+  require_match '353177762' "$DOC" "published release id evidence"
+  require_match '056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af' \
+    "$DOC" "published DMG checksum evidence"
+  require_match '4526329e79f5cebfd5897830ac3d8037948589ece6c7f9af5529b41da50c910b' \
+    "$DOC" "published and installed executable checksum evidence"
+  require_match 'Release Candidate.*Draft Release.*별도 build' "$DOC" \
+    "separate workflow build identity boundary"
+  require_match 'bit-for-bit 동등성 통과로 기록하지 않습니다' "$DOC" \
+    "non-reproducible build evidence boundary"
+  require_match '설치본 UI 직접 1번 탭 compact layout.*설정 불필요 UI 제거.*Claude empty state 확인' "$DOC" \
+    "installed UI confirmation evidence"
+  require_match 'Codex → Claude.*LaunchAgent plist/job 제거' "$DOC" \
+    "Claude mode cache agent removal evidence"
+  require_match 'Claude → Codex.*LaunchAgent 설치본 CLI 복구' "$DOC" \
+    "Codex mode cache agent recovery evidence"
+  require_match 'verify_release_final_state\.sh --version 1\.8\.0.*통과' "$DOC" \
+    "completed final-state evidence"
+  require_match 'Finder `응용 프로그램` 범위 `MacDog` 1개 확인' "$DOC" \
+    "Finder single installed app evidence"
+  require_absent_match 'PR, CI, review \| 미수행|최종 `origin/main` release head \| 미기록|signed annotated `v1\.8\.0` tag / GitHub `Verified` \| 미수행|Published release와 재다운로드 검증 \| 미수행|cleanup / final-state \| 미수행' \
+    "$DOC" "stale release execution evidence"
   require_match 'weekly-only.*partial success' "$DOC" "Codex weekly-only release scope"
   require_match '5시간 현재 제공되지 않음' "$DOC" "weekly-only GUI smoke"
   require_match '5시간 window 복구 시' "$DOC" "five-hour recovery smoke"
@@ -87,6 +114,13 @@ verify_contract() {
 
   require_match 'V180ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V180ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
+  require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" "README current release"
+  require_match 'MacDog-1\.8\.0\.dmg' "$README" "README current installer"
+  require_match '14d716a88ea10a77344a4f9aa3651c23b1160f8c' "$README" \
+    "README published release head"
+  require_match 'v1\.8\.0.*릴리즈 완료' "$ROADMAP" "ROADMAP completed release status"
+  require_match 'v1\.8\.0 publish.*Finder 설치.*final-state 완료' "$PRODUCT_DOC" \
+    "product release completion status"
   require_match 'weekly-only.*partial' "$PRODUCT_DOC" "weekly-only product contract"
   require_match 'weekly-only' "$README" "weekly-only README contract"
   require_match '정상 partial success' "$README" "weekly-only success semantics"

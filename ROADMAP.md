@@ -40,14 +40,14 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | Mac Utility Tabs | Mac 상태, 잠들지 않기, 배터리, 설정 탭 | 구현 완료, 자동 검증 완료, v1.6.0 smoke 완료 | 다음 release에서 탭 전환 재확인 |
 | Privileged Helper | 덮개 닫힘 보호와 잠금 화면 설정 변경 보조 | 구현 완료, 자동 검증 완료 | signed/stable 배포 UX는 Apple Developer Program 의존 범위라 현재 구현 계획에서 제외 |
 | WidgetKit | optional source/opt-in build 경계 | 기본 릴리즈 제외 | App Group provisioning 이후 실제 위젯 UI 검수 |
-| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.7.0 릴리즈 완료, published DMG 재다운로드와 설치본 UI smoke 완료 | 다음 release에서 checksum/설치/UI smoke 반복 |
+| Release Packaging | DMG, checksum, GitHub Release 절차, release smoke | v1.8.0 릴리즈 완료, published DMG 재다운로드·Finder 설치·final-state 통과 | 실제 Claude 구독 event가 제공될 때 live smoke 보강 |
 | v1.3.0 | 알림 중심 사용량 인지와 탭별 UI 개선 | 릴리즈 완료 | 후속 이슈 없음 |
 | v1.4.0 | Usage Intelligence: 과거 사용량, 예측, 오버레이, export | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.5.0 | Usage Reliability & Diagnostics: 사용량 진단, history health, release 운영 안정화 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.0 | Codex Usage & Reset Credits: 현재 사용량 단일 표시와 사용자 초기화권 장별 유효기간 | 릴리즈 완료, 자동 검증/CI/published DMG 설치본 UI smoke 완료 | 후속 이슈 없음 |
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
-| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | Codex weekly-only 호환성 구현, 전체 자동 검증 완료 | v1.7 과도 기능 제거, optional 5시간/필수 주간 pace, 단일 provider mode, Claude live·설치·GUI·패키징 검증까지 한 milestone에서 완료 |
+| v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -406,7 +406,7 @@ MacDog는 `Pro $100`과 `Pro $200`의 실제 용량 비율을 알 수 없으며 
 릴리즈 실행 순서와 미수행 증거 경계는 [Docs/V180ReleaseReadiness.md](Docs/V180ReleaseReadiness.md)에
 분리합니다.
 
-구현 상태: v1.7 plan transition/epoch runtime·UI 제거, legacy file inert 보존, 1/7 day 페이스메이커,
+릴리즈 상태: v1.7 plan transition/epoch runtime·UI 제거, legacy file inert 보존, 1/7 day 페이스메이커,
 5시간 단기 pace와 알림 focused test를 완료했습니다. 단일 `usageProviderMode` preference와 Codex 기본
 migration, 설정 mode 한 항목, 선택 provider 1번 탭·러너·알림·Codex live refresh routing도 focused
 test로 연결했습니다. Claude sanitizer/cache/history backend, 사용률·잔여율 표시, cache 없음 수동 연결
@@ -414,8 +414,23 @@ UI와 bundle/install/final-state bridge gate도 구현했습니다. Codex 5시�
 weekly-only partial cache, 주간 history, runner·알림 fallback, 1번 탭 unavailable 표시와 5시간 복구
 전이도 v1.8.0에 포함했습니다. 2026-07-13 기준 전체
 `swift test --no-parallel` 464개 통과(명시적 opt-in 4개 skip), Xcode Debug no-sign build와
-`MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. 실제 Claude 구독
-`rate_limits`, GUI·설치·release 검수는 남았습니다.
+`MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run`을 통과했습니다. release head
+`14d716a88ea10a77344a4f9aa3651c23b1160f8c`에 signed/Verified `v1.8.0` tag를 만들고 GitHub
+Release를 publish했습니다. published DMG checksum·`hdiutil verify`, Finder drag-and-drop 설치,
+설치본 version/executable/codesign, CLI·Codex cache LaunchAgent와 final-state를 확인했습니다.
+실제 Claude 구독 `rate_limits` event는 현재 환경에서 제공되지 않아 live smoke를 미수행으로
+분리하며 fixture·focused test 결과와 혼동하지 않습니다.
+
+- Published release: <https://github.com/dhseo90/MacDog/releases/tag/v1.8.0>
+- Signed annotated tag: `v1.8.0`, GitHub `Verified`
+- Published release head: `14d716a88ea10a77344a4f9aa3651c23b1160f8c`
+- Published DMG SHA-256:
+  `056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af`
+- 설치본 UI: 1번 탭 compact layout, 설정 탭 불필요 UI 제거, `Codex → Claude → Codex`
+  전환과 cache LaunchAgent 제거·복구 직접 확인
+- Release smoke: Finder drag-and-drop, installed executable/codesign, CLI·cache LaunchAgent,
+  cleanup과 `verify_release_final_state.sh --version 1.8.0` 통과, Finder `응용 프로그램` 범위
+  `MacDog` 검색 결과 1개 확인
 
 구현 순서:
 

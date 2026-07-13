@@ -94,7 +94,12 @@ verify_contract() {
   require_match '현재 대화 context' "$DOC" "context token distinction"
   require_match 'reset credit.*합성하지' "$DOC" "no synthetic reset credit"
   require_match '5시간 history.*planEpochID' "$DOC" "five-hour history reuse"
-  require_match 'live·설치·GUI.*검증' "$DOC" "integrated stabilization scope"
+  require_match 'v1\.8\.0 릴리즈 결과' "$DOC" "integrated release result"
+  require_match 'Finder drag-and-drop 설치 뒤' "$DOC" "installed release evidence"
+  require_match 'codesign과 final-state를 확인했습니다' "$DOC" \
+    "installed release stabilization evidence"
+  require_match '실제 Claude live 미수행|실제 Claude 구독.*live.*미수행' "$DOC" \
+    "honest unavailable live evidence"
   require_match 'Codex.*weekly-only|weekly-only.*Codex' "$DOC" "Codex weekly-only product contract"
 
   require_match 'rateLimits = "rate_limits"' "$SNAPSHOT_SOURCE" "rate limit coding key"
