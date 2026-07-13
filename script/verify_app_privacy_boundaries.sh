@@ -36,4 +36,12 @@ reject_text_match \
   "$APP_SOURCE" \
   "menu bar app must not probe the launch working directory for resources"
 
+reject_text_match \
+  '/\.claude/|\.claude/settings\.json|transcript_path|ClaudeStatusLineSanitizer|statusLineData|account/chatgptAuthTokens' \
+  "$APP_SOURCE" \
+  "menu bar app must read only sanitized Claude cache and must not inspect Claude settings, transcripts, raw events, or auth"
+
+/usr/bin/grep -Eq 'ClaudeUsageCacheStore' "$APP_SOURCE/MenuBarController.swift" \
+  || die "menu bar app must load Claude usage from the dedicated sanitized cache"
+
 echo "App privacy boundary verification ok"

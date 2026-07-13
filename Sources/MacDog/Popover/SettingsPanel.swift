@@ -4,8 +4,6 @@ import MacDogPrivilegedHelperSupport
 import SwiftUI
 
 struct SettingsPanel: View {
-    let planTransitionConfiguration: CodexPlanTransitionConfiguration?
-    let planTransitionConfigurationError: String?
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let onAction: (PetAction) -> Void
     let onPreferencesChanged: () -> Void
@@ -17,6 +15,7 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.loginLaunchEnabledKey) private var loginLaunchEnabled = RunnerPreferences.defaultLoginLaunchEnabled
     @AppStorage(RunnerPreferences.usageNotificationsEnabledKey) private var usageNotificationsEnabled = RunnerPreferences.defaultUsageNotificationsEnabled
     @AppStorage(RunnerPreferences.usageResetSoonNotificationsEnabledKey) private var usageResetSoonNotificationsEnabled = RunnerPreferences.defaultUsageResetSoonNotificationsEnabled
+    @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw = RunnerPreferences.defaultUsageProviderMode.rawValue
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
     @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
@@ -24,15 +23,11 @@ struct SettingsPanel: View {
     private let loginLaunchPreferenceCoordinator = LoginLaunchPreferenceCoordinator()
 
     init(
-        planTransitionConfiguration: CodexPlanTransitionConfiguration? = nil,
-        planTransitionConfigurationError: String? = nil,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot,
         onAction: @escaping (PetAction) -> Void,
         onPreferencesChanged: @escaping () -> Void,
         notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
     ) {
-        self.planTransitionConfiguration = planTransitionConfiguration
-        self.planTransitionConfigurationError = planTransitionConfigurationError
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
         self.onAction = onAction
         self.onPreferencesChanged = onPreferencesChanged
@@ -68,21 +63,23 @@ struct SettingsPanel: View {
 
             Divider()
 
+            PopoverFormSection(title: "사용량", systemImage: "gauge.with.dots.needle.33percent") {
+                Picker("사용량 mode", selection: $usageProviderModeRaw) {
+                    ForEach(UsageProviderMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+            }
+
+            Divider()
+
             PopoverFormSection(title: "알림", systemImage: "bell.badge") {
                 UsageNotificationSettingsContent(
                     snapshot: notificationSettingsSnapshot,
                     usageNotificationsEnabled: $usageNotificationsEnabled,
                     resetSoonNotificationsEnabled: $usageResetSoonNotificationsEnabled
-                )
-            }
-
-            Divider()
-
-            PopoverFormSection(title: "플랜 전환", systemImage: "arrow.left.arrow.right") {
-                CodexPlanTransitionSettingsEditor(
-                    configuration: planTransitionConfiguration,
-                    configurationError: planTransitionConfigurationError,
-                    onSaved: onPreferencesChanged
                 )
             }
 
@@ -160,6 +157,12 @@ struct SettingsPanel: View {
         }
         .onChange(of: usageResetSoonNotificationsEnabled) { _, enabled in
             RunnerPreferences.setUsageResetSoonNotificationsEnabled(enabled)
+            deferredPreferencesChanged()
+        }
+        .onChange(of: usageProviderModeRaw) { _, rawValue in
+            RunnerPreferences.setUsageProviderMode(
+                UsageProviderMode(rawValue: rawValue) ?? .codex
+            )
             deferredPreferencesChanged()
         }
     }

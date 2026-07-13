@@ -286,16 +286,20 @@ codex-usage status --watch 60
 ## 7. Codex 사용량 데이터 규칙
 
 1. 1순위 데이터 소스는 Codex app-server `account/rateLimits/read`입니다.
-2. `primary.windowDurationMins = 300`은 5시간 창으로 해석합니다.
-3. `secondary.windowDurationMins = 10080`은 주간 창으로 해석합니다.
-4. 잔여량은 `100 - usedPercent`로 계산합니다.
-5. `resetsAt`은 Unix epoch seconds이며 표시 시 로컬 시간대로 변환합니다.
-6. 기본 limit bucket은 `rateLimitsByLimitId.codex`입니다.
-7. `codex_bengalfox` 같은 추가 bucket은 advanced/debug 출력으로 분리합니다.
-8. 사용량 조회 실패 시 마지막 성공 cache가 있어도 stale/error 상태를 함께 표시합니다.
-9. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않습니다.
-10. 주간 잔여량 그래프는 같은 `resetsAt` window 안에서 표시 잔여율이 증가하지 않도록 그립니다.
-11. OpenAI가 주간 한도를 실제 리셋해 `resetsAt`이 바뀐 경우에만 이전 history와 분리하고 새 타임라인을 왼쪽 100%에서 시작합니다.
+2. slot 이름과 관계없이 `windowDurationMins = 300`은 5시간 창으로 해석합니다.
+3. slot 이름과 관계없이 `windowDurationMins = 10080`은 주간 창으로 해석합니다.
+4. Codex 주간 window는 성공 cache에 필수이며 5시간 window는 일시 미제공될 수 있습니다.
+5. weekly-only 응답은 partial success로 저장하고 주간 history·runner·알림을 계속 갱신합니다.
+6. 없는 5시간 window를 0% 또는 마지막 성공 값으로 합성하지 않고 UI에 `현재 제공되지 않음`으로 표시합니다.
+7. 5시간 window가 복구되면 기존 5시간 history를 보존한 상태에서 새 sample과 pace를 자동 재개합니다.
+8. 잔여량은 `100 - usedPercent`로 계산합니다.
+9. `resetsAt`은 Unix epoch seconds이며 표시 시 로컬 시간대로 변환합니다.
+10. 기본 limit bucket은 `rateLimitsByLimitId.codex`입니다.
+11. `codex_bengalfox` 같은 추가 bucket은 advanced/debug 출력으로 분리합니다.
+12. 사용량 조회 실패 시 마지막 성공 cache가 있어도 stale/error 상태를 함께 표시합니다.
+13. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않습니다.
+14. 주간 잔여량 그래프는 같은 `resetsAt` window 안에서 표시 잔여율이 증가하지 않도록 그립니다.
+15. OpenAI가 주간 한도를 실제 리셋해 `resetsAt`이 바뀐 경우에만 이전 history와 분리하고 새 타임라인을 왼쪽 100%에서 시작합니다.
 
 ---
 
@@ -303,7 +307,7 @@ codex-usage status --watch 60
 
 - RunCat은 "작은 menu bar runner가 상태에 따라 속도를 바꾸는 경험"만 참고합니다.
 - RunCat의 고양이 캐릭터, asset, 브랜드 표현은 복제하지 않습니다.
-- runner 속도는 기본적으로 `max(5시간 사용률, 주간 사용률)`을 기준으로 합니다.
+- runner 속도는 현재 제공되는 5시간/주간 window 사용률 중 최댓값을 기준으로 하며, weekly-only이면 주간 값만 사용합니다.
 - WidgetKit은 실시간 애니메이션 채널이 아니라 glance용 상태 표시로 다룹니다.
 - menu bar app이 지속 애니메이션을 담당합니다.
 - popover는 장난스럽기보다 명확한 개발 도구처럼 보여야 합니다.
@@ -429,7 +433,8 @@ swift test --filter PopoverScreenshotRendererTests
    - `/Applications/MacDog.app` 기준으로 앱 실행, menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
    - `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
    - `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`로 cache 계약을 확인합니다.
-   - live fetch 성공 시 weekly history append diagnostic과 history sample을 확인합니다.
+   - live fetch 성공 시 weekly history append diagnostic과 history sample을 확인합니다. 5시간 window가
+     없고 주간만 있는 partial success도 정상으로 분리 확인합니다.
    - live fetch 실패 시 stale/error snapshot인지 분리해서 보고합니다.
 6. Release smoke 종료
    - `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.

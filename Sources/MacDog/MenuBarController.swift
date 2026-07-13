@@ -9,15 +9,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
+    private let claudeUsageCacheStore = ClaudeUsageCacheStore()
     private let fiveHourHistoryStore = CodexUsageFiveHourHistoryStore(
         fileURL: CodexUsageFiveHourHistoryStore.defaultFileURL()
     )
     private let weeklyHistoryStore = CodexUsageWeeklyHistoryStore(fileURL: CodexUsageWeeklyHistoryStore.defaultFileURL())
     private let resetWindowHistoryStore = CodexUsageResetWindowHistoryStore(
         fileURL: CodexUsageResetWindowHistoryStore.defaultFileURL()
-    )
-    private let planTransitionConfigurationStore = CodexPlanTransitionConfigurationStore(
-        fileURL: CodexPlanTransitionConfigurationStore.defaultFileURL()
     )
     private let privilegedHelperInstallStateReader = PrivilegedHelperInstallStateReader(
         fileChecker: FileManagerPrivilegedHelperFileChecker()
@@ -27,12 +25,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let installerCleanupController = InstallerCleanupController()
     private let sleepPreventionController = SleepPreventionController()
     private let usageNotificationDispatcher = UsageNotificationDispatcher()
+    private let claudeUsageNotificationDispatcher = ClaudeUsageNotificationDispatcher()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
     private var animationTimer: Timer?
     private var refreshTimer: Timer?
     private var popoverMetricsTimer: Timer?
     private var usageCacheRefreshTask: Task<Void, Never>?
+    private var usageCacheRefreshGeneration = 0
+    private var usageNotificationTask: Task<Void, Never>?
     private var lastUsageCacheRefreshAttempt: Date?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
@@ -170,6 +171,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
+        if previousPreferences.usageProviderMode != preferences.usageProviderMode {
+            cancelProviderBoundWork(for: preferences.usageProviderMode)
+        }
+        synchronizeInstalledUsageCacheAgentIfNeeded(
+            from: previousPreferences.usageProviderMode,
+            to: preferences.usageProviderMode
+        )
 
         if MacDogDemoData.isEnabled {
             applyState(MacDogDemoData.state(preferences: preferences))
@@ -184,7 +192,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let systemMetrics = systemMetricsSnapshotForUsageRefresh()
         syncSleepPrevention(systemMetrics: systemMetrics)
         let loadedState = loadCachedState(systemMetrics: systemMetrics)
-        let shouldRefreshCache = allowLiveRefresh || loadedState.report == nil
+        let shouldRefreshCache = CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(
+            for: preferences.usageProviderMode
+        ) &&
+            (allowLiveRefresh || loadedState.report == nil)
         if shouldRefreshCache {
             requestUsageCacheRefresh(force: allowLiveRefresh)
         }
@@ -209,14 +220,25 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             codexUsageURL: codexUsageURL,
             widgetBundled: UsageCacheRefreshBundleLocator.isWidgetBundled(relativeTo: codexUsageURL)
         )
+        usageCacheRefreshGeneration &+= 1
+        let generation = usageCacheRefreshGeneration
         usageCacheRefreshTask = Task { [weak self] in
             await UsageCacheRefreshRunner.run(command: command)
             await MainActor.run {
-                guard let self else { return }
+                guard let self, self.usageCacheRefreshGeneration == generation else { return }
                 self.usageCacheRefreshTask = nil
                 self.refreshUsage(allowLiveRefresh: false)
             }
         }
+    }
+
+    private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
+        usageNotificationTask?.cancel()
+        usageNotificationTask = nil
+        guard currentMode == .claude else { return }
+        usageCacheRefreshGeneration &+= 1
+        usageCacheRefreshTask?.cancel()
+        usageCacheRefreshTask = nil
     }
 
     private func shouldAttemptUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
@@ -241,9 +263,19 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func scheduleUsageNotificationsIfNeeded(for loadedState: UsageMonitorState) {
         let settings = UsageNotificationDeliverySettings(preferences: preferences)
-        Task { @MainActor [weak self, loadedState, settings] in
-            guard let self else { return }
-            _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+        usageNotificationTask?.cancel()
+        usageNotificationTask = Task { @MainActor [weak self, loadedState, settings] in
+            guard let self, !Task.isCancelled else { return }
+            switch UsageNotificationRoute(mode: loadedState.usageProviderMode) {
+            case .codex:
+                _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+            case .claude:
+                _ = await claudeUsageNotificationDispatcher.dispatch(
+                    for: loadedState.claudeUsagePreview,
+                    enabled: settings.usageNotificationsEnabled,
+                    resetSoonEnabled: settings.resetSoonNotificationsEnabled
+                )
+            }
         }
     }
 
@@ -258,7 +290,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func finishInstalledAppSetup() {
         preferences = RunnerPreferences()
         do {
-            try userComponentInstaller.installOrRepair(loginLaunchEnabled: preferences.loginLaunchEnabled)
+            try userComponentInstaller.installOrRepair(
+                loginLaunchEnabled: preferences.loginLaunchEnabled,
+                usageProviderMode: preferences.usageProviderMode
+            )
         } catch {
             showPrivilegedHelperAlert(
                 title: "설치 마무리 일부 실패",
@@ -269,6 +304,22 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         showInstallerCleanupPromptIfNeeded()
         showFirstRunHelperPromptIfNeeded()
+    }
+
+    private func synchronizeInstalledUsageCacheAgentIfNeeded(
+        from previousMode: UsageProviderMode,
+        to currentMode: UsageProviderMode
+    ) {
+        guard previousMode != currentMode, UserComponentInstaller.shouldManage() else { return }
+        do {
+            try userComponentInstaller.synchronizeUsageCacheAgent(for: currentMode)
+        } catch {
+            showPrivilegedHelperAlert(
+                title: "사용량 source 전환 일부 실패",
+                message: error.localizedDescription,
+                style: .warning
+            )
+        }
     }
 
     private func showInstallerCleanupPromptIfNeeded() {
@@ -342,30 +393,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
-        var fiveHourUsageHistory = (try? fiveHourHistoryStore.read()) ?? .empty
+        let fiveHourUsageHistory = (try? fiveHourHistoryStore.read()) ?? .empty
         let weeklyUsageHistory = (try? weeklyHistoryStore.read()) ?? .empty
         let resetWindowHistory = (try? resetWindowHistoryStore.read()) ?? .empty
-        let planConfigurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL()
-        let planTransitionConfiguration: CodexPlanTransitionConfiguration?
-        let planTransitionConfigurationError: String?
-        if FileManager.default.fileExists(atPath: planConfigurationURL.path) {
-            do {
-                let configuration = try planTransitionConfigurationStore.read()
-                _ = try CodexPlanTransitionSettingsPersistence.reconcile(
-                    configuration,
-                    historyStore: fiveHourHistoryStore
-                )
-                fiveHourUsageHistory = try fiveHourHistoryStore.read()
-                planTransitionConfiguration = configuration
-                planTransitionConfigurationError = nil
-            } catch {
-                planTransitionConfiguration = nil
-                planTransitionConfigurationError = "플랜 전환 설정 또는 history epoch를 동기화할 수 없습니다. 파일을 덮어쓰지 말고 복구가 필요합니다."
-            }
-        } else {
-            planTransitionConfiguration = nil
-            planTransitionConfigurationError = nil
-        }
+        let claudeUsagePreview = loadClaudeUsagePreview()
 
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
@@ -376,8 +407,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         fiveHourUsageHistory: fiveHourUsageHistory,
                         weeklyUsageHistory: weeklyUsageHistory,
                         resetWindowHistory: resetWindowHistory,
-                        planTransitionConfiguration: planTransitionConfiguration,
-                        planTransitionConfigurationError: planTransitionConfigurationError,
                         errorMessage: errorMessage ?? snapshot.error?.message ?? validationError.localizedDescription,
                         displayBasis: preferences.displayBasis,
                         reducedMotion: preferences.reducedMotion,
@@ -386,7 +415,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         systemMetricsHistory: systemMetricsHistory,
                         sleepPreventionStatus: sleepPreventionController.status,
                         sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                        privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                        privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                        claudeUsagePreview: claudeUsagePreview,
+                        usageProviderMode: preferences.usageProviderMode
                     )
                 }
                 return UsageMonitorState(
@@ -395,8 +426,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     fiveHourUsageHistory: fiveHourUsageHistory,
                     weeklyUsageHistory: weeklyUsageHistory,
                     resetWindowHistory: resetWindowHistory,
-                    planTransitionConfiguration: planTransitionConfiguration,
-                    planTransitionConfigurationError: planTransitionConfigurationError,
                     errorMessage: errorMessage ?? snapshot.error?.message,
                     displayBasis: preferences.displayBasis,
                     reducedMotion: preferences.reducedMotion,
@@ -405,7 +434,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     systemMetricsHistory: systemMetricsHistory,
                     sleepPreventionStatus: sleepPreventionController.status,
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                    privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                    claudeUsagePreview: claudeUsagePreview,
+                    usageProviderMode: preferences.usageProviderMode
                 )
             }
 
@@ -415,8 +446,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 fiveHourUsageHistory: fiveHourUsageHistory,
                 weeklyUsageHistory: weeklyUsageHistory,
                 resetWindowHistory: resetWindowHistory,
-                planTransitionConfiguration: planTransitionConfiguration,
-                planTransitionConfigurationError: planTransitionConfigurationError,
                 errorMessage: errorMessage ?? snapshot.error?.message ?? "사용량 캐시가 아직 없습니다.",
                 displayBasis: preferences.displayBasis,
                 reducedMotion: preferences.reducedMotion,
@@ -425,7 +454,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 systemMetricsHistory: systemMetricsHistory,
                 sleepPreventionStatus: sleepPreventionController.status,
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                claudeUsagePreview: claudeUsagePreview,
+                usageProviderMode: preferences.usageProviderMode
             )
         }
 
@@ -435,8 +466,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
-            planTransitionConfiguration: planTransitionConfiguration,
-            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: "사용량 캐시가 아직 없습니다.",
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -445,8 +474,30 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionController.status,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot()
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+            claudeUsagePreview: claudeUsagePreview,
+            usageProviderMode: preferences.usageProviderMode
         )
+    }
+
+    private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
+        guard preferences.usageProviderMode == .claude else { return .disabled }
+        do {
+            let storedState = try claudeUsageCacheStore.readState()
+            return ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: storedState.cacheSnapshot,
+                history: storedState.history,
+                loadIssue: nil
+            )
+        } catch {
+            return ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: .empty,
+                loadIssue: "Claude cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
+            )
+        }
     }
 
     private nonisolated static func validationError(for report: CodexUsageReport) -> Error? {

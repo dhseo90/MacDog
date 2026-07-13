@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="MacDog"
 BUNDLE_ID="com.dhseo.macdog.MacDog"
 LOGIN_LAUNCH_KEY="loginLaunchEnabled"
+USAGE_PROVIDER_MODE_KEY="usageProviderMode"
 VERSION=""
 SELF_TEST=0
 SELF_TEST_TMP=""
@@ -35,6 +36,7 @@ Verify the local machine is clean after release smoke:
   - no MacDog DMG volumes remain mounted
   - dist/MacDog.app was cleaned up after packaging smoke
   - installed app CFBundleShortVersionString matches VERSION
+  - installed app includes runnable MacDog, codex-usage, and macdog-claude-statusline executables
   - usage cache LaunchAgent plist and loaded job are absent or point at an executable installed app CLI
 USAGE
 }
@@ -93,6 +95,16 @@ login_launch_enabled() {
   local value
   value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
   [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
+}
+
+usage_provider_mode() {
+  if [[ -n "${MACDOG_RELEASE_FINAL_USAGE_PROVIDER_MODE:-}" ]]; then
+    [[ "$MACDOG_RELEASE_FINAL_USAGE_PROVIDER_MODE" == "claude" ]] && printf 'claude' || printf 'codex'
+    return 0
+  fi
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$USAGE_PROVIDER_MODE_KEY" 2>/dev/null || true)"
+  [[ "$value" == "claude" ]] && printf 'claude' || printf 'codex'
 }
 
 login_item_status_from_output() {
@@ -252,6 +264,8 @@ write_fixture_app() {
 PLIST
   printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/codex-usage"
   chmod +x "$app/Contents/MacOS/codex-usage"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/macdog-claude-statusline"
+  chmod +x "$app/Contents/MacOS/macdog-claude-statusline"
   cat >"$app/Contents/MacOS/$APP_NAME" <<SCRIPT
 #!/usr/bin/env bash
 set -euo pipefail
@@ -383,6 +397,43 @@ run_self_test() {
     MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
     MACDOG_RELEASE_FINAL_USER_ID=501 \
     "$0" --version 9.9.9 >/dev/null
+
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    MACDOG_RELEASE_FINAL_USAGE_PROVIDER_MODE=claude \
+    "$0" --version 9.9.9
+  rm -f "$tmp/LaunchAgents/$CACHE_PLIST_NAME"
+  expect_success env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    MACDOG_RELEASE_FINAL_LAUNCHCTL="$tmp/launchctl" \
+    MACDOG_RELEASE_FINAL_USER_ID=501 \
+    MACDOG_RELEASE_FINAL_USAGE_PROVIDER_MODE=claude \
+    "$0" --version 9.9.9
+  write_fixture_cache_plist "$tmp/LaunchAgents/$CACHE_PLIST_NAME" "$tmp/Applications/$APP_NAME.app/Contents/MacOS/codex-usage"
+
+  rm -f "$tmp/Applications/$APP_NAME.app/Contents/MacOS/macdog-claude-statusline"
+  expect_failure env \
+    MACDOG_RELEASE_FINAL_APPLICATIONS_DIR="$tmp/Applications" \
+    MACDOG_RELEASE_FINAL_USER_APPLICATIONS_DIR="$tmp/UserApplications" \
+    MACDOG_RELEASE_FINAL_DIST_DIR="$tmp/dist" \
+    MACDOG_RELEASE_FINAL_VOLUMES_DIR="$tmp/Volumes" \
+    MACDOG_RELEASE_FINAL_BIN_DIR="$tmp/bin" \
+    MACDOG_RELEASE_FINAL_LAUNCH_AGENTS_DIR="$tmp/LaunchAgents" \
+    "$0" --version 9.9.9
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$tmp/Applications/$APP_NAME.app/Contents/MacOS/macdog-claude-statusline"
+  chmod +x "$tmp/Applications/$APP_NAME.app/Contents/MacOS/macdog-claude-statusline"
 
   write_fixture_app "$tmp/Applications/$APP_NAME.app" "9.9.9" "notFound"
   expect_success env \
@@ -571,6 +622,8 @@ fi
 installed_app="$APPLICATIONS_DIR/$APP_NAME.app"
 installed_plist="$installed_app/Contents/Info.plist"
 installed_binary="$installed_app/Contents/MacOS/$APP_NAME"
+installed_cli="$installed_app/Contents/MacOS/codex-usage"
+installed_claude_bridge="$installed_app/Contents/MacOS/macdog-claude-statusline"
 failures=()
 
 if [[ ! -d "$installed_app" ]]; then
@@ -593,6 +646,12 @@ if [[ -d "$installed_app" ]]; then
     if [[ "$login_item_status" != "enabled" ]]; then
       failures+=("login item status mismatch: expected enabled because $LOGIN_LAUNCH_KEY is true, got $login_item_status")
     fi
+  fi
+  if [[ ! -x "$installed_cli" ]]; then
+    failures+=("installed bundled CLI is not runnable: $installed_cli")
+  fi
+  if [[ ! -x "$installed_claude_bridge" ]]; then
+    failures+=("installed Claude status line bridge is not runnable: $installed_claude_bridge")
   fi
 fi
 
@@ -636,7 +695,9 @@ elif [[ -e "$cli_link" ]]; then
 fi
 
 cache_plist="$LAUNCH_AGENTS_DIR/$CACHE_PLIST_NAME"
-if [[ -f "$cache_plist" ]]; then
+if [[ "$(usage_provider_mode)" == "claude" && -e "$cache_plist" ]]; then
+  failures+=("Claude mode must not keep Codex usage cache LaunchAgent: $cache_plist")
+elif [[ -f "$cache_plist" ]]; then
   cache_executable="$(plist_value "$cache_plist" ProgramArguments:0 || true)"
   validate_cache_executable "$cache_plist" "$cache_executable"
 elif [[ -e "$cache_plist" ]]; then
@@ -644,7 +705,9 @@ elif [[ -e "$cache_plist" ]]; then
 fi
 
 loaded_executable="$(loaded_cache_executable || true)"
-if [[ -n "$loaded_executable" ]]; then
+if [[ "$(usage_provider_mode)" == "claude" && -n "$loaded_executable" ]]; then
+  failures+=("Claude mode must not keep loaded Codex usage cache job: $loaded_executable")
+elif [[ -n "$loaded_executable" ]]; then
   validate_cache_executable "loaded launchd job $CACHE_LABEL" "$loaded_executable"
 fi
 

@@ -45,6 +45,44 @@ final class UsageNotificationPolicyTests: XCTestCase {
         XCTAssertEqual(candidates.first?.dedupeKey.rawValue, "usage.limitReached.fiveHour.reset.1800003600")
     }
 
+    func testPolicyUsesOnlyWeeklyWindowWhenFiveHourIsUnavailable() {
+        let state = Self.state(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 96,
+            weeklyResetsAt: 1_800_604_800
+        )
+
+        let candidates = UsageNotificationPolicy().candidates(
+            for: state,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(candidates.map(\.event), [.approachingLimit])
+        XCTAssertEqual(candidates.map(\.window), [.weekly])
+        XCTAssertEqual(candidates.map(\.dedupeKey.rawValue), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+    }
+
+    func testPolicyAssignsReachedTypeToWeeklyWhenFiveHourIsUnavailable() {
+        let state = Self.state(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 64,
+            weeklyResetsAt: 1_800_604_800,
+            rateLimitReachedType: "primary"
+        )
+
+        let candidates = UsageNotificationPolicy().candidates(
+            for: state,
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(candidates.map(\.event), [.limitReached])
+        XCTAssertEqual(candidates.map(\.window), [.weekly])
+    }
+
     func testPolicyCreatesResetSoonOnlyForHighUsageWindowsInsideLeadTime() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let state = Self.state(
@@ -92,8 +130,96 @@ final class UsageNotificationPolicyTests: XCTestCase {
         )
     }
 
+    func testPolicyCreatesDailyAndCumulativePacemakerEventsForCurrentDay() throws {
+        let resetStartAt = 1_800_000_000
+        let recordedAt = resetStartAt + 2 * 86_400 + 3_600
+        let resetsAt = resetStartAt + 7 * 86_400
+        let report = Self.report(
+            fiveHourUsedPercent: 20,
+            fiveHourResetsAt: recordedAt + 3_600,
+            weeklyUsedPercent: 44,
+            weeklyResetsAt: resetsAt,
+            rateLimitReachedType: nil
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: CodexUsageCacheSnapshot(
+                cachedAt: recordedAt,
+                staleAfterSeconds: 120,
+                report: report,
+                error: nil
+            ),
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [
+                CodexUsageWeeklyHistorySample(
+                    recordedAt: resetStartAt + 2 * 86_400 - 60,
+                    usedPercent: 25,
+                    remainingPercent: 75,
+                    resetsAt: resetsAt,
+                    windowDurationMins: 10_080
+                )
+            ]),
+            errorMessage: nil,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(recordedAt))
+        )
+
+        let candidates = UsageNotificationPolicy().candidates(
+            for: state,
+            now: Date(timeIntervalSince1970: TimeInterval(recordedAt))
+        )
+
+        XCTAssertEqual(candidates.map(\.event), [.dailyTargetExceeded, .cumulativePaceExceeded])
+        XCTAssertEqual(candidates.map(\.dedupeKey.rawValue), [
+            "usage.dailyTargetExceeded.weekly.reset.1800604800.day.3",
+            "usage.cumulativePaceExceeded.weekly.reset.1800604800.day.3"
+        ])
+    }
+
+    func testPolicyCreatesDailyApproachingEventWithoutBaselineGuessing() {
+        let resetStartAt = 1_800_000_000
+        let recordedAt = resetStartAt + 2 * 86_400 + 3_600
+        let resetsAt = resetStartAt + 7 * 86_400
+        let report = Self.report(
+            fiveHourUsedPercent: 20,
+            fiveHourResetsAt: recordedAt + 3_600,
+            weeklyUsedPercent: 35,
+            weeklyResetsAt: resetsAt,
+            rateLimitReachedType: nil
+        )
+        let snapshot = CodexUsageCacheSnapshot(
+            cachedAt: recordedAt,
+            staleAfterSeconds: 120,
+            report: report,
+            error: nil
+        )
+        let boundarySample = CodexUsageWeeklyHistorySample(
+            recordedAt: resetStartAt + 2 * 86_400 - 60,
+            usedPercent: 23,
+            remainingPercent: 77,
+            resetsAt: resetsAt,
+            windowDurationMins: 10_080
+        )
+        let available = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [boundarySample]),
+            errorMessage: nil
+        )
+        let missingBaseline = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            weeklyUsageHistory: .empty,
+            errorMessage: nil
+        )
+
+        XCTAssertEqual(
+            UsageNotificationPolicy().candidates(for: available).map(\.event),
+            [.dailyTargetApproaching]
+        )
+        XCTAssertTrue(UsageNotificationPolicy().candidates(for: missingBaseline).isEmpty)
+    }
+
     private static func state(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
@@ -113,19 +239,21 @@ final class UsageNotificationPolicyTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
         rateLimitReachedType: String?
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -136,8 +264,8 @@ final class UsageNotificationPolicyTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: rateLimitReachedType

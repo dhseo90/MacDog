@@ -9,15 +9,18 @@ struct UserComponentInstaller {
     private let appBundleURL: URL
     private let homeDirectory: URL
     private let fileManager: FileManager
+    private let launchctlRunner: ([String]) throws -> String
 
     init(
         appBundleURL: URL = Bundle.main.bundleURL,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        launchctlRunner: @escaping ([String]) throws -> String = Self.runLaunchctl
     ) {
         self.appBundleURL = appBundleURL.standardizedFileURL
         self.homeDirectory = homeDirectory
         self.fileManager = fileManager
+        self.launchctlRunner = launchctlRunner
     }
 
     static func shouldManage(appBundleURL: URL = Bundle.main.bundleURL, homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) -> Bool {
@@ -30,7 +33,10 @@ struct UserComponentInstaller {
         return path == "/Applications/MacDog.app" || path == userApplicationsPath
     }
 
-    func installOrRepair(loginLaunchEnabled: Bool) throws {
+    func installOrRepair(
+        loginLaunchEnabled: Bool,
+        usageProviderMode: UsageProviderMode
+    ) throws {
         guard Self.shouldManage(appBundleURL: appBundleURL, homeDirectory: homeDirectory) else { return }
         guard fileManager.isExecutableFile(atPath: bundledCLIURL.path) else {
             throw UserComponentInstallerError.missingBundledCLI(bundledCLIURL.path)
@@ -41,8 +47,24 @@ struct UserComponentInstaller {
         try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
 
         try installCLISymlink()
-        try installCacheLaunchAgentIfNeeded()
+        try synchronizeUsageCacheAgent(for: usageProviderMode)
         try installLoginLaunchIfNeeded(isEnabled: loginLaunchEnabled)
+    }
+
+    static func cacheAgentAction(for mode: UsageProviderMode) -> UsageCacheAgentAction {
+        mode == .codex ? .install : .remove
+    }
+
+    func synchronizeUsageCacheAgent(for mode: UsageProviderMode) throws {
+        guard Self.shouldManage(appBundleURL: appBundleURL, homeDirectory: homeDirectory) else { return }
+        switch Self.cacheAgentAction(for: mode) {
+        case .install:
+            try fileManager.createDirectory(at: launchAgentDirectoryURL, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
+            try installCacheLaunchAgentIfNeeded()
+        case .remove:
+            try removeCacheLaunchAgentIfPresent()
+        }
     }
 
     static func cachePlistData(
@@ -170,6 +192,28 @@ struct UserComponentInstaller {
         try launchctl(arguments: ["bootstrap", guiTarget, cachePlistURL.path])
     }
 
+    private func removeCacheLaunchAgentIfPresent() throws {
+        do {
+            try launchctl(arguments: ["bootout", "\(guiTarget)/\(Self.cacheLabel)"])
+        } catch {
+            do {
+                try launchctl(arguments: ["bootout", guiTarget, cachePlistURL.path])
+            } catch {
+                do {
+                    try launchctl(arguments: ["print", "\(guiTarget)/\(Self.cacheLabel)"])
+                    throw error
+                } catch let verificationError {
+                    guard Self.isMissingLaunchctlServiceError(verificationError) else {
+                        throw verificationError
+                    }
+                }
+            }
+        }
+        if fileManager.fileExists(atPath: cachePlistURL.path) {
+            try fileManager.removeItem(at: cachePlistURL)
+        }
+    }
+
     private func installLoginLaunchIfNeeded(isEnabled: Bool) throws {
         let controller = LoginLaunchController(
             appBundleURL: appBundleURL,
@@ -184,6 +228,10 @@ struct UserComponentInstaller {
 
     @discardableResult
     private func launchctl(arguments: [String]) throws -> String {
+        try launchctlRunner(arguments)
+    }
+
+    private static func runLaunchctl(arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
         process.arguments = arguments
@@ -203,6 +251,21 @@ struct UserComponentInstaller {
         }
         return output + error
     }
+
+    private static func isMissingLaunchctlServiceError(_ error: Error) -> Bool {
+        guard case UserComponentInstallerError.launchctlFailed(_, let detail) = error else {
+            return false
+        }
+        let normalized = detail.lowercased()
+        return normalized.contains("could not find service") ||
+            normalized.contains("could not find specified service") ||
+            normalized.contains("service not found")
+    }
+}
+
+enum UsageCacheAgentAction: Equatable {
+    case install
+    case remove
 }
 
 enum UserComponentInstallerError: LocalizedError, Equatable {

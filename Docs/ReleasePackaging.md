@@ -29,12 +29,17 @@
 - `.dmg` 생성 시 같은 경로에 `.dmg.sha256` checksum을 함께 만듭니다.
 - `.github/workflows/ci.yml`은 PR과 `main` push에서 `MACDOG_APP_VERSION=9.9.9 ./script/check.sh --no-run`을 실행하는 기본 release readiness check입니다.
 - `.github/workflows/release-candidate.yml`은 수동 실행으로 unsigned `.dmg` 후보와 checksum을 만들고 GitHub Actions artifact로 보관합니다.
-- `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력을 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft release에 첨부합니다.
+- `.github/workflows/release-draft.yml`은 `UNSIGNED-DRAFT` 확인 입력, `tag == v<version>`, 기존
+  signed/Verified tag의 release head 일치를 요구한 뒤 unsigned `.dmg`와 checksum을 GitHub draft
+  release에 첨부합니다. 기존 tag가 있으면 `target_commitish`는 release identity로 사용되지 않으므로
+  정보로만 기록하고, signed annotated tag를 역참조한 commit SHA를 release head와 다시 대조합니다.
+  생성 후 draft/prerelease/tag target/tag/asset 두 개를 확인하며 readback이 실패하면 방금 생성한
+  draft release만 삭제하고 signed tag는 보존합니다.
 - `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
-- `script/verify_release_packaging.sh`는 dry-run 문구, staging payload 구조, Applications symlink, release note draft, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
+- `script/verify_release_packaging.sh`는 dry-run 문구, staging payload의 app/CLI/Claude bridge 구조, Applications symlink, version별 release note와 지원 범위, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
 - `script/cleanup_release_smoke_state.sh --apply`는 release smoke 뒤 남은 MacDog DMG 마운트, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job을 정리합니다. 중복 앱은 LaunchServices에서 unregister한 뒤 `/private/tmp/macdog-duplicate-app-cleanup.noindex` 아래 `.app.quarantined` 이름으로 격리하며, stale loaded job은 unload합니다.
-- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전, Desktop·다른 worktree·임시 경로의 중복 앱 번들, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 상태, 마운트된 MacDog DMG를 확인합니다.
+- `script/verify_release_final_state.sh --version <version>`은 `/Applications/MacDog.app`의 앱 버전과 app/CLI/Claude bridge 실행 파일, Desktop·다른 worktree·임시 경로의 중복 앱 번들, stale `~/bin/codex-usage` symlink, provider mode와 불일치한 usage cache LaunchAgent plist/loaded job, 실제 로그인 항목 상태, 마운트된 MacDog DMG를 확인합니다.
 - `script/verify_distribution_gate.sh`는 unsigned `.dmg`가 notarized 빌드로 오해되지 않고 Apple Developer 의존 항목이 현재 unsigned 릴리즈 계획에서 제외됐는지 검증합니다.
 - PR 보호 규칙, branch protection, GitHub ruleset 설정은 [GitHubReleaseChecklist.md](GitHubReleaseChecklist.md)에 분리합니다. `script/configure_github_branch_protection.sh --apply`는 repo가 public이거나 private branch protection 가능 plan일 때 적용합니다.
 
@@ -119,16 +124,19 @@
 9. `Release Candidate` workflow와 `Draft Release` workflow를 최신 release head 기준으로 실행합니다.
 10. 최신 release head에 대해 signed annotated tag를 만들고 push한 뒤 GitHub에서 tag가 `Verified`인지 확인합니다.
 11. workflow 또는 `gh release create`가 unsigned/lightweight tag를 자동 생성하지 않도록 `--verify-tag` 또는 동등한 검증을 사용합니다.
-12. artifact, checksum, draft `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
+12. artifact, checksum, draft `isDraft`, `isPrerelease`, signed tag target SHA, asset 목록을 확인합니다.
 13. GitHub Releases 화면에서 stale draft가 아니고 tag가 `Verified`임을 확인한 뒤 publish합니다.
 14. publish 후 `isDraft=false`, 원격 tag, tag `Verified` 상태를 확인합니다.
 15. published DMG를 다시 내려받아 checksum과 `hdiutil verify`를 확인합니다.
 16. 설치 검수가 필요한 릴리즈 종료 작업이면 Finder에서 published DMG를 열고 `MacDog.app`을 `Applications`로 실제 drag-and-drop합니다.
 17. 첫 실행 후 `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중인 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
 18. 설치된 CLI 또는 빌드된 CLI로 `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`를 실행합니다.
-19. live fetch 성공 시 5시간/주간 window가 모두 있는 success cache와 `usage-weekly-history.json` sample, `history append: stored ... recordingStartedAt=...` diagnostic을 확인합니다.
+19. live fetch 성공 시 필수 주간 window와 optional 5시간 window 상태를 확인합니다. weekly-only도
+    success cache로 인정하며 `usage-weekly-history.json` sample과
+    `history append: stored ... recordingStartedAt=...` diagnostic을 확인합니다.
 20. live fetch 실패 시 error snapshot인지 확인합니다.
-21. 5시간/주간 window가 없는 `0% 사용 / 100% 남음` 형태의 success cache가 생성되면 실패로 봅니다.
+21. 주간 window가 없거나, 없는 5시간 window를 `0% 사용 / 100% 남음` 또는 과거 값으로 합성한
+    success cache가 생성되면 실패로 봅니다.
 22. `./script/cleanup_release_smoke_state.sh --apply`로 release smoke 잔여물을 정리합니다.
 23. `./script/verify_release_final_state.sh --version X.Y.Z`가 통과해야 release smoke 종료로 봅니다.
 24. 릴리즈 publish와 final smoke가 끝난 뒤 release branch를 정리합니다.

@@ -15,8 +15,6 @@ struct UsageMonitorState: Equatable {
     let fiveHourUsageHistory: CodexUsageFiveHourHistory
     let weeklyUsageHistory: CodexUsageWeeklyHistory
     let resetWindowHistory: CodexUsageResetWindowHistory
-    let planTransitionConfiguration: CodexPlanTransitionConfiguration?
-    let planTransitionConfigurationError: String?
     let errorMessage: String?
     let displayBasis: UsageDisplayBasis
     let reducedMotion: Bool
@@ -27,6 +25,9 @@ struct UsageMonitorState: Equatable {
     let sleepPreventionStatus: SleepPreventionStatus
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
+    let claudeUsagePreview: ClaudeUsagePreviewState
+    let usageProviderMode: UsageProviderMode
+    let runnerEvaluationDate: Date
 
     init(
         report: CodexUsageReport?,
@@ -34,8 +35,6 @@ struct UsageMonitorState: Equatable {
         fiveHourUsageHistory: CodexUsageFiveHourHistory = .empty,
         weeklyUsageHistory: CodexUsageWeeklyHistory = .empty,
         resetWindowHistory: CodexUsageResetWindowHistory = .empty,
-        planTransitionConfiguration: CodexPlanTransitionConfiguration? = nil,
-        planTransitionConfigurationError: String? = nil,
         errorMessage: String?,
         displayBasis: UsageDisplayBasis = .max,
         reducedMotion: Bool = false,
@@ -45,15 +44,16 @@ struct UsageMonitorState: Equatable {
         systemMetricsHistory: SystemMetricsHistory = .empty,
         sleepPreventionStatus: SleepPreventionStatus = .disabled,
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
-        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing
+        privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing,
+        claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
+        usageProviderMode: UsageProviderMode = .codex,
+        runnerEvaluationDate: Date = Date()
     ) {
         self.report = report
         self.cacheSnapshot = cacheSnapshot
         self.fiveHourUsageHistory = fiveHourUsageHistory
         self.weeklyUsageHistory = weeklyUsageHistory
         self.resetWindowHistory = resetWindowHistory
-        self.planTransitionConfiguration = planTransitionConfiguration
-        self.planTransitionConfigurationError = planTransitionConfigurationError
         self.errorMessage = errorMessage
         self.displayBasis = displayBasis
         self.reducedMotion = reducedMotion
@@ -64,6 +64,9 @@ struct UsageMonitorState: Equatable {
         self.sleepPreventionStatus = sleepPreventionStatus
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
+        self.claudeUsagePreview = claudeUsagePreview
+        self.usageProviderMode = usageProviderMode
+        self.runnerEvaluationDate = runnerEvaluationDate
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -73,8 +76,6 @@ struct UsageMonitorState: Equatable {
             fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
-            planTransitionConfiguration: planTransitionConfiguration,
-            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -84,7 +85,10 @@ struct UsageMonitorState: Equatable {
             systemMetricsHistory: systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
+            claudeUsagePreview: claudeUsagePreview,
+            usageProviderMode: usageProviderMode,
+            runnerEvaluationDate: runnerEvaluationDate
         )
     }
 
@@ -101,8 +105,6 @@ struct UsageMonitorState: Equatable {
             fiveHourUsageHistory: fiveHourUsageHistory,
             weeklyUsageHistory: weeklyUsageHistory,
             resetWindowHistory: resetWindowHistory,
-            planTransitionConfiguration: planTransitionConfiguration,
-            planTransitionConfigurationError: planTransitionConfigurationError,
             errorMessage: errorMessage,
             displayBasis: displayBasis,
             reducedMotion: reducedMotion,
@@ -112,7 +114,10 @@ struct UsageMonitorState: Equatable {
             systemMetricsHistory: systemMetricsHistory ?? self.systemMetricsHistory,
             sleepPreventionStatus: sleepPreventionStatus,
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
-            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot
+            privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
+            claudeUsagePreview: claudeUsagePreview,
+            usageProviderMode: usageProviderMode,
+            runnerEvaluationDate: runnerEvaluationDate
         )
     }
 
@@ -120,76 +125,42 @@ struct UsageMonitorState: Equatable {
         report?.codexLimit
     }
 
-    func planTransitionScenario(now: Int = Int(Date().timeIntervalSince1970)) -> CodexPlanTransitionScenario? {
-        guard let planTransitionConfiguration else { return nil }
-        let fiveHourObservations = fiveHourUsageHistory.samples.compactMap { sample in
-            try? CodexPlanTransitionObservation(
-                window: .fiveHour,
-                windowStartedAt: sample.resetsAt - sample.windowDurationMins * 60,
-                windowEndedAt: sample.resetsAt,
-                recordedAt: sample.recordedAt,
-                planEpochID: sample.planEpochID,
-                usedPercent: sample.usedPercent
-            )
-        }
-        let weeklyObservations: [CodexPlanTransitionObservation] = resetWindowHistory.records.compactMap { record in
-            guard record.limitId == "codex", record.windowDurationMins == 10_080 else {
-                return nil
-            }
-            return try? CodexPlanTransitionObservation(
-                window: .weekly,
-                windowStartedAt: record.resetsAt - record.windowDurationMins * 60,
-                windowEndedAt: record.resetsAt,
-                recordedAt: record.generatedAt,
-                planEpochID: CodexPlanTransitionEpochs(
-                    configuration: planTransitionConfiguration
-                ).planEpochID(at: record.resetsAt - 1),
-                usedPercent: record.finalUsedPercent
-            )
-        }
-        return CodexPlanTransitionScenarioBuilder().scenario(
-            configuration: planTransitionConfiguration,
-            observations: fiveHourObservations + weeklyObservations,
-            now: now
+    var codexWeeklyPacemaker: CodexWeeklyPacemaker? {
+        let recordedAt = cacheSnapshot?.cachedAt ?? report?.generatedAt
+        guard let recordedAt else { return nil }
+        return CodexWeeklyPacemakerBuilder().pacemaker(
+            weeklyWindow: codexLimit?.weekly,
+            history: weeklyUsageHistory,
+            recordedAt: recordedAt
         )
     }
 
-    func weeklyUsageHistoryForActivePlanEpoch(
-        at timestamp: Int
-    ) -> CodexUsageWeeklyHistory {
-        guard let configuration = planTransitionConfiguration,
-              configuration.confirmedTransitionAt != nil
-        else {
-            return weeklyUsageHistory
-        }
-        let epochs = CodexPlanTransitionEpochs(configuration: configuration)
-        let activeEpoch = epochs.target.contains(timestamp) ? epochs.target : epochs.current
-        return CodexUsageWeeklyHistory(samples: weeklyUsageHistory.samples.filter {
-            activeEpoch.contains($0.recordedAt)
-        })
+    var codexFiveHourPaceProjection: CodexUsagePaceProjection? {
+        guard codexLimit?.fiveHour != nil, let cacheSnapshot else { return nil }
+        return CodexFiveHourPaceProjectionBuilder().projection(
+            snapshot: cacheSnapshot,
+            history: fiveHourUsageHistory,
+            now: runnerEvaluationDate
+        )
     }
 
-    func resetWindowHistoryForActivePlanEpoch(
-        at timestamp: Int
-    ) -> CodexUsageResetWindowHistory {
-        guard let configuration = planTransitionConfiguration,
-              configuration.confirmedTransitionAt != nil
-        else {
-            return resetWindowHistory
-        }
-        let epochs = CodexPlanTransitionEpochs(configuration: configuration)
-        let activeEpoch = epochs.target.contains(timestamp) ? epochs.target : epochs.current
-        return CodexUsageResetWindowHistory(records: resetWindowHistory.records.filter { record in
-            let startsAt = record.resetsAt - record.windowDurationMins * 60
-            return activeEpoch.contains(startsAt) && activeEpoch.contains(record.resetsAt - 1)
-        })
-    }
-
-    var phase: UsagePressurePhase {
+    var codexPhase: UsagePressurePhase {
         if codexLimit?.rateLimitReachedType != nil {
             return .limit
         }
         return UsagePressurePhase(usedPercent: selectedUsedPercent)
+    }
+
+    var phase: UsagePressurePhase {
+        switch usageProviderMode {
+        case .codex:
+            return codexPhase
+        case .claude:
+            guard let usedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
+                return .calm
+            }
+            return UsagePressurePhase(usedPercent: usedPercent)
+        }
     }
 
     var petReaction: PetStatusReaction {
@@ -220,7 +191,7 @@ struct UsageMonitorState: Equatable {
         case .max:
             return limit.maxUsedPercent
         case .fiveHour:
-            return limit.fiveHour?.usedPercent ?? 0
+            return (limit.fiveHour ?? limit.weekly)?.usedPercent ?? 0
         case .weekly:
             return limit.weekly?.usedPercent ?? 0
         }
@@ -238,7 +209,8 @@ struct UsageMonitorState: Equatable {
             .compactMap(\.self)
             .max { $0.window.usedPercent < $1.window.usedPercent }
         case .fiveHour:
-            return UsageWindowStatus(label: "5시간", window: limit.fiveHour)
+            return UsageWindowStatus(label: "5시간", window: limit.fiveHour) ??
+                UsageWindowStatus(label: "주간", window: limit.weekly)
         case .weekly:
             return UsageWindowStatus(label: "주간", window: limit.weekly)
         }
@@ -254,7 +226,7 @@ struct UsageMonitorState: Equatable {
         }
 
         return CodexUsagePanelSummary(
-            statusTitle: phase.statusLabel,
+            statusTitle: codexPhase.statusLabel,
             statusDetail: "기준 \(status.summary)",
             notificationThresholdSummary: Self.notificationThresholdSummary,
             resetCountdowns: [
@@ -265,6 +237,15 @@ struct UsageMonitorState: Equatable {
     }
 
     func nextResetGlance(now: Date = Date()) -> String? {
+        switch usageProviderMode {
+        case .codex:
+            return codexNextResetGlance(now: now)
+        case .claude:
+            return claudeNextResetGlance(now: now)
+        }
+    }
+
+    private func codexNextResetGlance(now: Date) -> String? {
         let candidates = [
             UsageWindowStatus(label: "5시간", window: codexLimit?.fiveHour),
             UsageWindowStatus(label: "주간", window: codexLimit?.weekly)
@@ -282,6 +263,21 @@ struct UsageMonitorState: Equatable {
 
         guard let next = candidates.first else { return nil }
         return "다음 초기화: \(next.label) \(Self.relativeDuration(next.remainingSeconds))"
+    }
+
+    private func claudeNextResetGlance(now: Date) -> String? {
+        let candidates: [(label: String, resetsAt: Int?)] = [
+            ("5시간", claudeUsagePreview.usage?.fiveHour?.resetsAt),
+            ("7일", claudeUsagePreview.usage?.sevenDay?.resetsAt)
+        ]
+        let next = candidates.compactMap { candidate -> (String, Int)? in
+            guard let resetsAt = candidate.resetsAt else { return nil }
+            let remaining = Int(ceil(Date(timeIntervalSince1970: TimeInterval(resetsAt)).timeIntervalSince(now)))
+            return remaining > 0 ? (candidate.label, remaining) : nil
+        }
+        .min { $0.1 < $1.1 }
+        guard let next else { return nil }
+        return "다음 초기화: \(next.0) \(Self.relativeDuration(next.1))"
     }
 
     var codexDataStatus: CodexUsageDataStatus {
@@ -306,7 +302,7 @@ struct UsageMonitorState: Equatable {
                 tone: .warning,
                 systemImage: "rectangle.badge.exclamationmark",
                 title: "프로토콜 확인 필요",
-                detail: "필수 5시간/주간 window 누락"
+                detail: "필수 주간 window 누락"
             )
         }
         if isRefreshing {
@@ -323,6 +319,14 @@ struct UsageMonitorState: Equatable {
                 systemImage: "hourglass",
                 title: "사용량 데이터 대기",
                 detail: "cache snapshot 또는 live report 필요"
+            )
+        }
+        if codexLimit?.fiveHour == nil {
+            return CodexUsageDataStatus(
+                tone: .warning,
+                systemImage: "minus.circle.fill",
+                title: "5시간 현재 미제공",
+                detail: "주간 cache와 history는 정상 갱신"
             )
         }
         if weeklyUsageHistory.samples.isEmpty || resetWindowHistory.records.isEmpty {
@@ -367,16 +371,36 @@ struct UsageMonitorState: Equatable {
     }
 
     var toolTip: String {
+        switch usageProviderMode {
+        case .codex:
+            return codexToolTip
+        case .claude:
+            return claudeToolTip
+        }
+    }
+
+    private var codexToolTip: String {
         if isRefreshing, codexLimit == nil {
             return "코덱스 사용량 새로고침 중"
         }
         guard let limit = codexLimit else {
             return "코덱스 사용량 확인 불가"
         }
-        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5시간" } ?? "5시간 확인 불가"
+        let fiveHour = limit.fiveHour.map { "\(Self.percent($0.usedPercent))% 5시간" } ??
+            "5시간 현재 제공되지 않음"
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
         let motion = animationPaused ? ", 일시 정지" : ""
         return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"
+    }
+
+    private var claudeToolTip: String {
+        let motion = animationPaused ? ", 일시 정지" : ""
+        guard let usage = claudeUsagePreview.usage else {
+            return "Claude 사용량: \(claudeUsagePreview.statusTitle())\(motion)"
+        }
+        let fiveHour = usage.fiveHour.map { "\(Self.percent($0.usedPercent ?? 0))% 5시간" } ?? "5시간 확인 불가"
+        let sevenDay = usage.sevenDay.map { "\(Self.percent($0.usedPercent ?? 0))% 7일" } ?? "7일 확인 불가"
+        return "Claude 사용량: \(fiveHour), \(sevenDay)\(motion)"
     }
 
     static func percent(_ value: Double) -> String {

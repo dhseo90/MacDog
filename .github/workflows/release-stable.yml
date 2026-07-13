@@ -86,6 +86,7 @@ jobs:
           cli_entitlements="Apps/CodexUsageCLI/CodexUsageCLI.entitlements"
           helper="$app/Contents/Library/LaunchServices/MacDogPrivilegedHelper"
           cli="$app/Contents/MacOS/codex-usage"
+          claude_bridge="$app/Contents/MacOS/macdog-claude-statusline"
 
           if [[ -d "$appex" ]]; then
             find "$appex" -type f \( -name '*.dylib' -o -perm +111 \) -print0 | while IFS= read -r -d '' file; do
@@ -96,9 +97,11 @@ jobs:
           else
             codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$cli"
           fi
+          codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$claude_bridge"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$helper"
           codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$app"
           codesign --verify --strict --verbose=2 "$cli"
+          codesign --verify --strict --verbose=2 "$claude_bridge"
           codesign --verify --deep --strict --verbose=2 "$app"
 
       - name: Stage release payload
@@ -116,6 +119,7 @@ jobs:
           checksum_path="$dmg_path.sha256"
 
           codesign --verify --strict --verbose=2 "$stage/MacDog.app/Contents/MacOS/codex-usage"
+          codesign --verify --strict --verbose=2 "$stage/MacDog.app/Contents/MacOS/macdog-claude-statusline"
           codesign --verify --deep --strict --verbose=2 "$stage/MacDog.app"
 
           rm -f "$dmg_path" "$checksum_path"

@@ -68,4 +68,26 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
             force: false
         ))
     }
+
+    func testLiveCodexRefreshRunsOnlyInCodexMode() {
+        XCTAssertTrue(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .codex))
+        XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude))
+    }
+
+    func testRefreshRunnerTerminatesProcessWhenProviderTaskIsCancelled() async throws {
+        let command = UsageCacheRefreshCommand(
+            executableURL: URL(fileURLWithPath: "/bin/sleep"),
+            arguments: ["10"]
+        )
+        let task = Task {
+            await UsageCacheRefreshRunner.run(command: command, processTimeout: 10)
+        }
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let cancelledAt = Date()
+        task.cancel()
+        await task.value
+
+        XCTAssertLessThan(Date().timeIntervalSince(cancelledAt), 1)
+    }
 }

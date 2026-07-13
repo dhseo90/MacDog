@@ -1,6 +1,8 @@
 # MacDog
 
-MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS 유틸리티입니다. 작은 `Codex Pup` 러너가 메뉴바에 상주하고, 클릭하면 Codex 사용량, 현재 자원, 잠들지 않기, 배터리 충전 한도, 앱 설정을 한 popover에서 다룹니다.
+MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS
+유틸리티입니다. 현재 published release는 Codex 전용이며 v1.8.0에서 `Codex` 또는 `Claude` 중
+하나를 선택하는 mode를 개발합니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
 
 기본 캐릭터는 `Codex Pup`입니다. 같은 캐릭터 세트가 메뉴바 러너, 데스크톱 펫, 우측 탭 버튼 이미지에 함께 적용되므로 나중에 캐릭터를 바꿀 때도 한 묶음으로 교체할 수 있습니다.
 
@@ -12,9 +14,12 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
 - Published asset: `MacDog-1.7.0.dmg`, `MacDog-1.7.0.dmg.sha256`
 - Published DMG SHA-256: `92fe575cd66fed1c4ee52b6e350b961d27956930cfba98c23adc17d0c7b25a9f`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치, `/Applications/MacDog.app` 첫 실행, 주요 탭과 Codex `현재`/`지난`/`비교` mode, 플랜 전환 미확정 상태, CLI/cache LaunchAgent 경로를 확인했습니다.
-- v1.7.0에는 별도 5시간 history, 사용자 설정 기반 플랜 전환 scenario, plan epoch 분리와 전환 후 첫 7일 실제 관측 비교가 포함됩니다.
-- 실제 Pro $100 전환과 target epoch 첫 7일 관측은 수행하지 않았으므로 Pro $100 적합성 또는 scenario 정확도를 검증 완료로 주장하지 않습니다.
+- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치,
+  `/Applications/MacDog.app` 첫 실행, 주요 탭과 Codex `현재`/`지난`/`비교` mode, CLI/cache
+  LaunchAgent 경로를 확인했습니다.
+- v1.7.0에 실제 포함된 plan transition scenario·epoch UI는 과도 구현으로 재분류했습니다.
+  release는 취소하지 않으며 v1.8.0 개발 브랜치에서 해당 기능을 제거하고 5시간/주간 잔여량
+  페이스메이커로 단순화했습니다. 전체 v1.8 release 검증은 아직 진행 전입니다.
 - 로그인 항목은 설치본 설정 UI의 켜짐 상태와 공식 release final-state 검증으로 확인했습니다.
 
 ## 화면
@@ -43,7 +48,7 @@ MacDog는 Codex 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 m
     <th>데스크톱 펫</th>
   </tr>
   <tr>
-    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab with a single usage mode selector" width="360"></td>
     <td align="center"><img src="Docs/Images/README/macdog-desktop-pet-front.png" alt="MacDog desktop pet front sprite" width="160"></td>
   </tr>
 </table>
@@ -54,24 +59,24 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 | 영역 | 역할 |
 | --- | --- |
-| 메뉴바 러너 | Codex 사용량 위험도를 작은 캐릭터 움직임으로 표시합니다. |
-| Codex 사용량 탭 | 5시간/주간 사용률, reset 시각, 주간 history와 사용자 설정 기반 플랜 전환 시나리오를 표시합니다. |
+| 메뉴바 러너 | 현재 release에서는 Codex 사용량 위험도를 표시하며 v1.8.0부터 선택 provider만 따릅니다. |
+| 사용량 탭 | 선택 provider의 현재 제공되는 단기/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. Codex 5시간 window가 없으면 주간 정보는 계속 갱신합니다. v1.8.0 개발 목표입니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | 플랜 label/상대 용량/reserve/전환일, 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
-| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
+| 설정 탭 | v1.8.0에서는 provider mode 한 항목과 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태만 관리합니다. |
+| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
 
 사용자 설치는 GitHub Release의 DMG를 기준으로 합니다.
 
-1. [v1.6.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.6.0)에서 `MacDog-1.6.0.dmg`를 내려받습니다.
+1. [v1.7.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.7.0)에서 `MacDog-1.7.0.dmg`를 내려받습니다.
 2. DMG를 Finder에서 엽니다.
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
 
-Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
+Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다.
 
 설치 검수 원칙:
 
@@ -81,26 +86,72 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태, pace 예측, 현재/지난/비교 그래프를 표시합니다.
+- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태,
+  pace 예측, 현재/지난/비교 그래프를 표시합니다. 5시간 window가 일시 미제공되면 이를 `현재
+  제공되지 않음`으로 표시하고 주간 cache/history, runner, 알림은 계속 갱신합니다.
 - Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
-- Codex 플랜 전환 준비: 사용자가 직접 입력한 현재·목표 플랜, 상대 용량, reserve로 5시간/주간 P50·P90·최대와 reserve 미달/100% 초과 window를 계산합니다. 결과는 실제 한도가 아닌 `사용자 설정 기반 예상`으로 표시하며 가격 tier를 자동 판별하지 않습니다.
+- Codex 페이스메이커: weekly window 시작부터 24시간 day slot을 나누고 일일 목표 약 14.3%,
+  현재 day 사용량과 누적 페이스를 계산합니다. v1.8.0 개발 브랜치 source·focused test가 구현됐고
+  가격 플랜 적합성을 예측하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
+- Claude backend: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`를 sanitize해
+  별도 cache/history에 저장하고 v1.8.0의 선택 mode에 연결했습니다. 사용률·잔여율, cache 없음 수동
+  연결 상태와 bundle 검증 gate가 구현됐으며 실제 구독 live 검증은 남았습니다.
+- 선택 provider graph: current/past/compare와 pace를 유지하되 선택한 provider 하나만 평가합니다.
+  Claude reset credit은 만들지 않습니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80-100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
-- 설정: Codex 사용량 알림, 로그인 시 MacDog 실행, 데스크톱 펫 표시, 움직임 줄이기, 러너 일시 정지, 권한 도우미 설치/제거 상태를 관리합니다.
+- 설정: 로그인 시 실행, 데스크톱 펫, 움직임 줄이기, 러너 일시 정지, 권한 도우미와 기존
+  사용량 알림 opt-in을 관리합니다. v1.8.0 개발 브랜치에는 `Codex` 또는 `Claude` 중 하나를 고르는
+  `사용량 mode` 한 항목만 남기고 별도 플랜 전환·Claude Preview 설정을 제거했습니다.
+- Claude 연결 경계: 기존 `~/.claude/settings.json`이나 auth store를 앱이 자동으로 읽거나 수정하지
+  않습니다. Claude mode의 cache 없음 empty state에서 수동 연결 command만 제공하고 기존 status
+  line을 자동 덮어쓰지 않습니다.
 
 ## 갱신 주기
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- 첫 실행 마무리가 등록한 usage cache LaunchAgent도 60초마다 `codex-usage status --write-cache --timeout 15`를 실행해 앱 cache를 갱신합니다.
+- Codex mode에서는 첫 실행 마무리가 usage cache LaunchAgent를 등록해 60초마다
+  `codex-usage status --write-cache --timeout 15`를 실행합니다. Claude mode로 바꾸면 이 Codex
+  LaunchAgent를 unload·제거하고, Codex mode로 돌아오면 다시 설치합니다.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
-- 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존되며, `usage-plan-transition.json`의 사용자 설정과 확정 epoch를 적용합니다.
+- 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존됩니다. v1.8.0에서
+  `planEpochID` 신규 기록·계산 의존을 제거하고 단기 pace에 재사용합니다. 기존 파일의 legacy field는
+  decode 호환만 유지합니다. 5시간 window가 없을 때는 새 sample을 합성하지 않고 기존 history를
+  보존하며, window가 복구되면 자동으로 sample과 pace 갱신을 재개합니다.
 - WidgetKit opt-in build에서만 `--mirror-cache`를 추가해 shared cache를 함께 갱신합니다.
+- Claude mode는 polling/manual refresh를 만들지 않습니다. `macdog-claude-statusline`이 새 Claude
+  응답 event를 받을 때 `claude-usage.json`과 `claude-usage-history.json`을 갱신하며, 마지막 정상
+  사용량 관측 후 15분이면 stale로 표시합니다.
+
+## v1.8.0 개발 검증 경계
+
+현재 검증은 v1.7 plan transition 제거, 1/7 day 페이스메이커, Codex weekly-only partial cache/UI와
+5시간 자동 복구, 5시간 pace와 v1.8 Claude
+sanitizer/cache/privacy backend, 단일 provider preference migration과 설정·1번 탭·runner·알림·Codex
+live refresh routing, Claude 잔여율·cache 없음 UI와 bundle/install/final-state bridge gate를 확인합니다.
+실제 GUI·설치 검증은 완료로 주장하지 않습니다.
+
+```sh
+./script/verify_v170_codex_pacemaker_contract.sh --self-test
+./script/verify_v180_selected_provider_contract.sh --self-test
+MACDOG_APP_VERSION=1.8.0 ./script/check.sh --no-run
+```
+
+2026-07-13 기준 전체 `swift test --no-parallel` 464개 통과(명시적 opt-in 4개 skip), Xcode Debug
+no-sign build와 `check.sh --no-run`이 통과했습니다. 생성된 `dist/MacDog.app`은 개발 자동 검증
+산출물이며 published DMG 설치 검수의 대체물이 아닙니다.
+
+자동 검증은 Claude 설정, auth store, Keychain, transcript, network, GUI를 건드리지 않습니다.
+현재 로컬 Claude Code `2.1.39`에서는 실제 구독 `rate_limits` event를 확인하지 못했습니다.
+따라서 `Claude backend·selected-provider routing·표시·release bridge gate 자동 검증 완료 /
+GUI 검수 전 / live Claude 구독 검수 미수행`으로 구분하며,
+실제 5시간/7일 값과 reset 경계를 검증 완료로 주장하지 않습니다.
 
 ## 알림 경계
 
@@ -121,14 +172,22 @@ codex-usage status --watch 60
 codex-usage doctor
 ```
 
-`status`는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary, 갱신 상태를 출력합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격 tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로 breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 원시 history를 저장하고, 지속된 잔여량 회복과 새 current window로 확인된 완료 창만 v1.4.0 reset window history에 반영합니다. `--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
+`status`는 현재 제공되는 5시간/주간 사용률, 남은 비율, 초기화 시각, plan, 사용자 초기화권 summary,
+갱신 상태를 출력합니다. 5시간 window가 없으면 `5h: unavailable`로 출력하되 주간 조회는 성공으로
+처리합니다. plan은 app-server 응답의 raw `planType`만 표시하며, `Plus`/`Pro $100`/`Pro $200` 가격
+tier를 추정하지 않습니다. JSON 출력은 앱, optional 위젯, cache writer가 의존하는 계약이므로
+breaking change를 만들지 않습니다. `--write-cache` 성공 시 주간 잔여량 원시 history를 저장하고,
+지속된 잔여량 회복과 새 current window로 확인된 완료 창만 v1.4.0 reset window history에 반영합니다.
+`--mirror-cache`는 WidgetKit opt-in build 검수용입니다.
 
 `doctor`는 Codex CLI/app-server 접근 상태와 함께 현재 응답에 포함된 사용량 묶음 이름, 필드 목록, app-owned cache freshness, weekly history sample 수, reset-window history record 수, append/retention/pace 상태, 다음 조치 안내를 구조 요약으로 보여줍니다. raw app-server 응답이나 auth/session material은 출력하지 않습니다.
 
 ## 데이터와 개인정보
 
 - Codex 사용량 기준은 로컬 Codex app-server의 `account/rateLimits/read` 응답입니다.
-- `primary.windowDurationMins = 300`은 5시간 창, `secondary.windowDurationMins = 10080`은 주간 창으로 해석합니다.
+- slot 이름과 관계없이 `windowDurationMins = 300`은 5시간 창, `10080`은 주간 창으로 해석합니다.
+- Codex 주간 window는 성공에 필수이며 5시간 window는 일시 미제공될 수 있습니다. weekly-only는
+  정상 partial success이고 5시간 값을 0% 또는 과거 값으로 합성하지 않습니다.
 - 사용자 초기화권 장수는 `rateLimitResetCredits`에서 읽고, 장별 유효기간은 ChatGPT backend의 reset credit 상세 응답에서 읽습니다.
 - 초기화권 유효기간은 장별 `expiresAt`만 표시하며, 5시간/주간 사용량 window와 섞어 추정하지 않습니다.
 - auth token, refresh token, cookie, session material은 출력하거나 저장하지 않습니다. reset credit 상세 조회에 필요한 access token은 메모리에서만 backend `Authorization` header로 사용합니다.
@@ -137,8 +196,10 @@ codex-usage doctor
 - 주간 잔여량 history에는 기록 시각, 주간 사용률/잔여율, 주간 reset 시각, window duration만 저장합니다.
 - v1.4.0 reset window history는 `usage-reset-window-history.json` 별도 파일에 확인된 완료 창의 `limitId`, `windowDurationMins`, `resetsAt` 기준 축약 record만 저장합니다. 현재 창은 공식 current usage로 그리며 영구 완료 record로 미리 저장하지 않습니다.
 - `usage-weekly-history.json`은 완료 창 재구성을 위해 13주를 보존하고, reset-window history는 최근 확인된 완료 창 12개를 보존합니다. 두 파일의 schema는 그대로 유지합니다.
-- v1.7.0 5시간 history는 5분/0.25% 미만 dense sample을 건너뛰고 logical reset window별 peak를 계산합니다. 설정 탭의 첫 저장은 기존 `legacy` sample을 현재 epoch로 이어주며, 실제 전환 확인 뒤에만 새 target epoch가 활성화됩니다.
-- v1.7.0 scenario는 사용자 label/상대 용량/reserve/예정일·확정일만 별도 저장하고 기존 `status --json`, `usage.json`, weekly/reset-window schema를 변경하지 않습니다.
+- v1.7.0 5시간 history는 5분/0.25% 미만 dense sample을 건너뛰고 logical reset window별 peak를
+  계산합니다. v1.8.0에서는 `planEpochID` 의존을 제거하고 단기 pace 관측에 계속 사용합니다.
+- published v1.7.0의 `usage-plan-transition.json`은 사용자 데이터 보호를 위해 자동 삭제하지
+  않지만, v1.8.0부터 신규 read/write와 plan scenario 계산에는 사용하지 않습니다.
 - v1.5.0 reliability 진단은 `usage.json`, `usage-weekly-history.json`, `usage-reset-window-history.json`을 읽어 missing, stale, error, waiting, ok 상태를 분리하지만 schema를 바꾸지 않습니다.
 - weekly reset 이후 새 `resetsAt` window가 감지되면 이전 history와 새 timeline을 분리하고, rolling reset timestamp duplicate는 같은 logical weekly window로 dedupe합니다.
 - 대량 로그/backfill 경로는 raw log 저장 기능이 아니라 reset window history record 생성 경계만 지원합니다. 앱 UI, 오버레이, 이미지 export는 생성된 record만 읽습니다.
@@ -163,7 +224,8 @@ npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v140_usage_intelligence_contract.sh --self-test
 ./script/verify_v150_usage_reliability_contract.sh --self-test
 ./script/verify_v160_codex_recovery_planner_contract.sh --self-test
-./script/verify_v170_codex_pro100_transition_contract.sh --self-test
+./script/verify_v170_codex_pacemaker_contract.sh --self-test
+./script/verify_v180_selected_provider_contract.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -178,7 +240,9 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v140_usage_intelligence_contract.sh --self-test` | v1.4.0 cache/privacy/history, fixture, focused Swift tests를 확인합니다. 앱 UI는 열지 않습니다. |
 | `./script/verify_v150_usage_reliability_contract.sh --self-test` | v1.5.0 reset boundary, cache/history health, doctor privacy/next-step, protocol drift guard를 확인합니다. 앱 UI와 live app-server는 열지 않습니다. |
 | `./script/verify_v160_codex_recovery_planner_contract.sh --self-test` | v1.6.0 Codex Usage & Reset Credits 계약을 확인합니다. recovery/session plan 제거, 초기화권 모델/유효기간 표시, focused Swift tests를 검증합니다. |
-| `./script/verify_v170_codex_pro100_transition_contract.sh --self-test` | v1.7.0 별도 5시간 history, 사용자 설정 scenario, plan epoch, 자동 tier 추정 금지와 privacy 경계를 검증합니다. |
+| `./script/verify_v170_codex_pacemaker_contract.sh --self-test` | v1.7.0 주간 day slot, 5시간 history 보존, plan epoch 제거 목표와 legacy 파일 보존 경계를 검증합니다. |
+| `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, Codex weekly-only cache/UI·5시간 복구, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
+| `./script/verify_v180_release_readiness.sh --self-test` | v1.8.0 PR·CI·release head, signed tag, artifact/draft/publish, live Claude, Finder 설치·GUI smoke와 증거 기록 계약을 offline 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
@@ -270,10 +334,10 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V160ReleaseReadiness.md](Docs/V160ReleaseReadiness.md): v1.6.0 릴리즈 준비 감사와 완료 smoke 기록
 - [Docs/V161HistoryControlPolish.md](Docs/V161HistoryControlPolish.md): v1.6.1 Codex history control polish 범위와 UI 검증 계약
 - [Docs/V161ReleaseReadiness.md](Docs/V161ReleaseReadiness.md): v1.6.1 릴리즈 준비 감사와 release smoke 계약
-- [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md): v1.7.0 Codex Pro $100 전환 판단과 플랜 epoch 경계
+- [Docs/V170CodexPro100Transition.md](Docs/V170CodexPro100Transition.md): v1.7.0 Codex 주간 잔여량 페이스메이커와 legacy 제거 경계
 - [Docs/V170ReleaseReadiness.md](Docs/V170ReleaseReadiness.md): v1.7.0 릴리즈 준비, 실제 전환 미수행 경계와 release smoke 계약
-- [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md): v1.8.0 Claude 사용량 동등성 Preview와 live 검수 경계
-- [Docs/V190CodexClaudeAIUsageTab.md](Docs/V190CodexClaudeAIUsageTab.md): v1.9.0 Codex + Claude 전용 AI 사용량 탭 범위
+- [Docs/V180ClaudeUsageParityPreview.md](Docs/V180ClaudeUsageParityPreview.md): v1.8.0 단일 provider mode, Claude backend, 안정화·release 완료 경계
+- [Docs/V180ReleaseReadiness.md](Docs/V180ReleaseReadiness.md): v1.8.0 PR·CI부터 live Claude, signed tag, published DMG 설치·GUI smoke까지의 실행·증거 계약
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 

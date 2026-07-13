@@ -94,7 +94,12 @@ git push origin v<version>
 gh release create v<version> dist/release/MacDog-<version>.dmg dist/release/MacDog-<version>.dmg.sha256 --verify-tag --draft
 ```
 
-GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다. 이 workflow도 원격에 이미 존재하는 signed/Verified tag만 사용해야 하며, tag를 자동 생성하면 안 됩니다. 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
+GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입력과 함께 수동 실행합니다.
+`tag == v<version>`이고 원격에 이미 존재하는 signed/Verified tag가 release head를 가리킬 때만
+진행하며 tag를 자동 생성하면 안 됩니다. 생성 직후 draft/prerelease/signed tag target과 DMG·checksum asset
+두 개를 readback합니다. 기존 tag가 있는 release의 `target_commitish`는 정보로만 기록하고, 실제
+release identity는 signed annotated tag를 역참조한 commit SHA가 release head와 같은지로 판정합니다.
+이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
 
 release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서로 종료 상태를 확인합니다.
 
@@ -103,7 +108,7 @@ release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서�
 ./script/verify_release_final_state.sh --version <version>
 ```
 
-`verify_release_final_state.sh`는 `/Applications/MacDog.app`의 앱 번들 버전, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, stale usage cache LaunchAgent plist/loaded job, `/Volumes/MacDog*` 마운트 잔여물을 확인합니다. Finder 검색은 기본 `Mac` 범위가 아니라 `응용 프로그램` 범위를 선택해 `/Applications/MacDog.app` 하나만 나오는지 직접 확인합니다. 이 검증이 실패하면 release smoke를 완료로 기록하지 않습니다.
+`verify_release_final_state.sh`는 `/Applications/MacDog.app`의 앱 번들 버전과 app/CLI/`macdog-claude-statusline` 실행 파일, `~/Applications`·Desktop·모든 git worktree `dist`·`/private/tmp/macdog-*` 중복 앱, stale `~/bin/codex-usage` symlink, provider mode와 불일치한 usage cache LaunchAgent plist/loaded job, `/Volumes/MacDog*` 마운트 잔여물을 확인합니다. Finder 검색은 기본 `Mac` 범위가 아니라 `응용 프로그램` 범위를 선택해 `/Applications/MacDog.app` 하나만 나오는지 직접 확인합니다. 이 검증이 실패하면 release smoke를 완료로 기록하지 않습니다.
 
 ## 안정 릴리즈
 

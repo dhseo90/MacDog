@@ -30,6 +30,13 @@ struct RunnerPreferences: Equatable {
     static let chargeLimitTargetPercentKey = "chargeLimitTargetPercent"
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
+    static let usageProviderModeKey = "usageProviderMode"
+    private static let legacyUsageProviderKeys = [
+        "claudeUsagePreviewEnabled",
+        "usagePreviewProvider",
+        "claudeRunnerPreviewEnabled",
+        "claudeUsageNotificationsEnabled"
+    ]
     static let desktopPetOriginXKey = "desktopPetOriginX"
     static let desktopPetOriginYKey = "desktopPetOriginY"
     static let defaultDisplayBasis = UsageDisplayBasis.weekly
@@ -50,6 +57,7 @@ struct RunnerPreferences: Equatable {
     static let defaultLoginLaunchEnabled = true
     static let defaultUsageNotificationsEnabled = false
     static let defaultUsageResetSoonNotificationsEnabled = true
+    static let defaultUsageProviderMode = UsageProviderMode.codex
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -60,6 +68,7 @@ struct RunnerPreferences: Equatable {
     static let maximumSleepPreventionNetworkThresholdKBPerSecond = 1_024
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
+        migrateUsageProviderMode(defaults: defaults)
         defaults.register(defaults: [
             displayBasisKey: defaultDisplayBasis.rawValue,
             reducedMotionKey: false,
@@ -86,8 +95,19 @@ struct RunnerPreferences: Equatable {
             sleepPreventionDisableScreenLockKey: defaultSleepPreventionDisableScreenLock,
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent,
             usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
-            usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled
+            usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled,
+            usageProviderModeKey: defaultUsageProviderMode.rawValue
         ])
+    }
+
+    static func migrateUsageProviderMode(defaults: UserDefaults = .standard) {
+        let storedMode = defaults.string(forKey: usageProviderModeKey)
+        if storedMode.flatMap({ UsageProviderMode(rawValue: $0) }) == nil {
+            defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
+        }
+        for key in legacyUsageProviderKeys {
+            defaults.removeObject(forKey: key)
+        }
     }
 
     let displayBasis: UsageDisplayBasis
@@ -117,6 +137,7 @@ struct RunnerPreferences: Equatable {
     let chargeLimitTargetPercent: Int
     let usageNotificationsEnabled: Bool
     let usageResetSoonNotificationsEnabled: Bool
+    let usageProviderMode: UsageProviderMode
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -192,6 +213,7 @@ struct RunnerPreferences: Equatable {
         self.chargeLimitTargetPercent = Self.chargeLimitTargetPercent(defaults: defaults)
         self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
+        self.usageProviderMode = Self.usageProviderMode(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -396,6 +418,15 @@ struct RunnerPreferences: Equatable {
 
     static func setUsageResetSoonNotificationsEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: usageResetSoonNotificationsEnabledKey)
+    }
+
+    static func usageProviderMode(defaults: UserDefaults = .standard) -> UsageProviderMode {
+        UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
+            defaultUsageProviderMode
+    }
+
+    static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
+        defaults.set(mode.rawValue, forKey: usageProviderModeKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {

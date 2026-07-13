@@ -101,6 +101,7 @@ require_match '\.dmg\.sha256'
 require_draft_match 'workflow_dispatch'
 require_draft_match 'contents: write'
 require_draft_match 'UNSIGNED-DRAFT'
+require_draft_match 'Required existing signed Git tag'
 require_draft_match 'MACDOG_RELEASE_VERSION: \$\{\{ inputs\.version \}\}'
 require_verify_step_version_env "$DRAFT_WORKFLOW" "draft release"
 require_draft_match './script/check\.sh --no-run'
@@ -109,9 +110,20 @@ require_draft_match 'hdiutil verify'
 require_draft_match 'shasum -a 256 -c'
 require_draft_match 'gh "\$\{args\[@\]\}"'
 require_draft_match '--draft'
+require_draft_match 'gh release delete "\$MACDOG_TAG" --yes'
 require_draft_match '--notes-file'
 require_draft_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
 require_draft_match '\.dmg\.sha256'
+require_draft_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION'
+require_draft_match 'target_commitish'
+require_draft_match 'target_sha.*GITHUB_SHA'
+require_draft_match 'tag_name'
+require_draft_match 'asset_names'
+require_draft_match 'is_draft.*true.*is_prerelease.*false'
+require_draft_match 'verification_complete=1'
+if /usr/bin/grep -Eq -- '--target "\$GITHUB_SHA"|target_commitish="\$GITHUB_SHA"|gh api --method PATCH' "$DRAFT_WORKFLOW"; then
+  die "draft release workflow must use the existing signed tag target as authoritative identity"
+fi
 if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
   die "draft release workflow must not mark unsigned draft releases as prerelease"
 fi
@@ -127,6 +139,8 @@ if [[ -f "$STABLE_WORKFLOW" ]]; then
   require_stable_match './script/build_and_run\.sh --no-run'
   require_stable_match 'codesign.+--options[ =]runtime|--options[ =]runtime.+codesign'
   require_stable_match 'Contents/MacOS/codex-usage'
+  require_stable_match 'Contents/MacOS/macdog-claude-statusline'
+  require_stable_match 'codesign --force --options runtime --timestamp --sign "\$DEVELOPER_ID_APPLICATION" "\$claude_bridge"'
   require_stable_match 'if \[\[ -d "\$appex" \]\]'
   require_stable_match 'notarytool submit'
   require_stable_match 'stapler staple'

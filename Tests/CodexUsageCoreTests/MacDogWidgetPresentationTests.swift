@@ -105,6 +105,34 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         XCTAssertEqual(presentation.metadataText, "크레딧 0 · 갱신 방금")
     }
 
+    func testPresentationUsesWeeklyWindowWhenFiveHourIsUnavailable() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let report = makeReport(
+            fiveHourUsedPercent: nil,
+            weeklyUsedPercent: 82,
+            fiveHourResetsAt: nil,
+            weeklyResetsAt: 1_800_345_600
+        )
+        let entry = CodexUsageEntry(
+            date: now,
+            snapshot: makeSnapshot(
+                cachedAt: 1_800_000_000,
+                staleAfterSeconds: 60,
+                report: report
+            ),
+            errorMessage: nil
+        )
+
+        let presentation = WidgetUsagePresentation(entry: entry)
+        let source = try String(contentsOfFile: "Sources/MacDogWidget/MacDogWidget.swift")
+
+        XCTAssertEqual(presentation.statusText, "갱신됨")
+        XCTAssertEqual(presentation.maxUsedPercent, 82)
+        XCTAssertEqual(presentation.resetText, "주간 초기화까지 4일 남음")
+        XCTAssertTrue(source.contains("현재 제공되지 않음"))
+        XCTAssertTrue(source.contains("if window != nil"))
+    }
+
     func testWidgetResetTextHandlesMissingAndPastResetTime() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let window = UsageWindowReport(
@@ -184,19 +212,21 @@ final class MacDogWidgetPresentationTests: XCTestCase {
     }
 
     private func makeReport(
-        fiveHourUsedPercent: Double = 15,
+        fiveHourUsedPercent: Double? = 15,
         weeklyUsedPercent: Double = 38,
         fiveHourResetsAt: Int? = 1_779_801_000,
         weeklyResetsAt: Int? = 1_780_000_000,
         credits: CreditsSnapshot = CreditsSnapshot(hasCredits: false, unlimited: false, balance: "0")
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -207,8 +237,8 @@ final class MacDogWidgetPresentationTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: nil,
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: credits,
             planType: "pro",
             rateLimitReachedType: nil

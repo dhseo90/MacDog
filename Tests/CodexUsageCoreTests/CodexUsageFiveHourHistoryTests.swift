@@ -18,7 +18,7 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
         XCTAssertEqual(object["schemaVersion"] as? Int, CodexUsageFiveHourHistory.currentSchemaVersion)
         XCTAssertEqual(
             Set(encodedSample.keys),
-            ["planEpochID", "recordedAt", "resetsAt", "schemaVersion", "usedPercent", "windowDurationMins"]
+            ["recordedAt", "resetsAt", "schemaVersion", "usedPercent", "windowDurationMins"]
         )
         XCTAssertEqual(encodedSample["windowDurationMins"] as? Int, 300)
         XCTAssertNoSensitiveMaterial(in: data)
@@ -134,7 +134,7 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
         XCTAssertEqual(try store.read().samples, [first])
     }
 
-    func testStoreKeepsSamplesAcrossResetAndEpochBoundaries() throws {
+    func testStoreKeepsSamplesAcrossResetBoundaries() throws {
         let fileURL = temporaryHistoryFileURL()
         let store = CodexUsageFiveHourHistoryStore(fileURL: fileURL)
         let first = try XCTUnwrap(Self.sample())
@@ -142,54 +142,13 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
             recordedAt: first.recordedAt + 120,
             resetsAt: first.resetsAt + 18_000
         ))
-        let nextEpoch = try XCTUnwrap(Self.sample(
-            recordedAt: first.recordedAt + 180,
-            resetsAt: first.resetsAt,
-            planEpochID: "after-transition"
-        ))
 
         XCTAssertTrue(try store.append(first))
         XCTAssertTrue(try store.append(nextReset))
-        XCTAssertTrue(try store.append(nextEpoch))
-        XCTAssertEqual(try store.read().samples.count, 3)
+        XCTAssertEqual(try store.read().samples.count, 2)
     }
 
-    func testStoreReassignsCompletedWindowsAfterBackdatedTransition() throws {
-        let fileURL = temporaryHistoryFileURL()
-        let store = CodexUsageFiveHourHistoryStore(fileURL: fileURL)
-        let transitionAt = 1_800_020_000
-        let before = try XCTUnwrap(Self.sample(
-            recordedAt: transitionAt - 1_000,
-            resetsAt: transitionAt + 10_000,
-            planEpochID: "current"
-        ))
-        let crossing = try XCTUnwrap(Self.sample(
-            recordedAt: transitionAt + 1_000,
-            resetsAt: transitionAt + 10_000,
-            planEpochID: "current"
-        ))
-        let after = try XCTUnwrap(Self.sample(
-            recordedAt: transitionAt + 20_000,
-            resetsAt: transitionAt + 38_000,
-            planEpochID: "current"
-        ))
-        XCTAssertTrue(try store.append(before))
-        XCTAssertTrue(try store.append(crossing))
-        XCTAssertTrue(try store.append(after))
-
-        let changed = try store.reassignPlanEpoch(
-            forWindowsStartingAtOrAfter: transitionAt,
-            from: "current",
-            to: "target"
-        )
-        let history = try store.read()
-
-        XCTAssertEqual(changed, 1)
-        XCTAssertEqual(history.samples.filter { $0.planEpochID == "current" }.count, 2)
-        XCTAssertEqual(history.samples.filter { $0.planEpochID == "target" }.count, 1)
-    }
-
-    func testStoreMigratesLegacySampleWithoutPlanEpochID() throws {
+    func testStoreDecodesLegacyEpochButNewEncodingOmitsIt() throws {
         let fileURL = temporaryHistoryFileURL()
         try FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(),
@@ -202,7 +161,8 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
             "recordedAt": 1800000000,
             "windowDurationMins": 300,
             "usedPercent": 24,
-            "resetsAt": 1800018000
+            "resetsAt": 1800018000,
+            "planEpochID": "before-transition"
           }]
         }
         """
@@ -212,7 +172,8 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
 
         XCTAssertEqual(history.schemaVersion, CodexUsageFiveHourHistory.currentSchemaVersion)
         XCTAssertEqual(history.samples.first?.schemaVersion, CodexUsageFiveHourHistorySample.currentSchemaVersion)
-        XCTAssertEqual(history.samples.first?.planEpochID, CodexUsageFiveHourHistorySample.legacyPlanEpochID)
+        let encoded = try JSONEncoder().encode(history)
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("planEpochID"))
     }
 
     func testPersistedHistoryContainsNoSensitiveFieldNames() throws {
@@ -228,15 +189,13 @@ final class CodexUsageFiveHourHistoryTests: XCTestCase {
         recordedAt: Int = 1_800_000_000,
         windowDurationMins: Int = 300,
         usedPercent: Double = 24,
-        resetsAt: Int = 1_800_018_000,
-        planEpochID: String = "before-transition"
+        resetsAt: Int = 1_800_018_000
     ) -> CodexUsageFiveHourHistorySample? {
         CodexUsageFiveHourHistorySample(
             recordedAt: recordedAt,
             windowDurationMins: windowDurationMins,
             usedPercent: usedPercent,
-            resetsAt: resetsAt,
-            planEpochID: planEpochID
+            resetsAt: resetsAt
         )
     }
 

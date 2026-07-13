@@ -4,6 +4,11 @@ struct UsageCacheRefreshCommand: Equatable, Sendable {
     let executableURL: URL
     let arguments: [String]
 
+    init(executableURL: URL, arguments: [String]) {
+        self.executableURL = executableURL
+        self.arguments = arguments
+    }
+
     init(
         codexUsageURL: URL,
         widgetBundled: Bool,
@@ -73,7 +78,7 @@ enum UsageCacheRefreshRunner {
         command: UsageCacheRefreshCommand,
         processTimeout: TimeInterval = CodexUsageCacheRefreshPolicy.processTimeout
     ) async {
-        await Task.detached(priority: .utility) {
+        let worker = Task.detached(priority: .utility) {
             let process = Process()
             process.executableURL = command.executableURL
             process.arguments = command.arguments
@@ -83,7 +88,7 @@ enum UsageCacheRefreshRunner {
             do {
                 try process.run()
                 let deadline = Date().addingTimeInterval(processTimeout)
-                while process.isRunning && Date() < deadline {
+                while process.isRunning && Date() < deadline && !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 50_000_000)
                 }
                 if process.isRunning {
@@ -92,6 +97,11 @@ enum UsageCacheRefreshRunner {
             } catch {
                 return
             }
-        }.value
+        }
+        await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
     }
 }

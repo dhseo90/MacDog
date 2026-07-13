@@ -47,16 +47,16 @@ top = data.fetch("rateLimits")
 by_id = data.fetch("rateLimitsByLimitId")
 codex = by_id.fetch("codex") { top }
 
-required_bucket_keys = %w[primary secondary credits planType rateLimitReachedType]
+required_bucket_keys = %w[credits planType rateLimitReachedType]
 missing = required_bucket_keys.reject { |key| codex.key?(key) }
 abort("missing codex bucket keys: #{missing.join(",")}") unless missing.empty?
 
-primary = codex.fetch("primary")
-secondary = codex.fetch("secondary")
-durations = [primary.fetch("windowDurationMins"), secondary.fetch("windowDurationMins")]
-abort("expected 300 and 10080 minute windows, got #{durations.inspect}") unless durations.include?(300) && durations.include?(10_080)
+windows = [codex["primary"], codex["secondary"]].compact
+abort("codex usage windows must be objects") unless windows.all? { |window| window.is_a?(Hash) }
+durations = windows.map { |window| window.fetch("windowDurationMins") }
+abort("expected a 10080 minute weekly window, got #{durations.inspect}") unless durations.include?(10_080)
 
-[primary, secondary].each do |window|
+windows.each do |window|
   abort("usedPercent must be numeric") unless window.fetch("usedPercent").is_a?(Numeric)
   abort("resetsAt key missing") unless window.key?("resetsAt")
 end
@@ -67,7 +67,8 @@ credits = codex.fetch("credits")
 end
 
 extra_buckets = by_id.keys - ["codex"]
-puts "app-server-protocol-drift:fixture-ok codex-window-durations=#{durations.join(",")} extraBuckets=#{extra_buckets.sort.join(",")}"
+mode = durations.include?(300) ? "full" : "weekly-only"
+puts "app-server-protocol-drift:fixture-ok codex-window-durations=#{durations.join(",")} mode=#{mode} extraBuckets=#{extra_buckets.sort.join(",")}"
 RUBY
 }
 
@@ -103,7 +104,9 @@ run_self_test() {
   trap 'rm -rf "$temp_dir"' RETURN
 
   local fixture="$temp_dir/rate_limits_additive.json"
+  local weekly_only_fixture="$temp_dir/rate_limits_weekly_only.json"
   local output_file="$temp_dir/output.txt"
+  local weekly_output_file="$temp_dir/weekly-output.txt"
   cat >"$fixture" <<'FIXTURE'
 {
   "rateLimits": {
@@ -140,8 +143,33 @@ run_self_test() {
 }
 FIXTURE
 
+  cat >"$weekly_only_fixture" <<'FIXTURE'
+{
+  "rateLimits": {
+    "limitId": "codex",
+    "limitName": "Codex",
+    "secondary": { "usedPercent": 35, "windowDurationMins": 10080, "resetsAt": 1780500000 },
+    "credits": { "hasCredits": false, "unlimited": false, "balance": "0" },
+    "planType": "pro",
+    "rateLimitReachedType": null
+  },
+  "rateLimitsByLimitId": {
+    "codex": {
+      "limitId": "codex",
+      "limitName": "Codex",
+      "secondary": { "usedPercent": 35, "windowDurationMins": 10080, "resetsAt": 1780500000 },
+      "credits": { "hasCredits": false, "unlimited": false, "balance": "0" },
+      "planType": "pro",
+      "rateLimitReachedType": null
+    }
+  }
+}
+FIXTURE
+
   "$0" --fixture "$fixture" >"$output_file"
-  require_text 'app-server-protocol-drift:fixture-ok codex-window-durations=300,10080 extraBuckets=codex_bengalfox' "$output_file" "additive fixture summary"
+  "$0" --fixture "$weekly_only_fixture" >"$weekly_output_file"
+  require_text 'app-server-protocol-drift:fixture-ok codex-window-durations=300,10080 mode=full extraBuckets=codex_bengalfox' "$output_file" "additive fixture summary"
+  require_text 'app-server-protocol-drift:fixture-ok codex-window-durations=10080 mode=weekly-only' "$weekly_output_file" "weekly-only fixture summary"
   require_text 'app-server-protocol-drift:source-guards-ok' "$output_file" "source guard summary"
   require_text 'app-server-protocol-drift:transport-guards-ok' "$output_file" "transport guard summary"
   require_text 'app-server-protocol-drift:live-call-not-run' "$output_file" "live call boundary"

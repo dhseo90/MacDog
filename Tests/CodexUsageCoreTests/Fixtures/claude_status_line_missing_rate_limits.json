@@ -1,0 +1,7 @@
+{
+  "model": {
+    "id": "claude-sonnet",
+    "display_name": "Sonnet"
+  },
+  "version": "2.1.39"
+}

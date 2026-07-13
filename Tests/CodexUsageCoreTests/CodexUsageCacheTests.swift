@@ -121,6 +121,89 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.first?.windowDurationMins, 10_080)
     }
 
+    func testWriteSuccessAcceptsWeeklyOnlyReportAndSkipsFiveHourHistory() throws {
+        let fileURL = temporaryFileURL()
+        let now = 1_800_000_000
+        let resetsAt = now + 345_600
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+
+        try store.writeSuccess(
+            report: Self.weeklyOnlyReport(weeklyUsedPercent: 41, weeklyResetsAt: resetsAt),
+            staleAfterSeconds: 60
+        )
+
+        let snapshot = try store.read()
+        let weeklyHistoryURL = CodexUsageWeeklyHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+        let fiveHourHistoryURL = CodexUsageFiveHourHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+        let weeklyHistory = try CodexUsageWeeklyHistoryStore(fileURL: weeklyHistoryURL).read()
+
+        XCTAssertNil(snapshot.error)
+        XCTAssertNil(snapshot.report?.codexLimit?.fiveHour)
+        XCTAssertEqual(snapshot.report?.codexLimit?.weekly?.usedPercent, 41)
+        XCTAssertEqual(weeklyHistory.samples.last?.usedPercent, 41)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fiveHourHistoryURL.path))
+    }
+
+    func testFullAndWeeklyOnlyTransitionsDoNotReuseStaleFiveHourWindowAndResumeHistory() throws {
+        let fileURL = temporaryFileURL()
+        var now = 1_800_000_000
+        let fiveHourResetsAt = now + 18_000
+        let weeklyResetsAt = now + 345_600
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+        let fiveHourHistoryURL = CodexUsageFiveHourHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+        let weeklyHistoryURL = CodexUsageWeeklyHistoryStore.defaultFileURL(
+            adjacentToCacheFileURL: fileURL
+        )
+
+        try store.writeSuccess(report: Self.partialWindowReport(
+            fiveHourUsedPercent: 20,
+            fiveHourResetsAt: fiveHourResetsAt,
+            weeklyUsedPercent: 40,
+            weeklyResetsAt: weeklyResetsAt
+        ))
+        let fullFiveHourHistoryData = try Data(contentsOf: fiveHourHistoryURL)
+
+        now += 60
+        try store.writeSuccess(report: Self.partialWindowReport(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 42,
+            weeklyResetsAt: weeklyResetsAt
+        ))
+
+        var snapshot = try store.read()
+        XCTAssertNil(snapshot.report?.codexLimit?.fiveHour)
+        XCTAssertEqual(snapshot.report?.codexLimit?.weekly?.usedPercent, 42)
+        XCTAssertEqual(try Data(contentsOf: fiveHourHistoryURL), fullFiveHourHistoryData)
+        XCTAssertEqual(
+            try CodexUsageWeeklyHistoryStore(fileURL: weeklyHistoryURL).read().samples.last?.usedPercent,
+            42
+        )
+
+        now += 60
+        try store.writeSuccess(report: Self.partialWindowReport(
+            fiveHourUsedPercent: 25,
+            fiveHourResetsAt: fiveHourResetsAt,
+            weeklyUsedPercent: 43,
+            weeklyResetsAt: weeklyResetsAt
+        ))
+
+        snapshot = try store.read()
+        let resumedHistory = try CodexUsageFiveHourHistoryStore(fileURL: fiveHourHistoryURL).read()
+        XCTAssertEqual(snapshot.report?.codexLimit?.fiveHour?.usedPercent, 25)
+        XCTAssertEqual(resumedHistory.samples.map(\.usedPercent), [20, 25])
+    }
+
     func testWriteSuccessAppendsFiveHourHistoryWithoutChangingCacheSchema() throws {
         let fileURL = temporaryFileURL()
         let now = 1_779_800_000
@@ -143,7 +226,7 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertEqual(history.samples.count, 1)
         XCTAssertEqual(sample.recordedAt, now)
         XCTAssertEqual(sample.windowDurationMins, 300)
-        XCTAssertEqual(sample.planEpochID, CodexUsageFiveHourHistorySample.legacyPlanEpochID)
+        XCTAssertFalse(String(decoding: try Data(contentsOf: historyURL), as: UTF8.self).contains("planEpochID"))
         XCTAssertEqual(Set(cacheObject.keys), [
             "cachedAt",
             "report",
@@ -152,57 +235,28 @@ final class CodexUsageCacheTests: XCTestCase {
         ])
     }
 
-    func testWriteSuccessAssignsConfirmedPlanEpochToFiveHourSample() throws {
+    func testWriteSuccessIgnoresAndPreservesCorruptLegacyPlanConfiguration() throws {
         let fileURL = temporaryFileURL()
-        let now = 1_779_800_000
-        let configurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
-        let configuration = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            plannedTransitionAt: now - 3_600,
-            confirmedTransitionAt: now - 60,
-            currentPlanEpochID: "before-transition",
-            targetPlanEpochID: "after-transition"
-        )
-        try CodexPlanTransitionConfigurationStore(fileURL: configurationURL).write(configuration)
-        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
-            Date(timeIntervalSince1970: TimeInterval(now))
-        })
-
-        try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60)
-
-        let historyURL = CodexUsageFiveHourHistoryStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
-        let history = try CodexUsageFiveHourHistoryStore(fileURL: historyURL).read()
-        XCTAssertEqual(history.samples.first?.planEpochID, "after-transition")
-    }
-
-    func testWriteSuccessRejectsCorruptPlanConfigurationBeforeWritingCacheOrHistory() throws {
-        let fileURL = temporaryFileURL()
-        let configurationURL = CodexPlanTransitionConfigurationStore.defaultFileURL(
-            adjacentToCacheFileURL: fileURL
-        )
+        let configurationURL = fileURL.deletingLastPathComponent()
+            .appendingPathComponent("usage-plan-transition.json")
         try FileManager.default.createDirectory(
             at: configurationURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try Data("{not-json".utf8).write(to: configurationURL, options: [.atomic])
+        let legacyBytes = Data("{not-json".utf8)
+        try legacyBytes.write(to: configurationURL, options: [.atomic])
         let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
             Date(timeIntervalSince1970: 1_779_800_000)
         })
 
-        XCTAssertThrowsError(try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath:
+        try store.writeSuccess(report: makeReport(), staleAfterSeconds: 60)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath:
             CodexUsageFiveHourHistoryStore.defaultFileURL(
                 adjacentToCacheFileURL: fileURL
             ).path
         ))
+        XCTAssertEqual(try Data(contentsOf: configurationURL), legacyBytes)
     }
 
     func testWriteSuccessDoesNotPersistUnconfirmedCurrentResetWindow() throws {
@@ -508,6 +562,29 @@ final class CodexUsageCacheTests: XCTestCase {
         XCTAssertTrue(snapshot.isStale(now: Date(timeIntervalSince1970: 1_779_800_011)))
     }
 
+    func testFailureSnapshotPreservesWeeklyOnlyLastSuccessReport() throws {
+        let fileURL = temporaryFileURL()
+        var now = 1_779_800_000
+        let store = CodexUsageCacheStore(fileURL: fileURL, dateProvider: {
+            Date(timeIntervalSince1970: TimeInterval(now))
+        })
+
+        try store.writeSuccess(
+            report: Self.weeklyOnlyReport(
+                weeklyUsedPercent: 42,
+                weeklyResetsAt: now + 345_600
+            ),
+            staleAfterSeconds: 60
+        )
+        now += 10
+        try store.writeFailure(message: "network unavailable", staleAfterSeconds: 60)
+        let snapshot = try store.read()
+
+        XCTAssertNil(snapshot.report?.codexLimit?.fiveHour)
+        XCTAssertEqual(snapshot.report?.codexLimit?.weekly?.usedPercent, 42)
+        XCTAssertEqual(snapshot.error?.message, "network unavailable")
+    }
+
     func testFailureSnapshotDropsInvalidExistingReport() throws {
         let fileURL = temporaryFileURL()
         var now = 1_779_800_000
@@ -655,6 +732,77 @@ final class CodexUsageCacheTests: XCTestCase {
             limitName: "Codex",
             primary: fiveHour,
             secondary: weekly,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        return CodexUsageReport(
+            generatedAt: 0,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: ["codex": limit]
+        )
+    }
+
+    private static func weeklyOnlyReport(
+        weeklyUsedPercent: Double,
+        weeklyResetsAt: Int
+    ) -> CodexUsageReport {
+        let weekly = UsageWindowReport(
+            kind: .weekly,
+            usedPercent: weeklyUsedPercent,
+            remainingPercent: 100 - weeklyUsedPercent,
+            windowDurationMins: 10_080,
+            resetsAt: weeklyResetsAt
+        )
+        let limit = UsageLimitReport(
+            limitId: "codex",
+            limitName: "Codex",
+            primary: weekly,
+            secondary: nil,
+            credits: nil,
+            planType: "pro",
+            rateLimitReachedType: nil
+        )
+        return CodexUsageReport(
+            generatedAt: 0,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: ["codex": limit]
+        )
+    }
+
+    private static func partialWindowReport(
+        fiveHourUsedPercent: Double?,
+        fiveHourResetsAt: Int?,
+        weeklyUsedPercent: Double,
+        weeklyResetsAt: Int
+    ) -> CodexUsageReport {
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
+        let weekly = UsageWindowReport(
+            kind: .weekly,
+            usedPercent: weeklyUsedPercent,
+            remainingPercent: 100 - weeklyUsedPercent,
+            windowDurationMins: 10_080,
+            resetsAt: weeklyResetsAt
+        )
+        let limit = UsageLimitReport(
+            limitId: "codex",
+            limitName: "Codex",
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: nil

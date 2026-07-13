@@ -43,6 +43,224 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(state.phase, .fast)
     }
 
+    func testWeeklyOnlyCodexUsageFallsBackFromFiveHourBasisAndKeepsPanelAvailable() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let weeklyResetsAt = 1_800_345_600
+        let report = Self.report(
+            fiveHourUsedPercent: nil,
+            weeklyUsedPercent: 82,
+            weeklyResetsAt: weeklyResetsAt
+        )
+        let snapshot = CodexUsageCacheSnapshot(
+            cachedAt: 1_800_000_000,
+            staleAfterSeconds: 120,
+            report: report,
+            error: nil
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            errorMessage: nil,
+            displayBasis: .fiveHour,
+            runnerEvaluationDate: now
+        )
+
+        XCTAssertEqual(state.selectedUsedPercent, 82)
+        XCTAssertEqual(state.selectedWindowStatus?.label, "주간")
+        XCTAssertEqual(state.phase, .fast)
+        XCTAssertEqual(
+            try XCTUnwrap(state.codexPanelSummary(now: now, calendar: Self.utcCalendar)).statusDetail,
+            "기준 주간 82% 사용 / 18% 남음"
+        )
+        XCTAssertEqual(state.nextResetGlance(now: now), "다음 초기화: 주간 96시간 후")
+        XCTAssertTrue(state.toolTip.contains("5시간 현재 제공되지 않음"))
+        XCTAssertEqual(state.codexDataStatus.title, "5시간 현재 미제공")
+        XCTAssertEqual(state.codexDataStatus.tone, .warning)
+        XCTAssertNil(state.codexFiveHourPaceProjection)
+    }
+
+    func testRestoredFiveHourWindowResumesFiveHourBasis() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 25, weeklyUsedPercent: 82),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            displayBasis: .fiveHour
+        )
+
+        XCTAssertEqual(state.selectedUsedPercent, 25)
+        XCTAssertEqual(state.selectedWindowStatus?.label, "5시간")
+    }
+
+    func testSelectedProviderModeIsTheOnlyRunnerSourceAndNeverFallsBack() {
+        let now = Int(Date().timeIntervalSince1970)
+        let preview = Self.claudePreview(observedAt: now, usedPercent: 96)
+        let claudeMode = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+        let codexMode = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            usageProviderMode: .codex,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+        let stale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now - 1_000, usedPercent: 99),
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(claudeMode.phase, .sprint)
+        XCTAssertEqual(claudeMode.codexPhase, .calm)
+        XCTAssertEqual(codexMode.phase, .calm)
+        XCTAssertEqual(stale.phase, .calm)
+        XCTAssertEqual(stale.codexPhase, .sprint)
+        XCTAssertEqual(claudeMode.codexPanelSummary()?.statusTitle, claudeMode.codexPhase.statusLabel)
+    }
+
+    func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
+        let now = 1_900_000_000
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now, usedPercent: 40),
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertTrue(state.toolTip.hasPrefix("Claude 사용량:"))
+        XCTAssertFalse(state.toolTip.contains("코덱스"))
+        XCTAssertTrue(state.nextResetGlance(
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )?.contains("5시간") == true)
+    }
+
+    func testClaudeCurrentWindowExcludesExpiredWindowWhileKeepingFreshPartialWindow() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: Int(now.timeIntervalSince1970),
+            fiveHour: try ClaudeUsageWindowSnapshot(
+                usedPercent: 90,
+                resetsAt: Int(now.timeIntervalSince1970) - 1
+            ),
+            sevenDay: try ClaudeUsageWindowSnapshot(
+                usedPercent: 40,
+                resetsAt: Int(now.timeIntervalSince1970) + 60_000
+            )
+        )
+        let preview = ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: usage.observedAt,
+                lastUsageObservedAt: usage.observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+
+        XCTAssertEqual(preview.status(now: now), .partial)
+        XCTAssertEqual(preview.statusTitle(now: now), "일부 window 수신")
+        XCTAssertNil(preview.currentWindow(.fiveHour, now: now))
+        XCTAssertEqual(preview.currentWindow(.sevenDay, now: now)?.usedPercent, 40)
+        XCTAssertEqual(preview.runnerUsedPercent(now: now), 40)
+    }
+
+    func testRunnerPhaseCapturesFreshnessUntilNextStateLoad() {
+        let observedAt = 1_900_000_000
+        let preview = Self.claudePreview(observedAt: observedAt, usedPercent: 96)
+        let beforeStale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 899))
+        )
+        let afterStale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(observedAt + 901))
+        )
+
+        XCTAssertEqual(beforeStale.phase, .sprint)
+        XCTAssertEqual(afterStale.phase, .calm)
+        XCTAssertEqual(beforeStale.phase, .sprint, "old state must keep its captured phase for timer comparison")
+    }
+
+    func testStateCopiesPreserveUsageProviderMode() {
+        let now = Int(Date().timeIntervalSince1970)
+        let preview = Self.claudePreview(observedAt: now, usedPercent: 55)
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 10, weeklyUsedPercent: 20),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: preview,
+            usageProviderMode: .claude,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(state.withRefreshing(true).claudeUsagePreview, preview)
+        XCTAssertEqual(state.withRefreshing(true).usageProviderMode, .claude)
+        XCTAssertEqual(
+            state.withSystemMetrics(
+                .unavailable,
+                sleepPreventionStatus: .disabled,
+                sleepPreventionTriggerStatus: .disabled,
+                privilegedHelperInstallSnapshot: .missing
+            ).claudeUsagePreview,
+            preview
+        )
+    }
+
+    func testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "claudeUsagePreviewEnabled")
+        defaults.set("claude", forKey: "usagePreviewProvider")
+        defaults.set(true, forKey: "claudeRunnerPreviewEnabled")
+        defaults.set(true, forKey: "claudeUsageNotificationsEnabled")
+        RunnerPreferences.registerDefaults(defaults: defaults)
+
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
+        XCTAssertNil(defaults.object(forKey: "claudeUsagePreviewEnabled"))
+        XCTAssertNil(defaults.object(forKey: "usagePreviewProvider"))
+        XCTAssertNil(defaults.object(forKey: "claudeRunnerPreviewEnabled"))
+        XCTAssertNil(defaults.object(forKey: "claudeUsageNotificationsEnabled"))
+    }
+
+    func testUsageProviderMigrationPreservesValidModeAndNormalizesInvalidMode() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+
+        defaults.set("invalid", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+    }
+
     func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {
         let state = UsageMonitorState(
             report: Self.incompleteCodexReport(),
@@ -309,7 +527,7 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(state.codexDataStatus.tone, .warning)
         XCTAssertEqual(state.codexDataStatus.title, "프로토콜 확인 필요")
-        XCTAssertEqual(state.codexDataStatus.detail, "필수 5시간/주간 window 누락")
+        XCTAssertEqual(state.codexDataStatus.detail, "필수 주간 window 누락")
     }
 
     func testRefreshingPreservesPrivilegedHelperInstallSnapshot() {
@@ -344,8 +562,7 @@ final class UsageMonitorStateTests: XCTestCase {
                 recordedAt: 1_000,
                 windowDurationMins: 300,
                 usedPercent: 24,
-                resetsAt: 1_000 + 18_000,
-                planEpochID: "before-transition"
+                resetsAt: 1_000 + 18_000
             ))
         ])
         let state = UsageMonitorState(
@@ -356,138 +573,6 @@ final class UsageMonitorStateTests: XCTestCase {
         )
 
         XCTAssertEqual(state.withRefreshing(true).fiveHourUsageHistory, history)
-    }
-
-    func testRefreshingPreservesPlanTransitionConfiguration() throws {
-        let configuration = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            plannedTransitionAt: 1_900_000_000,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        let state = UsageMonitorState(
-            report: nil,
-            cacheSnapshot: nil,
-            planTransitionConfiguration: configuration,
-            errorMessage: nil
-        )
-
-        XCTAssertEqual(
-            state.withRefreshing(true).planTransitionConfiguration,
-            configuration
-        )
-    }
-
-    func testPlanTransitionScenarioUsesFiveHourWindowPeaksFromCurrentEpoch() throws {
-        let now = 1_900_000_000
-        let configuration = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        let samples = try (1...6).map { index in
-            let resetsAt = now - (7 - index) * 5 * 60 * 60
-            return try XCTUnwrap(CodexUsageFiveHourHistorySample(
-                recordedAt: resetsAt - 60,
-                windowDurationMins: 300,
-                usedPercent: Double(index * 10),
-                resetsAt: resetsAt,
-                planEpochID: "current"
-            ))
-        }
-        let state = UsageMonitorState(
-            report: nil,
-            cacheSnapshot: nil,
-            fiveHourUsageHistory: CodexUsageFiveHourHistory(samples: samples),
-            planTransitionConfiguration: configuration,
-            errorMessage: nil
-        )
-
-        let scenario = try XCTUnwrap(state.planTransitionScenario(now: now))
-
-        XCTAssertEqual(scenario.fiveHour.observationStatus, .sufficient)
-        XCTAssertEqual(scenario.fiveHour.observedP90Percent, 60)
-        XCTAssertEqual(scenario.fiveHour.projectedP90Percent, 120)
-        XCTAssertEqual(scenario.fiveHour.limitExceededWindowCount, 1)
-    }
-
-    func testActivePlanEpochFiltersWeeklySamplesAndCompletedWindows() throws {
-        let transitionAt = 1_900_000_000
-        let configuration = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            confirmedTransitionAt: transitionAt,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        let weeklyHistory = CodexUsageWeeklyHistory(samples: [
-            CodexUsageWeeklyHistorySample(
-                recordedAt: transitionAt - 60,
-                usedPercent: 20,
-                remainingPercent: 80,
-                resetsAt: transitionAt,
-                windowDurationMins: 10_080
-            ),
-            CodexUsageWeeklyHistorySample(
-                recordedAt: transitionAt + 60,
-                usedPercent: 2,
-                remainingPercent: 98,
-                resetsAt: transitionAt + 604_800,
-                windowDurationMins: 10_080
-            )
-        ])
-        let resetHistory = CodexUsageResetWindowHistory(records: [
-            Self.resetWindowRecord(resetsAt: transitionAt, finalUsedPercent: 70),
-            Self.resetWindowRecord(resetsAt: transitionAt + 3 * 86_400, finalUsedPercent: 40),
-            Self.resetWindowRecord(resetsAt: transitionAt + 10 * 86_400, finalUsedPercent: 30)
-        ])
-        let state = UsageMonitorState(
-            report: nil,
-            cacheSnapshot: nil,
-            weeklyUsageHistory: weeklyHistory,
-            resetWindowHistory: resetHistory,
-            planTransitionConfiguration: configuration,
-            errorMessage: nil
-        )
-
-        XCTAssertEqual(
-            state.weeklyUsageHistoryForActivePlanEpoch(at: transitionAt + 1).samples.map(\.recordedAt),
-            [transitionAt + 60]
-        )
-        XCTAssertEqual(
-            state.resetWindowHistoryForActivePlanEpoch(at: transitionAt + 10 * 86_400).records.map(\.resetsAt),
-            [transitionAt + 10 * 86_400]
-        )
-    }
-
-    func testWeeklyChartLocatesConfirmedEpochBoundaryInsideWindow() throws {
-        let resetStart = 1_900_000_000
-        let resetsAt = resetStart + 7 * 86_400
-        let chart = WeeklyRemainingHistoryChart(
-            history: .empty,
-            weeklyWindow: UsageWindowReport(
-                kind: .weekly,
-                usedPercent: 0,
-                remainingPercent: 100,
-                windowDurationMins: 10_080,
-                resetsAt: resetsAt
-            )
-        )
-
-        XCTAssertEqual(
-            try XCTUnwrap(chart.epochBoundaryPosition(at: resetStart + 3 * 86_400 + 43_200)),
-            0.5,
-            accuracy: 0.0001
-        )
-        XCTAssertNil(chart.epochBoundaryPosition(at: resetStart))
     }
 
     func testRefreshingPreservesResetWindowHistory() {
@@ -850,8 +935,7 @@ final class UsageMonitorStateTests: XCTestCase {
                 recordedAt: 1_000,
                 windowDurationMins: 300,
                 usedPercent: 24,
-                resetsAt: 1_000 + 18_000,
-                planEpochID: "before-transition"
+                resetsAt: 1_000 + 18_000
             ))
         ])
         let state = UsageMonitorState(
@@ -1480,19 +1564,21 @@ final class UsageMonitorStateTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         weeklyUsedPercent: Double,
         fiveHourResetsAt: Int? = nil,
         weeklyResetsAt: Int? = nil,
         rateLimitReachedType: String? = nil
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -1503,8 +1589,8 @@ final class UsageMonitorStateTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: rateLimitReachedType
@@ -1542,6 +1628,35 @@ final class UsageMonitorStateTests: XCTestCase {
             credits: nil,
             rateLimitReachedType: nil,
             limits: ["codex": limit]
+        )
+    }
+
+    private static func claudePreview(
+        observedAt: Int,
+        usedPercent: Double
+    ) -> ClaudeUsagePreviewState {
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            fiveHour: try! ClaudeUsageWindowSnapshot(
+                usedPercent: usedPercent,
+                resetsAt: observedAt + 3_600
+            ),
+            sevenDay: try! ClaudeUsageWindowSnapshot(
+                usedPercent: max(0, usedPercent - 10),
+                resetsAt: observedAt + 86_400
+            )
+        )
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
         )
     }
 

@@ -163,3 +163,103 @@ public struct CodexUsagePaceProjectionBuilder: Sendable {
         )
     }
 }
+
+public struct CodexFiveHourPaceProjectionBuilder: Sendable {
+    public init() {}
+
+    public func projection(
+        snapshot: CodexUsageCacheSnapshot,
+        history: CodexUsageFiveHourHistory,
+        now: Date = Date()
+    ) -> CodexUsagePaceProjection {
+        let generatedAt = Int(now.timeIntervalSince1970)
+        if let error = snapshot.error {
+            return unavailable(state: .error(message: error.message), generatedAt: generatedAt)
+        }
+        guard let report = snapshot.report,
+              let window = report.codexLimit?.fiveHour,
+              let resetsAt = window.resetsAt,
+              let duration = window.windowDurationMins,
+              let current = CodexUsageFiveHourHistorySample(
+                  recordedAt: snapshot.cachedAt,
+                  windowDurationMins: duration,
+                  usedPercent: window.usedPercent,
+                  resetsAt: resetsAt
+              )
+        else {
+            return unavailable(state: .unavailable, generatedAt: generatedAt)
+        }
+        if snapshot.isStale(now: now) {
+            return unavailable(state: .stale, generatedAt: generatedAt)
+        }
+
+        let previous = history.samples
+            .filter { $0.recordedAt < current.recordedAt && $0.matchesLogicalWindow(current) }
+            .max(by: { $0.recordedAt < $1.recordedAt })
+        guard let previous, current.recordedAt > previous.recordedAt else {
+            return result(
+                state: .waitingForSamples,
+                generatedAt: generatedAt,
+                report: report,
+                current: current,
+                usedPercentPerHour: nil,
+                projectedFinalUsedPercent: nil,
+                sampleCount: 1
+            )
+        }
+
+        let elapsed = current.recordedAt - previous.recordedAt
+        let ratePerSecond = max(0, current.usedPercent - previous.usedPercent) / Double(elapsed)
+        let remaining = max(0, current.resetsAt - current.recordedAt)
+        return result(
+            state: .projected,
+            generatedAt: generatedAt,
+            report: report,
+            current: current,
+            usedPercentPerHour: ratePerSecond * 3_600,
+            projectedFinalUsedPercent: current.usedPercent + ratePerSecond * Double(remaining),
+            sampleCount: 2
+        )
+    }
+
+    private func result(
+        state: CodexUsagePaceProjectionState,
+        generatedAt: Int,
+        report: CodexUsageReport,
+        current: CodexUsageFiveHourHistorySample,
+        usedPercentPerHour: Double?,
+        projectedFinalUsedPercent: Double?,
+        sampleCount: Int
+    ) -> CodexUsagePaceProjection {
+        CodexUsagePaceProjection(
+            state: state,
+            generatedAt: generatedAt,
+            limitId: report.codexLimit?.limitId ?? "codex",
+            windowDurationMins: current.windowDurationMins,
+            resetsAt: current.resetsAt,
+            currentUsedPercent: current.usedPercent,
+            usedPercentPerHour: usedPercentPerHour,
+            projectedFinalUsedPercent: projectedFinalUsedPercent,
+            remainingSeconds: max(0, current.resetsAt - current.recordedAt),
+            sampleCount: sampleCount
+        )
+    }
+
+    private func unavailable(
+        state: CodexUsagePaceProjectionState,
+        generatedAt: Int
+    ) -> CodexUsagePaceProjection {
+        CodexUsagePaceProjection(
+            state: state,
+            generatedAt: generatedAt,
+            limitId: nil,
+            windowDurationMins: nil,
+            resetsAt: nil,
+            currentUsedPercent: nil,
+            usedPercentPerHour: nil,
+            projectedFinalUsedPercent: nil,
+            remainingSeconds: nil,
+            sampleCount: 0
+        )
+    }
+}

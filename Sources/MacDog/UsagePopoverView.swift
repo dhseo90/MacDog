@@ -5,6 +5,7 @@ struct UsagePopoverView: View {
     let onPreferencesChanged: () -> Void
     let onAction: (PetAction) -> Void
     let notificationAuthorizationClient: any UsageNotificationAuthorizationProviding
+    let now: Date
 
     @AppStorage(RunnerPreferences.popoverModuleKey) private var selectedModuleRaw = MacDogPopoverModule.codex.rawValue
 
@@ -12,12 +13,14 @@ struct UsagePopoverView: View {
         state: UsageMonitorState,
         onPreferencesChanged: @escaping () -> Void = {},
         onAction: @escaping (PetAction) -> Void = { _ in },
-        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient()
+        notificationAuthorizationClient: any UsageNotificationAuthorizationProviding = UsageNotificationAuthorizationClient(),
+        now: Date = Date()
     ) {
         self.state = state
         self.onPreferencesChanged = onPreferencesChanged
         self.onAction = onAction
         self.notificationAuthorizationClient = notificationAuthorizationClient
+        self.now = now
     }
 
     var body: some View {
@@ -79,7 +82,7 @@ struct UsagePopoverView: View {
 
     private var textHeader: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(selectedModule.title)
+            Text(selectedModuleTitle)
                 .font(.headline)
                 .lineLimit(1)
             Text(selectedModuleSubtitle)
@@ -92,7 +95,7 @@ struct UsagePopoverView: View {
 
     @ViewBuilder
     private var tabContentContainer: some View {
-        if selectedModule.usesScrollableContent {
+        if usesScrollableSelectedContent {
             ScrollView {
                 tabContent
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -104,11 +107,16 @@ struct UsagePopoverView: View {
         }
     }
 
+    private var usesScrollableSelectedContent: Bool {
+        selectedModule.usesScrollableContent ||
+            (selectedModule == .codex && state.usageProviderMode == .claude)
+    }
+
     @ViewBuilder
     private var tabContent: some View {
         switch selectedModule {
         case .codex:
-            CodexUsagePanel(state: state)
+            usageProviderContent
         case .mac:
             MacResourcesPanel(
                 snapshot: state.systemMetrics,
@@ -125,8 +133,6 @@ struct UsagePopoverView: View {
             BatteryPanel(snapshot: state.systemMetrics)
         case .settings:
             SettingsPanel(
-                planTransitionConfiguration: state.planTransitionConfiguration,
-                planTransitionConfigurationError: state.planTransitionConfigurationError,
                 privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
                 onAction: onAction,
                 onPreferencesChanged: onPreferencesChanged,
@@ -161,7 +167,9 @@ struct UsagePopoverView: View {
     private var selectedModuleSubtitle: String {
         switch selectedModule {
         case .codex:
-            return state.phase.statusLabel
+            return state.usageProviderMode == .claude
+                ? state.claudeUsagePreview.statusTitle(now: now)
+                : state.codexPhase.statusLabel
         case .mac:
             return state.systemMetrics.cpuSummary
         case .sleep:
@@ -170,6 +178,22 @@ struct UsagePopoverView: View {
             return state.systemMetrics.battery.summary
         case .settings:
             return "앱 설정"
+        }
+    }
+
+    private var selectedModuleTitle: String {
+        if selectedModule == .codex, state.usageProviderMode == .claude {
+            return "Claude 사용량"
+        }
+        return selectedModule.title
+    }
+
+    @ViewBuilder
+    private var usageProviderContent: some View {
+        if state.usageProviderMode == .claude {
+            ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
+        } else {
+            CodexUsagePanel(state: state)
         }
     }
 

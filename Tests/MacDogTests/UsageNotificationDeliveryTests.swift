@@ -4,6 +4,83 @@ import CodexUsageCore
 
 @MainActor
 final class UsageNotificationDeliveryTests: XCTestCase {
+    func testNotificationRouteSelectsExactlyOneProvider() {
+        XCTAssertEqual(UsageNotificationRoute(mode: .codex), .codex)
+        XCTAssertEqual(UsageNotificationRoute(mode: .claude), .claude)
+    }
+
+    func testCancelledProviderDispatchStopsAfterAuthorizationWithoutDelivery() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = RecordingUsageNotificationDeliveryClient()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: DelayedUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: InMemoryUsageNotificationDedupeStore(),
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: 96,
+            fiveHourResetsAt: 1_800_003_600,
+            weeklyUsedPercent: 42,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: state,
+                settings: UsageNotificationDeliverySettings(
+                    usageNotificationsEnabled: true,
+                    resetSoonNotificationsEnabled: true
+                )
+            )
+        }
+
+        task.cancel()
+        let result = await task.value
+
+        XCTAssertEqual(result.skipReason, .cancelled)
+        XCTAssertEqual(deliveryClient.deliveredContents(), [])
+    }
+
+    func testCancellationDuringDeliveryStillRecordsDeliveredDedupeKey() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = CancellableUsageNotificationDeliveryClient()
+        let dedupeStore = InMemoryUsageNotificationDedupeStore()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: StaticUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: dedupeStore,
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: 96,
+            fiveHourResetsAt: 1_800_003_600,
+            weeklyUsedPercent: 42,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+        let task = Task { @MainActor in
+            await dispatcher.dispatch(
+                for: state,
+                settings: UsageNotificationDeliverySettings(
+                    usageNotificationsEnabled: true,
+                    resetSoonNotificationsEnabled: true
+                )
+            )
+        }
+        while !deliveryClient.hasStartedDelivery() {
+            await Task.yield()
+        }
+
+        task.cancel()
+        let result = await task.value
+
+        XCTAssertEqual(result.deliveredKeys.map(\.rawValue), [
+            "usage.approachingLimit.fiveHour.reset.1800003600"
+        ])
+        XCTAssertEqual(dedupeStore.ledger.deliveredKeys, result.deliveredKeys)
+    }
+
     func testDispatcherDeliversAuthorizedFreshCacheCandidatesAndPersistsDedupe() async throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let deliveryClient = RecordingUsageNotificationDeliveryClient()
@@ -52,6 +129,41 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertEqual(dedupeStore.ledger.deliveredKeys.map(\.rawValue), result.deliveredKeys.map(\.rawValue))
     }
 
+    func testDispatcherDeliversWeeklyOnlyCandidateWithoutFiveHourDedupe() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let deliveryClient = RecordingUsageNotificationDeliveryClient()
+        let dedupeStore = InMemoryUsageNotificationDedupeStore()
+        let dispatcher = UsageNotificationDispatcher(
+            authorizationClient: StaticUsageNotificationAuthorizationClient(status: .authorized),
+            deliveryClient: deliveryClient,
+            dedupeStore: dedupeStore,
+            now: { now }
+        )
+        let state = Self.cachedState(
+            fiveHourUsedPercent: nil,
+            fiveHourResetsAt: nil,
+            weeklyUsedPercent: 96,
+            weeklyResetsAt: 1_800_604_800,
+            cachedAt: 1_800_000_000
+        )
+
+        let result = await dispatcher.dispatch(
+            for: state,
+            settings: UsageNotificationDeliverySettings(
+                usageNotificationsEnabled: true,
+                resetSoonNotificationsEnabled: true
+            )
+        )
+
+        XCTAssertEqual(result.deliveredKeys.map(\.rawValue), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+        XCTAssertEqual(deliveryClient.deliveredContents().map(\.identifier), [
+            "usage.approachingLimit.weekly.reset.1800604800"
+        ])
+        XCTAssertEqual(dedupeStore.ledger.deliveredKeys, result.deliveredKeys)
+    }
+
     func testResetSoonNotificationUsesRecoveryCopy() {
         let candidate = UsageNotificationCandidate(
             event: .resetSoon,
@@ -77,6 +189,31 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertTrue(candidate.notificationContent.body.contains("5시간 한도가 곧 회복됩니다."))
         XCTAssertTrue(candidate.notificationContent.body.contains("초기화 시각"))
         XCTAssertFalse(candidate.notificationContent.body.contains("주간 한도가 곧 회복됩니다."))
+    }
+
+    func testPacemakerNotificationUsesDayScopedIdentifierAndCopy() {
+        let candidate = UsageNotificationCandidate(
+            event: .dailyTargetExceeded,
+            window: .weekly,
+            usedPercent: 16,
+            resetsAt: 1_800_604_800,
+            dayIndex: 3
+        )
+
+        XCTAssertEqual(
+            candidate.notificationContent.identifier,
+            "usage.dailyTargetExceeded.weekly.reset.1800604800.day.3"
+        )
+        XCTAssertEqual(candidate.notificationContent.title, "Codex 오늘 목표 초과")
+        XCTAssertTrue(candidate.notificationContent.body.contains("일일 목표"))
+    }
+
+    func testLegacyDedupeKeyDecodesWithoutDayIndex() throws {
+        let data = Data(#"{"event":"highUsage","window":"fiveHour","resetsAt":1800001800}"#.utf8)
+        let key = try JSONDecoder().decode(UsageNotificationDedupeKey.self, from: data)
+
+        XCTAssertNil(key.dayIndex)
+        XCTAssertEqual(key.rawValue, "usage.highUsage.fiveHour.reset.1800001800")
     }
 
     func testDispatcherFiltersResetSoonAndAlreadyDeliveredKeys() async throws {
@@ -333,7 +470,7 @@ final class UsageNotificationDeliveryTests: XCTestCase {
     }
 
     private static func cachedState(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?,
@@ -359,18 +496,20 @@ final class UsageNotificationDeliveryTests: XCTestCase {
     }
 
     private static func report(
-        fiveHourUsedPercent: Double,
+        fiveHourUsedPercent: Double?,
         fiveHourResetsAt: Int?,
         weeklyUsedPercent: Double,
         weeklyResetsAt: Int?
     ) -> CodexUsageReport {
-        let fiveHour = UsageWindowReport(
-            kind: .fiveHour,
-            usedPercent: fiveHourUsedPercent,
-            remainingPercent: 100 - fiveHourUsedPercent,
-            windowDurationMins: 300,
-            resetsAt: fiveHourResetsAt
-        )
+        let fiveHour = fiveHourUsedPercent.map {
+            UsageWindowReport(
+                kind: .fiveHour,
+                usedPercent: $0,
+                remainingPercent: 100 - $0,
+                windowDurationMins: 300,
+                resetsAt: fiveHourResetsAt
+            )
+        }
         let weekly = UsageWindowReport(
             kind: .weekly,
             usedPercent: weeklyUsedPercent,
@@ -381,8 +520,8 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         let limit = UsageLimitReport(
             limitId: "codex",
             limitName: "Codex",
-            primary: fiveHour,
-            secondary: weekly,
+            primary: fiveHour ?? weekly,
+            secondary: fiveHour == nil ? nil : weekly,
             credits: nil,
             planType: "pro",
             rateLimitReachedType: nil
@@ -433,6 +572,19 @@ private struct FailingUsageNotificationDeliveryClient: UsageNotificationDeliveri
     }
 }
 
+private struct DelayedUsageNotificationAuthorizationClient: UsageNotificationAuthorizationProviding {
+    let status: UsageNotificationAuthorizationStatus
+
+    func authorizationStatus() async -> UsageNotificationAuthorizationStatus {
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return status
+    }
+
+    func requestAuthorization() async -> UsageNotificationAuthorizationStatus {
+        await authorizationStatus()
+    }
+}
+
 @MainActor
 private final class SlowRecordingUsageNotificationDeliveryClient: UsageNotificationDelivering {
     private var contents: [UsageNotificationContent] = []
@@ -444,5 +596,19 @@ private final class SlowRecordingUsageNotificationDeliveryClient: UsageNotificat
 
     func deliveredContents() -> [UsageNotificationContent] {
         contents
+    }
+}
+
+@MainActor
+private final class CancellableUsageNotificationDeliveryClient: UsageNotificationDelivering {
+    private var started = false
+
+    func deliver(_ content: UsageNotificationContent) async throws {
+        started = true
+        try? await Task.sleep(nanoseconds: 10_000_000_000)
+    }
+
+    func hasStartedDelivery() -> Bool {
+        started
     }
 }

@@ -1,0 +1,16 @@
+{
+  "model": {
+    "id": "claude-opus-4-1",
+    "display_name": "Opus"
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 42.5,
+      "resets_at": 1900010000
+    },
+    "seven_day": {
+      "used_percentage": 61,
+      "resets_at": 1900600000
+    }
+  }
+}

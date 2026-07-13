@@ -13,6 +13,7 @@ CLI_DEST="$HOME/bin/codex-usage"
 CACHE_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/com.dhseo.macdog.monitor.plist"
 LOGIN_LAUNCH_KEY="loginLaunchEnabled"
+USAGE_PROVIDER_MODE_KEY="usageProviderMode"
 
 case "$MODE" in
   report|--report) ;;
@@ -88,6 +89,27 @@ app_cli_binary_for() {
   printf '%s/Contents/MacOS/codex-usage' "$1"
 }
 
+app_claude_bridge_binary_for() {
+  printf '%s/Contents/MacOS/macdog-claude-statusline' "$1"
+}
+
+expect_required_bundle_executables() {
+  local app_dest="$1"
+  local app_binary
+  local app_cli_binary
+  local app_claude_bridge_binary
+  app_binary="$(app_binary_for "$app_dest")"
+  app_cli_binary="$(app_cli_binary_for "$app_dest")"
+  app_claude_bridge_binary="$(app_claude_bridge_binary_for "$app_dest")"
+
+  executable "$app_binary" || { echo "expected installed app binary: $app_binary" >&2; return 1; }
+  executable "$app_cli_binary" || { echo "expected bundled CLI: $app_cli_binary" >&2; return 1; }
+  executable "$app_claude_bridge_binary" || {
+    echo "expected bundled Claude status line bridge: $app_claude_bridge_binary" >&2
+    return 1
+  }
+}
+
 widget_appex_for() {
   printf '%s/Contents/PlugIns/MacDogWidgetExtension.appex' "$1"
 }
@@ -107,6 +129,16 @@ login_launch_enabled() {
   local value
   value="$(/usr/bin/defaults read "$BUNDLE_ID" "$LOGIN_LAUNCH_KEY" 2>/dev/null || true)"
   [[ -z "$value" || "$value" == "1" || "$value" == "true" || "$value" == "TRUE" || "$value" == "YES" ]]
+}
+
+usage_provider_mode() {
+  local value
+  value="$(/usr/bin/defaults read "$BUNDLE_ID" "$USAGE_PROVIDER_MODE_KEY" 2>/dev/null || true)"
+  if [[ "$value" == "claude" ]]; then
+    printf 'claude'
+  else
+    printf 'codex'
+  fi
 }
 
 login_item_status_from_output() {
@@ -303,11 +335,13 @@ print_state() {
   local app_dest
   local app_binary
   local app_cli_binary
+  local app_claude_bridge_binary
   local widget_appex
   local widget_binary
   app_dest="$(installed_app_dest)"
   app_binary="$(app_binary_for "$app_dest")"
   app_cli_binary="$(app_cli_binary_for "$app_dest")"
+  app_claude_bridge_binary="$(app_claude_bridge_binary_for "$app_dest")"
   widget_appex="$(widget_appex_for "$app_dest")"
   widget_binary="$(widget_binary_for "$app_dest")"
 
@@ -316,11 +350,13 @@ print_state() {
   echo "active-app:$app_dest"
   if executable "$app_binary"; then echo "app-binary:executable $app_binary"; else echo "app-binary:missing-or-not-executable $app_binary"; fi
   if executable "$app_cli_binary"; then echo "app-cli:executable $app_cli_binary"; else echo "app-cli:missing-or-not-executable $app_cli_binary"; fi
+  if executable "$app_claude_bridge_binary"; then echo "app-claude-bridge:executable $app_claude_bridge_binary"; else echo "app-claude-bridge:missing-or-not-executable $app_claude_bridge_binary"; fi
   if present "$widget_appex"; then echo "widget-appex:present $widget_appex"; else echo "widget-appex:absent $widget_appex"; fi
   if executable "$widget_binary"; then echo "widget-binary:executable $widget_binary"; else echo "widget-binary:missing-or-not-executable $widget_binary"; fi
   if executable "$CLI_DEST"; then echo "cli:executable $CLI_DEST"; else echo "cli:missing-or-not-executable $CLI_DEST"; fi
   if [[ -L "$CLI_DEST" ]]; then echo "cli-link:$(/bin/ls -l "$CLI_DEST" | /usr/bin/sed 's/^.* -> //')"; fi
   if present "$CACHE_PLIST"; then echo "cache-plist:present $CACHE_PLIST"; else echo "cache-plist:absent $CACHE_PLIST"; fi
+  echo "usage-provider-mode:$(usage_provider_mode)"
   if present "$CACHE_PLIST"; then echo "cache-executable:$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")"; fi
   if present "$CACHE_PLIST"; then
     if plist_contains_argument "$CACHE_PLIST" "--mirror-cache"; then
@@ -362,8 +398,7 @@ expect_installed() {
     echo "expected exactly one MacDog app install; found system=$([[ -d "$SYSTEM_APP_DEST" ]] && echo present || echo absent) user=$([[ -d "$USER_APP_DEST" ]] && echo present || echo absent)" >&2
     return 1
   }
-  executable "$app_binary" || { echo "expected installed app binary: $app_binary" >&2; return 1; }
-  executable "$app_cli_binary" || { echo "expected bundled CLI: $app_cli_binary" >&2; return 1; }
+  expect_required_bundle_executables "$app_dest" || return 1
   executable "$CLI_DEST" || { echo "expected installed CLI: $CLI_DEST" >&2; return 1; }
   [[ -L "$CLI_DEST" ]] || { echo "expected installed CLI to be a symlink: $CLI_DEST" >&2; return 1; }
   [[ "$(readlink "$CLI_DEST")" == "$app_cli_binary" ]] || {
@@ -376,27 +411,34 @@ expect_installed() {
   else
     ! present "$widget_appex" || { echo "expected default install to omit widget extension: $widget_appex" >&2; return 1; }
   fi
-  present "$CACHE_PLIST" || { echo "expected cache LaunchAgent plist: $CACHE_PLIST" >&2; return 1; }
-  [[ "$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")" == "$app_cli_binary" ]] || {
-    echo "expected cache LaunchAgent to run bundled CLI: $app_cli_binary" >&2
-    return 1
-  }
-  [[ "$(plist_value ':StartInterval' "$CACHE_PLIST" 2>/dev/null || true)" == "60" ]] || {
-    echo "expected cache LaunchAgent StartInterval to be 60 seconds" >&2
-    return 1
-  }
-  ! plist_contains_argument "$CACHE_PLIST" "--watch" || {
-    echo "expected cache LaunchAgent to run one-shot writer without --watch" >&2
-    return 1
-  }
-  if [[ "$EXPECT_WIDGET" == "1" ]]; then
-    plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
-      echo "expected cache LaunchAgent to mirror cache for WidgetKit" >&2
+  if [[ "$(usage_provider_mode)" == "codex" ]]; then
+    present "$CACHE_PLIST" || { echo "expected Codex mode cache LaunchAgent plist: $CACHE_PLIST" >&2; return 1; }
+    [[ "$(plist_value ':ProgramArguments:0' "$CACHE_PLIST")" == "$app_cli_binary" ]] || {
+      echo "expected cache LaunchAgent to run bundled CLI: $app_cli_binary" >&2
       return 1
     }
+    [[ "$(plist_value ':StartInterval' "$CACHE_PLIST" 2>/dev/null || true)" == "60" ]] || {
+      echo "expected cache LaunchAgent StartInterval to be 60 seconds" >&2
+      return 1
+    }
+    ! plist_contains_argument "$CACHE_PLIST" "--watch" || {
+      echo "expected cache LaunchAgent to run one-shot writer without --watch" >&2
+      return 1
+    }
+    if [[ "$EXPECT_WIDGET" == "1" ]]; then
+      plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
+        echo "expected cache LaunchAgent to mirror cache for WidgetKit" >&2
+        return 1
+      }
+    else
+      ! plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
+        echo "expected default cache LaunchAgent to omit WidgetKit mirror argument" >&2
+        return 1
+      }
+    fi
   else
-    ! plist_contains_argument "$CACHE_PLIST" "--mirror-cache" || {
-      echo "expected default cache LaunchAgent to omit WidgetKit mirror argument" >&2
+    ! present "$CACHE_PLIST" || {
+      echo "expected Claude mode to remove Codex cache LaunchAgent plist: $CACHE_PLIST" >&2
       return 1
     }
   fi
@@ -495,6 +537,18 @@ SCRIPT
 
   output="$(login_item_status_for "$temp_dir/missing-probe")"
   [[ "$output" == "unavailable" ]] || die "self-test missing unavailable login item status"
+
+  local fixture_app="$temp_dir/fixture/MacDog.app"
+  /bin/mkdir -p "$fixture_app/Contents/MacOS"
+  for executable_name in MacDog codex-usage macdog-claude-statusline; do
+    printf '#!/usr/bin/env bash\nexit 0\n' >"$fixture_app/Contents/MacOS/$executable_name"
+    chmod +x "$fixture_app/Contents/MacOS/$executable_name"
+  done
+  expect_required_bundle_executables "$fixture_app" || die "self-test rejected complete bundle executables"
+  rm -f "$fixture_app/Contents/MacOS/macdog-claude-statusline"
+  if expect_required_bundle_executables "$fixture_app" >/dev/null 2>&1; then
+    die "self-test accepted bundle without Claude status line bridge"
+  fi
 
   echo "Install state freshness detail self-test ok"
 }

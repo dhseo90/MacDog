@@ -6,6 +6,66 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
+    func testClaudeUsageWaitingPartialReadyStaleAndErrorStatesRender() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let previews = [
+            ClaudeUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: .empty,
+                loadIssue: nil
+            ),
+            Self.claudePreview(now: now, includeSevenDay: false),
+            Self.claudePreview(now: now),
+            Self.claudePreview(now: now, observedAtOffset: -1_000, staleAfterSeconds: 60),
+            Self.claudePreview(now: now, issueCode: "status_line_decode_failed")
+        ]
+
+        for preview in previews {
+            let view = ClaudeUsagePreviewPanel(preview: preview, now: now)
+                .frame(width: 254, alignment: .topLeading)
+            let image = render(view: view, size: NSSize(width: 254, height: 310), scale: 2)
+            XCTAssertGreaterThan(image.tiffRepresentation?.count ?? 0, 100)
+        }
+
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
+        XCTAssertTrue(source.contains("Claude 사용량"))
+        XCTAssertTrue(source.contains("% 사용 · "))
+        XCTAssertTrue(source.contains("% 남음"))
+        XCTAssertTrue(source.contains("Claude 연결 필요"))
+        XCTAssertTrue(source.contains("연결 명령 복사"))
+        XCTAssertTrue(source.contains("connectionGuide.standaloneCommand"))
+        XCTAssertFalse(source.contains("PREVIEW"))
+        XCTAssertFalse(source.contains("Claude Preview"))
+        XCTAssertFalse(source.contains("CodexResetCreditsBlock"))
+    }
+
+    func testClaudeHistoryCurrentPastCompareGraphsExportProviderLabeledPNG() throws {
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let preview = Self.claudePreview(now: now)
+        let currentReset = try XCTUnwrap(preview.usage?.sevenDay?.resetsAt)
+        let pastReset = currentReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
+
+        for mode in ClaudeUsageHistoryGraphMode.allCases {
+            let data = CodexUsageGraphImageExporter.pngData(
+                for: ClaudeUsageGraphSnapshotView(
+                    kind: .sevenDay,
+                    mode: mode,
+                    currentResetsAt: currentReset,
+                    pastResetsAt: pastReset,
+                    history: preview.history
+                ),
+                size: CGSize(width: 520, height: 180),
+                scale: 2
+            )
+            XCTAssertEqual(data?.prefix(8), Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+        }
+
+        let source = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
+        XCTAssertTrue(source.contains("macdog-claude-usage-"))
+        XCTAssertTrue(source.contains("Claude ·"))
+    }
+
     func testCodexResetCreditsBlockBuildsCompactLayout() {
         let resetCredits = RateLimitResetCreditsSummary(
             availableCount: 3,
@@ -116,161 +176,77 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             source.contains("spacing: CodexUsagePanelLayout.sectionSpacing"),
             "Codex tab should separate current usage, reset credits, history, and data status as major sections"
         )
-        XCTAssertTrue(source.contains("CodexPlanTransitionReadinessBlock("))
-        XCTAssertTrue(source.contains("planTransitionScenario:"))
+        XCTAssertTrue(source.contains("CodexWeeklyPacemakerBlock("))
     }
 
-    func testPlanTransitionUIKeepsExplicitScenarioAndSettingsLabels() throws {
-        let transitionSource = try String(
-            contentsOfFile: "Sources/MacDog/Popover/CodexPlanTransitionViews.swift"
+    func testCodexUsagePanelKeepsWeeklyContentVisibleWhenFiveHourIsUnavailable() throws {
+        let report = Self.weeklyOnlyCodexReport()
+        let snapshot = CodexUsageCacheSnapshot(
+            cachedAt: report.generatedAt,
+            staleAfterSeconds: 120,
+            report: report,
+            error: nil
         )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: snapshot,
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil,
+            displayBasis: .fiveHour,
+            systemMetrics: .unavailable,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(report.generatedAt))
+        )
+        let view = CodexUsagePanel(state: state)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        hostingView.layoutSubtreeIfNeeded()
+
+        XCTAssertNotNil(state.codexPanelSummary())
+        XCTAssertEqual(state.selectedWindowStatus?.label, "주간")
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+
+        let rowSource = try String(
+            contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
+        )
+        let stateSource = try String(contentsOfFile: "Sources/MacDog/UsageMonitorState.swift")
+        XCTAssertTrue(rowSource.contains("현재 제공되지 않음"))
+        XCTAssertTrue(rowSource.contains("if window != nil"))
+        XCTAssertTrue(stateSource.contains("guard codexLimit?.fiveHour != nil"))
+        XCTAssertFalse(state.codexDataStatus.title.contains("오류"))
+    }
+
+    func testPlanTransitionUIIsRemovedAndPacemakerRemains() throws {
+        let panelSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
         let graphSource = try String(
             contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
         )
-
-        XCTAssertTrue(transitionSource.contains("플랜 전환 준비"))
-        XCTAssertTrue(transitionSource.contains("사용자 설정 기반 예상"))
-        XCTAssertTrue(transitionSource.contains("현재 플랜"))
-        XCTAssertTrue(transitionSource.contains("목표 플랜"))
-        XCTAssertTrue(transitionSource.contains("실제 전환 확인"))
-        XCTAssertTrue(settingsSource.contains("CodexPlanTransitionSettingsEditor("))
-        XCTAssertTrue(graphSource.contains("공식 5시간 P90"))
-        XCTAssertTrue(graphSource.contains("사용자 설정 기반 예상 P90"))
-        XCTAssertTrue(graphSource.contains("epochBoundaryPosition"))
-        XCTAssertTrue(transitionSource.contains("전환 후 실제 P90"))
+        XCTAssertTrue(panelSource.contains("CodexWeeklyPacemakerBlock("))
+        XCTAssertFalse(panelSource.contains("CodexPlanTransition"))
+        XCTAssertFalse(settingsSource.contains("플랜 전환"))
+        XCTAssertFalse(graphSource.contains("epochBoundary"))
+        XCTAssertFalse(graphSource.contains("P90"))
     }
 
-    func testPlanTransitionSettingsPersistenceMigratesBackdatedFiveHourWindows() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let configurationStore = CodexPlanTransitionConfigurationStore(
-            fileURL: directory.appendingPathComponent("usage-plan-transition.json")
-        )
-        let historyStore = CodexUsageFiveHourHistoryStore(
-            fileURL: directory.appendingPathComponent("usage-five-hour-history.json")
-        )
-        let transitionAt = 1_900_000_000
-        let previous = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        let confirmed = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            confirmedTransitionAt: transitionAt,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        _ = try historyStore.append(try XCTUnwrap(CodexUsageFiveHourHistorySample(
-            recordedAt: transitionAt + 20_000,
-            windowDurationMins: 300,
-            usedPercent: 50,
-            resetsAt: transitionAt + 38_000,
-            planEpochID: "current"
-        )))
+    func testSelectedProviderUIUsesOnlySettingsModePicker() throws {
+        let settingsSource = try String(contentsOfFile: "Sources/MacDog/Popover/SettingsPanel.swift")
+        let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
+        let claudePanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
+        let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
 
-        let migrated = try CodexPlanTransitionSettingsPersistence.save(
-            confirmed,
-            replacing: previous,
-            configurationStore: configurationStore,
-            historyStore: historyStore
-        )
-
-        XCTAssertEqual(migrated, 1)
-        XCTAssertEqual(try configurationStore.read(), confirmed)
-        XCTAssertEqual(try historyStore.read().samples.first?.planEpochID, "target")
-    }
-
-    func testPlanTransitionSettingsPersistenceReconcilesAfterConfigurationWasAlreadyConfirmed() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let configurationStore = CodexPlanTransitionConfigurationStore(
-            fileURL: directory.appendingPathComponent("usage-plan-transition.json")
-        )
-        let historyStore = CodexUsageFiveHourHistoryStore(
-            fileURL: directory.appendingPathComponent("usage-five-hour-history.json")
-        )
-        let transitionAt = 1_900_000_000
-        let confirmed = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            confirmedTransitionAt: transitionAt,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "target"
-        )
-        try configurationStore.write(confirmed)
-        _ = try historyStore.append(try XCTUnwrap(CodexUsageFiveHourHistorySample(
-            recordedAt: transitionAt + 20_000,
-            windowDurationMins: 300,
-            usedPercent: 50,
-            resetsAt: transitionAt + 38_000,
-            planEpochID: "current"
-        )))
-
-        let migrated = try CodexPlanTransitionSettingsPersistence.save(
-            confirmed,
-            replacing: confirmed,
-            configurationStore: configurationStore,
-            historyStore: historyStore
-        )
-
-        XCTAssertEqual(migrated, 1)
-        XCTAssertEqual(try historyStore.read().samples.first?.planEpochID, "target")
-        XCTAssertEqual(
-            try CodexPlanTransitionSettingsPersistence.reconcile(
-                confirmed,
-                historyStore: historyStore
-            ),
-            0
-        )
-    }
-
-    func testPlanTransitionSettingsPersistenceRotatesTargetEpochOnlyWhenTransitionIsFirstConfirmed() throws {
-        let unconfirmed = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "draft-target"
-        )
-        let confirmed = try CodexPlanTransitionConfiguration(
-            currentPlanLabel: "Current",
-            targetPlanLabel: "Target",
-            targetRelativeCapacity: 0.5,
-            reservePercent: 20,
-            confirmedTransitionAt: 1_900_000_000,
-            currentPlanEpochID: "current",
-            targetPlanEpochID: "confirmed-target"
-        )
-
-        XCTAssertEqual(
-            CodexPlanTransitionSettingsPersistence.targetEpochID(
-                previousConfiguration: unconfirmed,
-                confirmedAt: 1_900_000_000,
-                makeID: { "new-target" }
-            ),
-            "new-target"
-        )
-        XCTAssertEqual(
-            CodexPlanTransitionSettingsPersistence.targetEpochID(
-                previousConfiguration: confirmed,
-                confirmedAt: 1_900_000_000,
-                makeID: { "unexpected" }
-            ),
-            "confirmed-target"
-        )
+        XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
+        XCTAssertTrue(settingsSource.contains("UsageProviderMode.allCases"))
+        XCTAssertFalse(settingsSource.contains("Claude Usage Preview"))
+        XCTAssertFalse(settingsSource.contains("Claude Preview 사용"))
+        XCTAssertFalse(settingsSource.contains("러너 반영"))
+        XCTAssertFalse(settingsSource.contains("Claude 알림"))
+        XCTAssertFalse(popoverSource.contains("Picker(\"사용량 provider\""))
+        XCTAssertTrue(popoverSource.contains("state.usageProviderMode == .claude"))
+        XCTAssertTrue(popoverSource.contains("statusTitle(now: now)"))
+        XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
+        XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
+        XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
@@ -516,7 +492,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.chargeLimitTargetPercentKey,
             RunnerPreferences.loginLaunchEnabledKey,
             RunnerPreferences.usageNotificationsEnabledKey,
-            RunnerPreferences.usageResetSoonNotificationsEnabledKey
+            RunnerPreferences.usageResetSoonNotificationsEnabledKey,
+            RunnerPreferences.usageProviderModeKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -533,7 +510,13 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             }
         }
 
-        for module in MacDogPopoverModule.allCases {
+        let requestedModules = Set(
+            ProcessInfo.processInfo.environment["MACDOG_RENDER_README_SCREENSHOTS_MODULES"]?
+                .split(separator: ",")
+                .map { String($0) } ?? []
+        )
+        for module in MacDogPopoverModule.allCases where
+            requestedModules.isEmpty || requestedModules.contains(module.rawValue) {
             configureDefaults(for: module, defaults: defaults)
             let preferences = RunnerPreferences(defaults: defaults)
             let state = MacDogDemoData.state(
@@ -695,6 +678,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
         RunnerPreferences.setSleepPreventionControlMode(.off, defaults: defaults)
+        RunnerPreferences.setUsageProviderMode(.codex, defaults: defaults)
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
         if module == .sleep {
@@ -736,6 +720,65 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private static func codexReportWithThreeResetCreditExpiries() -> CodexUsageReport {
         codexReportWithResetCredits(resetCredits(count: 3, shuffled: false))
+    }
+
+    private static func claudePreview(
+        now: Date,
+        observedAtOffset: Int = 0,
+        staleAfterSeconds: Int = 900,
+        includeSevenDay: Bool = true,
+        issueCode: String? = nil
+    ) -> ClaudeUsagePreviewState {
+        let nowTimestamp = Int(now.timeIntervalSince1970)
+        let observedAt = nowTimestamp + observedAtOffset
+        let fiveHourReset = nowTimestamp + 10_000
+        let sevenDayReset = nowTimestamp + 500_000
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            fiveHour: try! ClaudeUsageWindowSnapshot(usedPercent: 44, resetsAt: fiveHourReset),
+            sevenDay: includeSevenDay
+                ? try! ClaudeUsageWindowSnapshot(usedPercent: 67, resetsAt: sevenDayReset)
+                : nil
+        )
+        let pastReset = sevenDayReset - ClaudeUsageWindowKind.sevenDay.windowDurationMins * 60
+        let history = ClaudeUsageHistory(samples: [
+            ClaudeUsageHistorySample(
+                kind: .fiveHour,
+                recordedAt: observedAt,
+                usedPercent: 44,
+                resetsAt: fiveHourReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: observedAt - 20_000,
+                usedPercent: 55,
+                resetsAt: sevenDayReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: observedAt,
+                usedPercent: 67,
+                resetsAt: sevenDayReset
+            )!,
+            ClaudeUsageHistorySample(
+                kind: .sevenDay,
+                recordedAt: pastReset - 40_000,
+                usedPercent: 72,
+                resetsAt: pastReset
+            )!
+        ])
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: staleAfterSeconds,
+                usage: usage,
+                issue: issueCode.map { ClaudeUsageCacheIssue(code: $0, recordedAt: observedAt) }
+            ),
+            history: history,
+            loadIssue: nil
+        )
     }
 
     private func weeklyHistoryBlock(
@@ -803,6 +846,33 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                         windowDurationMins: 10_080,
                         resetsAt: 1_800_056_400
                     ),
+                    credits: nil,
+                    planType: "pro",
+                    rateLimitReachedType: nil
+                )
+            ]
+        )
+    }
+
+    private static func weeklyOnlyCodexReport() -> CodexUsageReport {
+        CodexUsageReport(
+            generatedAt: 1_800_000_000,
+            source: "test",
+            planType: "pro",
+            credits: nil,
+            rateLimitReachedType: nil,
+            limits: [
+                "codex": UsageLimitReport(
+                    limitId: "codex",
+                    limitName: "Codex",
+                    primary: UsageWindowReport(
+                        kind: .weekly,
+                        usedPercent: 67,
+                        remainingPercent: 33,
+                        windowDurationMins: 10_080,
+                        resetsAt: 1_800_056_400
+                    ),
+                    secondary: nil,
                     credits: nil,
                     planType: "pro",
                     rateLimitReachedType: nil

@@ -10,12 +10,13 @@ usage() {
 usage: $0 [--cli PATH] [--timeout SECONDS]
 
 Run codex-usage against the live Codex app-server and verify its cache result
-cannot be mistaken for a valid success when the required 5-hour or weekly
-windows are missing, and that successful cache writes also append weekly
-history diagnostics.
+cannot be mistaken for a valid success when the required weekly window is
+missing. The 5-hour window is optional and may be temporarily unavailable.
+Successful full or weekly-only cache writes must append weekly history
+diagnostics.
 
 This smoke accepts either:
-  - a successful fetch with both 5-hour and weekly codex windows
+  - a successful fetch with a weekly codex window and optional 5-hour window
   - a failed fetch that writes an error snapshot without an invalid success report
 USAGE
 }
@@ -76,24 +77,26 @@ set -e
   report = data["report"]
   error = data["error"]
 
-  def required_windows?(report)
-    return false unless report.is_a?(Hash)
+  def window_state(report)
+    return { five_hour: false, weekly: false } unless report.is_a?(Hash)
     limits = report["limits"]
-    return false unless limits.is_a?(Hash)
+    return { five_hour: false, weekly: false } unless limits.is_a?(Hash)
     codex = limits["codex"] || limits.values.first
-    return false unless codex.is_a?(Hash)
+    return { five_hour: false, weekly: false } unless codex.is_a?(Hash)
     windows = [codex["primary"], codex["secondary"]].compact
     has_five_hour = windows.any? { |window| window["kind"] == "fiveHour" || window["windowDurationMins"] == 300 }
     has_weekly = windows.any? { |window| window["kind"] == "weekly" || window["windowDurationMins"] == 10080 }
-    has_five_hour && has_weekly
+    { five_hour: has_five_hour, weekly: has_weekly }
   end
 
+  windows = window_state(report)
   if status.zero?
-    abort("successful fetch cache is missing required codex usage windows") unless required_windows?(report)
+    abort("successful fetch cache is missing required weekly codex usage window") unless windows[:weekly]
     abort("successful fetch cache should not include error") if error
-    puts "usage-fetch:success"
+    mode = windows[:five_hour] ? "full" : "weekly-only"
+    puts "usage-fetch:success windows=#{mode}"
   else
-    if report && !required_windows?(report)
+    if report && !windows[:weekly]
       abort("failed fetch preserved an invalid success report")
     end
     abort("failed fetch cache must include an error message") unless error.is_a?(Hash) && error["message"].to_s.length.positive?
