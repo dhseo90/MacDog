@@ -65,6 +65,8 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
    자동 생성하게 두지 않습니다.
 7. draft의 `isDraft=true`, `isPrerelease=false`, signed tag target SHA, tag, 두 asset을 확인합니다.
    기존 tag가 있는 release의 `targetCommitish`는 identity가 아니라 정보로만 기록합니다.
+   Draft는 tag endpoint로 조회하지 않고 생성 명령이 반환한 고유 URL을 release ID로 해석해
+   readback하며, 실패 시에도 그 release ID만 삭제합니다.
 8. signed tag target과 asset이 최신 release head와 일치하고 tag가 `Verified`일 때만 publish합니다.
 9. publish 후 `isDraft=false`, asset download URL과 tag target을 다시 확인합니다.
 

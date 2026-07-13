@@ -107,8 +107,17 @@ verify_contract() {
   require_match '--verify-tag' "$DRAFT_WORKFLOW" "pre-existing release tag gate"
   require_match 'verification\.verified' "$DRAFT_WORKFLOW" "draft tag verification gate"
   require_match 'MACDOG_TAG.*!=.*v\$MACDOG_VERSION' "$DRAFT_WORKFLOW" "version and tag identity gate"
-  require_match 'gh release delete "\$MACDOG_TAG" --yes' "$DRAFT_WORKFLOW" \
-    "failed draft cleanup without tag deletion"
+  require_match 'id: create_draft' "$DRAFT_WORKFLOW" "draft creation step identity"
+  require_match 'echo "url=\$draft_url" >> "\$GITHUB_OUTPUT"' "$DRAFT_WORKFLOW" \
+    "created draft URL output"
+  require_match 'DRAFT_RELEASE_URL: \$\{\{ steps\.create_draft\.outputs\.url \}\}' \
+    "$DRAFT_WORKFLOW" "created draft URL readback"
+  require_match 'releases\?per_page=100' "$DRAFT_WORKFLOW" "draft release list lookup"
+  require_match '\[\.id, \.html_url\] \| @tsv' "$DRAFT_WORKFLOW" \
+    "created draft URL to release ID lookup"
+  require_match 'gh api --method DELETE "repos/\$GITHUB_REPOSITORY/releases/\$release_id"' \
+    "$DRAFT_WORKFLOW" "failed draft cleanup by release ID"
+  require_match 'releases/\$release_id' "$DRAFT_WORKFLOW" "draft readback by release ID"
   require_match 'target_sha.*GITHUB_SHA' "$DRAFT_WORKFLOW" "signed tag target identity readback"
   require_match 'target_commitish.*informational' "$DRAFT_WORKFLOW" "informational target metadata readback"
   require_match 'asset_names' "$DRAFT_WORKFLOW" "draft asset readback"
@@ -116,6 +125,8 @@ verify_contract() {
   require_match 'verification_complete=1' "$DRAFT_WORKFLOW" "successful draft verification marker"
   require_absent_match '--target "\$GITHUB_SHA"|target_commitish="\$GITHUB_SHA"|gh api --method PATCH' \
     "$DRAFT_WORKFLOW" "unsupported existing-tag target metadata mutation"
+  require_absent_match 'releases/tags/\$MACDOG_TAG|gh release delete "\$MACDOG_TAG"' \
+    "$DRAFT_WORKFLOW" "draft tag endpoint lookup or tag-based draft cleanup"
   require_match 'unsigned/ad-hoc 배포' "$PACKAGE_SCRIPT" "publish-safe unsigned release note"
   require_absent_match '릴리즈 후보' "$PACKAGE_SCRIPT" "stale release candidate copy"
 

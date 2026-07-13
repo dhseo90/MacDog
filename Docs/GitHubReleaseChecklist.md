@@ -99,6 +99,9 @@ GitHub Actions에서는 `Draft Release` workflow를 `UNSIGNED-DRAFT` 확인 입�
 진행하며 tag를 자동 생성하면 안 됩니다. 생성 직후 draft/prerelease/signed tag target과 DMG·checksum asset
 두 개를 readback합니다. 기존 tag가 있는 release의 `target_commitish`는 정보로만 기록하고, 실제
 release identity는 signed annotated tag를 역참조한 commit SHA가 release head와 같은지로 판정합니다.
+Draft release는 tag endpoint에서 조회되지 않으므로 `gh release create`가 반환한 고유 URL을 release
+ID로 해석해 상태와 asset을 확인합니다. 검증 실패 시에도 같은 release ID만 삭제하고 signed tag는
+보존합니다.
 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
 
 release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서로 종료 상태를 확인합니다.
