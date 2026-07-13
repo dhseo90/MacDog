@@ -8,6 +8,7 @@ struct WeeklyRemainingHistoryBlock: View {
     let weeklyWindow: UsageWindowReport?
     let currentReport: CodexUsageReport?
     let currentTimestamp: Int?
+    let graphHeight: CGFloat
 
     @State private var selectedMode: CodexUsageHistoryGraphMode = .current
     @State private var selectedPastWindowID: String?
@@ -18,6 +19,7 @@ struct WeeklyRemainingHistoryBlock: View {
         weeklyWindow: UsageWindowReport?,
         currentReport: CodexUsageReport?,
         currentTimestamp: Int?,
+        graphHeight: CGFloat = CodexUsagePanelLayout.weeklyGraphHeight,
         initialMode: CodexUsageHistoryGraphMode = .current,
         initialPastWindowID: String? = nil
     ) {
@@ -26,6 +28,7 @@ struct WeeklyRemainingHistoryBlock: View {
         self.weeklyWindow = weeklyWindow
         self.currentReport = currentReport
         self.currentTimestamp = currentTimestamp
+        self.graphHeight = graphHeight
         _selectedMode = State(initialValue: initialMode)
         _selectedPastWindowID = State(initialValue: initialPastWindowID)
     }
@@ -65,6 +68,7 @@ struct WeeklyRemainingHistoryBlock: View {
                             modes: comparisonModel.availableModes,
                             selectedMode: $selectedMode
                         )
+                        .frame(height: WeeklyRemainingHistoryControlLayout.modeTabHeight)
 
                         if mode != .current, !comparisonModel.pastWindows.isEmpty {
                             Spacer(minLength: WeeklyRemainingHistoryControlLayout.modeWindowPickerSpacing)
@@ -90,7 +94,7 @@ struct WeeklyRemainingHistoryBlock: View {
                 }
 
                 graph(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
-                    .frame(height: CodexUsagePanelLayout.weeklyGraphHeight)
+                    .frame(height: graphHeight)
 
                 WeeklyRemainingTimelineLabels(
                     startLabel: timelineStartLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries),
@@ -306,6 +310,8 @@ private struct WeeklyRemainingHistoryModeTabs: NSViewRepresentable {
         stack.spacing = WeeklyRemainingHistoryControlLayout.modeTabSpacing
         stack.setContentHuggingPriority(.required, for: .horizontal)
         stack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        stack.setContentHuggingPriority(.required, for: .vertical)
+        stack.setContentCompressionResistancePriority(.required, for: .vertical)
         rebuildButtons(in: stack, coordinator: context.coordinator)
         return stack
     }

@@ -45,7 +45,10 @@ struct CodexUsagePanel: View {
                     resetWindowHistory: state.resetWindowHistory,
                     weeklyWindow: limit.weekly,
                     currentReport: state.report,
-                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt
+                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
+                    graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(
+                        fiveHourIsAvailable: limit.fiveHour != nil
+                    )
                 )
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)

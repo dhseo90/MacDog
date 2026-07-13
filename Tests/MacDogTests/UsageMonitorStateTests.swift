@@ -1433,8 +1433,11 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(MacDogPopoverModule.sleep.usesScrollableContent)
         XCTAssertFalse(MacDogPopoverModule.battery.usesScrollableContent)
         XCTAssertTrue(MacDogPopoverModule.settings.usesScrollableContent)
-        XCTAssertGreaterThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 56)
-        XCTAssertLessThanOrEqual(CodexUsagePanelLayout.weeklyGraphHeight, 90)
+        XCTAssertEqual(CodexUsagePanelLayout.sectionSpacing, 3)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphHeight, 56)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyOnlyGraphHeight, 89)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: true), 56)
+        XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false), 89)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphYAxisWidth, 28)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphAxisSpacing, 5)
         XCTAssertEqual(

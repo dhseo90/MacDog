@@ -6,6 +6,24 @@ import XCTest
 
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
+    func testUsagePopoverFirstFrameFillsScreenshotCanvas() {
+        let view = UsagePopoverView(
+            state: MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp),
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+        )
+
+        let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
+
+        XCTAssertGreaterThan(
+            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.89, y: 0.12)),
+            0.12
+        )
+        XCTAssertGreaterThan(
+            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.16, y: 0.87)),
+            0.12
+        )
+    }
+
     func testClaudeUsageWaitingPartialReadyStaleAndErrorStatesRender() throws {
         let now = Date(timeIntervalSince1970: 1_900_000_000)
         let previews = [
@@ -111,8 +129,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         let view = CodexResetCreditsBlock(resetCredits: resetCredits)
 
-        let hostingView = NSHostingView(rootView: view.frame(width: 320))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 96)
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: 96)
         hostingView.layoutSubtreeIfNeeded()
 
         XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 96)
@@ -129,8 +149,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         let view = CodexResetCreditsBlock(resetCredits: resetCredits)
 
-        let hostingView = NSHostingView(rootView: view.frame(width: 320))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 320, height: 96)
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: 96)
         hostingView.layoutSubtreeIfNeeded()
 
         XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 96)
@@ -157,11 +179,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
         let view = CodexUsagePanel(state: state)
 
-        let hostingView = NSHostingView(rootView: view.frame(width: 292))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let contentHeight = MacDogPopoverLayout.nonScrollableContentHeight
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
         hostingView.layoutSubtreeIfNeeded()
 
-        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, contentHeight)
 
         let source = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         XCTAssertTrue(
@@ -198,13 +223,16 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(report.generatedAt))
         )
         let view = CodexUsagePanel(state: state)
-        let hostingView = NSHostingView(rootView: view.frame(width: 292))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let contentHeight = MacDogPopoverLayout.nonScrollableContentHeight
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
         hostingView.layoutSubtreeIfNeeded()
 
         XCTAssertNotNil(state.codexPanelSummary())
         XCTAssertEqual(state.selectedWindowStatus?.label, "주간")
-        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, contentHeight)
 
         let rowSource = try String(
             contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
@@ -260,11 +288,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
         let view = CodexUsagePanel(state: state)
 
-        let hostingView = NSHostingView(rootView: view.frame(width: 292))
-        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 320)
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let contentHeight = MacDogPopoverLayout.nonScrollableContentHeight
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
         hostingView.layoutSubtreeIfNeeded()
 
-        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, 320)
+        XCTAssertLessThanOrEqual(hostingView.fittingSize.height, contentHeight)
     }
 
     func testWeeklyHistoryBlockExposesModePickerAndWiresGraphActions() throws {
@@ -427,6 +458,19 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
         descendants = allDescendants(of: hostingView)
         XCTAssertFalse(descendants.contains { $0 is NSPopUpButton })
+    }
+
+    func testWeeklyHistoryModeTabsDoNotExpandIntoBlankVerticalSpace() throws {
+        let view = try weeklyHistoryBlock(initialMode: .current)
+        let hostingView = NSHostingView(rootView: view.frame(width: 292))
+        hostingView.frame = NSRect(x: 0, y: 0, width: 292, height: 140)
+        hostingView.layoutSubtreeIfNeeded()
+
+        let modeTabs = modeTabButtons(in: hostingView)
+        XCTAssertEqual(modeTabs.map(\.title), ["현재", "지난", "비교"])
+
+        let stack = try XCTUnwrap(modeTabs.first?.superview as? NSStackView)
+        XCTAssertEqual(stack.frame.height, 16, accuracy: 0.5)
     }
 
     func testWeeklyHistoryModeSwitchingKeepsFiveWindowPickerSelectionValid() throws {
@@ -915,8 +959,41 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         hostingView.frame = NSRect(origin: .zero, size: size)
         hostingView.setFrameSize(size)
         hostingView.layoutSubtreeIfNeeded()
+        _ = snapshot(hostingView: hostingView, size: size, scale: scale)
+        hostingView.needsLayout = true
+        hostingView.layoutSubtreeIfNeeded()
+        hostingView.displayIfNeeded()
 
         return snapshot(hostingView: hostingView, size: size, scale: scale)
+    }
+
+    private func screenshotColorDistance(
+        in image: NSImage,
+        from firstPoint: CGPoint,
+        to secondPoint: CGPoint
+    ) -> Double {
+        guard
+            let tiff = image.tiffRepresentation,
+            let bitmap = NSBitmapImageRep(data: tiff)
+        else {
+            return 0
+        }
+        guard
+            let first = bitmap.colorAt(
+                x: Int(Double(bitmap.pixelsWide - 1) * firstPoint.x),
+                y: Int(Double(bitmap.pixelsHigh - 1) * firstPoint.y)
+            )?.usingColorSpace(.deviceRGB),
+            let second = bitmap.colorAt(
+                x: Int(Double(bitmap.pixelsWide - 1) * secondPoint.x),
+                y: Int(Double(bitmap.pixelsHigh - 1) * secondPoint.y)
+            )?.usingColorSpace(.deviceRGB)
+        else {
+            return 0
+        }
+        let red = first.redComponent - second.redComponent
+        let green = first.greenComponent - second.greenComponent
+        let blue = first.blueComponent - second.blueComponent
+        return sqrt((red * red) + (green * green) + (blue * blue))
     }
 
     private func snapshot(hostingView: NSView, size: NSSize, scale: CGFloat) -> NSImage {
