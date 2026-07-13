@@ -52,14 +52,16 @@ struct CodexResetCreditsBlock: View {
                         resetCreditItemCell(item)
                     }
                 } else {
-                    let rows = Array(items.prefix(6)).chunked(into: 2)
+                    let visibleItems = Array(items.prefix(6))
+                    let columnCount = visibleItems.count > 4 ? 3 : 2
+                    let rows = visibleItems.chunked(into: columnCount)
                     ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
                             ForEach(row) { item in
-                                resetCreditItemCell(item)
+                                compactResetCreditItemCell(item)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            if row.count == 1 {
+                            ForEach(0..<(columnCount - row.count), id: \.self) { _ in
                                 Spacer(minLength: 0)
                                     .frame(maxWidth: .infinity)
                             }
@@ -86,6 +88,22 @@ struct CodexResetCreditsBlock: View {
                 }
             }
         }
+    }
+
+    private func compactResetCreditItemCell(_ item: CodexResetCreditDisplayItem) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            if item.isFirstExpiring {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            Text(item.expiryText)
+                .font(.caption2)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+        }
+        .foregroundStyle(item.urgency.tint)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(item.isFirstExpiring ? "먼저 만료, \(item.expiryText)" : item.expiryText)
     }
 
     private func resetCreditItemCell(_ item: CodexResetCreditDisplayItem) -> some View {
