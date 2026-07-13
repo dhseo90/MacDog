@@ -110,7 +110,13 @@ require_draft_match 'hdiutil verify'
 require_draft_match 'shasum -a 256 -c'
 require_draft_match 'gh "\$\{args\[@\]\}"'
 require_draft_match '--draft'
-require_draft_match 'gh release delete "\$MACDOG_TAG" --yes'
+require_draft_match 'id: create_draft'
+require_draft_match 'echo "url=\$draft_url" >> "\$GITHUB_OUTPUT"'
+require_draft_match 'DRAFT_RELEASE_URL: \$\{\{ steps\.create_draft\.outputs\.url \}\}'
+require_draft_match 'releases\?per_page=100'
+require_draft_match '\[\.id, \.html_url\] \| @tsv'
+require_draft_match 'gh api --method DELETE "repos/\$GITHUB_REPOSITORY/releases/\$release_id"'
+require_draft_match 'releases/\$release_id'
 require_draft_match '--notes-file'
 require_draft_match 'MacDog-\$MACDOG_VERSION-release-notes\.md'
 require_draft_match '\.dmg\.sha256'
@@ -123,6 +129,9 @@ require_draft_match 'is_draft.*true.*is_prerelease.*false'
 require_draft_match 'verification_complete=1'
 if /usr/bin/grep -Eq -- '--target "\$GITHUB_SHA"|target_commitish="\$GITHUB_SHA"|gh api --method PATCH' "$DRAFT_WORKFLOW"; then
   die "draft release workflow must use the existing signed tag target as authoritative identity"
+fi
+if /usr/bin/grep -Eq -- 'releases/tags/\$MACDOG_TAG|gh release delete "\$MACDOG_TAG"' "$DRAFT_WORKFLOW"; then
+  die "draft release workflow must resolve drafts by the created release URL and ID, not by tag"
 fi
 if /usr/bin/grep -Eq -- '--prerelease|isPrerelease|MACDOG_PRERELEASE|inputs\.prerelease|Mark the draft release as a prerelease' "$DRAFT_WORKFLOW"; then
   die "draft release workflow must not mark unsigned draft releases as prerelease"

@@ -89,6 +89,7 @@ jobs:
           fi
 
       - name: Create draft GitHub Release
+        id: create_draft
         env:
           GH_TOKEN: ${{ github.token }}
           MACDOG_VERSION: ${{ inputs.version }}
@@ -104,30 +105,62 @@ jobs:
             --notes-file "dist/release/MacDog-$MACDOG_VERSION-release-notes.md"
           )
 
-          gh "${args[@]}"
+          draft_url="$(gh "${args[@]}")"
+          echo "url=$draft_url" >> "$GITHUB_OUTPUT"
 
       - name: Verify draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           MACDOG_VERSION: ${{ inputs.version }}
           MACDOG_TAG: ${{ inputs.tag }}
+          DRAFT_RELEASE_URL: ${{ steps.create_draft.outputs.url }}
         run: |
           verification_complete=0
+          release_id=""
+          resolve_created_draft_id() {
+            local release_rows candidate_id candidate_url
+            release_id=""
+            if ! release_rows="$(
+              gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+                --jq '.[] | [.id, .html_url] | @tsv'
+            )"; then
+              return 1
+            fi
+            while IFS=$'\t' read -r candidate_id candidate_url; do
+              if [[ "$candidate_url" == "$DRAFT_RELEASE_URL" ]]; then
+                if [[ -n "$release_id" ]]; then
+                  return 1
+                fi
+                release_id="$candidate_id"
+              fi
+            done <<< "$release_rows"
+            [[ -n "$release_id" ]]
+          }
           cleanup_unverified_draft() {
             if [[ "$verification_complete" != "1" ]]; then
-              gh release delete "$MACDOG_TAG" --yes || true
+              if [[ -z "$release_id" ]]; then
+                resolve_created_draft_id || true
+              fi
+              if [[ -n "$release_id" ]]; then
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$release_id" || true
+              fi
             fi
           }
           trap cleanup_unverified_draft EXIT
 
-          is_draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.draft')"
-          is_prerelease="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.prerelease')"
-          target_commitish="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.target_commitish')"
-          tag_name="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '.tag_name')"
+          if ! resolve_created_draft_id; then
+            echo "Created draft release URL did not resolve to exactly one release ID: $DRAFT_RELEASE_URL" >&2
+            exit 1
+          fi
+
+          is_draft="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '.draft')"
+          is_prerelease="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '.prerelease')"
+          target_commitish="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '.target_commitish')"
+          tag_name="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '.tag_name')"
           tag_object_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$MACDOG_TAG" --jq '.object.sha')"
           target_type="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.type')"
           target_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_object_sha" --jq '.object.sha')"
-          asset_names="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$MACDOG_TAG" --jq '[.assets[].name] | sort | join(",")')"
+          asset_names="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '[.assets[].name] | sort | join(",")')"
           expected_assets="MacDog-$MACDOG_VERSION.dmg,MacDog-$MACDOG_VERSION.dmg.sha256"
 
           if [[ "$is_draft" != "true" || "$is_prerelease" != "false" ]]; then
