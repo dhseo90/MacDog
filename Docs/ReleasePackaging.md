@@ -35,7 +35,8 @@
   정보로만 기록하고, signed annotated tag를 역참조한 commit SHA를 release head와 다시 대조합니다.
   생성 후 draft/prerelease/tag target/tag/asset 두 개를 확인하며 readback이 실패하면 방금 생성한
   draft release만 삭제하고 signed tag는 보존합니다. Draft는 tag endpoint가 404를 반환할 수 있으므로
-  생성 명령이 반환한 고유 URL을 release ID로 해석해 readback과 cleanup에 사용합니다.
+  생성 명령이 반환한 고유 URL을 release ID로 해석해 readback과 cleanup에 사용합니다. 생성 직후
+  Releases API 반영이 늦을 수 있으므로 고유 URL 조회는 제한된 횟수와 간격으로 재시도합니다.
 - `.github/workflows/release-stable.yml`은 repo에 남아 있지만 Apple Developer Program, Developer ID Application 인증서 secret, notarization secret이 필요하므로 현재 unsigned 릴리즈 완료 조건에서 제외합니다.
 - `script/verify_release_packaging.sh`는 dry-run 문구, staging payload의 app/CLI/Claude bridge 구조, Applications symlink, version별 release note와 지원 범위, legacy command payload 미포함, checksum, DMG 검증을 확인합니다.
 - `script/verify_release_workflow.sh`는 workflow가 checksum 검증, unsigned release candidate artifact upload, unsigned draft release gate, signed stable release gate를 포함하는지 확인합니다.
