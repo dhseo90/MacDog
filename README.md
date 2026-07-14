@@ -284,7 +284,11 @@ MACDOG_APP_VERSION=<version> ./script/install.sh --dry-run
 ./script/uninstall.sh --reset-preferences
 ```
 
-기본 삭제는 앱, CLI symlink, user LaunchAgent, usage cache 파일을 제거하고 UserDefaults와 optional 권한 도우미는 유지합니다. `--reset-preferences`는 로그인 자동 실행과 잠들지 않기 관련 MacDog 설정을 함께 초기화합니다.
+기본 삭제는 `~/Applications`와 `/Applications`의 앱, CLI symlink, user LaunchAgent,
+`usage.json`, 주간 history, Claude cache/history/lock과 widget mirror를 제거하고 UserDefaults와
+optional 권한 도우미는 유지합니다. 현재 5시간/reset history와 cache logs는 남을 수 있습니다.
+`--reset-preferences`는 provider, 알림, 로그인 실행, runner, 데스크톱 펫, 잠들지 않기,
+charge limit을 포함한 MacDog UserDefaults 전체를 함께 초기화합니다.
 
 ## 릴리즈 패키징
 
@@ -319,6 +323,10 @@ Docs/                                   보조 설계/검증 문서
 ## 문서
 
 - [ROADMAP.md](ROADMAP.md): 개발 로드맵과 잔여 이슈
+- [Docs/Onboarding/README.md](Docs/Onboarding/README.md): 신규 개발자 인수인계 시작점과 문서 읽기 순서
+- [Docs/Onboarding/Architecture.md](Docs/Onboarding/Architecture.md): target 구조, 런타임 데이터 흐름, 저장 경계
+- [Docs/Onboarding/DevelopmentEnvironment.md](Docs/Onboarding/DevelopmentEnvironment.md): 개발 환경, 빌드·테스트·진단 절차
+- [Docs/Onboarding/QualityAndRelease.md](Docs/Onboarding/QualityAndRelease.md): 검증, 보안, CI, 릴리즈 절차
 - [Docs/Scripts.md](Docs/Scripts.md): `script/*.sh` 용도와 영향 범위
 - [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md): GitHub Release, DMG, release smoke, 브랜치 정리 경계
 - [Docs/GitHubReleaseChecklist.md](Docs/GitHubReleaseChecklist.md): PR 보호 규칙과 GitHub Release 체크리스트
