@@ -148,9 +148,11 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 ## 모델 추천
 
+모델명은 `AGENTS.md` 2.1의 Grok 기준을 따른다. `5.6 Sol`/`Terra`/`Luna`는 쓰지 않는다.
+
 전체 milestone:
 
-추천 모델: `5.6 Sol`
+추천 모델: `grok-4.6`
 추론 수준: 매우 높음 (xhigh)
 선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점.
 Grok billing 원천이 비공식일 수 있고, 인증 예외와 selected-provider 상태 전이가 겹친다.
@@ -159,7 +161,7 @@ Grok billing 원천이 비공식일 수 있고, 인증 예외와 selected-provid
 
 | 묶음 | 추천 모델 | 추론 수준 | 선정 근거 |
 | --- | --- | --- | --- |
-| Step 2~4 원천/계약 | `5.6 Sol` | 매우 높음 (xhigh) | 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 1 = 7점. 인증 경계 상향 |
-| Step 5~7 hide/routing | `5.6 Terra` | 높음 (high) | 영향도 1 + 불확실성 1 + 검증 난이도 1 + 변경 범위 2 = 5점 |
-| Step 8~13 cache/UI/test | `5.6 Sol` | 높음 (high) | 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 정확도 계약 |
-| Step 14~15 문서/smoke | `5.6 Terra` | 중간 (medium) | 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점. live smoke는 별도 승인 |
+| Step 2~4 원천/계약 | `grok-4.6` | 매우 높음 (xhigh) | 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 1 = 7점. 인증 경계 상향 |
+| Step 5~7 hide/routing | `grok-4.6` | 높음 (high) | 영향도 1 + 불확실성 1 + 검증 난이도 1 + 변경 범위 2 = 5점. 개발 작업이라 `grok-4.6` |
+| Step 8~13 cache/UI/test | `grok-4.6` | 높음 (high) | 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 정확도 계약 |
+| Step 14~15 문서/smoke | `grok-4.5` | 중간 (medium) | 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점. live smoke는 별도 승인 |
