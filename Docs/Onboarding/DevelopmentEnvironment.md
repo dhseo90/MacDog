@@ -131,6 +131,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test \
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test \
   --filter ClaudeStatusLineSnapshotTests
 
+# Grok weekly-only cache/privacy/writer
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test \
+  --filter GrokUsageCacheTests \
+  --filter GrokUsagePrivacyTests \
+  --filter GrokBillingSanitizerTests
+
 # app user component 설치/복구
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test \
   --filter UserComponentInstallerTests
@@ -165,13 +171,15 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift build \
 | `codex-usage status --write-cache` | app-owned cache 갱신 | 기본 cache/history 파일을 변경 |
 | `codex-usage doctor` | 설치·cache·app-server live 진단 | token이나 auth 원문을 출력하면 안 됨 |
 | `codex-usage status --watch 60` | 장시간 polling | 명시 승인 없이 실행하지 않음 |
+| `macdog-grok-usage status --write-cache` | Grok 주간 cache writer | live billing과 auth store 조회가 발생할 수 있음. 승인 없이 실행하지 않음 |
 
 `status --json`과 `doctor`도 offline fixture 조회가 아닙니다. live app-server를 호출하고,
 reset-credit 상세가 필요한 조건에서는 제한된 auth refresh·backend 경로가 실행될 수 있습니다.
 network/auth 경계 없는 schema 회귀 확인은 redacted fixture와 자동 test를 사용합니다.
 
-`~/.codex/auth.json`, Claude settings, Keychain, transcript를 직접 열어 문제를 진단하지 않습니다.
-필요한 진단은 `doctor`, redacted log, cache health, fixture를 사용합니다.
+`~/.codex/auth.json`, `~/.grok/auth.json`, Claude settings, Keychain, transcript를 직접 열어
+문제를 진단하지 않습니다. 필요한 진단은 `doctor`, redacted log, cache health, fixture를
+사용합니다. Grok live billing은 사용자 승인 없이 실행하지 않습니다.
 
 ## 로컬 경로와 정리 책임
 
@@ -184,14 +192,16 @@ network/auth 경계 없는 schema 회귀 확인은 redacted fixture와 자동 te
 | `/Applications/MacDog.app` | Finder release install | 실제 사용자 설치본 | 직접 복사로 검수 대체 금지 |
 | `~/bin/codex-usage` | user component installer | 설치 app 내부 CLI symlink | 현재 설치본을 가리키는지 확인 |
 | `~/Library/Application Support/MacDog` | CLI/bridge | cache와 history | auth/session 저장 금지 |
-| `~/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist` | installer | Codex polling job | Claude mode에서는 제거가 정상 |
+| `~/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist` | installer | Codex polling job | Grok/hidden Claude mode에서는 제거가 정상 |
+| `~/Library/LaunchAgents/com.dhseo.macdog.grok-usage-cache.plist` | installer | Grok polling job | Codex mode에서는 제거가 정상 |
 | `~/Library/Logs/MacDog` | installer/LaunchAgent | user component log | 민감 원문 저장 금지 |
 | `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper` | 승인된 helper install | root helper | 임의 삭제/교체 금지 |
 | `/Library/LaunchDaemons/com.dhseo.macdog.helper.plist` | 승인된 helper install | launchd 설정 | 관리자 승인 필요 |
 
 > `script/uninstall.sh`는 앱, CLI link, LaunchAgent, `usage.json`, 주간 history, Claude
 > cache/history/lock, widget mirror를 제거하지만 현재 구현상 `usage-five-hour-history.json`,
-> `usage-reset-window-history.json`, `~/Library/Logs/MacDog`는 남을 수 있습니다. 또한
+> `usage-reset-window-history.json`, Grok cache/history/lock, Grok LaunchAgent,
+> `~/Library/Logs/MacDog`는 남을 수 있습니다. 또한
 > `/Applications/MacDog.app`도 삭제 대상입니다. 삭제 전에는 반드시 `--dry-run`으로 대상과
 > 보존 파일을 확인하고, 실행은 사용자 환경 변경 승인을 받은 뒤 진행합니다.
 
@@ -208,7 +218,7 @@ network/auth 경계 없는 schema 회귀 확인은 redacted fixture와 자동 te
 
 | 증상 | 먼저 확인 | 다음 단계 |
 | --- | --- | --- |
-| 첫 탭이 갱신되지 않음 | 선택 provider, cache mtime, stale/error 문구 | Codex면 `doctor`와 LaunchAgent 상태, Claude면 bridge 입력 여부 |
+| 첫 탭이 갱신되지 않음 | 선택 provider, cache mtime, stale/error 문구 | Codex면 `doctor`와 LaunchAgent 상태, Grok면 `grok-usage.json`과 Grok LaunchAgent, hidden Claude면 bridge 입력 여부 |
 | Codex 5시간 값만 없음 | 주간 window가 정상인지 확인 | weekly-only 정상 상태로 처리. 0% 합성 금지 |
 | Claude 화면이 입력 대기 | `claude-usage.json` 존재/mtime | 유료 계정과 statusLine bridge 연결 여부를 분리. auth/settings 직접 열지 않음 |
 | 앱이 두 개 보임 | 실행 중 app path와 `dist`, `~/Applications`, `/Applications` | release smoke cleanup 문서를 따르고 임의 bundle을 설치원으로 쓰지 않음 |

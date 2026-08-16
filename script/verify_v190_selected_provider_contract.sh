@@ -5,6 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOC="$ROOT_DIR/Docs/V190GrokUsageAndClaudeHide.md"
 SPIKE="$ROOT_DIR/Docs/V190GrokUsageSourceSpike.md"
 CONTRACT="$ROOT_DIR/Docs/V190GrokWeeklyOnlyContract.md"
+READINESS="$ROOT_DIR/Docs/V190ReleaseReadiness.md"
+README="$ROOT_DIR/README.md"
+ROADMAP="$ROOT_DIR/ROADMAP.md"
+AGENTS="$ROOT_DIR/AGENTS.md"
+ONBOARDING="$ROOT_DIR/Docs/Onboarding/README.md"
 V180_VERIFIER="$ROOT_DIR/script/verify_v180_selected_provider_contract.sh"
 MODE_SOURCE="$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift"
 PREFERENCES_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift"
@@ -71,7 +76,8 @@ reject_match() {
 
 verify_contract() {
   local file
-  for file in "$DOC" "$SPIKE" "$CONTRACT" "$V180_VERIFIER" \
+  for file in "$DOC" "$SPIKE" "$CONTRACT" "$READINESS" "$README" "$ROADMAP" \
+    "$AGENTS" "$ONBOARDING" "$V180_VERIFIER" \
     "$MODE_SOURCE" "$PREFERENCES_SOURCE" "$STATE_SOURCE" "$CONTROLLER_SOURCE" \
     "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$GROK_PANEL_SOURCE" \
     "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_SANITIZER_SOURCE" \
@@ -85,12 +91,34 @@ verify_contract() {
   done
   [[ -x "$V180_VERIFIER" ]] || die "v1.8 selected-provider verifier is not executable"
   "$V180_VERIFIER" --self-test --skip-tests
+  reject_match 'v1\.9\.0' "$V180_VERIFIER" "v1.8 verifier mentioning v1.9.0"
 
   require_match 'Claude hide' "$DOC" "Claude hide milestone"
   require_match 'unofficial-cli-billing' "$CONTRACT" "unofficial source"
   require_match '100 - usedPercent' "$CONTRACT" "remaining calculation"
   require_match '사용자 승인 없이' "$CONTRACT" "auth store approval boundary"
   require_match 'x\.ai/billing' "$SPIKE" "selected unofficial billing path"
+  require_match '현재 개발 중인 `1\.9\.0`은 설정 visible mode를 `Codex`와 `Grok`' \
+    "$README" "README visible Codex/Grok development"
+  require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" \
+    "README keeps published v1.8.0"
+  require_match '`v1\.9\.0` tag와' "$README" "README mentions unpublished v1.9.0 tag"
+  require_match 'published DMG는 없습니다' "$README" \
+    "README does not claim published v1.9.0"
+  require_match '선택형 Codex/Grok 사용량 mode와 Claude hide' "$ROADMAP" \
+    "ROADMAP v1.9.0 section"
+  require_match 'GUI·live Grok billing·published DMG 미수행' "$ROADMAP" \
+    "ROADMAP honest smoke status"
+  require_match 'macdog-grok-usage' "$AGENTS" "AGENTS Grok writer"
+  require_match '~/\.grok/auth\.json' "$AGENTS" "AGENTS Grok auth exception"
+  require_match '100 - usedPercent' "$AGENTS" "AGENTS Grok remaining rule"
+  require_match '설정 visible mode는' "$ONBOARDING" "onboarding visible mode"
+  require_match 'Codex` 또는 `Grok' "$ONBOARDING" "onboarding Codex/Grok selection"
+  require_match '현재 상태: 미수행' "$READINESS" "release readiness pending smoke"
+  require_match '현재 GitHub Release는 `v1\.8\.0`' "$READINESS" \
+    "readiness keeps published v1.8.0"
+  reject_match 'v1\.9\.0 GitHub Release publish' "$READINESS" \
+    "unpublished v1.9.0 claimed as published"
 
   require_match 'case grok' "$MODE_SOURCE" "grok provider case"
   require_match 'visibleCases' "$MODE_SOURCE" "hidden Claude picker cases"

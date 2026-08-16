@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / 문서 정렬·릴리즈 미착수
+상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / 문서 정렬 완료 / GUI·live·published release 미수행
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -18,8 +18,9 @@ Claude는 코드를 삭제하지 않고 기본 UI에서 숨긴다. 숨김 재활
 Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으로 한다. console.x.ai
 선불 API credit이나 팀 RPS/TPM과 섞지 않는다.
 
-이 문서는 v1.9.0 구현 순서와 제외 경계만 고정한다. README / `ROADMAP.md` / `AGENTS.md`
-버전 정렬, screenshot, release 문서는 마지막 단계에서 한다.
+이 문서는 v1.9.0 구현 순서와 제외 경계를 고정한다. README / `ROADMAP.md` / `AGENTS.md`
+버전 정렬과 release 체크리스트는 Step 14~15에서 맞춘다. 실행하지 않은 GUI/live/설치는
+완료로 쓰지 않는다.
 
 개발 버전 경계:
 
@@ -125,8 +126,8 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 - 제품별 Chat/Build/Imagine 분해를 기본 UI 완료 조건에 넣기
 - Apple Developer Program, Developer ID, notarization, App Group provisioning
 - WidgetKit 실제 UI 완료 조건
-- 이번 단계에서 README/`ROADMAP.md`/`AGENTS.md` 전체 버전 정렬
 - 사용자 명시 요청 없는 GUI 실행, 설치, LaunchAgent 등록, 장시간 테스트, 릴리즈 publish
+- unpublished `v1.9.0`을 현재 GitHub Release로 표시
 
 ## 완료 기준
 
@@ -142,7 +143,8 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 문서·릴리즈 완료:
 
-- 마지막 단계에서만 README/`ROADMAP.md`/`AGENTS.md`를 맞춘다.
+- README/`ROADMAP.md`/`AGENTS.md`/Onboarding 용어가 visible `Codex`/`Grok`과 일치한다.
+- published `v1.8.0` 사실을 덮어쓰지 않는다.
 - 실제 GUI/live/설치를 하지 않았다면 `미수행`으로 남긴다.
 
 ## 1차 구현 순서
@@ -172,7 +174,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 3. `[04/10]`~`[06/10]` — Claude hide와 3분기 routing. 완료.
 4. `[07/10]`~`[08/10]` — Grok cache와 writer. 완료.
 5. `[09/10]`~`[10/10]` — UI, 러너, 알림, 테스트. 완료.
-6. Step 14~15 — 문서 정렬과 smoke. 사용자 명시 후에만.
+6. Step 14~15 — 문서 정렬과 smoke 체크리스트. GUI·live·설치는 사용자 검수로 남긴다.
 
 ## 모델 추천
 

@@ -3,10 +3,12 @@
 ## 제품 방향
 
 MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에서 즉시 확인하게 해주는 macOS
-유틸리티입니다. v1.7.0까지는 Codex 전용이며, v1.8.0부터 `Codex` 또는 `Claude` 중 하나만
-사용량 mode로 선택합니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다. 작은 강아지
-러너가 메뉴바에 상주하고 선택한 provider 사용량이 높아질수록 더 빠르게 움직입니다. 기본
-캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를 보여줍니다.
+유틸리티입니다. v1.7.0까지는 Codex 전용이며, v1.8.0은 `Codex` 또는 `Claude` 중 하나만
+사용량 mode로 선택합니다. 현재 개발 중인 v1.9.0은 설정 visible mode를 `Codex`와 `Grok`만
+보여 주고 Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
+작은 강아지 러너가 메뉴바에 상주하고 선택한 provider 사용량이 높아질수록 더 빠르게
+움직입니다. 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각,
+갱신 상태를 보여줍니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -48,6 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 사용자 설치/UI 검수, Grok live billing, published release smoke |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -502,6 +505,79 @@ Release를 publish했습니다. published DMG checksum·`hdiutil verify`, Finder
 추론 수준: 매우 높음 (xhigh)
 선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점. v1.7 제거·호환성과
 Claude privacy/live source, 설정·탭·runner·알림의 단일 provider 상태 전이를 함께 검증해야 합니다.
+
+## v1.9.0: 선택형 Codex/Grok 사용량 mode와 Claude hide
+
+`v1.9.0`은 설정 visible mode를 `Codex`와 `Grok`만 보여 주고, 1번 탭·러너·알림이 선택한
+provider만 사용하게 만드는 milestone입니다. Claude source, sanitizer, cache,
+`macdog-claude-statusline`은 삭제하지 않고 기본 UI에서 숨깁니다. Grok는 SuperGrok /
+Grok Build 공유 주간 pool만 다루며 console prepaid, Extra Usage Credits, 5시간 합성을
+하지 않습니다.
+
+구현 범위와 제외 경계는 [Docs/V190GrokUsageAndClaudeHide.md](Docs/V190GrokUsageAndClaudeHide.md)에
+둡니다. unofficial 원천은 [Docs/V190GrokUsageSourceSpike.md](Docs/V190GrokUsageSourceSpike.md),
+weekly-only 입력은 [Docs/V190GrokWeeklyOnlyContract.md](Docs/V190GrokWeeklyOnlyContract.md),
+릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)에 둡니다.
+
+현재 상태: 1차 구현 `[01/10]`~`[10/10]`과 문서 정렬은 저장소에 있습니다. published GitHub
+Release는 여전히 `v1.8.0`입니다. 실제 앱 GUI, Grok live billing, published DMG Finder
+설치, final-state는 미수행입니다. 사용자 설치 후 UI 검수는 릴리즈 전에 별도로 진행합니다.
+
+구현 순서:
+
+1. v1.9.0 범위와 unofficial Grok 주간 원천, weekly-only 입력, memory-only 인증 예외를
+   문서로 고정합니다.
+2. `UsageProviderMode`에 `grok`을 추가하고 설정 picker는 `visibleCases`만 보여 줍니다.
+3. 저장된 `claude`는 기본 UI에서 `codex`로 되돌립니다. hidden re-enable이 켜진 경우에만
+   Claude를 유지합니다.
+4. `UsageNotificationRoute`를 `codex`/`grok`/`claude`로 나눕니다. Grok 선택이 Claude나
+   Codex cache로 fallback하지 않습니다.
+5. `grok-usage.json`과 주간 history를 Codex/Claude 파일과 분리하고 atomic write,
+   `0700`/`0600`, token 미저장을 유지합니다.
+6. `macdog-grok-usage` writer와 Grok mode LaunchAgent를 연결합니다. Codex mode에서는
+   Grok writer가 돌지 않습니다.
+7. 1번 탭은 주간 사용률·잔여율·reset·stale/error를 표시하고 5시간은 `현재 제공되지 않음`
+   입니다. reset credit UI는 만들지 않습니다.
+8. 러너와 80%/95%/한도/reset 30분 전 알림은 선택 provider의 주간 window만 사용합니다.
+9. 현재/지난/비교와 pace는 같은 `resetsAt` 안에서 표시 잔여율이 증가하지 않게 그립니다.
+10. focused test와 `verify_v190_selected_provider_contract.sh`로 hide, migration, 3분기
+    routing, weekly-only, privacy, no-fallback을 고정합니다. `verify_v180_*`는 완료
+    릴리즈 계약으로 유지합니다.
+
+제거하거나 숨길 것:
+
+- 설정 picker의 Claude 항목
+- 기본 UI의 Claude empty state와 연결 command
+- `UsageNotificationRoute`의 `codex` 외 Claude 강제 분기
+- Grok 5시간 값 합성
+- Grok Extra Usage Credits를 reset credit처럼 표시
+- console.x.ai 선불 credit을 SuperGrok 잔여율로 표시
+- Codex와 Grok 사용량 합산·비교
+- 선택하지 않은 provider cache로 runner/알림 fallback
+
+보존 대상:
+
+- Codex CLI, JSON schema, cache, weekly/five-hour/reset history, reset credit
+- Claude sanitizer, `macdog-claude-statusline`, Claude cache/history/privacy test
+- 단일 provider preference, 설정 mode 한 항목, no-fallback
+- 기존 로컬 알림 opt-in과 dedupe 구조
+- WidgetKit source/opt-in 경계. 기본 DMG에는 넣지 않습니다
+
+완료 기준:
+
+- 설정 visible mode가 `Codex`와 `Grok`뿐이다.
+- Claude source, test, bridge가 저장소에 남아 있다.
+- 1번 탭, runner, 알림 source가 같은 선택 provider를 쓴다.
+- Grok는 주간 window만 필수이고 5시간을 합성하지 않는다.
+- Grok cache는 Codex/Claude 파일과 분리되어 있다.
+- token, cookie, session, `auth.json` 원문이 cache/log/fixture에 없다.
+- 선택 provider stale/error에서 다른 provider로 fallback하지 않는다.
+- 실행하지 않은 GUI/live/설치를 완료로 쓰지 않는다.
+
+추천 모델: `grok-4.6`
+추론 수준: 매우 높음 (xhigh)
+선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점.
+Grok billing 원천이 unofficial이고 인증 예외와 selected-provider 상태 전이가 겹친다.
 
 ## RunCat UI 참고 방향
 

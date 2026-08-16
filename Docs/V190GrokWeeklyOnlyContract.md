@@ -1,6 +1,6 @@
 # v1.9.0 Grok weekly-only 입력 계약과 인증 예외
 
-상태: 계약 문서 고정 / writer·cache·UI 구현 미착수 / live 인증 조회 미수행
+상태: 계약·writer·cache·UI 구현 완료 / live 인증 조회 미수행
 작성일: 2026-08-16
 대상 버전: `1.9.0`
 기준 문서: [V190GrokUsageAndClaudeHide.md](V190GrokUsageAndClaudeHide.md)

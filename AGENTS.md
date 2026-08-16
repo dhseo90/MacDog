@@ -3,7 +3,7 @@
 이 문서는 MacDog 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙입니다.
 제품 로드맵과 구현 계획은 `README.md`, `ROADMAP.md`, `Docs/`에 두고, 이 파일은 에이전트 실행 규칙만 다룹니다.
 
-MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, shared cache, 권한 도우미, 설치/배포 스크립트를 포함합니다.
+MacDog는 Codex 사용량 CLI, Grok weekly-only writer(`macdog-grok-usage`), macOS menu bar 앱, optional WidgetKit 코드, shared cache, 권한 도우미, 설치/배포 스크립트를 포함합니다. 설정 visible mode는 `Codex`와 `Grok`입니다. Claude source는 보존하지만 기본 UI에서는 숨깁니다.
 
 ---
 
@@ -23,6 +23,13 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
       (`$CODEX_HOME/auth.json`, `~/.config/codex/auth.json`, `~/.codex/auth.json`, macOS Keychain `Codex Auth`)
    이 예외는 token 출력, token cache 저장, raw response 저장, fixture/문서 token 저장을 허용하지 않습니다.
    auth store 직접 읽기는 초기화권 만료일 backend 요청 직전의 메모리 사용으로만 제한합니다.
+   같은 종류의 예외로, Grok SuperGrok/Grok Build 공유 주간 pool 조회를 위해
+   `macdog-grok-usage`가 grok.com login token을 메모리에서만 받아 unofficial CLI-proxy
+   `x.ai/billing` 요청의 `Authorization` header에 즉시 사용하는 것은 허용합니다.
+   auth store 직접 읽기는 billing 요청 직전의 메모리 사용으로만 제한합니다.
+   이 예외는 token 출력, token cache 저장, raw billing 응답 저장, fixture/문서 token 저장,
+   사용자 승인 없는 `~/.grok/auth.json` 열기, `XAI_API_KEY`로 주간 pool을 조회하는 행위를
+   허용하지 않습니다. 메뉴바 앱은 Grok auth store를 읽지 않습니다.
 7. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, helper 설치/삭제, codesign/notarization, push는 사용자 명시 요청 없이 실행하지 않습니다.
 8. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획, 완료 조건, 후속 이슈에 넣지 않습니다. 사용자가 해당 권한 사용 가능 상태와 별도 milestone을 승인한 경우만 예외입니다.
 9. WidgetKit 코드는 보존/opt-in build 대상입니다. 기본 앱/DMG 완료 조건에 넣지 않고, source/test/fixture/opt-in build 수준까지만 확인한 경우 실제 위젯 UI 검수 완료로 보고하지 않습니다.
@@ -289,8 +296,8 @@ codex-usage status --watch 60
 4. CLI JSON schema 변경이 README/AGENTS/ROADMAP과 불일치
 5. cache schema 변경이 앱/위젯 문서와 불일치
 6. Codex auth token 또는 session material 노출 징후
-7. `~/.codex/auth.json` 직접 읽기 또는 출력 징후
-8. app-server response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
+7. `~/.codex/auth.json` 또는 `~/.grok/auth.json` 직접 읽기 또는 출력 징후
+8. app-server 또는 Grok billing response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
 9. WidgetKit extension이 shared cache 대신 app-server를 직접 호출
 10. menu bar runner의 과도한 CPU/RAM 사용 측정 또는 명백한 정황
 11. 설치/삭제 스크립트가 사용자 홈 또는 시스템 파일을 과도하게 수정할 위험
@@ -317,6 +324,21 @@ codex-usage status --watch 60
 13. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않습니다.
 14. 주간 잔여량 그래프는 같은 `resetsAt` window 안에서 표시 잔여율이 증가하지 않도록 그립니다.
 15. OpenAI가 주간 한도를 실제 리셋해 `resetsAt`이 바뀐 경우에만 이전 history와 분리하고 새 타임라인을 왼쪽 100%에서 시작합니다.
+
+### 7.1 Grok 사용량 데이터 규칙
+
+1. 기본 UI 입력은 unofficial CLI-proxy `x.ai/billing`의 SuperGrok / Grok Build 공유 주간
+   pool만 사용합니다. 공개 REST 문서의 공식 구독 잔여율 API는 아닙니다.
+2. `usedPercent`는 `creditUsagePercent`를 그대로 쓰고 잔여율은 `100 - usedPercent`입니다.
+3. Grok 5시간 window는 없습니다. 없으면 `현재 제공되지 않음`으로 두고 합성하지 않습니다.
+4. Extra Usage Credits, Auto Top Up, console prepaid, RPS/TPM, OTEL, TUI parser,
+   `XAI_API_KEY`는 기본 UI 입력이 아닙니다.
+5. `MONTHLY`, prepaid, on-demand cycle은 거부합니다.
+6. `resetsAt`을 모르면 field를 생략합니다. `billingPeriodStart + 7일`로 합성하지 않습니다.
+7. Grok cache는 `grok-usage.json`, `grok-usage-history.json`, `grok-usage.lock`이며
+   Codex/Claude 파일과 분리합니다. directory `0700`, file `0600`, atomic write를 유지합니다.
+8. 선택 provider가 stale/error여도 Codex 또는 Claude cache로 fallback하지 않습니다.
+9. Grok Extra Usage Credits를 Codex 초기화권처럼 표시하지 않습니다.
 
 ---
 
