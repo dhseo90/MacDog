@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / 문서 정렬 완료 / GUI·live·published release 미수행
+상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / 문서 정렬·smoke 체크리스트 완료 / GUI·live·published release 미수행
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -174,7 +174,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 3. `[04/10]`~`[06/10]` — Claude hide와 3분기 routing. 완료.
 4. `[07/10]`~`[08/10]` — Grok cache와 writer. 완료.
 5. `[09/10]`~`[10/10]` — UI, 러너, 알림, 테스트. 완료.
-6. Step 14~15 — 문서 정렬과 smoke 체크리스트. GUI·live·설치는 사용자 검수로 남긴다.
+6. Step 14~15 — 문서 정렬과 smoke 체크리스트. 완료. GUI·live·설치는 사용자 검수로 남긴다.
 
 ## 모델 추천
 

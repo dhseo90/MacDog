@@ -122,8 +122,11 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 | 증거 | 현재 상태 |
 | --- | --- |
-| v1.9.0 selected-provider focused test / verifier | Step 15에서 기록 |
-| markdownlint / `git diff --check` | Step 15에서 기록 |
+| `git diff --check` | 2026-08-16, 통과 |
+| `npx --yes markdownlint-cli2@0.22.1` | 2026-08-16, 39 file / 0 error |
+| `./script/verify_v190_selected_provider_contract.sh --self-test` | 2026-08-16, 통과. focused 160개 통과 / opt-in 3개 skip / 실패 0개 |
+| `./script/verify_v190_release_readiness.sh --self-test` | 2026-08-16, 통과 |
+| `./script/verify_v180_release_readiness.sh --self-test` | 2026-08-16, 통과. published `v1.8.0` 증거 유지 |
 | 전체 `swift test` | 이번 단계에서 실행하지 않음 |
 | Xcode Debug no-sign build | 이번 단계에서 실행하지 않음 |
 | `MACDOG_APP_VERSION=1.9.0 ./script/check.sh --no-run` | 이번 단계에서 실행하지 않음 |

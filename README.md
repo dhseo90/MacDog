@@ -202,6 +202,7 @@ v1.9.0 검증은 Claude hide, Grok weekly-only cache/UI, 3분기 routing, no-fal
 ```sh
 ./script/verify_v180_selected_provider_contract.sh --self-test
 ./script/verify_v190_selected_provider_contract.sh --self-test
+./script/verify_v190_release_readiness.sh --self-test
 MACDOG_APP_VERSION=1.9.0 ./script/check.sh --no-run
 ```
 
@@ -302,6 +303,7 @@ npx --yes markdownlint-cli2@0.22.1
 ./script/verify_v170_codex_pacemaker_contract.sh --self-test
 ./script/verify_v180_selected_provider_contract.sh --self-test
 ./script/verify_v190_selected_provider_contract.sh --self-test
+./script/verify_v190_release_readiness.sh --self-test
 ```
 
 자주 쓰는 스크립트:
@@ -320,6 +322,7 @@ npx --yes markdownlint-cli2@0.22.1
 | `./script/verify_v180_selected_provider_contract.sh --self-test` | v1.8.0 단일 provider preference migration, Codex weekly-only cache/UI·5시간 복구, 설정·탭·runner·알림·refresh routing, Claude sanitizer/cache/privacy·잔여율·empty state와 release bridge gate를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
 | `./script/verify_v180_release_readiness.sh --self-test` | v1.8.0 PR·CI·release head, signed tag, artifact/draft/publish, live Claude, Finder 설치·GUI smoke와 증거 기록 계약을 offline 검증합니다. |
 | `./script/verify_v190_selected_provider_contract.sh --self-test` | v1.9.0 Claude hide, Grok weekly-only cache/UI, 3분기 routing, privacy, no-fallback과 문서 용어를 검증합니다. live·GUI·설치 완료를 주장하지 않습니다. |
+| `./script/verify_v190_release_readiness.sh --self-test` | v1.9.0 릴리즈 체크리스트와 미수행 분리, published `v1.8.0` 유지, GUI/live/DMG 미완료 경계를 offline 검증합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh` | 개발용 로컬 설치를 수행합니다. |
 | `MACDOG_APP_VERSION=<version> ./script/install.sh --with-widget` | optional WidgetKit extension과 shared cache mirror를 포함해 설치합니다. |
 | `MACDOG_RELEASE_VERSION=<version> ./script/package_release.sh` | GitHub Release 후보 DMG와 checksum을 만듭니다. |
