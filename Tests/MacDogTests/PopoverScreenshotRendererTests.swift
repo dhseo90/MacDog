@@ -278,7 +278,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
         XCTAssertTrue(popoverSource.contains("GrokUsagePanel(preview: state.grokUsage, now: now)"))
-        XCTAssertTrue(grokPanelSource.contains("현재 제공되지 않음"))
+        XCTAssertFalse(grokPanelSource.contains("5시간"))
         XCTAssertTrue(grokPanelSource.contains("주간"))
         XCTAssertTrue(grokPanelSource.contains("grok login"))
         XCTAssertTrue(grokPanelSource.contains("터미널에서 로그인"))

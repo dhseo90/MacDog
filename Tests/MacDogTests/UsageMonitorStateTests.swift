@@ -231,6 +231,28 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertTrue(guide.appleScriptSource().contains("Terminal"))
     }
 
+    func testGrokWeeklyGraphStartsAtFullRemainingForSingleSample() throws {
+        let resetsAt = 1_787_367_003
+        let recordedAt = resetsAt - (6 * 24 * 60 * 60)
+        let sample = try XCTUnwrap(
+            GrokUsageHistorySample(
+                recordedAt: recordedAt,
+                usedPercent: 75,
+                remainingPercent: 25,
+                resetsAt: resetsAt
+            )
+        )
+        let points = GrokWeeklyGraphSeries.points(
+            samples: [sample],
+            resetsAt: resetsAt
+        )
+        XCTAssertEqual(points.first?.xRatio, 0)
+        XCTAssertEqual(points.first?.remainingPercent, 100)
+        XCTAssertEqual(points.last?.remainingPercent, 25)
+        XCTAssertGreaterThan(points.last?.xRatio ?? 0, 0)
+        XCTAssertGreaterThan(points.count, 1)
+    }
+
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
         let now = 1_900_000_000
         let state = UsageMonitorState(
