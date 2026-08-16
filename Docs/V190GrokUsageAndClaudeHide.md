@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]` 개발 버전 정리 완료 / 원천 spike·계약·구현·문서 정렬·릴리즈 미착수
+상태: 1차 구현 `[01/10]`~`[02/10]` 완료 / 계약·구현·문서 정렬·릴리즈 미착수
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -35,7 +35,9 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 - Grok 공개 REST 문서에는 Codex급 구독 잔여율 API가 없다.
 - Grok 공식 제품 모델은 주간 1개 공유 pool이다. Settings → Usage와 CLI `/usage`가
   사용 비율과 주간 reset을 보여 준다.
-- 기계가 읽는 경로는 CLI 로그인 기반 billing이다. 공개 문서화된 계약은 아니다.
+- 기계가 읽는 경로는 CLI 로그인 기반 unofficial `x.ai/billing`이다. 공개 문서화된
+  계약은 아니다. 세부 분리는 [V190GrokUsageSourceSpike.md](V190GrokUsageSourceSpike.md)에
+  있다. live billing 조회는 미수행이다.
 - 기존 `UsageNotificationRoute`는 `codex`가 아니면 `claude`로 떨어진다. Grok를 넣기 전에
   반드시 3분기로 고쳐야 한다.
 - Codex `status --json` / `usage.json` schema는 breaking change 없이 유지한다.
@@ -151,7 +153,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 | 1차 | 로드맵 Step | 제목 | 상태 |
 | --- | --- | --- | --- |
 | [01/10] | 1 | 개발 버전 정리 | 완료 |
-| [02/10] | 2 | Grok 사용량 원천 spike | 미착수 |
+| [02/10] | 2 | Grok 사용량 원천 spike | 완료 |
 | [03/10] | 3~4 | weekly-only 입력 계약과 인증 예외 고정 | 미착수 |
 | [04/10] | 5 | provider mode와 Claude hide | 미착수 |
 | [05/10] | 6 | preference migration | 미착수 |
