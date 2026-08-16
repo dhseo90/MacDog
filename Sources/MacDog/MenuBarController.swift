@@ -10,6 +10,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
     private let claudeUsageCacheStore = ClaudeUsageCacheStore()
+    private let grokUsageCacheStore = GrokUsageCacheStore()
     private let fiveHourHistoryStore = CodexUsageFiveHourHistoryStore(
         fileURL: CodexUsageFiveHourHistoryStore.defaultFileURL()
     )
@@ -192,12 +193,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let systemMetrics = systemMetricsSnapshotForUsageRefresh()
         syncSleepPrevention(systemMetrics: systemMetrics)
         let loadedState = loadCachedState(systemMetrics: systemMetrics)
-        let shouldRefreshCache = CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(
-            for: preferences.usageProviderMode
-        ) &&
-            (allowLiveRefresh || loadedState.report == nil)
-        if shouldRefreshCache {
+        if CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: preferences.usageProviderMode),
+           allowLiveRefresh || loadedState.report == nil {
             requestUsageCacheRefresh(force: allowLiveRefresh)
+        } else if GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: preferences.usageProviderMode),
+                  allowLiveRefresh || loadedState.grokUsage.cacheSnapshot == nil {
+            requestGrokUsageCacheRefresh(force: allowLiveRefresh)
         }
         applyState(loadedState.withRefreshing(usageCacheRefreshTask != nil))
         scheduleUsageNotificationsIfNeeded(for: loadedState)
@@ -208,6 +209,31 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         updatePopoverMetricsTimer()
         syncDesktopPetVisibility()
+    }
+
+    private func requestGrokUsageCacheRefresh(force: Bool) {
+        guard usageCacheRefreshTask == nil else { return }
+        guard shouldAttemptUsageCacheRefresh(force: force) else { return }
+        guard let grokUsageURL = UsageCacheRefreshBundleLocator.bundledGrokUsageURL() else { return }
+
+        lastUsageCacheRefreshAttempt = Date()
+        let command = UsageCacheRefreshCommand.grokWriteCache(
+            grokUsageURL: grokUsageURL,
+            requestTimeout: GrokUsageCacheRefreshPolicy.requestTimeout
+        )
+        usageCacheRefreshGeneration &+= 1
+        let generation = usageCacheRefreshGeneration
+        usageCacheRefreshTask = Task { [weak self] in
+            await UsageCacheRefreshRunner.run(
+                command: command,
+                processTimeout: GrokUsageCacheRefreshPolicy.processTimeout
+            )
+            await MainActor.run {
+                guard let self, self.usageCacheRefreshGeneration == generation else { return }
+                self.usageCacheRefreshTask = nil
+                self.refreshUsage(allowLiveRefresh: false)
+            }
+        }
     }
 
     private func requestUsageCacheRefresh(force: Bool) {
@@ -235,10 +261,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
         usageNotificationTask?.cancel()
         usageNotificationTask = nil
-        guard currentMode != .codex else { return }
         usageCacheRefreshGeneration &+= 1
         usageCacheRefreshTask?.cancel()
         usageCacheRefreshTask = nil
+        _ = currentMode
     }
 
     private func shouldAttemptUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
@@ -396,11 +422,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
         let claudeUsagePreview = loadClaudeUsagePreview()
+        let grokUsage = loadGrokUsage()
         guard SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: preferences.usageProviderMode) else {
             return UsageMonitorState(
                 report: nil,
                 cacheSnapshot: nil,
-                errorMessage: preferences.usageProviderMode == .grok
+                errorMessage: preferences.usageProviderMode == .grok && grokUsage.cacheSnapshot == nil
                     ? "Grok 사용량 cache가 아직 없습니다."
                     : errorMessage,
                 displayBasis: preferences.displayBasis,
@@ -412,6 +439,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
+                grokUsage: grokUsage,
                 usageProviderMode: preferences.usageProviderMode
             )
         }
@@ -520,6 +548,28 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 cacheSnapshot: nil,
                 history: .empty,
                 loadIssue: "Claude cache를 해석할 수 없습니다. 원문을 덮어쓰지 말고 bridge 상태를 확인하세요."
+            )
+        }
+    }
+
+    private func loadGrokUsage() -> GrokUsagePreviewState {
+        guard SelectedUsageSourcePolicy.shouldLoadGrokCache(for: preferences.usageProviderMode) else {
+            return .disabled
+        }
+        do {
+            let storedState = try grokUsageCacheStore.readState()
+            return GrokUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: storedState.cacheSnapshot,
+                history: storedState.history,
+                loadIssue: nil
+            )
+        } catch {
+            return GrokUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: nil,
+                history: .empty,
+                loadIssue: "Grok cache를 해석할 수 없습니다."
             )
         }
     }

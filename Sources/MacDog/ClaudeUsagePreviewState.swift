@@ -38,6 +38,10 @@ enum SelectedUsageSourcePolicy {
     static func shouldLoadClaudePreview(for mode: UsageProviderMode) -> Bool {
         mode == .claude
     }
+
+    static func shouldLoadGrokCache(for mode: UsageProviderMode) -> Bool {
+        mode == .grok
+    }
 }
 
 struct ClaudeUsagePreviewState: Equatable {
@@ -83,6 +87,42 @@ struct ClaudeUsagePreviewState: Equatable {
         case .available: return "데이터 정상"
         case .stale: return "오래된 event"
         case .error: return "sanitize bridge 오류"
+        }
+    }
+}
+
+struct GrokUsagePreviewState: Equatable {
+    static let disabled = GrokUsagePreviewState(
+        isEnabled: false,
+        cacheSnapshot: nil,
+        history: .empty,
+        loadIssue: nil
+    )
+
+    let isEnabled: Bool
+    let cacheSnapshot: GrokUsageCacheSnapshot?
+    let history: GrokUsageHistory
+    let loadIssue: String?
+
+    func status(now: Date = Date()) -> GrokUsageCacheStatus {
+        guard isEnabled else { return .waiting }
+        if loadIssue != nil { return .error }
+        return cacheSnapshot?.status(now: now) ?? .waiting
+    }
+
+    func runnerUsedPercent(now: Date = Date()) -> Double? {
+        guard isEnabled else { return nil }
+        return cacheSnapshot?.freshWeekly(now: now)?.usedPercent
+    }
+
+    func statusTitle(now: Date = Date()) -> String {
+        if !isEnabled { return "연결 대기" }
+        if loadIssue != nil { return "cache 확인 필요" }
+        switch cacheSnapshot?.status(now: now) ?? .waiting {
+        case .waiting: return "연결 대기"
+        case .available: return "데이터 정상"
+        case .stale: return "오래된 cache"
+        case .error: return "조회 오류"
         }
     }
 }

@@ -36,7 +36,7 @@ Verify the local machine is clean after release smoke:
   - no MacDog DMG volumes remain mounted
   - dist/MacDog.app was cleaned up after packaging smoke
   - installed app CFBundleShortVersionString matches VERSION
-  - installed app includes runnable MacDog, codex-usage, and macdog-claude-statusline executables
+  - installed app includes runnable MacDog, codex-usage, macdog-claude-statusline, and macdog-grok-usage executables
   - usage cache LaunchAgent plist and loaded job are absent or point at an executable installed app CLI
 USAGE
 }
@@ -266,6 +266,8 @@ PLIST
   chmod +x "$app/Contents/MacOS/codex-usage"
   printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/macdog-claude-statusline"
   chmod +x "$app/Contents/MacOS/macdog-claude-statusline"
+  printf '#!/usr/bin/env bash\nexit 0\n' >"$app/Contents/MacOS/macdog-grok-usage"
+  chmod +x "$app/Contents/MacOS/macdog-grok-usage"
   cat >"$app/Contents/MacOS/$APP_NAME" <<SCRIPT
 #!/usr/bin/env bash
 set -euo pipefail
@@ -624,6 +626,7 @@ installed_plist="$installed_app/Contents/Info.plist"
 installed_binary="$installed_app/Contents/MacOS/$APP_NAME"
 installed_cli="$installed_app/Contents/MacOS/codex-usage"
 installed_claude_bridge="$installed_app/Contents/MacOS/macdog-claude-statusline"
+installed_grok_usage="$installed_app/Contents/MacOS/macdog-grok-usage"
 failures=()
 
 if [[ ! -d "$installed_app" ]]; then
@@ -652,6 +655,9 @@ if [[ -d "$installed_app" ]]; then
   fi
   if [[ ! -x "$installed_claude_bridge" ]]; then
     failures+=("installed Claude status line bridge is not runnable: $installed_claude_bridge")
+  fi
+  if [[ ! -x "$installed_grok_usage" ]]; then
+    failures+=("installed Grok usage writer is not runnable: $installed_grok_usage")
   fi
 fi
 

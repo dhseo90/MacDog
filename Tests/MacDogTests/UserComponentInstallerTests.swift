@@ -26,6 +26,9 @@ final class UserComponentInstallerTests: XCTestCase {
         XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .codex), .install)
         XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .grok), .remove)
         XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .claude), .remove)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: .grok), .install)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: .codex), .remove)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: .claude), .remove)
     }
 
     func testClaudeModeRemovesCodexCacheLaunchAgentWithoutTouchingUsageCache() throws {
@@ -207,6 +210,56 @@ final class UserComponentInstallerTests: XCTestCase {
         XCTAssertEqual(plist["StandardErrorPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.err.log")
     }
 
+    func testGrokCacheLaunchAgentPlistRunsBundledGrokWriter() throws {
+        let data = try UserComponentInstaller.grokCachePlistData(
+            appCLIPath: "/Applications/MacDog.app/Contents/MacOS/macdog-grok-usage",
+            logDirectoryPath: "/Users/test/Library/Logs/MacDog"
+        )
+        let plist = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+
+        XCTAssertEqual(plist["Label"] as? String, "com.dhseo.macdog.grok-usage-cache")
+        XCTAssertEqual(plist["StartInterval"] as? Int, 60)
+        XCTAssertEqual(
+            plist["ProgramArguments"] as? [String],
+            [
+                "/Applications/MacDog.app/Contents/MacOS/macdog-grok-usage",
+                "status",
+                "--write-cache",
+                "--timeout",
+                "15"
+            ]
+        )
+    }
+
+    func testGrokModeInstallsGrokAgentAndRemovesCodexAgent() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let app = try makeTemporaryAppBundle(in: home)
+        var calls: [[String]] = []
+        let installer = UserComponentInstaller(
+            appBundleURL: app,
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                calls.append(arguments)
+                return ""
+            }
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: .grok)
+
+        let grokPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.grokCacheLabel).plist")
+        let codexPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        XCTAssertTrue(fileManager.fileExists(atPath: grokPlist.path))
+        XCTAssertFalse(fileManager.fileExists(atPath: codexPlist.path))
+        XCTAssertTrue(calls.contains(["bootstrap", "gui/\(getuid())", grokPlist.path]))
+    }
+
     func testCacheLaunchAgentPlistMirrorsWidgetCacheOnlyWhenRequested() throws {
         let data = try UserComponentInstaller.cachePlistData(
             appCLIPath: "/Applications/MacDog.app/Contents/MacOS/codex-usage",
@@ -318,6 +371,18 @@ final class UserComponentInstallerTests: XCTestCase {
             .appendingPathComponent("MacDogUserComponentInstallerTests-\(UUID().uuidString)", isDirectory: true)
         try fileManager.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    private func makeTemporaryAppBundle(in home: URL) throws -> URL {
+        let app = home.appendingPathComponent("Applications/MacDog.app", isDirectory: true)
+        let macos = app.appendingPathComponent("Contents/MacOS", isDirectory: true)
+        try fileManager.createDirectory(at: macos, withIntermediateDirectories: true)
+        for name in ["codex-usage", "macdog-grok-usage"] {
+            let url = macos.appendingPathComponent(name)
+            try Data("#!/bin/sh\nexit 0\n".utf8).write(to: url)
+            try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        }
+        return app
     }
 
     private func cliSymlinkURL(home: URL) -> URL {

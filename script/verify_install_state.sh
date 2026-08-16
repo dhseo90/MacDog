@@ -93,19 +93,29 @@ app_claude_bridge_binary_for() {
   printf '%s/Contents/MacOS/macdog-claude-statusline' "$1"
 }
 
+app_grok_usage_binary_for() {
+  printf '%s/Contents/MacOS/macdog-grok-usage' "$1"
+}
+
 expect_required_bundle_executables() {
   local app_dest="$1"
   local app_binary
   local app_cli_binary
   local app_claude_bridge_binary
+  local app_grok_usage_binary
   app_binary="$(app_binary_for "$app_dest")"
   app_cli_binary="$(app_cli_binary_for "$app_dest")"
   app_claude_bridge_binary="$(app_claude_bridge_binary_for "$app_dest")"
+  app_grok_usage_binary="$(app_grok_usage_binary_for "$app_dest")"
 
   executable "$app_binary" || { echo "expected installed app binary: $app_binary" >&2; return 1; }
   executable "$app_cli_binary" || { echo "expected bundled CLI: $app_cli_binary" >&2; return 1; }
   executable "$app_claude_bridge_binary" || {
     echo "expected bundled Claude status line bridge: $app_claude_bridge_binary" >&2
+    return 1
+  }
+  executable "$app_grok_usage_binary" || {
+    echo "expected bundled Grok usage writer: $app_grok_usage_binary" >&2
     return 1
   }
 }
@@ -540,7 +550,7 @@ SCRIPT
 
   local fixture_app="$temp_dir/fixture/MacDog.app"
   /bin/mkdir -p "$fixture_app/Contents/MacOS"
-  for executable_name in MacDog codex-usage macdog-claude-statusline; do
+  for executable_name in MacDog codex-usage macdog-claude-statusline macdog-grok-usage; do
     printf '#!/usr/bin/env bash\nexit 0\n' >"$fixture_app/Contents/MacOS/$executable_name"
     chmod +x "$fixture_app/Contents/MacOS/$executable_name"
   done

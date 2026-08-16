@@ -11,3 +11,12 @@ enum CodexUsageCacheRefreshPolicy {
         mode == .codex
     }
 }
+
+enum GrokUsageCacheRefreshPolicy {
+    static let requestTimeout: TimeInterval = CodexUsageCacheRefreshPolicy.requestTimeout
+    static let processTimeout: TimeInterval = CodexUsageCacheRefreshPolicy.processTimeout
+
+    static func shouldRunLiveRefresh(for mode: UsageProviderMode) -> Bool {
+        mode == .grok
+    }
+}

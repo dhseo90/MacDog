@@ -134,6 +134,8 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .claude))
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .grok))
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .codex))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex))
     }
 
     func testVisibleSettingsModesHideClaudeAndKeepGrok() {
@@ -156,10 +158,43 @@ final class UsageMonitorStateTests: XCTestCase {
 
         XCTAssertEqual(state.phase, .calm)
         XCTAssertEqual(state.codexPhase, .sprint)
-        XCTAssertEqual(state.toolTip, "Grok 사용량: 현재 제공되지 않음")
+        XCTAssertTrue(state.toolTip.hasPrefix("Grok 사용량:"))
         XCTAssertFalse(state.toolTip.contains("코덱스"))
         XCTAssertFalse(state.toolTip.contains("Claude"))
         XCTAssertNil(state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))))
+    }
+
+    func testGrokWeeklyCacheDrivesRunnerWithoutCodexFallback() throws {
+        let now = 1_900_000_000
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 96, resetsAt: now + 3_600))
+        let preview = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: preview,
+            usageProviderMode: .grok,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(state.phase, .sprint)
+        XCTAssertEqual(state.codexPhase, .calm)
+        XCTAssertEqual(state.toolTip, "Grok 사용량: 96% 주간")
+        XCTAssertEqual(
+            state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))),
+            "다음 초기화: 주간 1시간 후"
+        )
     }
 
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {

@@ -36,6 +36,7 @@ configure_app_bundle_paths() {
   APP_BINARY="$APP_MACOS/$APP_NAME"
   APP_CLI_BINARY="$APP_MACOS/codex-usage"
   APP_CLAUDE_BRIDGE_BINARY="$APP_MACOS/macdog-claude-statusline"
+  APP_GROK_USAGE_BINARY="$APP_MACOS/macdog-grok-usage"
   INFO_PLIST="$APP_CONTENTS/Info.plist"
   APP_HELPER_BINARY="$APP_LAUNCH_SERVICES/$HELPER_NAME"
   APP_HELPER_PLIST="$APP_LAUNCH_DAEMONS/$HELPER_LABEL.plist"
@@ -142,6 +143,7 @@ build_bundle() {
   "$XCRUN" swift build -c release --product "$HELPER_NAME"
   "$XCRUN" swift build -c release --product codex-usage
   "$XCRUN" swift build -c release --product macdog-claude-statusline
+  "$XCRUN" swift build -c release --product macdog-grok-usage
   local build_bin
   build_bin="$("$XCRUN" swift build -c release --show-bin-path)"
 
@@ -160,10 +162,12 @@ build_bundle() {
   cp "$build_bin/$APP_NAME" "$APP_BINARY"
   cp "$build_bin/codex-usage" "$APP_CLI_BINARY"
   cp "$build_bin/macdog-claude-statusline" "$APP_CLAUDE_BRIDGE_BINARY"
+  cp "$build_bin/macdog-grok-usage" "$APP_GROK_USAGE_BINARY"
   cp "$build_bin/$HELPER_NAME" "$APP_HELPER_BINARY"
   chmod +x "$APP_BINARY"
   chmod +x "$APP_CLI_BINARY"
   chmod +x "$APP_CLAUDE_BRIDGE_BINARY"
+  chmod +x "$APP_GROK_USAGE_BINARY"
   chmod +x "$APP_HELPER_BINARY"
   if [[ -d "$ROOT_DIR/Sources/MacDog/Resources" ]]; then
     /usr/bin/ditto --norsrc --noextattr "$ROOT_DIR/Sources/MacDog/Resources" "$APP_RESOURCES"
@@ -226,6 +230,7 @@ PLIST
     /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.codex-usage" "$APP_CLI_BINARY" >/dev/null
   fi
   /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.claude-statusline" "$APP_CLAUDE_BRIDGE_BINARY" >/dev/null
+  /usr/bin/codesign --force --sign - --identifier "$BUNDLE_ID.grok-usage" "$APP_GROK_USAGE_BINARY" >/dev/null
   /usr/bin/codesign --force --sign - "$APP_HELPER_BINARY" >/dev/null
 
   clean_bundle_xattrs "$APP_BUNDLE"
