@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]`~`[02/10]` 완료 / 계약·구현·문서 정렬·릴리즈 미착수
+상태: 1차 구현 `[01/10]`~`[03/10]` 완료 / hide·routing·구현·문서 정렬·릴리즈 미착수
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -81,8 +81,8 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 | ---: | --- | --- | --- | --- |
 | 1 | v1.9.0 범위 고정 | P0 | 이 문서로 목표, 제외, Claude hide, Grok 주간-only 경계를 고정한다. README/`ROADMAP.md` 정렬은 하지 않는다. | 이 문서가 `v1.9.0` 브랜치에 있고 구현 순서가 명확하다 |
 | 2 | Grok 사용량 원천 spike | P0 | SuperGrok 주간 pool과 console API credit을 분리 확인한다. CLI `/usage`, CLI-proxy billing, `x.ai/billing` 중 안정적인 field만 기록한다. token, raw auth, 원문 응답은 저장하지 않는다. | 사용할 field 이름, 사용률/잔여율/reset 계산, 실패 시 동작이 이 문서 또는 후속 spike note에 적혀 있다. 공식 계약이 없으면 unofficial로 표시한다 |
-| 3 | Grok weekly-only 입력 계약 고정 | P0 | `usedPercent`, `remaining = 100 - usedPercent`, `resetsAt`만 기본 UI 입력으로 둔다. 5시간 합성, Extra Usage Credits 혼합, 제품별 Chat/Build/Imagine 분해는 보류한다. | fixture에 넣을 최소 schema와 금지 항목이 문서화되어 있다 |
-| 4 | 인증 예외 경계 고정 | P0 | Grok billing이 login token을 요구하면 Codex 초기화권과 같은 memory-only 예외만 허용한다. auth store 직접 읽기는 조회 직전으로 제한한다. | token 미출력, 미캐시, fixture 미저장 테스트 항목이 정해져 있다. 사용자 승인 없이 auth.json을 열지 않는다 |
+| 3 | Grok weekly-only 입력 계약 고정 | P0 | `usedPercent`, `remaining = 100 - usedPercent`, `resetsAt`만 기본 UI 입력으로 둔다. 5시간 합성, Extra Usage Credits 혼합, 제품별 Chat/Build/Imagine 분해는 보류한다. | [V190GrokWeeklyOnlyContract.md](V190GrokWeeklyOnlyContract.md)에 최소 schema와 금지 항목이 있다 |
+| 4 | 인증 예외 경계 고정 | P0 | Grok billing이 login token을 요구하면 Codex 초기화권과 같은 memory-only 예외만 허용한다. auth store 직접 읽기는 조회 직전으로 제한한다. | 같은 계약 문서에 token 미출력·미캐시·fixture 미저장 테스트 항목이 있다. 사용자 승인 없이 auth.json을 열지 않았다 |
 | 5 | provider mode와 Claude hide | P0 | `UsageProviderMode`에 `grok`을 추가한다. 설정 picker는 visible cases만 보여 준다. Claude 코드와 테스트는 남긴다. | 설정에서 `Codex`/`Grok`만 보이고 Claude source가 삭제되지 않는다 |
 | 6 | preference migration | P0 | 저장된 `claude`는 기본 UI에서 `codex`로 되돌린다. 잘못된 값은 `codex`다. hidden re-enable이 켜진 경우에만 Claude를 유지한다. | 기존 Codex 사용자는 그대로, Claude 선택 사용자는 Codex로 돌아간다 |
 | 7 | 알림·러너·refresh 3분기 | P0 | `UsageNotificationRoute`를 `codex`/`grok`/`claude`로 나눈다. `codex`가 아니면 Claude로 떨어지는 분기를 제거한다. LaunchAgent와 live refresh는 Codex만 유지하고, Grok writer가 생기기 전에는 Grok mode에서 Codex cache를 평가하지 않는다. | Grok 선택이 Claude 알림/탭/러너로 가지 않는다. Codex cache로 fallback하지 않는다 |
@@ -154,7 +154,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 | --- | --- | --- | --- |
 | [01/10] | 1 | 개발 버전 정리 | 완료 |
 | [02/10] | 2 | Grok 사용량 원천 spike | 완료 |
-| [03/10] | 3~4 | weekly-only 입력 계약과 인증 예외 고정 | 미착수 |
+| [03/10] | 3~4 | weekly-only 입력 계약과 인증 예외 고정 | 완료 |
 | [04/10] | 5 | provider mode와 Claude hide | 미착수 |
 | [05/10] | 6 | preference migration | 미착수 |
 | [06/10] | 7 | 알림·러너·refresh 3분기 | 미착수 |
@@ -167,9 +167,9 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 한 번에 15번까지 가지 않는다. 아래 묶음으로만 진행한다.
 
-1. `[01/10]` — 이 문서의 개발 버전 정리. 현재 묶음.
-2. `[02/10]`~`[03/10]` — 원천 spike와 계약. 구현 PR 전에 닫는다.
-3. `[04/10]`~`[06/10]` — Claude hide와 3분기 routing.
+1. `[01/10]` — 이 문서의 개발 버전 정리. 완료.
+2. `[02/10]`~`[03/10]` — 원천 spike와 계약. 완료. 구현 PR 전에 닫힌 상태다.
+3. `[04/10]`~`[06/10]` — Claude hide와 3분기 routing. 다음 묶음.
 4. `[07/10]`~`[08/10]` — Grok cache와 writer.
 5. `[09/10]`~`[10/10]` — UI, 러너, 알림, 테스트.
 6. Step 14~15 — 문서 정렬과 smoke. 사용자 명시 후에만.
