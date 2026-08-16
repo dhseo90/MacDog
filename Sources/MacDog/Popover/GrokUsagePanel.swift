@@ -1,3 +1,4 @@
+import AppKit
 import CodexUsageCore
 import SwiftUI
 
@@ -20,6 +21,7 @@ enum GrokUsageHistoryGraphMode: String, CaseIterable, Identifiable {
 struct GrokUsagePanel: View {
     let preview: GrokUsagePreviewState
     let now: Date
+    private let loginGuide = GrokLoginGuide()
 
     @State private var selectedMode = GrokUsageHistoryGraphMode.current
     @State private var selectedPastReset: Int?
@@ -107,6 +109,9 @@ struct GrokUsagePanel: View {
     }
 
     private var unavailableWeeklyText: String {
+        if preview.issueCode == "auth-unavailable" {
+            return "로그인 필요"
+        }
         switch preview.status(now: now) {
         case .stale:
             return "오래된 cache · 갱신 대기"
@@ -180,14 +185,34 @@ struct GrokUsagePanel: View {
     private var waitingContent: some View {
         VStack(alignment: .leading, spacing: 7) {
             Label(
-                preview.loadIssue == nil ? "Grok 주간 cache 없음" : "Grok cache 확인 필요",
-                systemImage: preview.loadIssue == nil ? "hourglass" : "exclamationmark.triangle"
+                preview.emptyStateTitle(),
+                systemImage: preview.loadIssue == nil ? "link.badge.plus" : "exclamationmark.triangle"
             )
             .font(.callout.weight(.medium))
-            Text(preview.loadIssue ?? "Grok mode에서 writer가 첫 주간 sample을 쓰면 사용량이 표시됩니다. Codex cache로 대체하지 않습니다.")
+            Text(preview.emptyStateDetail())
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if preview.loadIssue == nil {
+                HStack(spacing: 8) {
+                    Button("로그인 명령 복사") {
+                        let pasteboard = NSPasteboard.general
+                        pasteboard.clearContents()
+                        pasteboard.setString(loginGuide.standaloneCommand, forType: .string)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("auth.json을 읽거나 수정하지 않고 grok login 명령만 복사합니다.")
+
+                    Button("터미널에서 로그인") {
+                        try? loginGuide.openTerminal()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Terminal에서 grok login을 엽니다. MacDog가 로그인하거나 auth.json을 수정하지 않습니다.")
+                }
+            }
         }
         .padding(.vertical, 12)
     }

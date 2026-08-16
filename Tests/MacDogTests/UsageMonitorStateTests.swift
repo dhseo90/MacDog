@@ -197,6 +197,40 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
+    func testGrokEmptyStateAsksForLoginInsteadOfBareMissingCache() {
+        let now = 1_900_000_000
+        let unavailable = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: nil,
+                staleAfterSeconds: 180,
+                weekly: nil,
+                issue: GrokUsageCacheIssue(code: "auth-unavailable", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(unavailable.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "로그인 필요")
+        XCTAssertEqual(unavailable.emptyStateTitle(), "Grok 로그인 필요")
+        XCTAssertTrue(unavailable.needsLoginGuidance)
+        XCTAssertTrue(unavailable.emptyStateDetail().contains("grok login"))
+
+        let waiting = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: nil,
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(waiting.emptyStateTitle(), "Grok 로그인 필요")
+        XCTAssertTrue(waiting.needsLoginGuidance)
+
+        let guide = GrokLoginGuide()
+        XCTAssertEqual(guide.standaloneCommand, "grok login")
+        XCTAssertTrue(guide.appleScriptSource().contains("grok login"))
+        XCTAssertTrue(guide.appleScriptSource().contains("Terminal"))
+    }
+
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
         let now = 1_900_000_000
         let state = UsageMonitorState(
