@@ -148,24 +148,38 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ## 릴리즈 잔여 이슈
 
-### P0 — 사용자 설치 후 UI 검수
+`ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~3을 닫기 전에 published release를
+시작하지 않는다.
+
+### 1. 1번 탭 주간 그래프 hover
+
+현재/지난 그래프 hover에 해당 일자의 마지막 측정 잔여율(%)을 표시한다.
 
 추천 모델: `grok-4.6`
 추론 수준: 높음 (high)
-선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 6점.
-설정 picker, Grok 1번 탭, Codex/Grok LaunchAgent 전환은 실제 앱에서만 확인한다.
+선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 5점.
 
-### P0 — Grok live billing smoke
+### 2. 선택 provider 기준 문구
+
+3번 탭과 우클릭 메뉴의 `코덱스`/`Codex` 고정 문구를 선택 provider로 바꾼다. hidden
+Claude re-enable일 때만 Claude 이름을 쓴다.
 
 추천 모델: `grok-4.6`
-추론 수준: 매우 높음 (xhigh)
-선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 1 = 7점. 인증 경계 상향.
-unofficial billing과 memory-only token 예외를 live로 확인해야 한다. 사용자 승인 없이
-`~/.grok/auth.json`을 열지 않는다.
+추론 수준: 중간 (medium)
+선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
 
-### P1 — published DMG와 final-state
+### 3. `uninstall.sh` Grok 잔여물
+
+Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다.
+
+추천 모델: `grok-4.6`
+추론 수준: 중간 (medium)
+선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
+
+### 4. published DMG와 final-state
+
+`v1.9.0` → `main` merge와 signed tag 이후에만 실행한다.
 
 추천 모델: `grok-4.6`
 추론 수준: 높음 (high)
 선정 근거: 영향도 2 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 5점. 릴리즈 영향.
-`v1.9.0` → `main` merge와 signed tag 이후에만 실행한다.

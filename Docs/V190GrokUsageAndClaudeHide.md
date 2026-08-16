@@ -176,6 +176,13 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 5. `[09/10]`~`[10/10]` — UI, 러너, 알림, 테스트. 완료.
 6. Step 14~15 — 문서 정렬과 smoke 체크리스트. 완료. GUI·live·설치는 사용자 검수로 남긴다.
 
+후속 이슈는 `ROADMAP.md` v1.9.0과 같다. 번호 순:
+
+1. 1번 탭 주간 그래프 hover
+2. 선택 provider 기준 문구 (3번 탭, 우클릭)
+3. `uninstall.sh` Grok 잔여물
+4. published DMG와 final-state
+
 ## 모델 추천
 
 모델명은 `AGENTS.md` 2.1의 Grok 기준을 따른다. `5.6 Sol`/`Terra`/`Luna`는 쓰지 않는다.

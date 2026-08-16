@@ -50,7 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 사용자 설치/UI 검수, Grok live billing, published release smoke |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~4: 주간 그래프 hover, 선택 provider 문구, uninstall Grok 잔여, published release |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -520,8 +520,9 @@ weekly-only 입력은 [Docs/V190GrokWeeklyOnlyContract.md](Docs/V190GrokWeeklyOn
 릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)에 둡니다.
 
 현재 상태: 1차 구현 `[01/10]`~`[10/10]`과 문서 정렬은 저장소에 있습니다. published GitHub
-Release는 여전히 `v1.8.0`입니다. 실제 앱 GUI, Grok live billing, published DMG Finder
-설치, final-state는 미수행입니다. 사용자 설치 후 UI 검수는 릴리즈 전에 별도로 진행합니다.
+Release는 여전히 `v1.8.0`입니다. 로컬 후보 DMG에서 Grok 로그인, weekly parse, 주간 숫자
+표시는 확인했지만 GUI·live Grok billing·published DMG 미수행 증거는 릴리즈 문서에 남깁니다.
+아래 후속 이슈를 닫은 뒤에 published release smoke를 합니다.
 
 구현 순서:
 
@@ -578,6 +579,39 @@ Release는 여전히 `v1.8.0`입니다. 실제 앱 GUI, Grok live billing, publi
 추론 수준: 매우 높음 (xhigh)
 선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점.
 Grok billing 원천이 unofficial이고 인증 예외와 selected-provider 상태 전이가 겹친다.
+
+후속 이슈는 아래 번호 순으로만 진행합니다. 앞 항목이 끝나기 전에 릴리즈 publish를 하지
+않습니다.
+
+1. 1번 탭 주간 그래프 hover
+   현재/지난 그래프에 마우스를 올리면 해당 일자의 마지막 측정 잔여율(%)이 보여야 한다.
+   Codex 주간 그래프 hover와 같은 읽기 규칙으로 맞춘다.
+   추천 모델: `grok-4.6`
+   추론 수준: 높음 (high)
+   선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 5점.
+   그래프 좌표와 hover hit 영역을 GUI에서 확인해야 한다.
+
+2. 선택 provider 기준 문구
+   3번 탭 `Codex 실행 중`과 우클릭 메뉴 `코덱스 펫` / `코덱스 사용량 종료`는 선택한
+   provider 이름으로 바뀐다. `Grok`이면 Grok, hidden re-enable로 `Claude`가 켜진
+   경우에만 Claude로 표시한다. 선택하지 않은 provider 이름으로 fallback하지 않는다.
+   추천 모델: `grok-4.6`
+   추론 수준: 중간 (medium)
+   선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
+   일반 개발이므로 `grok-4.6`을 유지한다.
+
+3. `uninstall.sh` Grok 잔여물
+   삭제가 `grok-usage.json`, history, lock과 `com.dhseo.macdog.grok-usage-cache`
+   LaunchAgent를 Codex/Claude와 같은 수준으로 제거한다.
+   추천 모델: `grok-4.6`
+   추론 수준: 중간 (medium)
+   선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
+
+4. published DMG와 final-state
+   `v1.9.0` → `main` PR, signed tag, published DMG, Finder 설치, final-state.
+   추천 모델: `grok-4.6`
+   추론 수준: 높음 (high)
+   선정 근거: 영향도 2 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 5점. 릴리즈 영향.
 
 ## RunCat UI 참고 방향
 
