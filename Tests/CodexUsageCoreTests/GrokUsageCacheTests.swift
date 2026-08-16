@@ -109,6 +109,38 @@ final class GrokUsageCacheTests: XCTestCase {
         XCTAssertEqual(samples.map(\.remainingPercent), [60, 60])
     }
 
+    func testPaceWaitsWhenSamplesAreInsufficientAndProjectsFromSameResetWindow() throws {
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 30, resetsAt: 1_900_604_800))
+        let waiting = GrokUsagePaceProjectionBuilder().projection(
+            weekly: weekly,
+            history: .empty,
+            now: 1_900_003_600
+        )
+        XCTAssertEqual(waiting.state, .waitingForSamples)
+
+        let history = GrokUsageHistory(samples: [
+            try XCTUnwrap(GrokUsageHistorySample(
+                recordedAt: 1_900_000_000,
+                usedPercent: 20,
+                remainingPercent: 80,
+                resetsAt: 1_900_604_800
+            )),
+            try XCTUnwrap(GrokUsageHistorySample(
+                recordedAt: 1_900_003_600,
+                usedPercent: 30,
+                remainingPercent: 70,
+                resetsAt: 1_900_604_800
+            ))
+        ])
+        let projected = GrokUsagePaceProjectionBuilder().projection(
+            weekly: weekly,
+            history: history,
+            now: 1_900_003_600
+        )
+        XCTAssertEqual(projected.state, .projected)
+        XCTAssertEqual(try XCTUnwrap(projected.usedPercentPerHour), 10, accuracy: 0.0001)
+    }
+
     func testFailedHistoryWritePreservesExistingCacheAndHistory() throws {
         let fixture = try Fixture()
         let store = fixture.store()

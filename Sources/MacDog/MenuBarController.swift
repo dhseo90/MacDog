@@ -26,6 +26,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let installerCleanupController = InstallerCleanupController()
     private let sleepPreventionController = SleepPreventionController()
     private let usageNotificationDispatcher = UsageNotificationDispatcher()
+    private let grokUsageNotificationDispatcher = GrokUsageNotificationDispatcher()
     private let claudeUsageNotificationDispatcher = ClaudeUsageNotificationDispatcher()
     private var sleepPreventionTriggerStatus = SleepPreventionTriggerStatus.disabled
     private var preferences = RunnerPreferences()
@@ -296,7 +297,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             case .codex:
                 _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
             case .grok:
-                break
+                _ = await grokUsageNotificationDispatcher.dispatch(
+                    for: loadedState.grokUsage,
+                    enabled: settings.usageNotificationsEnabled,
+                    resetSoonEnabled: settings.resetSoonNotificationsEnabled
+                )
             case .claude:
                 _ = await claudeUsageNotificationDispatcher.dispatch(
                     for: loadedState.claudeUsagePreview,

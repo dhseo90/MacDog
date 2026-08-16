@@ -262,6 +262,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
         let claudePanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
+        let grokPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/GrokUsagePanel.swift")
 
         XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
         XCTAssertTrue(settingsSource.contains("UsageProviderMode.visibleCases"))
@@ -276,6 +277,12 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
         XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
+        XCTAssertTrue(popoverSource.contains("GrokUsagePanel(preview: state.grokUsage, now: now)"))
+        XCTAssertTrue(grokPanelSource.contains("현재 제공되지 않음"))
+        XCTAssertTrue(grokPanelSource.contains("주간"))
+        XCTAssertFalse(grokPanelSource.contains("초기화권"))
+        XCTAssertFalse(grokPanelSource.contains("reset credit"))
+        XCTAssertTrue(controllerSource.contains("grokUsageNotificationDispatcher.dispatch"))
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {

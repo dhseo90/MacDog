@@ -21,6 +21,72 @@ public struct GrokUsageHistory: Codable, Equatable, Sendable {
     public func samples(resetsAt: Int?) -> [GrokUsageHistorySample] {
         samples.filter { $0.resetsAt == resetsAt }
     }
+
+    public func resetWindows() -> [Int] {
+        Array(Set(samples.compactMap(\.resetsAt))).sorted()
+    }
+}
+
+public enum GrokUsagePaceState: Equatable, Sendable {
+    case projected
+    case waitingForSamples
+    case unavailable
+}
+
+public struct GrokUsagePaceProjection: Equatable, Sendable {
+    public let state: GrokUsagePaceState
+    public let currentUsedPercent: Double?
+    public let usedPercentPerHour: Double?
+    public let projectedFinalUsedPercent: Double?
+    public let remainingSeconds: Int?
+    public let sampleCount: Int
+}
+
+public struct GrokUsagePaceProjectionBuilder: Sendable {
+    public static let weeklyWindowDurationSeconds = 10_080 * 60
+
+    public init() {}
+
+    public func projection(
+        weekly: GrokUsageWeeklyWindow,
+        history: GrokUsageHistory,
+        now: Int
+    ) -> GrokUsagePaceProjection {
+        let currentUsed = weekly.usedPercent
+        guard let resetsAt = weekly.resetsAt else {
+            return GrokUsagePaceProjection(
+                state: .waitingForSamples,
+                currentUsedPercent: currentUsed,
+                usedPercentPerHour: nil,
+                projectedFinalUsedPercent: nil,
+                remainingSeconds: nil,
+                sampleCount: history.samples(resetsAt: nil).count
+            )
+        }
+        let samples = history.samples(resetsAt: resetsAt).filter { $0.recordedAt <= now }
+        guard let previous = samples.last(where: { $0.recordedAt < now }),
+              now > previous.recordedAt else {
+            return GrokUsagePaceProjection(
+                state: .waitingForSamples,
+                currentUsedPercent: currentUsed,
+                usedPercentPerHour: nil,
+                projectedFinalUsedPercent: nil,
+                remainingSeconds: max(0, resetsAt - now),
+                sampleCount: max(1, samples.count)
+            )
+        }
+        let elapsed = now - previous.recordedAt
+        let ratePerSecond = max(0, currentUsed - previous.usedPercent) / Double(elapsed)
+        let remaining = max(0, resetsAt - now)
+        return GrokUsagePaceProjection(
+            state: .projected,
+            currentUsedPercent: currentUsed,
+            usedPercentPerHour: ratePerSecond * 3_600,
+            projectedFinalUsedPercent: min(100, currentUsed + ratePerSecond * Double(remaining)),
+            remainingSeconds: remaining,
+            sampleCount: samples.count
+        )
+    }
 }
 
 public struct GrokUsageHistorySample: Codable, Equatable, Hashable, Sendable {

@@ -109,7 +109,7 @@ struct UsagePopoverView: View {
 
     private var usesScrollableSelectedContent: Bool {
         selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && state.usageProviderMode == .claude)
+            (selectedModule == .codex && (state.usageProviderMode == .claude || state.usageProviderMode == .grok))
     }
 
     @ViewBuilder
@@ -171,7 +171,7 @@ struct UsagePopoverView: View {
                 return state.claudeUsagePreview.statusTitle(now: now)
             }
             if state.usageProviderMode == .grok {
-                return "현재 제공되지 않음"
+                return state.grokUsage.statusTitle(now: now)
             }
             return state.codexPhase.statusLabel
         case .mac:
@@ -200,7 +200,7 @@ struct UsagePopoverView: View {
         if state.usageProviderMode == .claude {
             ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
         } else if state.usageProviderMode == .grok {
-            GrokUsageUnavailablePanel()
+            GrokUsagePanel(preview: state.grokUsage, now: now)
         } else {
             CodexUsagePanel(state: state)
         }
