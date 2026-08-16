@@ -64,10 +64,31 @@ public struct GrokLocalAuthTokenProvider {
            !token.isEmpty {
             return token
         }
-        if let signIn = object["https://accounts.x.ai/sign-in"] as? [String: Any],
-           let token = signIn["key"] as? String,
-           !token.isEmpty {
+        if let token = tokenFromIssuerEntries(object) {
             return token
+        }
+        return nil
+    }
+
+    private static let issuerPrefixes = [
+        "https://accounts.x.ai",
+        "https://auth.x.ai"
+    ]
+
+    private static func tokenFromIssuerEntries(_ object: [String: Any]) -> String? {
+        for (key, value) in object {
+            guard issuerPrefixes.contains(where: { prefix in
+                key == prefix || key.hasPrefix(prefix + "/") || key.hasPrefix(prefix + "::")
+            }) else {
+                continue
+            }
+            guard let entry = value as? [String: Any] else { continue }
+            if let token = entry["key"] as? String, !token.isEmpty {
+                return token
+            }
+            if let token = entry["access_token"] as? String, !token.isEmpty {
+                return token
+            }
         }
         return nil
     }
