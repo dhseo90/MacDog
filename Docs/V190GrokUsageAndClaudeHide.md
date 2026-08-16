@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]`~`[06/10]` 완료 / cache·UI·문서 정렬·릴리즈 미착수
+상태: 1차 구현 `[01/10]`~`[07/10]` 완료 / writer·UI·문서 정렬·릴리즈 미착수
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -158,7 +158,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 | [04/10] | 5 | provider mode와 Claude hide | 완료 |
 | [05/10] | 6 | preference migration | 완료 |
 | [06/10] | 7 | 알림·러너·refresh 3분기 | 완료 |
-| [07/10] | 8 | Grok 전용 cache/history | 미착수 |
+| [07/10] | 8 | Grok 전용 cache/history | 완료 |
 | [08/10] | 9 | Grok fetch writer | 미착수 |
 | [09/10] | 10~12 | 1번 탭·러너·알림·주간 그래프 | 미착수 |
 | [10/10] | 13 | focused test와 계약 스크립트 | 미착수 |
