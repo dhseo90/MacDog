@@ -141,6 +141,9 @@ verify_contract() {
   require_match 'grok-usage\.json' "$GROK_CACHE_SOURCE" "separate Grok cache"
   require_match 'grok-usage-history\.json' "$GROK_HISTORY_SOURCE" "separate Grok history"
   require_match 'creditUsagePercent' "$GROK_SANITIZER_SOURCE" "weekly used percent field"
+  require_match 'object\["config"\]' "$GROK_SANITIZER_SOURCE" "config wrapper unwrap"
+  require_match 'testExtractsWeeklyPercentFromConfigWrapperAndISOReset' "$GROK_SANITIZER_TEST" \
+    "config wrapper weekly regression"
   reject_match 'XAI_API_KEY' "$GROK_AUTH_SOURCE" "API key weekly pool auth"
   require_match 'https://auth\.x\.ai' "$GROK_AUTH_SOURCE" "current grok.com issuer key"
   reject_match 'print\(accessToken|Authorization' "$GROK_CLI_SOURCE" "token printing"

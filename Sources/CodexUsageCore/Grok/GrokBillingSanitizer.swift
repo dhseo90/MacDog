@@ -28,8 +28,7 @@ public enum GrokBillingSanitizer: Sendable {
             throw GrokBillingSanitizationError.payloadTooLarge
         }
         let object = try billingObject(from: data)
-        if let cycle = stringValue(object["billingCycle"])?.lowercased(),
-           cycle == "monthly" {
+        if isMonthlyCycle(object) {
             throw GrokBillingSanitizationError.weeklyWindowMissing
         }
         guard let usedPercent = doubleValue(object["creditUsagePercent"]) else {
@@ -38,7 +37,7 @@ public enum GrokBillingSanitizer: Sendable {
         guard (0...100).contains(usedPercent) else {
             throw GrokBillingSanitizationError.invalidUsagePercent
         }
-        let resetsAt = firstUnixTimestamp(in: object, keys: ["resetsAt", "resetAt", "nextReset", "next_reset"])
+        let resetsAt = firstResetTimestamp(in: object)
         guard let weekly = GrokUsageWeeklyWindow(usedPercent: usedPercent, resetsAt: resetsAt) else {
             throw GrokBillingSanitizationError.invalidUsagePercent
         }
@@ -55,10 +54,78 @@ public enum GrokBillingSanitizer: Sendable {
         guard let object = json as? [String: Any] else {
             throw GrokBillingSanitizationError.decodeFailed
         }
-        if let result = object["result"] as? [String: Any] {
-            return result
+        let candidates = [
+            object["result"] as? [String: Any],
+            object["config"] as? [String: Any],
+            object
+        ].compactMap { $0 }
+        if let match = candidates.first(where: { $0["creditUsagePercent"] != nil }) {
+            return match
         }
-        return object
+        return candidates.first ?? object
+    }
+
+    private static func isMonthlyCycle(_ object: [String: Any]) -> Bool {
+        if let cycle = stringValue(object["billingCycle"])?.lowercased(),
+           cycle.contains("month") {
+            return true
+        }
+        if let period = object["currentPeriod"] as? [String: Any],
+           let type = stringValue(period["type"])?.lowercased(),
+           type.contains("month") {
+            return true
+        }
+        return false
+    }
+
+    private static func firstResetTimestamp(in object: [String: Any]) -> Int? {
+        let unixKeys = ["resetsAt", "resetAt", "nextReset", "next_reset"]
+        if let timestamp = firstUnixTimestamp(in: object, keys: unixKeys) {
+            return timestamp
+        }
+        let isoKeys = ["billingPeriodEnd", "resetsAt", "resetAt", "nextReset", "next_reset"]
+        for key in isoKeys {
+            if let timestamp = unixFromISO8601(object[key]) {
+                return timestamp
+            }
+        }
+        if let period = object["currentPeriod"] as? [String: Any],
+           let timestamp = unixFromISO8601(period["end"]) {
+            return timestamp
+        }
+        return nil
+    }
+
+    private static func unixFromISO8601(_ value: Any?) -> Int? {
+        guard let raw = value as? String, !raw.isEmpty else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: raw) {
+            return Int(date.timeIntervalSince1970)
+        }
+        let basic = ISO8601DateFormatter()
+        basic.formatOptions = [.withInternetDateTime]
+        if let date = basic.date(from: raw) {
+            return Int(date.timeIntervalSince1970)
+        }
+        if let trimmed = trimmedFractionalISO8601(raw) {
+            if let date = fractional.date(from: trimmed) ?? basic.date(from: trimmed) {
+                return Int(date.timeIntervalSince1970)
+            }
+        }
+        return nil
+    }
+
+    private static func trimmedFractionalISO8601(_ raw: String) -> String? {
+        guard let dot = raw.firstIndex(of: "."),
+              let timezone = raw.lastIndex(where: { $0 == "+" || $0 == "-" || $0 == "Z" }),
+              dot < timezone else {
+            return nil
+        }
+        let fraction = raw[raw.index(after: dot)..<timezone]
+        let digits = fraction.prefix { $0.isNumber }
+        guard digits.count > 3 else { return nil }
+        return String(raw[..<raw.index(after: dot)]) + String(digits.prefix(3)) + String(raw[timezone...])
     }
 
     private static func doubleValue(_ value: Any?) -> Double? {
