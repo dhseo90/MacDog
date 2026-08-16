@@ -264,7 +264,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
 
         XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
-        XCTAssertTrue(settingsSource.contains("UsageProviderMode.allCases"))
+        XCTAssertTrue(settingsSource.contains("UsageProviderMode.visibleCases"))
+        XCTAssertFalse(settingsSource.contains("UsageProviderMode.allCases"))
         XCTAssertFalse(settingsSource.contains("Claude Usage Preview"))
         XCTAssertFalse(settingsSource.contains("Claude Preview 사용"))
         XCTAssertFalse(settingsSource.contains("러너 반영"))

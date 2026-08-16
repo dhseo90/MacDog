@@ -127,6 +127,32 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(claudeMode.codexPanelSummary()?.statusTitle, claudeMode.codexPhase.statusLabel)
     }
 
+    func testVisibleSettingsModesHideClaudeAndKeepGrok() {
+        XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
+        XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))
+        XCTAssertFalse(UsageProviderMode.claude.isVisibleInSettings)
+        XCTAssertEqual(UsageProviderMode.grok.label, "Grok")
+    }
+
+    func testGrokModeDoesNotUseCodexRunnerOrTooltip() {
+        let now = 1_900_000_000
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now, usedPercent: 96),
+            usageProviderMode: .grok,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(state.phase, .calm)
+        XCTAssertEqual(state.codexPhase, .sprint)
+        XCTAssertEqual(state.toolTip, "Grok 사용량: 현재 제공되지 않음")
+        XCTAssertFalse(state.toolTip.contains("코덱스"))
+        XCTAssertFalse(state.toolTip.contains("Claude"))
+        XCTAssertNil(state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))))
+    }
+
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
         let now = 1_900_000_000
         let state = UsageMonitorState(

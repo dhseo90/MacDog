@@ -3,6 +3,7 @@ import Foundation
 
 enum UsageProviderMode: String, CaseIterable, Identifiable {
     case codex
+    case grok
     case claude
 
     var id: String { rawValue }
@@ -10,8 +11,22 @@ enum UsageProviderMode: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .codex: "Codex"
+        case .grok: "Grok"
         case .claude: "Claude"
         }
+    }
+
+    var isVisibleInSettings: Bool {
+        switch self {
+        case .codex, .grok:
+            true
+        case .claude:
+            false
+        }
+    }
+
+    static var visibleCases: [UsageProviderMode] {
+        allCases.filter(\.isVisibleInSettings)
     }
 }
 

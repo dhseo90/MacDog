@@ -155,6 +155,8 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexPhase
+        case .grok:
+            return .calm
         case .claude:
             guard let usedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
                 return .calm
@@ -240,6 +242,8 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexNextResetGlance(now: now)
+        case .grok:
+            return nil
         case .claude:
             return claudeNextResetGlance(now: now)
         }
@@ -374,6 +378,8 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexToolTip
+        case .grok:
+            return grokToolTip
         case .claude:
             return claudeToolTip
         }
@@ -391,6 +397,11 @@ struct UsageMonitorState: Equatable {
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
         let motion = animationPaused ? ", 일시 정지" : ""
         return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"
+    }
+
+    private var grokToolTip: String {
+        let motion = animationPaused ? ", 일시 정지" : ""
+        return "Grok 사용량: 현재 제공되지 않음\(motion)"
     }
 
     private var claudeToolTip: String {

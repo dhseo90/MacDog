@@ -65,7 +65,7 @@ struct SettingsPanel: View {
 
             PopoverFormSection(title: "사용량", systemImage: "gauge.with.dots.needle.33percent") {
                 Picker("사용량 mode", selection: $usageProviderModeRaw) {
-                    ForEach(UsageProviderMode.allCases) { mode in
+                    ForEach(UsageProviderMode.visibleCases) { mode in
                         Text(mode.label).tag(mode.rawValue)
                     }
                 }

@@ -15,12 +15,13 @@ enum MacDogDemoData {
         preferences: RunnerPreferences = RunnerPreferences(),
         now: Int = Int(Date().timeIntervalSince1970)
     ) -> UsageMonitorState {
+        let usesCodexDemo = preferences.usageProviderMode != .grok
         return UsageMonitorState(
-            report: report(now: now),
+            report: usesCodexDemo ? report(now: now) : nil,
             cacheSnapshot: nil,
-            fiveHourUsageHistory: fiveHourUsageHistory(now: now),
-            weeklyUsageHistory: weeklyUsageHistory(now: now),
-            resetWindowHistory: resetWindowHistory(now: now),
+            fiveHourUsageHistory: usesCodexDemo ? fiveHourUsageHistory(now: now) : .empty,
+            weeklyUsageHistory: usesCodexDemo ? weeklyUsageHistory(now: now) : .empty,
+            resetWindowHistory: usesCodexDemo ? resetWindowHistory(now: now) : .empty,
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,

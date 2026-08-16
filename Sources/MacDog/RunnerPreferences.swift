@@ -31,6 +31,7 @@ struct RunnerPreferences: Equatable {
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
     static let usageProviderModeKey = "usageProviderMode"
+    static let claudeUsageProviderReenabledKey = "claudeUsageProviderReenabled"
     private static let legacyUsageProviderKeys = [
         "claudeUsagePreviewEnabled",
         "usagePreviewProvider",
@@ -427,6 +428,14 @@ struct RunnerPreferences: Equatable {
 
     static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
         defaults.set(mode.rawValue, forKey: usageProviderModeKey)
+    }
+
+    static func isClaudeUsageProviderReenabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: claudeUsageProviderReenabledKey)
+    }
+
+    static func setClaudeUsageProviderReenabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: claudeUsageProviderReenabledKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
