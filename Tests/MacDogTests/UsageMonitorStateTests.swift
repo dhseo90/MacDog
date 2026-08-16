@@ -277,14 +277,36 @@ final class UsageMonitorStateTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
 
+        defaults.set("grok", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .grok)
+
         defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
 
         defaults.set("invalid", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
         XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+    }
+
+    func testUsageProviderMigrationKeepsClaudeOnlyWhenHiddenReenableIsOn() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "claude")
+
+        RunnerPreferences.setClaudeUsageProviderReenabled(false, defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
     }
 
     func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {

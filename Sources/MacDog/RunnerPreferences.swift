@@ -103,7 +103,10 @@ struct RunnerPreferences: Equatable {
 
     static func migrateUsageProviderMode(defaults: UserDefaults = .standard) {
         let storedMode = defaults.string(forKey: usageProviderModeKey)
-        if storedMode.flatMap({ UsageProviderMode(rawValue: $0) }) == nil {
+            .flatMap(UsageProviderMode.init(rawValue:))
+        if storedMode == nil {
+            defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
+        } else if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
             defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
         }
         for key in legacyUsageProviderKeys {
@@ -422,8 +425,12 @@ struct RunnerPreferences: Equatable {
     }
 
     static func usageProviderMode(defaults: UserDefaults = .standard) -> UsageProviderMode {
-        UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
+        let storedMode = UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
             defaultUsageProviderMode
+        if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
+            return defaultUsageProviderMode
+        }
+        return storedMode
     }
 
     static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
