@@ -30,6 +30,16 @@ enum UsageProviderMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum SelectedUsageSourcePolicy {
+    static func shouldEvaluateCodexCache(for mode: UsageProviderMode) -> Bool {
+        mode == .codex
+    }
+
+    static func shouldLoadClaudePreview(for mode: UsageProviderMode) -> Bool {
+        mode == .claude
+    }
+}
+
 struct ClaudeUsagePreviewState: Equatable {
     static let disabled = ClaudeUsagePreviewState(
         isEnabled: false,

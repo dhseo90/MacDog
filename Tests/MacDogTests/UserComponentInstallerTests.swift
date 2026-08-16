@@ -24,6 +24,7 @@ final class UserComponentInstallerTests: XCTestCase {
 
     func testUsageCacheLaunchAgentRunsOnlyInCodexMode() {
         XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .codex), .install)
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .grok), .remove)
         XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: .claude), .remove)
     }
 

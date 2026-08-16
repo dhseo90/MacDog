@@ -235,7 +235,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
         usageNotificationTask?.cancel()
         usageNotificationTask = nil
-        guard currentMode == .claude else { return }
+        guard currentMode != .codex else { return }
         usageCacheRefreshGeneration &+= 1
         usageCacheRefreshTask?.cancel()
         usageCacheRefreshTask = nil
@@ -269,6 +269,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             switch UsageNotificationRoute(mode: loadedState.usageProviderMode) {
             case .codex:
                 _ = await usageNotificationDispatcher.dispatch(for: loadedState, settings: settings)
+            case .grok:
+                break
             case .claude:
                 _ = await claudeUsageNotificationDispatcher.dispatch(
                     for: loadedState.claudeUsagePreview,
@@ -393,10 +395,30 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
+        let claudeUsagePreview = loadClaudeUsagePreview()
+        guard SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: preferences.usageProviderMode) else {
+            return UsageMonitorState(
+                report: nil,
+                cacheSnapshot: nil,
+                errorMessage: preferences.usageProviderMode == .grok
+                    ? "Grok 사용량 cache가 아직 없습니다."
+                    : errorMessage,
+                displayBasis: preferences.displayBasis,
+                reducedMotion: preferences.reducedMotion,
+                animationPaused: preferences.animationPaused,
+                systemMetrics: systemMetrics,
+                systemMetricsHistory: systemMetricsHistory,
+                sleepPreventionStatus: sleepPreventionController.status,
+                sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
+                privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
+                claudeUsagePreview: claudeUsagePreview,
+                usageProviderMode: preferences.usageProviderMode
+            )
+        }
+
         let fiveHourUsageHistory = (try? fiveHourHistoryStore.read()) ?? .empty
         let weeklyUsageHistory = (try? weeklyHistoryStore.read()) ?? .empty
         let resetWindowHistory = (try? resetWindowHistoryStore.read()) ?? .empty
-        let claudeUsagePreview = loadClaudeUsagePreview()
 
         if let snapshot = try? cacheStore.read() {
             if let report = snapshot.report {
@@ -481,7 +503,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
-        guard preferences.usageProviderMode == .claude else { return .disabled }
+        guard SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: preferences.usageProviderMode) else {
+            return .disabled
+        }
         do {
             let storedState = try claudeUsageCacheStore.readState()
             return ClaudeUsagePreviewState(

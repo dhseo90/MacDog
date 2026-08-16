@@ -127,6 +127,15 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(claudeMode.codexPanelSummary()?.statusTitle, claudeMode.codexPhase.statusLabel)
     }
 
+    func testSelectedUsageSourcePolicyDoesNotEvaluateCodexCacheOutsideCodexMode() {
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .codex))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .claude))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .claude))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .codex))
+    }
+
     func testVisibleSettingsModesHideClaudeAndKeepGrok() {
         XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
         XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))

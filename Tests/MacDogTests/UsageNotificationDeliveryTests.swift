@@ -6,7 +6,10 @@ import CodexUsageCore
 final class UsageNotificationDeliveryTests: XCTestCase {
     func testNotificationRouteSelectsExactlyOneProvider() {
         XCTAssertEqual(UsageNotificationRoute(mode: .codex), .codex)
+        XCTAssertEqual(UsageNotificationRoute(mode: .grok), .grok)
         XCTAssertEqual(UsageNotificationRoute(mode: .claude), .claude)
+        XCTAssertNotEqual(UsageNotificationRoute(mode: .grok), .claude)
+        XCTAssertNotEqual(UsageNotificationRoute(mode: .grok), .codex)
     }
 
     func testCancelledProviderDispatchStopsAfterAuthorizationWithoutDelivery() async {
