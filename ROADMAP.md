@@ -583,13 +583,19 @@ Grok billing 원천이 unofficial이고 인증 예외와 selected-provider 상�
 후속 이슈는 아래 번호 순으로만 진행합니다. 앞 항목이 끝나기 전에 릴리즈 publish를 하지
 않습니다.
 
+공통 규칙: 잔여 사용량 조회(Codex app-server, Grok unofficial billing, hidden Claude
+status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/비교, 잔여율 표시는
+공통 로직을 쓴다. Grok 전용 그래프를 새로 키우지 않는다.
+
 1. 1번 탭 주간 그래프 hover
-   현재/지난 그래프에 마우스를 올리면 해당 일자의 마지막 측정 잔여율(%)이 보여야 한다.
-   Codex 주간 그래프 hover와 같은 읽기 규칙으로 맞춘다.
+   새 hover UX를 만들지 않는다. Codex는 이미 `WeeklyRemainingHistoryPlot`에서 일자·마지막
+   측정 잔여율(%) hover를 보여 준다. Grok 탭만 `GrokUsageGraphSnapshotView` Canvas를
+   따로 그려 이 경로를 타지 않는다. Grok weekly sample을 공통 plot 입력으로 바꿔
+   같은 hover를 쓰게 한다.
    추천 모델: `grok-4.6`
-   추론 수준: 높음 (high)
-   선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 5점.
-   그래프 좌표와 hover hit 영역을 GUI에서 확인해야 한다.
+   추론 수준: 중간 (medium)
+   선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
+   hover 동작은 이미 있고 Grok 연결만 빠졌다.
 
 2. 선택 provider 기준 문구
    3번 탭 `Codex 실행 중`과 우클릭 메뉴 `코덱스 펫` / `코덱스 사용량 종료`는 선택한

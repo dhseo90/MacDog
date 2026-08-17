@@ -153,11 +153,14 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ### 1. 1번 탭 주간 그래프 hover
 
-현재/지난 그래프 hover에 해당 일자의 마지막 측정 잔여율(%)을 표시한다.
+잔여 사용량 조회만 provider별로 두고, 그래프·hover·현재/지난/비교는 공통 로직을 쓴다.
+새 hover를 만들지 않는다. Codex `WeeklyRemainingHistoryPlot`은 이미 일자·잔여율 hover가
+있다. Grok 탭의 별도 Canvas가 이 plot을 쓰지 않아 빠진 것이다. Grok weekly sample을
+공통 plot 입력으로 연결한다.
 
 추천 모델: `grok-4.6`
-추론 수준: 높음 (high)
-선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 1 = 5점.
+추론 수준: 중간 (medium)
+선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
 
 ### 2. 선택 provider 기준 문구
 

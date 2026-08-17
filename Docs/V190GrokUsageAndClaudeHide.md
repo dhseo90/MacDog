@@ -69,6 +69,8 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 - Claude를 다시 켜는 경로는 hidden/debug preference 또는 내부 flag만 허용한다.
   설정 탭에 일반 항목으로 되살리지 않는다.
 - 선택 provider가 stale/error여도 다른 provider로 fallback하지 않는다.
+- 잔여 사용량 조회만 provider별로 둔다. 주간 그래프, hover, 현재/지난/비교는 공통
+  로직을 쓰고 Grok 전용 표시 경로를 키우지 않는다.
 - Grok 5시간 window는 없다. 없으면 `현재 제공되지 않음`으로 두고 합성하지 않는다.
 - Grok Extra Usage Credits는 Codex 초기화권이 아니다. 합성하거나 같은 UI로 보여 주지 않는다.
 - `~/.grok/auth.json`을 출력하거나 cache/log/fixture에 저장하지 않는다. billing 조회가
@@ -178,7 +180,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 후속 이슈는 `ROADMAP.md` v1.9.0과 같다. 번호 순:
 
-1. 1번 탭 주간 그래프 hover
+1. 1번 탭 주간 그래프 hover. 조회만 provider별, 그래프·hover는 공통. 신규 hover 아님
 2. 선택 provider 기준 문구 (3번 탭, 우클릭)
 3. `uninstall.sh` Grok 잔여물
 4. published DMG와 final-state
