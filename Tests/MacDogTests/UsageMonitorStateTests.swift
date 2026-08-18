@@ -1529,35 +1529,69 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
-    func testWeeklyHistoryMarkerHitTestingUsesTouchFriendlyRadius() {
+    func testWeeklyHistoryHoverSelectsDayColumnNotMarkerDot() {
         let size = CGSize(width: 244, height: 74)
-        let marker = WeeklyRemainingHistoryDayMarker(
-            id: 1,
+        let dayGrid = (0...7).map { Double($0) / 7 }
+        let saturday = WeeklyRemainingHistoryDayMarker(
+            id: 0,
             point: WeeklyRemainingHistoryPoint(
-                recordedAt: 1_800_000_000,
-                remainingPercent: 83,
-                xPosition: 0.25,
+                recordedAt: 1_786_762_203 + 86_400,
+                remainingPercent: 25,
+                xPosition: 1.0 / 7.0,
                 isResetAnchor: false
             ),
-            hoverLabel: "6/2 화 · 83%"
+            hoverLabel: "8/15 토 종료 · 25%"
         )
-        let markerPoint = WeeklyRemainingHistoryInteraction.point(for: marker.point, in: size)
+        let sunday = WeeklyRemainingHistoryDayMarker(
+            id: 1,
+            point: WeeklyRemainingHistoryPoint(
+                recordedAt: 1_786_762_203 + 98_010,
+                remainingPercent: 25,
+                xPosition: 98_010.0 / 604_800.0,
+                isResetAnchor: false
+            ),
+            hoverLabel: "8/16 일 · 25%"
+        )
 
         XCTAssertEqual(
             WeeklyRemainingHistoryInteraction.nearestMarkerID(
-                to: CGPoint(x: markerPoint.x + 18, y: markerPoint.y),
-                markers: [marker],
-                in: size
+                to: CGPoint(x: size.width * 0.05, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: size.width * 0.20, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
             ),
             1
         )
-        XCTAssertNil(
-            WeeklyRemainingHistoryInteraction.nearestMarkerID(
-                to: CGPoint(x: markerPoint.x + 30, y: markerPoint.y),
-                markers: [marker],
-                in: size
-            )
+    }
+
+    func testGrokWeeklyDayLabelsFollowResetStartWeekday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 9 * 3600) ?? .current
+        let start = 1_786_762_203
+        let reset = start + 604_800
+        let sample = Self.weeklySample(
+            recordedAt: start + 98_010,
+            remainingPercent: 25,
+            resetsAt: reset
         )
+        let chart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [sample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 25, resetsAt: reset),
+            currentSample: sample,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(chart.dayMarkers.contains { $0.id == 0 && $0.hoverLabel.contains("토") })
+        XCTAssertTrue(chart.dayMarkers.contains { $0.id == 1 && $0.hoverLabel.contains("일") })
     }
 
     func testWeeklyHistoryLineIncludesCurrentMarkerPoint() {

@@ -757,7 +757,8 @@ private struct WeeklyRemainingHistoryPlot: View {
         WeeklyRemainingHistoryInteraction.nearestMarkerID(
             to: location,
             markers: chart.dayMarkers,
-            in: size
+            in: size,
+            dayGridPositions: chart.dayGridPositions
         )
     }
 }
@@ -1458,8 +1459,18 @@ struct WeeklyRemainingHistoryInteraction {
         to location: CGPoint,
         markers: [WeeklyRemainingHistoryDayMarker],
         in size: CGSize,
+        dayGridPositions: [Double] = [],
         hitRadius: CGFloat = markerHitRadius
     ) -> Int? {
+        if let columnID = columnMarkerID(
+            at: location,
+            markers: markers,
+            in: size,
+            dayGridPositions: dayGridPositions
+        ) {
+            return columnID
+        }
+
         var nearestID: Int?
         var nearestDistance = hitRadius
 
@@ -1473,6 +1484,31 @@ struct WeeklyRemainingHistoryInteraction {
         }
 
         return nearestID
+    }
+
+    static func columnMarkerID(
+        at location: CGPoint,
+        markers: [WeeklyRemainingHistoryDayMarker],
+        in size: CGSize,
+        dayGridPositions: [Double]
+    ) -> Int? {
+        guard size.width > 0, dayGridPositions.count >= 2 else { return nil }
+        let xRatio = location.x / size.width
+        guard xRatio >= 0, xRatio <= 1 else { return nil }
+
+        let lastColumn = dayGridPositions.count - 2
+        let column = (0...lastColumn).first { index in
+            let start = dayGridPositions[index]
+            let end = dayGridPositions[index + 1]
+            if index == lastColumn {
+                return xRatio >= start && xRatio <= end
+            }
+            return xRatio >= start && xRatio < end
+        }
+        guard let column, markers.contains(where: { $0.id == column }) else {
+            return nil
+        }
+        return column
     }
 }
 
