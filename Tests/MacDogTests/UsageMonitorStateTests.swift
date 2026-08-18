@@ -231,10 +231,11 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertTrue(guide.appleScriptSource().contains("Terminal"))
     }
 
-    func testGrokWeeklyGraphStartsAtFullRemainingForSingleSample() throws {
+    func testGrokWeeklyHistoryMapsToSharedRemainingChartWithHoverLabels() throws {
         let resetsAt = 1_787_367_003
         let recordedAt = resetsAt - (6 * 24 * 60 * 60)
-        let sample = try XCTUnwrap(
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 75, resetsAt: resetsAt))
+        let grokSample = try XCTUnwrap(
             GrokUsageHistorySample(
                 recordedAt: recordedAt,
                 usedPercent: 75,
@@ -242,15 +243,24 @@ final class UsageMonitorStateTests: XCTestCase {
                 resetsAt: resetsAt
             )
         )
-        let points = GrokWeeklyGraphSeries.points(
-            samples: [sample],
-            resetsAt: resetsAt
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [grokSample]),
+            currentWeekly: weekly,
+            currentRecordedAt: recordedAt
         )
-        XCTAssertEqual(points.first?.xRatio, 0)
-        XCTAssertEqual(points.first?.remainingPercent, 100)
-        XCTAssertEqual(points.last?.remainingPercent, 25)
-        XCTAssertGreaterThan(points.last?.xRatio ?? 0, 0)
-        XCTAssertGreaterThan(points.count, 1)
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: window,
+            currentSample: history.samples.first
+        )
+
+        XCTAssertEqual(window.windowDurationMins, 10_080)
+        XCTAssertEqual(history.samples.count, 1)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 25)
+        XCTAssertFalse(chart.dayMarkers.isEmpty)
+        XCTAssertTrue(chart.dayMarkers.contains { $0.hoverLabel.contains("%") })
+        XCTAssertTrue(chart.points.contains { $0.remainingPercent == 100 && $0.isResetAnchor })
     }
 
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {

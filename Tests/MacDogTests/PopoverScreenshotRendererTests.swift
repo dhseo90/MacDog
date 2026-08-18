@@ -280,6 +280,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("GrokUsagePanel(preview: state.grokUsage, now: now)"))
         XCTAssertFalse(grokPanelSource.contains("5시간"))
         XCTAssertTrue(grokPanelSource.contains("주간"))
+        XCTAssertTrue(grokPanelSource.contains("WeeklyRemainingHistoryBlock("))
+        XCTAssertFalse(grokPanelSource.contains("GrokUsageGraphSnapshotView"))
         XCTAssertTrue(grokPanelSource.contains("grok login"))
         XCTAssertTrue(grokPanelSource.contains("터미널에서 로그인"))
         XCTAssertTrue(grokPanelSource.contains("로그인 명령 복사"))

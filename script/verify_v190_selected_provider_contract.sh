@@ -18,6 +18,7 @@ CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
 GROK_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokUsagePanel.swift"
+GROK_ADAPTER_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokWeeklyRemainingHistoryAdapter.swift"
 GROK_CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Grok/GrokUsageCache.swift"
 GROK_HISTORY_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Grok/GrokUsageHistory.swift"
 GROK_SANITIZER_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Grok/GrokBillingSanitizer.swift"
@@ -79,7 +80,7 @@ verify_contract() {
   for file in "$DOC" "$SPIKE" "$CONTRACT" "$READINESS" "$README" "$ROADMAP" \
     "$AGENTS" "$ONBOARDING" "$V180_VERIFIER" \
     "$MODE_SOURCE" "$PREFERENCES_SOURCE" "$STATE_SOURCE" "$CONTROLLER_SOURCE" \
-    "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$GROK_PANEL_SOURCE" \
+    "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$GROK_PANEL_SOURCE" "$GROK_ADAPTER_SOURCE" \
     "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_SANITIZER_SOURCE" \
     "$GROK_AUTH_SOURCE" "$GROK_FETCH_SOURCE" "$GROK_CLI_SOURCE" \
     "$GROK_NOTIFICATION_SOURCE" "$USER_COMPONENT_SOURCE" \
@@ -134,7 +135,12 @@ verify_contract() {
   require_match 'macdog-grok-usage' "$USER_COMPONENT_SOURCE" "Grok writer LaunchAgent"
   require_match 'GrokUsagePanel' "$POPOVER_SOURCE" "Grok usage tab"
   reject_match '5시간' "$GROK_PANEL_SOURCE" "Grok five-hour card"
-  require_match 'GrokWeeklyGraphSeries' "$GROK_PANEL_SOURCE" "weekly graph start-at-100"
+  require_match 'WeeklyRemainingHistoryBlock' "$GROK_PANEL_SOURCE" "shared weekly graph"
+  reject_match 'GrokUsageGraphSnapshotView' "$GROK_PANEL_SOURCE" "Grok-only graph view"
+  require_match 'GrokWeeklyRemainingHistoryAdapter' "$GROK_ADAPTER_SOURCE" \
+    "Grok weekly adapter"
+  require_match 'testGrokWeeklyHistoryMapsToSharedRemainingChartWithHoverLabels' \
+    "$STATE_TEST" "shared hover mapping regression"
   require_match 'grok login' "$GROK_PANEL_SOURCE" "Grok login command"
   require_match '터미널에서 로그인' "$GROK_PANEL_SOURCE" "Grok login terminal action"
   require_match 'Grok 로그인 필요' "$MODE_SOURCE" "Grok login empty state"

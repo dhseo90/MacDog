@@ -2,29 +2,10 @@ import AppKit
 import CodexUsageCore
 import SwiftUI
 
-enum GrokUsageHistoryGraphMode: String, CaseIterable, Identifiable {
-    case current
-    case past
-    case compare
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .current: "현재"
-        case .past: "지난"
-        case .compare: "비교"
-        }
-    }
-}
-
 struct GrokUsagePanel: View {
     let preview: GrokUsagePreviewState
     let now: Date
     private let loginGuide = GrokLoginGuide()
-
-    @State private var selectedMode = GrokUsageHistoryGraphMode.current
-    @State private var selectedPastReset: Int?
 
     init(preview: GrokUsagePreviewState, now: Date = Date()) {
         self.preview = preview
@@ -38,16 +19,20 @@ struct GrokUsagePanel: View {
             if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
                 paceSummary(for: weekly)
                 Divider()
-                historyControls
-                GrokUsageGraphSnapshotView(
-                    mode: effectiveMode,
-                    currentWeekly: weekly,
-                    currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
+                WeeklyRemainingHistoryBlock(
+                    history: GrokWeeklyRemainingHistoryAdapter.history(
+                        preview.history,
+                        currentWeekly: weekly,
+                        currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
+                            ?? Int(now.timeIntervalSince1970)
+                    ),
+                    resetWindowHistory: .empty,
+                    weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
+                    currentReport: nil,
+                    currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
                         ?? Int(now.timeIntervalSince1970),
-                    pastResetsAt: effectivePastReset,
-                    history: preview.history
+                    graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
                 )
-                .frame(height: 96)
             } else {
                 waitingContent
             }
@@ -149,34 +134,6 @@ struct GrokUsagePanel: View {
         }
     }
 
-    private var historyControls: some View {
-        HStack(spacing: 6) {
-            Picker("기록", selection: $selectedMode) {
-                ForEach(GrokUsageHistoryGraphMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-
-            if effectiveMode != .current, pastResets.count > 1 {
-                Picker("지난 window", selection: pastResetBinding) {
-                    ForEach(pastResets, id: \.self) { resetsAt in
-                        Text(Date(timeIntervalSince1970: TimeInterval(resetsAt)).formatted(
-                            date: .abbreviated,
-                            time: .omitted
-                        ))
-                        .tag(Optional(resetsAt))
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 72)
-            }
-            Spacer(minLength: 0)
-        }
-        .controlSize(.mini)
-    }
-
     private var waitingContent: some View {
         VStack(alignment: .leading, spacing: 7) {
             Label(
@@ -212,29 +169,6 @@ struct GrokUsagePanel: View {
         .padding(.vertical, 12)
     }
 
-    private var pastResets: [Int] {
-        let current = preview.cacheSnapshot?.weekly?.resetsAt
-        return preview.history.resetWindows().filter { $0 != current }
-    }
-
-    private var effectiveMode: GrokUsageHistoryGraphMode {
-        if selectedMode != .current, pastResets.isEmpty {
-            return .current
-        }
-        return selectedMode
-    }
-
-    private var effectivePastReset: Int? {
-        selectedPastReset ?? pastResets.last
-    }
-
-    private var pastResetBinding: Binding<Int?> {
-        Binding(
-            get: { effectivePastReset },
-            set: { selectedPastReset = $0 }
-        )
-    }
-
     private var statusSystemImage: String {
         switch preview.status(now: now) {
         case .available: "checkmark.circle.fill"
@@ -250,135 +184,6 @@ struct GrokUsagePanel: View {
         case .waiting: .secondary
         case .stale: .orange
         case .error: .orange
-        }
-    }
-}
-
-struct GrokWeeklyGraphPoint: Equatable {
-    let xRatio: Double
-    let remainingPercent: Double
-}
-
-enum GrokWeeklyGraphSeries {
-    static func points(
-        samples: [GrokUsageHistorySample],
-        resetsAt: Int,
-        currentRemainingPercent: Double? = nil,
-        currentRecordedAt: Int? = nil
-    ) -> [GrokWeeklyGraphPoint] {
-        let duration = GrokUsagePaceProjectionBuilder.weeklyWindowDurationSeconds
-        let startsAt = resetsAt - duration
-        var merged = samples
-        if let currentRemainingPercent, let currentRecordedAt,
-           !merged.contains(where: { $0.recordedAt == currentRecordedAt }),
-           let current = GrokUsageHistorySample(
-            recordedAt: currentRecordedAt,
-            usedPercent: 100 - currentRemainingPercent,
-            remainingPercent: currentRemainingPercent,
-            resetsAt: resetsAt
-           ) {
-            merged.append(current)
-        }
-        merged.sort { $0.recordedAt < $1.recordedAt }
-
-        var remaining = 100.0
-        var points = [
-            GrokWeeklyGraphPoint(xRatio: 0, remainingPercent: remaining)
-        ]
-        for sample in merged {
-            remaining = min(remaining, sample.remainingPercent)
-            let xRatio = min(max(Double(sample.recordedAt - startsAt) / Double(duration), 0), 1)
-            if let last = points.last, last.xRatio == xRatio, last.remainingPercent == remaining {
-                continue
-            }
-            points.append(GrokWeeklyGraphPoint(xRatio: xRatio, remainingPercent: remaining))
-        }
-        return points
-    }
-}
-
-struct GrokUsageGraphSnapshotView: View {
-    let mode: GrokUsageHistoryGraphMode
-    let currentWeekly: GrokUsageWeeklyWindow
-    let currentRecordedAt: Int
-    let pastResetsAt: Int?
-    let history: GrokUsageHistory
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text("Grok · 주간 잔여량")
-                    .font(.caption2.weight(.semibold))
-                Spacer()
-                Text(mode.label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Canvas { context, size in
-                drawGrid(context: &context, size: size)
-                if mode != .past, let resetsAt = currentWeekly.resetsAt {
-                    drawSeries(
-                        GrokWeeklyGraphSeries.points(
-                            samples: history.samples(resetsAt: resetsAt),
-                            resetsAt: resetsAt,
-                            currentRemainingPercent: currentWeekly.remainingPercent,
-                            currentRecordedAt: currentRecordedAt
-                        ),
-                        color: .accentColor,
-                        context: &context,
-                        size: size
-                    )
-                }
-                if mode != .current, let pastResetsAt {
-                    drawSeries(
-                        GrokWeeklyGraphSeries.points(
-                            samples: history.samples(resetsAt: pastResetsAt),
-                            resetsAt: pastResetsAt
-                        ),
-                        color: .secondary,
-                        context: &context,
-                        size: size
-                    )
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.035)))
-        }
-        .padding(6)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Grok 주간 \(mode.label) 잔여량 그래프")
-    }
-
-    private func drawGrid(context: inout GraphicsContext, size: CGSize) {
-        for ratio in [0.25, 0.5, 0.75] {
-            var path = Path()
-            path.move(to: CGPoint(x: 0, y: size.height * ratio))
-            path.addLine(to: CGPoint(x: size.width, y: size.height * ratio))
-            context.stroke(path, with: .color(.secondary.opacity(0.16)), lineWidth: 0.5)
-        }
-    }
-
-    private func drawSeries(
-        _ points: [GrokWeeklyGraphPoint],
-        color: Color,
-        context: inout GraphicsContext,
-        size: CGSize
-    ) {
-        guard !points.isEmpty else { return }
-        var path = Path()
-        let mapped = points.map { point in
-            CGPoint(
-                x: size.width * point.xRatio,
-                y: size.height * (1 - min(max(point.remainingPercent / 100, 0), 1))
-            )
-        }
-        path.move(to: mapped[0])
-        for point in mapped.dropFirst() {
-            path.addLine(to: point)
-        }
-        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-        if let last = mapped.last {
-            let marker = Path(ellipseIn: CGRect(x: last.x - 2.5, y: last.y - 2.5, width: 5, height: 5))
-            context.fill(marker, with: .color(color))
         }
     }
 }
