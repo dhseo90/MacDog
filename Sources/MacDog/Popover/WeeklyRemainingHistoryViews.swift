@@ -608,33 +608,18 @@ private struct WeeklyRemainingHistoryPlot: View {
                 chartLine(in: geometry.size)
                     .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt, lineJoin: .round))
 
+                columnHoverOverlay(in: geometry.size)
+
                 ForEach(chart.dayMarkers) { marker in
                     let markerPoint = point(for: marker.point, in: geometry.size)
-
-                    ZStack {
-                        Circle()
-                            .fill(marker.id == hoveredMarkerID ? tint : Color.primary.opacity(0.42))
-                            .frame(
-                                width: marker.id == hoveredMarkerID ? 6 : 4,
-                                height: marker.id == hoveredMarkerID ? 6 : 4
-                            )
-                    }
-                    .frame(
-                        width: WeeklyRemainingHistoryInteraction.markerHitDiameter,
-                        height: WeeklyRemainingHistoryInteraction.markerHitDiameter
-                    )
-                    .contentShape(Rectangle())
-                    .onHover { isHovering in
-                        if isHovering {
-                            hoveredMarkerID = marker.id
-                        } else if hoveredMarkerID == marker.id {
-                            hoveredMarkerID = nil
-                        }
-                    }
-                    .onTapGesture {
-                        hoveredMarkerID = marker.id
-                    }
+                    Circle()
+                        .fill(marker.id == hoveredMarkerID ? tint : Color.primary.opacity(0.42))
+                        .frame(
+                            width: marker.id == hoveredMarkerID ? 6 : 4,
+                            height: marker.id == hoveredMarkerID ? 6 : 4
+                        )
                         .position(markerPoint)
+                        .allowsHitTesting(false)
                 }
 
                 if let latest = chart.latestActualPoint {
@@ -686,20 +671,38 @@ private struct WeeklyRemainingHistoryPlot: View {
                 }
             }
             .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    hoveredMarkerID = nearestMarkerID(to: location, in: geometry.size)
-                case .ended:
-                    hoveredMarkerID = nil
-                }
-            }
         }
     }
 
     private var hoveredMarker: WeeklyRemainingHistoryDayMarker? {
         guard let hoveredMarkerID else { return nil }
         return chart.dayMarkers.first { $0.id == hoveredMarkerID }
+    }
+
+    private func columnHoverOverlay(in size: CGSize) -> some View {
+        let columns = WeeklyRemainingHistoryInteraction.dayColumns(dayGridPositions: chart.dayGridPositions)
+        return HStack(spacing: 0) {
+            ForEach(columns, id: \.id) { column in
+                Color.clear
+                    .frame(width: max(0, size.width * (column.end - column.start)))
+                    .contentShape(Rectangle())
+                    .onHover { isHovering in
+                        guard chart.dayMarkers.contains(where: { $0.id == column.id }) else { return }
+                        if isHovering {
+                            hoveredMarkerID = column.id
+                        } else if hoveredMarkerID == column.id {
+                            hoveredMarkerID = nil
+                        }
+                    }
+                    .onTapGesture {
+                        if chart.dayMarkers.contains(where: { $0.id == column.id }) {
+                            hoveredMarkerID = column.id
+                        }
+                    }
+            }
+        }
+        .frame(width: size.width, height: size.height, alignment: .leading)
+        .allowsHitTesting(true)
     }
 
     private func guideLines(in size: CGSize) -> Path {
@@ -750,15 +753,6 @@ private struct WeeklyRemainingHistoryPlot: View {
         return WeeklyRemainingHistoryLabelPlacement.valueLabelPosition(
             for: point(for: latest, in: size),
             in: size
-        )
-    }
-
-    private func nearestMarkerID(to location: CGPoint, in size: CGSize) -> Int? {
-        WeeklyRemainingHistoryInteraction.nearestMarkerID(
-            to: location,
-            markers: chart.dayMarkers,
-            in: size,
-            dayGridPositions: chart.dayGridPositions
         )
     }
 }
@@ -1484,6 +1478,19 @@ struct WeeklyRemainingHistoryInteraction {
         }
 
         return nearestID
+    }
+
+    struct DayColumn: Equatable {
+        let id: Int
+        let start: Double
+        let end: Double
+    }
+
+    static func dayColumns(dayGridPositions: [Double]) -> [DayColumn] {
+        guard dayGridPositions.count >= 2 else { return [] }
+        return (0..<(dayGridPositions.count - 1)).map { index in
+            DayColumn(id: index, start: dayGridPositions[index], end: dayGridPositions[index + 1])
+        }
     }
 
     static func columnMarkerID(
