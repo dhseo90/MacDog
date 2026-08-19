@@ -1572,6 +1572,34 @@ final class UsageMonitorStateTests: XCTestCase {
             1
         )
         XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: size.width / 7, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0,
+            "Completed Saturday marker sits on the first grid line and belongs to Saturday"
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: -8, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.hoverAnchor(
+                for: saturday,
+                dayGridPositions: dayGrid,
+                in: size
+            ).x,
+            size.width / 14,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
             WeeklyRemainingHistoryInteraction.dayColumns(dayGridPositions: dayGrid).map(\.id),
             [0, 1, 2, 3, 4, 5, 6]
         )

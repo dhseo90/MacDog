@@ -653,7 +653,11 @@ private struct WeeklyRemainingHistoryPlot: View {
                 }
 
                 if let hoveredMarker {
-                    let markerPoint = point(for: hoveredMarker.point, in: geometry.size)
+                    let markerPoint = WeeklyRemainingHistoryInteraction.hoverAnchor(
+                        for: hoveredMarker,
+                        dayGridPositions: chart.dayGridPositions,
+                        in: geometry.size
+                    )
                     let latestLabelPosition = latestLabelPositionToAvoid(for: hoveredMarker, in: geometry.size)
 
                     Text(hoveredMarker.hoverLabel)
@@ -670,7 +674,6 @@ private struct WeeklyRemainingHistoryPlot: View {
                         .allowsHitTesting(false)
                 }
             }
-            .contentShape(Rectangle())
         }
     }
 
@@ -681,28 +684,24 @@ private struct WeeklyRemainingHistoryPlot: View {
 
     private func columnHoverOverlay(in size: CGSize) -> some View {
         let columns = WeeklyRemainingHistoryInteraction.dayColumns(dayGridPositions: chart.dayGridPositions)
-        return HStack(spacing: 0) {
-            ForEach(columns, id: \.id) { column in
-                Color.clear
-                    .frame(width: max(0, size.width * (column.end - column.start)))
-                    .contentShape(Rectangle())
-                    .onHover { isHovering in
-                        guard chart.dayMarkers.contains(where: { $0.id == column.id }) else { return }
-                        if isHovering {
-                            hoveredMarkerID = column.id
-                        } else if hoveredMarkerID == column.id {
-                            hoveredMarkerID = nil
-                        }
-                    }
-                    .onTapGesture {
-                        if chart.dayMarkers.contains(where: { $0.id == column.id }) {
-                            hoveredMarkerID = column.id
-                        }
-                    }
+        return ZStack(alignment: .leading) {
+            if let hoveredMarker,
+               let column = columns.first(where: { $0.id == hoveredMarker.id }) {
+                let columnWidth = max(0, size.width * (column.end - column.start))
+                Rectangle()
+                    .fill(Color.primary.opacity(0.07))
+                    .frame(width: columnWidth, height: size.height)
+                    .offset(x: size.width * column.start)
+                    .allowsHitTesting(false)
             }
+
+            WeeklyRemainingHistoryColumnHoverCatcher(
+                columns: columns,
+                markerIDs: Set(chart.dayMarkers.map(\.id)),
+                onHoverColumn: { hoveredMarkerID = $0 }
+            )
         }
-        .frame(width: size.width, height: size.height, alignment: .leading)
-        .allowsHitTesting(true)
+        .frame(width: size.width, height: size.height)
     }
 
     private func guideLines(in size: CGSize) -> Path {
@@ -754,6 +753,100 @@ private struct WeeklyRemainingHistoryPlot: View {
             for: point(for: latest, in: size),
             in: size
         )
+    }
+}
+
+private struct WeeklyRemainingHistoryColumnHoverCatcher: NSViewRepresentable {
+    var columns: [WeeklyRemainingHistoryInteraction.DayColumn]
+    var markerIDs: Set<Int>
+    var onHoverColumn: (Int?) -> Void
+
+    func makeNSView(context: Context) -> WeeklyRemainingHistoryColumnHoverView {
+        let view = WeeklyRemainingHistoryColumnHoverView()
+        view.columns = columns
+        view.markerIDs = markerIDs
+        view.onHoverColumn = onHoverColumn
+        return view
+    }
+
+    func updateNSView(_ nsView: WeeklyRemainingHistoryColumnHoverView, context: Context) {
+        nsView.columns = columns
+        nsView.markerIDs = markerIDs
+        nsView.onHoverColumn = onHoverColumn
+    }
+
+    static func dismantleNSView(_ nsView: WeeklyRemainingHistoryColumnHoverView, coordinator: ()) {
+        nsView.onHoverColumn = nil
+    }
+}
+
+private final class WeeklyRemainingHistoryColumnHoverView: NSView {
+    var columns: [WeeklyRemainingHistoryInteraction.DayColumn] = []
+    var markerIDs: Set<Int> = []
+    var onHoverColumn: ((Int?) -> Void)?
+    private var lastEmittedID: Int?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds,
+                options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self,
+                userInfo: nil
+            )
+        )
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        emit(nil)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    private func emit(at location: CGPoint) {
+        let width = bounds.width
+        guard width > 0 else {
+            emit(nil)
+            return
+        }
+        emit(
+            WeeklyRemainingHistoryInteraction.hoveredColumnID(
+                xRatio: location.x / width,
+                columns: columns,
+                markerIDs: markerIDs
+            )
+        )
+    }
+
+    private func emit(_ id: Int?) {
+        guard id != lastEmittedID else { return }
+        lastEmittedID = id
+        onHoverColumn?(id)
     }
 }
 
@@ -1493,29 +1586,51 @@ struct WeeklyRemainingHistoryInteraction {
         }
     }
 
+    static func hoveredColumnID(
+        xRatio: Double,
+        columns: [DayColumn],
+        markerIDs: Set<Int>
+    ) -> Int? {
+        guard !columns.isEmpty else { return nil }
+        let clamped = min(max(xRatio, 0), 1)
+        let firstID = columns.first?.id
+        let match = columns.first { column in
+            if column.id == firstID {
+                return clamped >= column.start && clamped <= column.end
+            }
+            return clamped > column.start && clamped <= column.end
+        }
+        guard let match, markerIDs.contains(match.id) else { return nil }
+        return match.id
+    }
+
     static func columnMarkerID(
         at location: CGPoint,
         markers: [WeeklyRemainingHistoryDayMarker],
         in size: CGSize,
         dayGridPositions: [Double]
     ) -> Int? {
-        guard size.width > 0, dayGridPositions.count >= 2 else { return nil }
-        let xRatio = location.x / size.width
-        guard xRatio >= 0, xRatio <= 1 else { return nil }
+        guard size.width > 0 else { return nil }
+        return hoveredColumnID(
+            xRatio: location.x / size.width,
+            columns: dayColumns(dayGridPositions: dayGridPositions),
+            markerIDs: Set(markers.map(\.id))
+        )
+    }
 
-        let lastColumn = dayGridPositions.count - 2
-        let column = (0...lastColumn).first { index in
-            let start = dayGridPositions[index]
-            let end = dayGridPositions[index + 1]
-            if index == lastColumn {
-                return xRatio >= start && xRatio <= end
-            }
-            return xRatio >= start && xRatio < end
+    static func hoverAnchor(
+        for marker: WeeklyRemainingHistoryDayMarker,
+        dayGridPositions: [Double],
+        in size: CGSize
+    ) -> CGPoint {
+        let markerPoint = point(for: marker.point, in: size)
+        guard let column = dayColumns(dayGridPositions: dayGridPositions).first(where: { $0.id == marker.id }) else {
+            return markerPoint
         }
-        guard let column, markers.contains(where: { $0.id == column }) else {
-            return nil
-        }
-        return column
+        return CGPoint(
+            x: size.width * CGFloat((column.start + column.end) / 2),
+            y: markerPoint.y
+        )
     }
 }
 
