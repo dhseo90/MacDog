@@ -131,6 +131,7 @@ struct CLI {
     usage: macdog-grok-usage status --write-cache [--timeout SECONDS]
 
     Writes the unofficial SuperGrok weekly pool into grok-usage.json.
+    --timeout is the billing HTTP timeout in seconds (default 15).
     Does not print tokens or raw billing responses.
     """
 }

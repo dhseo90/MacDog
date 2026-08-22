@@ -180,6 +180,44 @@ final class GrokLocalAuthTokenProviderTests: XCTestCase {
         XCTAssertEqual(refresher.requests.count, 0)
     }
 
+    func testRejectingCurrentTokenForcesRefreshWhileStillValid() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let authURL = directory.appendingPathComponent("auth.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let payload = """
+        {
+          "https://auth.x.ai::00000000-0000-4000-8000-000000000001": {
+            "key": "fixture-auth-xai-token",
+            "refresh_token": "fixture-refresh-token",
+            "expires_at": "2026-09-01T00:00:00.000Z",
+            "oidc_issuer": "https://auth.x.ai",
+            "oidc_client_id": "00000000-0000-4000-8000-000000000001"
+          }
+        }
+        """
+        try Data(payload.utf8).write(to: authURL)
+        let refresher = RecordingRefresher(
+            result: GrokOIDCRefreshTokens(
+                accessToken: "fixture-forced-access",
+                refreshToken: "fixture-forced-refresh",
+                expiresIn: 21600
+            )
+        )
+        let provider = GrokLocalAuthTokenProvider(
+            authFileURLs: [authURL],
+            dateProvider: { ISO8601DateFormatter().date(from: "2026-08-22T00:00:00Z")! },
+            lock: ImmediateLock(),
+            refresher: refresher
+        )
+        XCTAssertEqual(
+            try provider.readAccessToken(rejecting: "fixture-auth-xai-token"),
+            "fixture-forced-access"
+        )
+        XCTAssertEqual(refresher.requests.count, 1)
+    }
+
     func testRefreshFailureDoesNotEmbedTokenMaterial() {
         XCTAssertFalse(errorDescriptionContainsToken(GrokLocalAuthTokenProviderError.refreshFailed))
         XCTAssertFalse(errorDescriptionContainsToken(GrokLocalAuthTokenProviderError.expiredAccessToken))

@@ -274,6 +274,8 @@ public struct GrokUsageCacheStore {
              "billing-decode-failed",
              "billing-too-large",
              "auth-unavailable",
+             "auth-expired",
+             "auth-refresh-failed",
              "request-failed":
             return code
         default:

@@ -14,7 +14,7 @@ enum CodexUsageCacheRefreshPolicy {
 
 enum GrokUsageCacheRefreshPolicy {
     static let requestTimeout: TimeInterval = CodexUsageCacheRefreshPolicy.requestTimeout
-    static let processTimeout: TimeInterval = CodexUsageCacheRefreshPolicy.processTimeout
+    static let processTimeout: TimeInterval = 40
 
     static func shouldRunLiveRefresh(for mode: UsageProviderMode) -> Bool {
         mode == .grok

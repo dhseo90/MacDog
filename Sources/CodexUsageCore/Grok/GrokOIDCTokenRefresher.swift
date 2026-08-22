@@ -42,7 +42,7 @@ public struct URLSessionGrokOIDCRefresher: GrokOIDCRefreshing {
     private let session: URLSession
     private let timeout: TimeInterval
 
-    public init(session: URLSession = .shared, timeout: TimeInterval = 15) {
+    public init(session: URLSession = .shared, timeout: TimeInterval = 8) {
         self.session = session
         self.timeout = timeout
     }

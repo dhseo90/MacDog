@@ -4,6 +4,11 @@ public protocol GrokBillingTransporting {
     func data(for request: URLRequest) throws -> Data
 }
 
+public enum GrokBillingTransportError: Error, Equatable, Sendable {
+    case unauthorized
+    case failed
+}
+
 public struct GrokUsageFetchService {
     public static let defaultBillingURL = URL(string: "https://cli-chat-proxy.grok.com/v1/billing?format=credits")!
 
@@ -32,21 +37,57 @@ public struct GrokUsageFetchService {
         do {
             accessToken = try tokenProvider.readAccessToken()
         } catch {
-            return try store.recordFailure(code: "auth-unavailable")
+            return try store.recordFailure(code: Self.failureCode(for: error))
         }
 
+        switch fetchWeekly(using: accessToken) {
+        case .stored(let weekly):
+            return try store.record(weekly)
+        case .unauthorized:
+            let retriedToken: String
+            do {
+                retriedToken = try tokenProvider.readAccessToken(rejecting: accessToken)
+            } catch {
+                return try store.recordFailure(code: Self.failureCode(for: error))
+            }
+            switch fetchWeekly(using: retriedToken) {
+            case .stored(let weekly):
+                return try store.record(weekly)
+            case .unauthorized, .failed:
+                return try store.recordFailure(code: "request-failed")
+            case .invalid(let code):
+                return try store.recordFailure(code: code)
+            }
+        case .failed:
+            return try store.recordFailure(code: "request-failed")
+        case .invalid(let code):
+            return try store.recordFailure(code: code)
+        }
+    }
+
+    private enum FetchOutcome {
+        case stored(GrokUsageWeeklyWindow)
+        case unauthorized
+        case failed
+        case invalid(String)
+    }
+
+    private func fetchWeekly(using accessToken: String) -> FetchOutcome {
         let data: Data
         do {
             data = try transport.data(for: billingRequest(accessToken: accessToken))
+        } catch GrokBillingTransportError.unauthorized {
+            return .unauthorized
         } catch {
-            return try store.recordFailure(code: "request-failed")
+            return .failed
         }
 
         do {
-            let weekly = try GrokBillingSanitizer.weeklyWindow(from: data)
-            return try store.record(weekly)
+            return .stored(try GrokBillingSanitizer.weeklyWindow(from: data))
         } catch let error as GrokBillingSanitizationError {
-            return try store.recordFailure(code: error.cacheCode)
+            return .invalid(error.cacheCode)
+        } catch {
+            return .invalid("billing-decode-failed")
         }
     }
 
@@ -57,6 +98,17 @@ public struct GrokUsageFetchService {
         request.setValue("grok-shell", forHTTPHeaderField: "x-grok-client-identifier")
         request.setValue("xai-grok-cli", forHTTPHeaderField: "User-Agent")
         return request
+    }
+
+    static func failureCode(for error: Error) -> String {
+        switch error as? GrokLocalAuthTokenProviderError {
+        case .expiredAccessToken:
+            return "auth-expired"
+        case .refreshFailed:
+            return "auth-refresh-failed"
+        case .noCredentialsFound, .missingAccessToken, .none:
+            return "auth-unavailable"
+        }
     }
 }
 
@@ -76,10 +128,16 @@ public struct URLSessionGrokBillingTransport: GrokBillingTransporting {
                 box.result = .failure(error)
                 return
             }
-            guard let data,
-                  let response = response as? HTTPURLResponse,
-                  (200..<300).contains(response.statusCode) else {
-                box.result = .failure(URLError(.badServerResponse))
+            guard let http = response as? HTTPURLResponse else {
+                box.result = .failure(GrokBillingTransportError.failed)
+                return
+            }
+            if http.statusCode == 401 || http.statusCode == 403 {
+                box.result = .failure(GrokBillingTransportError.unauthorized)
+                return
+            }
+            guard let data, (200..<300).contains(http.statusCode) else {
+                box.result = .failure(GrokBillingTransportError.failed)
                 return
             }
             box.result = .success(data)

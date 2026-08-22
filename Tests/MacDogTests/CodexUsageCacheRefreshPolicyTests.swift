@@ -12,6 +12,12 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.requestTimeout, 15)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.processTimeout, 17)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.minimumRetryInterval, 60)
+        XCTAssertEqual(GrokUsageCacheRefreshPolicy.requestTimeout, 15)
+        XCTAssertEqual(GrokUsageCacheRefreshPolicy.processTimeout, 40)
+        XCTAssertGreaterThan(
+            GrokUsageCacheRefreshPolicy.processTimeout,
+            GrokUsageCacheRefreshPolicy.requestTimeout
+        )
     }
 
     func testRefreshCommandUsesWriteCacheTimeoutAndOptionalMirror() {

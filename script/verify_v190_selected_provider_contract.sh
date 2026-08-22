@@ -183,6 +183,10 @@ verify_contract() {
     "lock miss reread"
   require_match 'testSuccessfulFetchWritesSanitizedWeeklySampleWithoutRawPayload' \
     "$GROK_FETCH_TEST" "writer privacy regression"
+  require_match 'testUnauthorizedRetriesOnceAfterForcedRefresh' "$GROK_FETCH_TEST" \
+    "billing 401 single refresh"
+  require_match 'testSecondUnauthorizedDoesNotRefreshAgain' "$GROK_FETCH_TEST" \
+    "billing 401 no second refresh"
   require_match 'testGrokModeInstallsGrokAgentAndRemovesCodexAgent' "$USER_COMPONENT_TEST" \
     "Grok LaunchAgent regression"
   require_match 'testGrokRefreshCommandWritesCacheWithoutMirror' "$REFRESH_TEST" \

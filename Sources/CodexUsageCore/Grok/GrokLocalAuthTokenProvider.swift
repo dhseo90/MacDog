@@ -65,10 +65,14 @@ public struct GrokLocalAuthTokenProvider {
     }
 
     public func readAccessToken() throws -> String {
+        try readAccessToken(rejecting: nil)
+    }
+
+    public func readAccessToken(rejecting rejectedToken: String?) throws -> String {
         guard let authURL = firstExistingAuthURL() else {
             throw GrokLocalAuthTokenProviderError.noCredentialsFound
         }
-        if let token = try usableAccessToken(at: authURL) {
+        if let token = try usableAccessToken(at: authURL), token != rejectedToken {
             return token
         }
 
@@ -76,13 +80,13 @@ public struct GrokLocalAuthTokenProvider {
             adjacentTo: authURL,
             timeout: lockTimeout
         ) {
-            try refreshUnderLock(authURL: authURL)
+            try refreshUnderLock(authURL: authURL, rejecting: rejectedToken)
         }
         if let token = refreshed {
             return token
         }
 
-        if let token = try usableAccessToken(at: authURL) {
+        if let token = try usableAccessToken(at: authURL), token != rejectedToken {
             return token
         }
         throw GrokLocalAuthTokenProviderError.expiredAccessToken
@@ -97,10 +101,10 @@ public struct GrokLocalAuthTokenProvider {
         return Self.usableAccessToken(from: store, now: dateProvider())
     }
 
-    private func refreshUnderLock(authURL: URL) throws -> String {
+    private func refreshUnderLock(authURL: URL, rejecting rejectedToken: String?) throws -> String {
         let store = try readStore(at: authURL)
         let now = dateProvider()
-        if let token = Self.usableAccessToken(from: store, now: now) {
+        if let token = Self.usableAccessToken(from: store, now: now), token != rejectedToken {
             return token
         }
         guard let refresher else {
