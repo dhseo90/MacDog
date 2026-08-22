@@ -177,6 +177,10 @@ verify_contract() {
     "API key rejection"
   require_match 'testReadsAuthXAIIssuerEntryKeyWithoutUsingRefreshToken' "$GROK_AUTH_TEST" \
     "current issuer entry token"
+  require_match 'testExpiredIssuerEntryRefreshesAndMergesWithoutDroppingOtherFields' \
+    "$GROK_AUTH_TEST" "sibling refresh merge"
+  require_match 'testLockUnavailableRereadsDiskWithoutCallingRefresher' "$GROK_AUTH_TEST" \
+    "lock miss reread"
   require_match 'testSuccessfulFetchWritesSanitizedWeeklySampleWithoutRawPayload' \
     "$GROK_FETCH_TEST" "writer privacy regression"
   require_match 'testGrokModeInstallsGrokAgentAndRemovesCodexAgent' "$USER_COMPONENT_TEST" \
