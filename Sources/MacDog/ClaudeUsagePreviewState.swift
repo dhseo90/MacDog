@@ -118,7 +118,18 @@ struct GrokUsagePreviewState: Equatable {
     func statusTitle(now: Date = Date()) -> String {
         if !isEnabled { return "연결 대기" }
         if loadIssue != nil { return "cache 확인 필요" }
-        if issueCode == "auth-unavailable" { return "로그인 필요" }
+        switch emptyStateKind {
+        case .loginRequired:
+            return "로그인 필요"
+        case .sessionRefreshFailed:
+            return "세션 갱신 실패"
+        case .lookupFailed:
+            return "조회 오류"
+        case .weeklyWindowMissing:
+            return "주간 window 없음"
+        case .waiting, .cacheLoadFailed:
+            break
+        }
         switch cacheSnapshot?.status(now: now) ?? .waiting {
         case .waiting: return "연결 대기"
         case .available: return "데이터 정상"
@@ -130,23 +141,96 @@ struct GrokUsagePreviewState: Equatable {
     var issueCode: String? { cacheSnapshot?.issue?.code }
 
     var needsLoginGuidance: Bool {
-        guard isEnabled, loadIssue == nil else { return false }
-        return issueCode == "auth-unavailable" || cacheSnapshot?.weekly == nil
+        emptyStateKind == .loginRequired
+    }
+
+    var showsLoginActions: Bool {
+        switch emptyStateKind {
+        case .loginRequired, .sessionRefreshFailed, .waiting:
+            return true
+        case .lookupFailed, .weeklyWindowMissing, .cacheLoadFailed:
+            return false
+        }
+    }
+
+    func weeklyCardUnavailableText() -> String? {
+        switch emptyStateKind {
+        case .loginRequired:
+            return "로그인 필요"
+        case .sessionRefreshFailed:
+            return "세션 갱신 실패"
+        case .lookupFailed:
+            return "조회 오류"
+        case .weeklyWindowMissing:
+            return "주간 window 없음"
+        case .cacheLoadFailed, .waiting:
+            return nil
+        }
     }
 
     func emptyStateTitle() -> String {
-        if loadIssue != nil { return "Grok cache 확인 필요" }
-        if needsLoginGuidance { return "Grok 로그인 필요" }
-        return "Grok 주간 cache 없음"
+        switch emptyStateKind {
+        case .cacheLoadFailed:
+            return "Grok cache 확인 필요"
+        case .loginRequired:
+            return "Grok 로그인 필요"
+        case .sessionRefreshFailed:
+            return "Grok 세션 갱신 실패"
+        case .lookupFailed:
+            return "Grok 조회 오류"
+        case .weeklyWindowMissing:
+            return "Grok 주간 window 없음"
+        case .waiting:
+            return "Grok 주간 cache 없음"
+        }
     }
 
     func emptyStateDetail() -> String {
-        if let loadIssue { return loadIssue }
-        if issueCode == "auth-unavailable" {
-            return "Grok 주간 사용량은 grok.com 로그인이 필요합니다. 터미널에서 grok login을 실행한 뒤 잠시 기다리세요. MacDog는 auth.json을 수정하지 않고 Codex cache로 대체하지 않습니다."
+        switch emptyStateKind {
+        case .cacheLoadFailed:
+            return loadIssue ?? "Grok cache를 읽지 못했습니다."
+        case .loginRequired:
+            return "Grok 주간 사용량은 grok.com 로그인이 필요합니다. 터미널에서 grok login을 실행한 뒤 잠시 기다리세요. 메뉴바는 auth.json을 읽지 않고 Codex cache로 대체하지 않습니다."
+        case .sessionRefreshFailed:
+            return "Grok 세션을 갱신하지 못했습니다. 잠시 후 다시 조회합니다. 반복되면 터미널에서 grok login을 실행하세요. Codex cache로 대체하지 않습니다."
+        case .lookupFailed:
+            return "Grok 주간 사용량 조회에 실패했습니다. 네트워크나 billing 응답을 확인하세요. 지금은 grok login이 필요한 상태가 아닙니다. Codex cache로 대체하지 않습니다."
+        case .weeklyWindowMissing:
+            return "주간 사용량 window를 읽지 못했습니다. 로그인과 별개입니다. Codex cache로 대체하지 않습니다."
+        case .waiting:
+            return "첫 주간 sample이 생기면 사용량이 표시됩니다. grok.com에 로그인되어 있지 않으면 터미널에서 grok login을 실행하세요. Codex cache로 대체하지 않습니다."
         }
-        return "첫 주간 sample이 생기면 사용량이 표시됩니다. grok.com에 로그인되어 있지 않으면 터미널에서 grok login을 실행하세요. Codex cache로 대체하지 않습니다."
     }
+
+    private var emptyStateKind: GrokEmptyStateKind {
+        guard isEnabled else { return .waiting }
+        if loadIssue != nil { return .cacheLoadFailed }
+        switch issueCode {
+        case "auth-unavailable":
+            return .loginRequired
+        case "auth-expired", "auth-refresh-failed":
+            return .sessionRefreshFailed
+        case "request-failed":
+            return .lookupFailed
+        case "weekly-window-missing":
+            return .weeklyWindowMissing
+        default:
+            break
+        }
+        if cacheSnapshot?.weekly == nil {
+            return .loginRequired
+        }
+        return .waiting
+    }
+}
+
+private enum GrokEmptyStateKind: Equatable {
+    case loginRequired
+    case sessionRefreshFailed
+    case lookupFailed
+    case weeklyWindowMissing
+    case cacheLoadFailed
+    case waiting
 }
 
 struct GrokLoginGuide: Equatable {

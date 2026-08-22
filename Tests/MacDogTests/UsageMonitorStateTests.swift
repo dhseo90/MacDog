@@ -197,7 +197,7 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
-    func testGrokEmptyStateAsksForLoginInsteadOfBareMissingCache() {
+    func testGrokEmptyStateAsksForLoginInsteadOfBareMissingCache() throws {
         let now = 1_900_000_000
         let unavailable = GrokUsagePreviewState(
             isEnabled: true,
@@ -229,6 +229,61 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(guide.standaloneCommand, "grok login")
         XCTAssertTrue(guide.appleScriptSource().contains("grok login"))
         XCTAssertTrue(guide.appleScriptSource().contains("Terminal"))
+        XCTAssertTrue(unavailable.showsLoginActions)
+
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 10, resetsAt: now + 3_600))
+        let expired = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: GrokUsageCacheIssue(code: "auth-expired", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(expired.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "세션 갱신 실패")
+        XCTAssertEqual(expired.emptyStateTitle(), "Grok 세션 갱신 실패")
+        XCTAssertFalse(expired.needsLoginGuidance)
+        XCTAssertTrue(expired.showsLoginActions)
+        XCTAssertEqual(expired.weeklyCardUnavailableText(), "세션 갱신 실패")
+        XCTAssertTrue(expired.emptyStateDetail().contains("grok login"))
+
+        let lookupFailed = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: GrokUsageCacheIssue(code: "request-failed", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(lookupFailed.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "조회 오류")
+        XCTAssertEqual(lookupFailed.emptyStateTitle(), "Grok 조회 오류")
+        XCTAssertFalse(lookupFailed.needsLoginGuidance)
+        XCTAssertFalse(lookupFailed.showsLoginActions)
+        XCTAssertTrue(lookupFailed.emptyStateDetail().contains("grok login이 필요한 상태가 아닙니다"))
+
+        let missingWindow = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 99, resetsAt: now)),
+                issue: GrokUsageCacheIssue(code: "weekly-window-missing", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(missingWindow.emptyStateTitle(), "Grok 주간 window 없음")
+        XCTAssertFalse(missingWindow.needsLoginGuidance)
+        XCTAssertFalse(missingWindow.showsLoginActions)
     }
 
     func testGrokWeeklyHistoryMapsToSharedRemainingChartWithHoverLabels() throws {

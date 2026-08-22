@@ -89,8 +89,8 @@ struct GrokUsagePanel: View {
     }
 
     private var unavailableWeeklyText: String {
-        if preview.issueCode == "auth-unavailable" {
-            return "로그인 필요"
+        if let text = preview.weeklyCardUnavailableText() {
+            return text
         }
         switch preview.status(now: now) {
         case .stale:
@@ -146,7 +146,7 @@ struct GrokUsagePanel: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if preview.loadIssue == nil {
+            if preview.showsLoginActions {
                 HStack(spacing: 8) {
                     Button("로그인 명령 복사") {
                         let pasteboard = NSPasteboard.general
@@ -155,14 +155,14 @@ struct GrokUsagePanel: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("auth.json을 읽거나 수정하지 않고 grok login 명령만 복사합니다.")
+                    .help("메뉴바는 auth.json을 읽지 않고 grok login 명령만 복사합니다.")
 
                     Button("터미널에서 로그인") {
                         try? loginGuide.openTerminal()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Terminal에서 grok login을 엽니다. MacDog가 로그인하거나 auth.json을 수정하지 않습니다.")
+                    .help("Terminal에서 grok login을 엽니다. 메뉴바는 auth.json을 읽지 않습니다.")
                 }
             }
         }
