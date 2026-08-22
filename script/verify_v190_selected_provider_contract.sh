@@ -98,6 +98,8 @@ verify_contract() {
   require_match 'unofficial-cli-billing' "$CONTRACT" "unofficial source"
   require_match '100 - usedPercent' "$CONTRACT" "remaining calculation"
   require_match '사용자 승인 없이' "$CONTRACT" "auth store approval boundary"
+  require_match 'auth.json.lock' "$CONTRACT" "sibling auth lock"
+  require_match 'atomic merge write' "$CONTRACT" "sibling auth write"
   require_match 'x\.ai/billing' "$SPIKE" "selected unofficial billing path"
   require_match '현재 개발 중인 `1\.9\.0`은 설정 visible mode를 `Codex`와 `Grok`' \
     "$README" "README visible Codex/Grok development"

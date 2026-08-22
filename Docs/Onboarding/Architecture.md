@@ -130,7 +130,7 @@ sequenceDiagram
     participant App as MacDog UI
 
     Timer->>CLI: status --write-cache
-    CLI->>CLI: memory-only auth read immediately before request
+    CLI->>CLI: auth.json sibling read; refresh under lock only if expired or 401
     CLI->>Billing: GET /v1/billing?format=credits
     Billing-->>CLI: creditUsagePercent
     CLI->>CLI: weekly-only sanitize, drop token and raw payload
@@ -205,7 +205,7 @@ stateDiagram-v2
 | `Sources/CodexUsageCore/Usage` | `CodexUsageService.swift` | model/formatter, CLI JSON, reset credit privacy |
 | `Sources/CodexUsageCore/Cache` | `CodexUsageCache.swift` | weekly/five-hour/reset history, stale/error, atomic write |
 | `Sources/CodexUsageCore/Claude` | `ClaudeUsageCache.swift` | statusLine sanitizer, Claude history, privacy test |
-| `Sources/CodexUsageCore/Grok` | `GrokUsageCache.swift` | weekly-only sanitizer, Grok history, memory-only auth |
+| `Sources/CodexUsageCore/Grok` | `GrokUsageCache.swift` | weekly-only sanitizer, Grok history, auth.json sibling |
 | `Sources/CodexUsageCLI` | `main.swift` | README CLI 계약, cache writer, `doctor` |
 | `Sources/GrokUsageCLI` | `main.swift` | Grok weekly writer, token 미출력 |
 | `Sources/ClaudeUsageBridgeCLI` | `main.swift` | bounded stdin/output, bundle packaging gate |

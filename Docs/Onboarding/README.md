@@ -30,7 +30,7 @@ MacDog는 macOS 14 이상에서 동작하는 메뉴바 유틸리티입니다. AI
 | 기본 사용량 데이터 소스는? | Codex app-server `account/rateLimits/read` |
 | Grok 데이터는 어떻게 들어오는가? | bundled `macdog-grok-usage`가 unofficial CLI-proxy `x.ai/billing` 주간 pool을 sanitize한 별도 cache |
 | Claude 데이터는 어떻게 들어오는가? | 사용자가 연결한 Claude statusLine event를 bundled bridge가 sanitize한 별도 cache. 기본 UI에서는 숨김 |
-| 앱이 인증 파일을 직접 읽는가? | 메뉴바 UI는 읽지 않는다. Codex reset-credit과 Grok billing의 제한된 memory-only 예외만 각 writer에 있다. |
+| 앱이 인증 파일을 직접 읽는가? | 메뉴바 UI는 읽지 않는다. Codex reset-credit은 조회 직전 memory-only 예외다. Grok billing은 `macdog-grok-usage`만 `~/.grok/auth.json` sibling이다. 유효하면 읽고, 만료/401이면 lock 아래 refresh 후 같은 파일에 다시 쓴다. |
 | 주요 언어와 UI 기술은? | Swift 6, SwiftUI, AppKit, 일부 Objective-C bridge |
 | 패키지 관리 방식은? | Swift Package Manager. 외부 Swift package dependency는 현재 없다. |
 | 기본 배포물은? | `MacDog.app`, `codex-usage`, `macdog-grok-usage`, `macdog-claude-statusline`, optional privileged helper가 포함된 DMG |

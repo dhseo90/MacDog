@@ -24,12 +24,19 @@ MacDog는 Codex 사용량 CLI, Grok weekly-only writer(`macdog-grok-usage`), mac
    이 예외는 token 출력, token cache 저장, raw response 저장, fixture/문서 token 저장을 허용하지 않습니다.
    auth store 직접 읽기는 초기화권 만료일 backend 요청 직전의 메모리 사용으로만 제한합니다.
    같은 종류의 예외로, Grok SuperGrok/Grok Build 공유 주간 pool 조회를 위해
-   `macdog-grok-usage`가 grok.com login token을 메모리에서만 받아 unofficial CLI-proxy
-   `x.ai/billing` 요청의 `Authorization` header에 즉시 사용하는 것은 허용합니다.
-   auth store 직접 읽기는 billing 요청 직전의 메모리 사용으로만 제한합니다.
+   `macdog-grok-usage`가 grok.com session을 `~/.grok/auth.json`에서 쓰는 것은 허용합니다.
+   허용 순서:
+   - 조회 직전에 access token을 메모리로 읽어 unofficial CLI-proxy `x.ai/billing`
+     요청의 `Authorization` header에 즉시 사용한다.
+   - access token이 유효하면 refresh 하지 않고 파일을 고치지 않는다.
+   - access token이 만료되었거나 billing이 401이면 `auth.json.lock`을 잡고,
+     디스크에 이미 새 값이 있으면 채택한다. 없으면 OIDC `refresh_token`으로
+     갱신하고 새 access/refresh를 같은 파일에 atomic merge write한다.
    이 예외는 token 출력, token cache 저장, raw billing 응답 저장, fixture/문서 token 저장,
-   사용자 승인 없는 `~/.grok/auth.json` 열기, `XAI_API_KEY`로 주간 pool을 조회하는 행위를
-   허용하지 않습니다. 메뉴바 앱은 Grok auth store를 읽지 않습니다.
+   에이전트가 사용자 승인 없이 `~/.grok/auth.json` 원문을 열거나 출력하는 행위,
+   `XAI_API_KEY`로 주간 pool을 조회하는 행위, 메뉴바 앱의 auth store 읽기/쓰기,
+   MacDog 전용 토큰 파일, 메모리 단독 세션을 허용하지 않습니다.
+   로그인/로그아웃은 `grok login` / `grok logout`만 사용합니다.
 7. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, helper 설치/삭제, codesign/notarization, push는 사용자 명시 요청 없이 실행하지 않습니다.
 8. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획, 완료 조건, 후속 이슈에 넣지 않습니다. 사용자가 해당 권한 사용 가능 상태와 별도 milestone을 승인한 경우만 예외입니다.
 9. WidgetKit 코드는 보존/opt-in build 대상입니다. 기본 앱/DMG 완료 조건에 넣지 않고, source/test/fixture/opt-in build 수준까지만 확인한 경우 실제 위젯 UI 검수 완료로 보고하지 않습니다.
@@ -296,7 +303,9 @@ codex-usage status --watch 60
 4. CLI JSON schema 변경이 README/AGENTS/ROADMAP과 불일치
 5. cache schema 변경이 앱/위젯 문서와 불일치
 6. Codex auth token 또는 session material 노출 징후
-7. `~/.codex/auth.json` 또는 `~/.grok/auth.json` 직접 읽기 또는 출력 징후
+7. Codex/Grok auth.json 원문 출력, 또는 허용된 writer 경로 밖의 auth store 읽기/쓰기 징후.
+   `macdog-grok-usage`의 billing 직전 읽기, 만료/401 시 `auth.json.lock` 아래 refresh와
+   atomic merge write는 예외입니다. 메뉴바 앱의 Grok auth store 접근은 중단 조건입니다.
 8. app-server 또는 Grok billing response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
 9. WidgetKit extension이 shared cache 대신 app-server를 직접 호출
 10. menu bar runner의 과도한 CPU/RAM 사용 측정 또는 명백한 정황
@@ -339,6 +348,10 @@ codex-usage status --watch 60
    Codex/Claude 파일과 분리합니다. directory `0700`, file `0600`, atomic write를 유지합니다.
 8. 선택 provider가 stale/error여도 Codex 또는 Claude cache로 fallback하지 않습니다.
 9. Grok Extra Usage Credits를 Codex 초기화권처럼 표시하지 않습니다.
+10. grok.com session은 `~/.grok/auth.json` 하나입니다. `macdog-grok-usage`는 Grok CLI
+    sibling입니다. 유효한 access token은 읽기만 하고, 만료/401일 때만 `auth.json.lock`
+    아래에서 refresh 한 뒤 같은 파일에 atomic merge write합니다. 메뉴바는 auth store를
+    읽지 않습니다. 로그인 UI는 `grok login`입니다.
 
 ---
 

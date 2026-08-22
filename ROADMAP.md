@@ -50,7 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~4: 주간 그래프 hover, 선택 provider 문구, uninstall Grok 잔여, published release |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~5: Grok auth.json sibling 주기, 주간 그래프 hover, 선택 provider 문구, uninstall Grok 잔여, published release |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -581,13 +581,25 @@ Release는 여전히 `v1.8.0`입니다. 로컬 후보 DMG에서 Grok 로그인, 
 Grok billing 원천이 unofficial이고 인증 예외와 selected-provider 상태 전이가 겹친다.
 
 후속 이슈는 아래 번호 순으로만 진행합니다. 앞 항목이 끝나기 전에 릴리즈 publish를 하지
-않습니다.
+않습니다. 1차 인증 예외는 읽기 전용이었다. 현재 계약은 Grok `auth.json` sibling 주기이며
+writer 코드는 후속 1에서 맞춘다.
 
 공통 규칙: 잔여 사용량 조회(Codex app-server, Grok unofficial billing, hidden Claude
 status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/비교, 잔여율 표시는
 공통 로직을 쓴다. Grok 전용 그래프를 새로 키우지 않는다.
 
-1. 1번 탭 주간 그래프 hover
+1. Grok `auth.json` sibling 주기
+   `macdog-grok-usage`는 Grok CLI와 같은 `~/.grok/auth.json`을 쓴다. 유효한 access
+   token은 읽기만 하고, 만료 또는 billing 401이면 `auth.json.lock` 아래에서 sibling
+   adopt 또는 OIDC refresh 후 같은 파일에 atomic merge write한다. 메뉴바는 auth를
+   읽지 않는다. 로그인 UI는 `grok login`이다. MacDog 전용 토큰 파일과 메모리 단독
+   세션은 만들지 않는다.
+   추천 모델: `grok-4.6`
+   추론 수준: 매우 높음 (xhigh)
+   선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점.
+   인증·refresh 회전 경계라 상향한다.
+
+2. 1번 탭 주간 그래프 hover
    새 hover UX를 만들지 않는다. Codex는 이미 `WeeklyRemainingHistoryPlot`에서 일자·마지막
    측정 잔여율(%) hover를 보여 준다. Grok 탭만 `GrokUsageGraphSnapshotView` Canvas를
    따로 그려 이 경로를 타지 않는다. Grok weekly sample을 공통 plot 입력으로 바꿔
@@ -597,7 +609,7 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
    hover 동작은 이미 있고 Grok 연결만 빠졌다.
 
-2. 선택 provider 기준 문구
+3. 선택 provider 기준 문구
    3번 탭 `Codex 실행 중`과 우클릭 메뉴 `코덱스 펫` / `코덱스 사용량 종료`는 선택한
    provider 이름으로 바뀐다. `Grok`이면 Grok, hidden re-enable로 `Claude`가 켜진
    경우에만 Claude로 표시한다. 선택하지 않은 provider 이름으로 fallback하지 않는다.
@@ -606,14 +618,14 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
    일반 개발이므로 `grok-4.6`을 유지한다.
 
-3. `uninstall.sh` Grok 잔여물
+4. `uninstall.sh` Grok 잔여물
    삭제가 `grok-usage.json`, history, lock과 `com.dhseo.macdog.grok-usage-cache`
    LaunchAgent를 Codex/Claude와 같은 수준으로 제거한다.
    추천 모델: `grok-4.6`
    추론 수준: 중간 (medium)
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
 
-4. published DMG와 final-state
+5. published DMG와 final-state
    `v1.9.0` → `main` PR, signed tag, published DMG, Finder 설치, final-state.
    추천 모델: `grok-4.6`
    추론 수준: 높음 (high)

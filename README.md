@@ -278,7 +278,11 @@ cache에 저장하지 않습니다. live billing은 사용자 승인 없이 실�
   거부합니다. `resetsAt`을 모르면 합성하지 않고 생략합니다.
 - Grok cache는 `grok-usage.json`, `grok-usage-history.json`, `grok-usage.lock`이며 Codex/Claude
   파일과 분리합니다. directory `0700`, file `0600`, atomic write를 유지합니다.
-- Grok billing이 login token을 쓰면 조회 직전에만 메모리로 읽어 요청 header에 즉시 사용합니다.
+- Grok billing은 grok.com session을 `~/.grok/auth.json`에서 씁니다. access token이 유효하면
+  조회 직전에만 메모리로 읽어 요청 header에 즉시 사용하고 파일은 고치지 않습니다. 만료되었거나
+  billing이 401이면 `macdog-grok-usage`만 `auth.json.lock` 아래에서 Grok CLI와 같은 OIDC
+  refresh를 하고 새 token을 같은 파일에 atomic merge write할 수 있습니다. 메뉴바 앱은 auth
+  store를 읽지 않습니다. 로그인/로그아웃은 `grok login` / `grok logout`입니다.
   `~/.grok/auth.json` 원문과 token은 출력·cache·log·fixture·문서에 남기지 않습니다.
 
 ## 개발과 검증

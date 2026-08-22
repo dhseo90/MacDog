@@ -1,6 +1,6 @@
 # Security Policy
 
-MacDog reads local Codex usage metadata and macOS system state. It must never read, print, cache, or commit Codex auth tokens, refresh tokens, cookies, or session material.
+MacDog reads local Codex and Grok usage metadata and macOS system state. It must never print, cache, or commit Codex or Grok auth tokens, refresh tokens, cookies, or session material.
 
 ## Supported Versions
 
@@ -19,7 +19,8 @@ For now, report privately to the repository owner. Include:
 
 ## Sensitive Data Rules
 
-- Do not read or paste `~/.codex/auth.json`.
+- Do not read or paste `~/.codex/auth.json` or `~/.grok/auth.json` into tickets, chat, fixtures, docs, or logs.
+- `macdog-grok-usage` may read `~/.grok/auth.json` immediately before billing. When the access token is expired or billing returns 401, it may refresh under `auth.json.lock` and atomically merge the new access/refresh tokens back into that same file. It must not print tokens. The menu bar app must not read or write this file.
 - Do not store access tokens, refresh tokens, cookies, session IDs, or authorization headers in cache files, logs, fixtures, screenshots, issues, or PRs.
 - Redact raw app-server responses before attaching diagnostics.
 - Treat helper install logs and macOS permission prompts as user-environment data.

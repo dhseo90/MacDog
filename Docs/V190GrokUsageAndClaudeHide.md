@@ -73,8 +73,11 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
   로직을 쓰고 Grok 전용 표시 경로를 키우지 않는다.
 - Grok 5시간 window는 없다. 없으면 `현재 제공되지 않음`으로 두고 합성하지 않는다.
 - Grok Extra Usage Credits는 Codex 초기화권이 아니다. 합성하거나 같은 UI로 보여 주지 않는다.
-- `~/.grok/auth.json`을 출력하거나 cache/log/fixture에 저장하지 않는다. billing 조회가
-  token을 쓰면 메모리에서만 쓰고 요청 header에 즉시 사용한다.
+- `~/.grok/auth.json`을 출력하거나 cache/log/fixture에 저장하지 않는다. billing 조회는
+  `macdog-grok-usage`만 수행한다. 유효한 access token은 조회 직전에 읽고, 만료/401이면
+  `auth.json.lock` 아래 refresh 후 같은 파일에 atomic merge write한다. 메뉴바는 auth
+  store를 읽지 않는다. 현재 기준은
+  [V190GrokWeeklyOnlyContract.md](V190GrokWeeklyOnlyContract.md)다.
 
 ## 구현 순서
 
@@ -85,7 +88,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 | 1 | v1.9.0 범위 고정 | P0 | 이 문서로 목표, 제외, Claude hide, Grok 주간-only 경계를 고정한다. README/`ROADMAP.md` 정렬은 하지 않는다. | 이 문서가 `v1.9.0` 브랜치에 있고 구현 순서가 명확하다 |
 | 2 | Grok 사용량 원천 spike | P0 | SuperGrok 주간 pool과 console API credit을 분리 확인한다. CLI `/usage`, CLI-proxy billing, `x.ai/billing` 중 안정적인 field만 기록한다. token, raw auth, 원문 응답은 저장하지 않는다. | 사용할 field 이름, 사용률/잔여율/reset 계산, 실패 시 동작이 이 문서 또는 후속 spike note에 적혀 있다. 공식 계약이 없으면 unofficial로 표시한다 |
 | 3 | Grok weekly-only 입력 계약 고정 | P0 | `usedPercent`, `remaining = 100 - usedPercent`, `resetsAt`만 기본 UI 입력으로 둔다. 5시간 합성, Extra Usage Credits 혼합, 제품별 Chat/Build/Imagine 분해는 보류한다. | [V190GrokWeeklyOnlyContract.md](V190GrokWeeklyOnlyContract.md)에 최소 schema와 금지 항목이 있다 |
-| 4 | 인증 예외 경계 고정 | P0 | Grok billing이 login token을 요구하면 Codex 초기화권과 같은 memory-only 예외만 허용한다. auth store 직접 읽기는 조회 직전으로 제한한다. | 같은 계약 문서에 token 미출력·미캐시·fixture 미저장 테스트 항목이 있다. 사용자 승인 없이 auth.json을 열지 않았다 |
+| 4 | 인증 예외 경계 고정 | P0 | 1차는 Grok billing login token을 조회 직전 memory-only로 읽게 했다. 현재 계약은 `macdog-grok-usage`가 `~/.grok/auth.json` sibling으로 만료/401일 때만 lock 아래 refresh 후 atomic merge write하는 것이다. | 계약 문서에 token 미출력·미캐시·fixture 미저장과 sibling lock/write 금지 항목이 있다. 에이전트는 사용자 승인 없이 auth.json 원문을 열지 않는다 |
 | 5 | provider mode와 Claude hide | P0 | `UsageProviderMode`에 `grok`을 추가한다. 설정 picker는 visible cases만 보여 준다. Claude 코드와 테스트는 남긴다. | 설정에서 `Codex`/`Grok`만 보이고 Claude source가 삭제되지 않는다 |
 | 6 | preference migration | P0 | 저장된 `claude`는 기본 UI에서 `codex`로 되돌린다. 잘못된 값은 `codex`다. hidden re-enable이 켜진 경우에만 Claude를 유지한다. | 기존 Codex 사용자는 그대로, Claude 선택 사용자는 Codex로 돌아간다 |
 | 7 | 알림·러너·refresh 3분기 | P0 | `UsageNotificationRoute`를 `codex`/`grok`/`claude`로 나눈다. `codex`가 아니면 Claude로 떨어지는 분기를 제거한다. LaunchAgent와 live refresh는 Codex만 유지하고, Grok writer가 생기기 전에는 Grok mode에서 Codex cache를 평가하지 않는다. | Grok 선택이 Claude 알림/탭/러너로 가지 않는다. Codex cache로 fallback하지 않는다 |
