@@ -151,12 +151,13 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 `ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~3을 닫기 전에 published release를
 시작하지 않는다.
 
-### 1. 1번 탭 주간 그래프 hover
+### 1. 1번 탭 주간 그래프 hover — 코드 완료, GUI 확인 미수행
 
 잔여 사용량 조회만 provider별로 두고, 그래프·hover·현재/지난/비교는 공통 로직을 쓴다.
-새 hover를 만들지 않는다. Codex `WeeklyRemainingHistoryPlot`은 이미 일자·잔여율 hover가
-있다. Grok 탭의 별도 Canvas가 이 plot을 쓰지 않아 빠진 것이다. Grok weekly sample을
-공통 plot 입력으로 연결한다.
+새 hover를 만들지 않는다. Grok 탭은 공통 `WeeklyRemainingHistoryBlock`을 쓰고,
+`CodexUsageReport` 없이 history와 `currentTimestamp`로 `currentSample`을 만든다.
+빈 완료일 hover는 Codex `completedDayMarkers`와 같다. 실제 popover 확인은 사용자
+설치 검수로 남긴다.
 
 추천 모델: `grok-4.6`
 추론 수준: 중간 (medium)

@@ -183,7 +183,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 후속 이슈는 `ROADMAP.md` v1.9.0과 같다. 번호 순:
 
-1. 1번 탭 주간 그래프 hover. 조회만 provider별, 그래프·hover는 공통. 신규 hover 아님
+1. 1번 탭 주간 그래프 hover — 코드 완료, GUI 확인 미수행. 조회만 provider별, 그래프·hover는 공통. 신규 hover 아님. Grok `currentSample`은 history와 timestamp로 채운다.
 2. 선택 provider 기준 문구 (3번 탭, 우클릭)
 3. `uninstall.sh` Grok 잔여물
 4. published DMG와 final-state

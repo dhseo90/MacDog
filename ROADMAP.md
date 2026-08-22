@@ -50,7 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~5: Grok auth.json sibling 주기, 주간 그래프 hover, 선택 provider 문구, uninstall Grok 잔여, published release |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~2 코드 완료(GUI 미확인), 남은 3~5: 선택 provider 문구, uninstall Grok 잔여, published release |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -588,7 +588,7 @@ writer 코드는 후속 1에서 맞춘다.
 status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/비교, 잔여율 표시는
 공통 로직을 쓴다. Grok 전용 그래프를 새로 키우지 않는다.
 
-1. Grok `auth.json` sibling 주기
+1. Grok `auth.json` sibling 주기 — 코드 완료, GUI 확인 미수행
    `macdog-grok-usage`는 Grok CLI와 같은 `~/.grok/auth.json`을 쓴다. 유효한 access
    token은 읽기만 하고, 만료 또는 billing 401이면 `auth.json.lock` 아래에서 sibling
    adopt 또는 OIDC refresh 후 같은 파일에 atomic merge write한다. 메뉴바는 auth를
@@ -599,15 +599,15 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점.
    인증·refresh 회전 경계라 상향한다.
 
-2. 1번 탭 주간 그래프 hover
-   새 hover UX를 만들지 않는다. Codex는 이미 `WeeklyRemainingHistoryPlot`에서 일자·마지막
-   측정 잔여율(%) hover를 보여 준다. Grok 탭만 `GrokUsageGraphSnapshotView` Canvas를
-   따로 그려 이 경로를 타지 않는다. Grok weekly sample을 공통 plot 입력으로 바꿔
-   같은 hover를 쓰게 한다.
+2. 1번 탭 주간 그래프 hover — 코드 완료, GUI 확인 미수행
+   새 hover UX를 만들지 않는다. Grok 탭은 공통 `WeeklyRemainingHistoryBlock`을 쓴다.
+   Grok는 `CodexUsageReport`가 없으므로 `currentTimestamp`와 현재 window history
+   sample로 `currentSample`을 만든다. 빈 완료일은 Codex와 같이
+   `completedDayMarkers`가 마지막 잔여율을 채운다. 실제 popover hover는 사용자
+   설치 검수로 남긴다.
    추천 모델: `grok-4.6`
    추론 수준: 중간 (medium)
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
-   hover 동작은 이미 있고 Grok 연결만 빠졌다.
 
 3. 선택 provider 기준 문구
    3번 탭 `Codex 실행 중`과 우클릭 메뉴 `코덱스 펫` / `코덱스 사용량 종료`는 선택한

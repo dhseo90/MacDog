@@ -28,7 +28,7 @@ struct GrokUsagePanel: View {
                     ),
                     resetWindowHistory: .empty,
                     weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
-                    currentReport: nil,
+                    currentReport: nil, // Grok has no CodexUsageReport; currentSample comes from history + timestamp
                     currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
                         ?? Int(now.timeIntervalSince1970),
                     graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)

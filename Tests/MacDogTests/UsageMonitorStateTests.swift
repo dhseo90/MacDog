@@ -307,7 +307,8 @@ final class UsageMonitorStateTests: XCTestCase {
         let chart = WeeklyRemainingHistoryChart(
             history: history,
             weeklyWindow: window,
-            currentSample: history.samples.first
+            currentSample: history.samples.first,
+            calendar: Self.utcCalendar
         )
 
         XCTAssertEqual(window.windowDurationMins, 10_080)
@@ -316,6 +317,112 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(chart.dayMarkers.isEmpty)
         XCTAssertTrue(chart.dayMarkers.contains { $0.hoverLabel.contains("%") })
         XCTAssertTrue(chart.points.contains { $0.remainingPercent == 100 && $0.isResetAnchor })
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: recordedAt,
+            calendar: Self.utcCalendar
+        ))
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), chart.dayMarkers.map(\.id))
+        XCTAssertEqual(
+            model.currentChart.dayMarkers.map(\.hoverLabel),
+            chart.dayMarkers.map(\.hoverLabel)
+        )
+    }
+
+    func testGrokWeeklyHistoryComparisonModelFillsCompletedDayHoverWithoutCodexReport() throws {
+        let calendar = Self.utcCalendar
+        let startDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0,
+            minute: 21,
+            second: 23
+        )))
+        let start = Int(startDate.timeIntervalSince1970)
+        let reset = start + 604_800
+        let currentRecordedAt = start + 2 * 86_400 + 17 * 3_600 + 2 * 60
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 36, resetsAt: reset))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 86_400 + 18 * 3_600,
+                    usedPercent: 13,
+                    remainingPercent: 87,
+                    resetsAt: reset
+                )),
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 2 * 86_400 - 5 * 60,
+                    usedPercent: 17,
+                    remainingPercent: 83,
+                    resetsAt: reset
+                )),
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 2 * 86_400 + 17 * 3_600,
+                    usedPercent: 36,
+                    remainingPercent: 64,
+                    resetsAt: reset
+                ))
+            ]),
+            currentWeekly: weekly,
+            currentRecordedAt: currentRecordedAt
+        )
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: currentRecordedAt,
+            calendar: calendar
+        ))
+
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), [0, 1, 2])
+        XCTAssertEqual(
+            model.currentChart.dayMarkers.map(\.hoverLabel),
+            ["6/1 월 종료 · 100%", "6/2 화 종료 · 83%", "6/3 수 · 64%"]
+        )
+        XCTAssertEqual(model.currentChart.dayMarkers[0].point.recordedAt, start + 86_400)
+        XCTAssertEqual(model.currentChart.dayMarkers[2].point.recordedAt, currentRecordedAt)
+    }
+
+    func testGrokWeeklyHistoryComparisonModelHoversOnlyCurrentDayAfterReset() throws {
+        let calendar = Self.utcCalendar
+        let start = Self.timestamp(year: 2026, month: 8, day: 22, hour: 11, minute: 50)
+        let reset = start + 604_800
+        let currentRecordedAt = start + 10 * 60
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 4, resetsAt: reset))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: currentRecordedAt,
+                    usedPercent: 4,
+                    remainingPercent: 96,
+                    resetsAt: reset
+                ))
+            ]),
+            currentWeekly: weekly,
+            currentRecordedAt: currentRecordedAt
+        )
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: currentRecordedAt,
+            calendar: calendar
+        ))
+
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), [0])
+        XCTAssertTrue(model.currentChart.dayMarkers[0].hoverLabel.contains("96%"))
+        XCTAssertFalse(model.currentChart.dayMarkers.contains { $0.id == 1 })
     }
 
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
