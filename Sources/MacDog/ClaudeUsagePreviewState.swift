@@ -16,6 +16,12 @@ enum UsageProviderMode: String, CaseIterable, Identifiable {
         }
     }
 
+    var petTitle: String { "\(label) 펫" }
+    var quitUsageTitle: String { "\(label) 사용량 종료" }
+    var runningTriggerTitle: String { "\(label) 실행 중" }
+    var runningTriggerSummary: String { "\(label) 실행" }
+    var runningAppModeLabel: String { "\(label) 앱 실행 중" }
+
     var isVisibleInSettings: Bool {
         switch self {
         case .codex, .grok:

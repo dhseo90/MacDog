@@ -161,18 +161,18 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ### 3. 주간 그래프 날짜 칸을 로컬 자정 기준 — 코드 완료, GUI 확인 미수행
 
-잔여량 선 x축은 `resetStart → resetsAt`을 유지한다. 설정 탭 `날짜 기준`에서 로컬
-00:00(기본)과 리셋 시각 칸을 고른다. Codex/Grok/Claude 그래프가 같은 설정을 쓴다.
+잔여량 선 x축은 `resetStart → resetsAt`을 유지한다. 설정 탭 `날짜 기준`에서 자정(기본)과
+리셋 시각 칸을 고른다. Codex/Grok/Claude 그래프가 같은 설정을 쓴다.
 페이스메이커 day slot과 cache `dayIndex`는 리셋 24시간 × 7을 유지한다.
 
 추천 모델: `grok-4.6`
 추론 수준: 높음 (high)
 선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 6점.
 
-### 4. 선택 provider 기준 문구
+### 4. 선택 provider 기준 문구 — 코드 완료, GUI 확인 미수행
 
-3번 탭과 우클릭 메뉴의 `코덱스`/`Codex` 고정 문구를 선택 provider로 바꾼다. hidden
-Claude re-enable일 때만 Claude 이름을 쓴다.
+3번 탭 실행 중 토글과 우클릭 메뉴 펫 제목/`사용량 종료`는 선택한 provider 이름이다.
+hidden Claude re-enable일 때만 Claude 이름을 쓴다.
 
 추천 모델: `grok-4.6`
 추론 수준: 중간 (medium)

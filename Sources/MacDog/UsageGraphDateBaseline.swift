@@ -11,7 +11,7 @@ enum UsageGraphDateBaseline: String, CaseIterable, Identifiable, Equatable, Send
     var label: String {
         switch self {
         case .calendarMidnight:
-            return "00:00"
+            return "자정"
         case .resetWindow:
             return "리셋 시각"
         }

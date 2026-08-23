@@ -929,7 +929,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 }
             },
             menuProvider: { [weak self] surface in
-                guard let self else { return NSMenu(title: "코덱스 펫") }
+                guard let self else { return NSMenu() }
                 self.preferences = RunnerPreferences()
                 return self.makePetMenu(surface: surface)
             },

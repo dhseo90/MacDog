@@ -3,7 +3,7 @@ struct PetMenuModel: Equatable {
     let entries: [PetMenuEntry]
 
     init(preferences: RunnerPreferences, surface: PetSurface, nextResetGlance: String? = nil) {
-        self.title = "코덱스 펫"
+        self.title = preferences.usageProviderMode.petTitle
         var entries: [PetMenuEntry] = [
             .command(PetMenuCommand(title: "사용량 상세 보기", action: .showUsageDetails)),
         ]
@@ -36,7 +36,7 @@ struct PetMenuModel: Equatable {
             .separator,
             .command(Self.surfaceSwitchCommand(preferences: preferences, surface: surface)),
             .separator,
-            .command(PetMenuCommand(title: "코덱스 사용량 종료", action: .quit))
+            .command(PetMenuCommand(title: preferences.usageProviderMode.quitUsageTitle, action: .quit))
         ]
         self.entries = entries
     }
@@ -63,7 +63,7 @@ struct PetMenuModel: Equatable {
             title: "잠자기 방지 모드",
             commands: SleepPreventionMode.allCases.map { mode in
                 PetMenuCommand(
-                    title: mode.label,
+                    title: mode.label(for: preferences.usageProviderMode),
                     action: .setSleepPreventionMode(mode),
                     isSelected: preferences.sleepPreventionMode == mode
                 )
@@ -119,7 +119,7 @@ struct PetMenuModel: Equatable {
                     isSelected: preferences.sleepPreventionPowerAdapterTriggerEnabled
                 ),
                 PetMenuCommand(
-                    title: "Codex 실행 중",
+                    title: preferences.usageProviderMode.runningTriggerTitle,
                     action: .setSleepPreventionCodexAppTrigger(!preferences.sleepPreventionCodexAppTriggerEnabled),
                     isSelected: preferences.sleepPreventionCodexAppTriggerEnabled
                 ),

@@ -17,6 +17,9 @@ STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
 CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
+PET_MENU_SOURCE="$ROOT_DIR/Sources/MacDog/PetMenuModel.swift"
+PET_MENU_TEST="$ROOT_DIR/Tests/MacDogTests/PetMenuModelTests.swift"
+SLEEP_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SleepPreventionPanel.swift"
 DATE_BASELINE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageGraphDateBaseline.swift"
 GROK_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokUsagePanel.swift"
 GROK_ADAPTER_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokWeeklyRemainingHistoryAdapter.swift"
@@ -82,6 +85,7 @@ verify_contract() {
     "$AGENTS" "$ONBOARDING" "$V180_VERIFIER" \
     "$MODE_SOURCE" "$PREFERENCES_SOURCE" "$STATE_SOURCE" "$CONTROLLER_SOURCE" \
     "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$DATE_BASELINE_SOURCE" \
+    "$PET_MENU_SOURCE" "$PET_MENU_TEST" "$SLEEP_PANEL_SOURCE" \
     "$GROK_PANEL_SOURCE" "$GROK_ADAPTER_SOURCE" \
     "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_SANITIZER_SOURCE" \
     "$GROK_AUTH_SOURCE" "$GROK_FETCH_SOURCE" "$GROK_CLI_SOURCE" \
@@ -139,6 +143,8 @@ verify_contract() {
   require_match 'macdog-grok-usage' "$USER_COMPONENT_SOURCE" "Grok writer LaunchAgent"
   require_match 'GrokUsagePanel' "$POPOVER_SOURCE" "Grok usage tab"
   require_match 'Picker\("날짜 기준"' "$SETTINGS_SOURCE" "shared graph date baseline picker"
+  require_match 'return "자정"' "$DATE_BASELINE_SOURCE" "midnight option label"
+  reject_match 'return "00:00"' "$DATE_BASELINE_SOURCE" "numeric midnight option label"
   require_match 'calendarMidnight' "$DATE_BASELINE_SOURCE" "calendar midnight baseline"
   require_match 'resetWindow' "$DATE_BASELINE_SOURCE" "reset-window baseline option"
   require_match 'testCalendarMidnightBaselineMovesHoverToSundayAfterLocalMidnight' \
@@ -170,6 +176,13 @@ verify_contract() {
   require_match 'https://auth\.x\.ai' "$GROK_AUTH_SOURCE" "current grok.com issuer key"
   reject_match 'print\(accessToken|Authorization' "$GROK_CLI_SOURCE" "token printing"
 
+  require_match 'petTitle' "$MODE_SOURCE" "selected provider pet title"
+  require_match 'usageProviderMode.petTitle' "$PET_MENU_SOURCE" "pet menu uses selected provider"
+  reject_match '코덱스 펫' "$PET_MENU_SOURCE" "hardcoded Codex pet menu title"
+  reject_match '코덱스 사용량 종료' "$PET_MENU_SOURCE" "hardcoded Codex quit title"
+  require_match 'runningTriggerTitle' "$SLEEP_PANEL_SOURCE" "sleep tab uses selected provider"
+  require_match 'testMenuCopyUsesSelectedGrokProviderWithoutCodexFallback' \
+    "$PET_MENU_TEST" "Grok pet menu copy regression"
   require_match 'testVisibleSettingsModesHideClaudeAndKeepGrok' "$STATE_TEST" \
     "Claude hide regression"
   require_match 'testUsageProviderMigrationKeepsClaudeOnlyWhenHiddenReenableIsOn' \

@@ -356,6 +356,7 @@ enum MacDogDemoData {
             powerAdapterConnected: true,
             codexAppRunning: true,
             appMatchText: preferences.sleepPreventionAppMatchText,
+            usageProviderMode: preferences.usageProviderMode,
             chargingBelowThreshold: true,
             cpuAboveThreshold: false,
             memoryAboveThreshold: false,

@@ -31,6 +31,45 @@ final class PetMenuModelTests: XCTestCase {
         )
         XCTAssertTrue(menuBar.commands.contains(PetMenuCommand(title: "데스크톱 펫 보기", action: .showDesktopPet)))
         XCTAssertTrue(desktop.commands.contains(PetMenuCommand(title: "메뉴바로 돌아가기", action: .returnToMenuBar)))
+        XCTAssertEqual(menuBar.title, "Codex 펫")
+        XCTAssertTrue(menuBar.commands.contains(PetMenuCommand(title: "Codex 사용량 종료", action: .quit)))
+        XCTAssertTrue(menuBar.commands.contains(PetMenuCommand(
+            title: "Codex 실행 중",
+            action: .setSleepPreventionCodexAppTrigger(true)
+        )))
+    }
+
+    func testMenuCopyUsesSelectedGrokProviderWithoutCodexFallback() {
+        RunnerPreferences.setUsageProviderMode(.grok, defaults: defaults)
+        let preferences = RunnerPreferences(defaults: defaults)
+        let model = PetMenuModel(preferences: preferences, surface: .menuBar)
+
+        XCTAssertEqual(model.title, "Grok 펫")
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(title: "Grok 사용량 종료", action: .quit)))
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(
+            title: "Grok 실행 중",
+            action: .setSleepPreventionCodexAppTrigger(true)
+        )))
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(
+            title: "Grok 앱 실행 중",
+            action: .setSleepPreventionMode(.application)
+        )))
+        XCTAssertFalse(model.title.contains("Codex"))
+        XCTAssertFalse(model.commands.contains { $0.title.contains("코덱스") || $0.title.contains("Codex") })
+    }
+
+    func testMenuCopyUsesClaudeOnlyWhenHiddenReenableKeepsClaudeMode() {
+        RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
+        RunnerPreferences.setUsageProviderMode(.claude, defaults: defaults)
+        let preferences = RunnerPreferences(defaults: defaults)
+        let model = PetMenuModel(preferences: preferences, surface: .menuBar)
+
+        XCTAssertEqual(model.title, "Claude 펫")
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(title: "Claude 사용량 종료", action: .quit)))
+        XCTAssertTrue(model.commands.contains(PetMenuCommand(
+            title: "Claude 실행 중",
+            action: .setSleepPreventionCodexAppTrigger(true)
+        )))
     }
 
     func testMenuModelReflectsPreferenceStatesAndToggleActions() {

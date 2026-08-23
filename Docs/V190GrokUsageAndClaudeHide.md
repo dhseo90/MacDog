@@ -185,8 +185,8 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 1. Grok `auth.json` sibling 주기 — 코드 완료, GUI 확인 미수행
 2. 1번 탭 주간 그래프 hover — 코드 완료, 오늘 칸 GUI 확인. 이후 날짜는 3번과 함께 확인
-3. 주간 그래프 날짜 칸을 로컬 자정 기준 — 코드 완료, GUI 확인 미수행. 설정 `날짜 기준`에서 00:00(기본)과 리셋 시각 선택. Codex/Grok/Claude 공통. 페이스메이커 7등분은 유지
-4. 선택 provider 기준 문구 (설정 탭, 우클릭)
+3. 주간 그래프 날짜 칸을 로컬 자정 기준 — 코드 완료, GUI 확인 미수행. 설정 `날짜 기준`에서 자정(기본)과 리셋 시각 선택. Codex/Grok/Claude 공통. 페이스메이커 7등분은 유지
+4. 선택 provider 기준 문구 — 코드 완료, GUI 확인 미수행. 3번 탭 실행 중 토글과 우클릭 펫 제목/`사용량 종료`가 선택 provider 이름. hidden Claude re-enable일 때만 Claude
 5. `uninstall.sh` Grok 잔여물
 6. published DMG와 final-state
 

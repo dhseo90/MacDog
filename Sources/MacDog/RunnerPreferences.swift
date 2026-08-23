@@ -732,4 +732,13 @@ enum SleepPreventionMode: String, CaseIterable, Identifiable {
             "상태 기준 제어"
         }
     }
+
+    func label(for usageProviderMode: UsageProviderMode) -> String {
+        switch self {
+        case .application:
+            usageProviderMode.runningAppModeLabel
+        case .off, .always, .charging, .timed, .condition:
+            label
+        }
+    }
 }

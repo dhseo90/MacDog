@@ -464,7 +464,7 @@ final class UsageMonitorStateTests: XCTestCase {
 
     func testUsageGraphDateBaselineDefaultIsCalendarMidnight() {
         XCTAssertEqual(UsageGraphDateBaseline.defaultBaseline, .calendarMidnight)
-        XCTAssertEqual(UsageGraphDateBaseline.calendarMidnight.label, "00:00")
+        XCTAssertEqual(UsageGraphDateBaseline.calendarMidnight.label, "자정")
         XCTAssertEqual(UsageGraphDateBaseline.resetWindow.label, "리셋 시각")
     }
 
