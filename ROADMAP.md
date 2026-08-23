@@ -50,7 +50,7 @@ Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish 완료, GUI·live Grok billing·Finder 설치·final-state 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: Finder 설치·final-state |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -520,8 +520,9 @@ weekly-only 입력은 [Docs/V190GrokWeeklyOnlyContract.md](Docs/V190GrokWeeklyOn
 릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)에 둡니다.
 
 현재 상태: 1차 구현 `[01/10]`~`[10/10]`과 문서 정렬은 저장소에 있습니다. published GitHub
-Release는 `v1.9.0`입니다. published DMG 재다운로드 checksum과 `hdiutil verify`는 통과했습니다.
-GUI·live Grok billing·Finder 설치·final-state 미수행 증거는 릴리즈 문서에 남깁니다.
+Release는 `v1.9.0`이고 GitHub Releases Latest도 `v1.9.0`입니다. published DMG checksum,
+설치본 executable checksum, LaunchAgent, cleanup, final-state는 통과했습니다.
+GUI·live Grok billing·Finder drag 관찰 미수행 증거는 릴리즈 문서에 남깁니다.
 
 구현 순서:
 
@@ -636,9 +637,10 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    추론 수준: 중간 (medium)
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
 
-6. Finder 설치와 final-state — published GitHub Release·signed tag 완료, Finder 설치 미수행
-   published DMG Finder 창은 열었습니다. drag-and-drop 설치, 설치본 GUI, cache LaunchAgent,
-   `verify_release_final_state.sh --version 1.9.0`은 사용자가 직접 설치한 뒤에만 완료로 기록합니다.
+6. Finder 설치와 final-state — 설치본 checksum·LaunchAgent·final-state 완료, GUI 미수행
+   `/Applications/MacDog.app` executable checksum이 published payload와 일치하고
+   `verify_release_final_state.sh --version 1.9.0`은 통과했습니다. Finder drag 관찰과
+   설치본 popover GUI 직접 확인은 미수행입니다.
    추천 모델: `grok-4.6`
    추론 수준: 높음 (high)
    선정 근거: 영향도 2 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 5점. 릴리즈 영향.

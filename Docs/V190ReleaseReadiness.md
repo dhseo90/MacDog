@@ -1,7 +1,7 @@
 # v1.9.0 릴리즈 준비 감사
 
-상태: v1.9.0 GitHub Release publish / published DMG 재다운로드·`hdiutil verify` 확인 /
-GUI·live Grok billing·Finder 설치·final-state 미수행
+상태: v1.9.0 GitHub Release publish / published DMG checksum·설치본 executable checksum·final-state 확인 /
+GUI·live Grok billing·Finder drag 관찰 미수행
 작성일: 2026-08-23
 대상 버전: `1.9.0`
 
@@ -16,7 +16,8 @@ GUI·live Grok billing·Finder 설치·final-state 미수행
   않음`이며 Extra Usage Credits를 reset credit처럼 보여 주지 않습니다.
 - published GitHub Release는 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)입니다.
   signed annotated `v1.9.0` tag target은 `b7072003830798bb1603768c4efb0b41409100f6`이고
-  GitHub tag verification은 `Verified`입니다. published DMG SHA-256은
+  GitHub tag verification은 `Verified`입니다. GitHub Releases Latest는 `v1.9.0`입니다.
+  published DMG SHA-256은
   `471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011`입니다.
 - WidgetKit과 Apple Developer Program이 필요한 stable workflow는 이번 완료 조건에서 제외합니다.
 
@@ -70,6 +71,9 @@ MACDOG_APP_VERSION=1.9.0 ./script/check.sh --no-run
 8. signed tag target과 asset이 최신 release head와 일치하고 tag가 `Verified`일 때
    publish했습니다. published release ID는 `375106008`입니다.
 9. publish 후 `isDraft=false`, asset download URL과 tag target을 다시 확인했습니다.
+10. `gh api PATCH draft=false`만으로는 GitHub Releases Latest가 이전 tag에 남을 수 있습니다.
+    publish 뒤 `gh release edit v1.9.0 --latest --verify-tag`로 Latest를 `v1.9.0`으로
+    맞췄습니다.
 
 `Stable Release` workflow는 Developer ID signing, notarization과 App Group provisioning이
 별도 승인되지 않았으므로 실행하지 않습니다.
@@ -108,8 +112,9 @@ fixture 통과와 live 미수행을 분리 보고합니다.
 Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 설치·GUI smoke는 `미수행`으로
 보고합니다. 릴리즈 전 설치 후 UI 체크는 사용자가 직접 합니다.
 
-현재 상태: published DMG Finder 창은 열었습니다. drag-and-drop 설치와 설치본 GUI smoke는
-미수행입니다. 사용자가 직접 검수합니다.
+현재 상태: `/Applications/MacDog.app` v1.9.0 executable checksum이 published payload와
+일치합니다. Finder drag 관찰과 설치본 popover GUI 직접 확인은 미수행입니다.
+설치는 사용자가 직접 검수했습니다.
 
 ## Release smoke 종료
 
@@ -127,7 +132,9 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 - README와 ROADMAP에 published release head, tag, asset checksum, smoke 결과를 반영
 - release branch 삭제는 main/origin/main 포함 확인과 사용자 명시 승인 뒤에만 수행
 
-현재 상태: 미수행.
+현재 상태: `./script/cleanup_release_smoke_state.sh --apply`와
+`./script/verify_release_final_state.sh --version 1.9.0` 통과. Finder `응용 프로그램`
+범위 `MacDog` 검색 결과는 `/Applications/MacDog.app` 하나.
 
 ## 릴리즈 증거 기록
 
@@ -145,9 +152,11 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 | `~/.grok/auth.json` 조회 | 미수행 |
 | PR, CI, review | PR #38, `static-gates`/`guardrails` SUCCESS, admin bypass merge |
 | signed annotated `v1.9.0` tag / GitHub `Verified` | tag object `d5e29a931f589746eb0b584fdf1ae587e0d951a0`, target `b7072003830798bb1603768c4efb0b41409100f6` |
-| Published `v1.9.0` DMG | 있음. SHA-256 `471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011`. release ID `375106008` |
-| Finder drag-and-drop와 GUI smoke | 미수행. published DMG Finder 창은 열었고 설치는 사용자가 직접 검수 |
-| cleanup / final-state | 미수행 |
+| Published `v1.9.0` DMG | 있음. SHA-256 `471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011`. release ID `375106008`. GitHub Latest `v1.9.0` |
+| 설치본 executable checksum | 통과. `2e4ba860c1f91e228d5fd54ab7ad1ce5f4680c692fe8caf1290ff9f784cee9b6` |
+| Grok LaunchAgent | 통과. `com.dhseo.macdog.grok-usage-cache` → `/Applications/MacDog.app/Contents/MacOS/macdog-grok-usage` |
+| Finder drag-and-drop와 GUI smoke | 미수행. 설치본 checksum은 일치하고 popover GUI는 보조 접근 거부로 미확인 |
+| cleanup / final-state | 통과 |
 
 검증하지 않은 항목은 완료로 바꾸지 않습니다.
 
@@ -161,8 +170,8 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ## 릴리즈 잔여 이슈
 
-`ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~5 코드는 닫혔고 GitHub Release publish는
-완료됐다. Finder 설치와 final-state만 남는다.
+`ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~5 코드와 published release, 설치본
+checksum, final-state는 닫혔다. Finder drag 관찰과 popover GUI 직접 확인은 남는다.
 
 ### 1. Grok `auth.json` sibling 주기 — 코드 완료, GUI 확인 미수행
 
@@ -200,11 +209,11 @@ Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다. `--dr
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
 
-### 6. Finder 설치와 final-state — GitHub Release publish 완료, Finder 설치 미수행
+### 6. Finder 설치와 final-state — 설치본 checksum·LaunchAgent·final-state 완료, GUI 미수행
 
-published DMG Finder 창은 열었다. drag-and-drop 설치, 설치본 GUI, cache LaunchAgent,
-`verify_release_final_state.sh --version 1.9.0`은 사용자가 직접 설치한 뒤에만 완료로
-기록한다.
+`/Applications/MacDog.app` executable checksum이 published payload와 일치하고
+`verify_release_final_state.sh --version 1.9.0`은 통과했다. Finder drag 관찰과 설치본
+popover GUI 직접 확인은 미수행이다.
 
 추천 모델: `grok-4.6`
 추론 수준: 높음 (high)

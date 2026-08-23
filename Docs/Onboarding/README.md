@@ -129,7 +129,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | 구분 | 상태 |
 | --- | --- |
 | v1.8.0 Codex weekly-only 조회·cache·설치본 UI | published release smoke에서 확인됨 |
-| v1.9.0 Claude hide·Grok weekly-only source/test | GitHub Release publish와 DMG checksum 확인됨. Finder 설치·final-state는 미수행 |
+| v1.9.0 Claude hide·Grok weekly-only source/test | GitHub Release publish, 설치본 checksum, final-state 확인됨. Finder drag 관찰·popover GUI는 미수행 |
 | Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
 | Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |
 | 실제 유료 Claude 계정의 `rate_limits` live event | 현재 환경에서 미확인. 후보 provider 검증으로 분리 |
