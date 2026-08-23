@@ -425,6 +425,49 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(model.currentChart.dayMarkers.contains { $0.id == 1 })
     }
 
+    func testCalendarMidnightBaselineMovesHoverToSundayAfterLocalMidnight() throws {
+        let calendar = Self.utcCalendar
+        let start = Self.timestamp(year: 2026, month: 8, day: 22, hour: 11, minute: 50)
+        let reset = start + 604_800
+        let sundayMorning = Self.timestamp(year: 2026, month: 8, day: 23, hour: 11, minute: 18)
+        let currentSample = Self.weeklySample(
+            recordedAt: sundayMorning,
+            remainingPercent: 75,
+            resetsAt: reset
+        )
+
+        let midnightChart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [currentSample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 75, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar,
+            dateBaseline: .calendarMidnight
+        )
+        XCTAssertEqual(midnightChart.dayGridPositions.count, 9)
+        XCTAssertEqual(midnightChart.dayMarkers.map(\.id), [0, 1])
+        XCTAssertTrue(midnightChart.dayMarkers[0].hoverLabel.hasPrefix("8/22 토 종료"))
+        XCTAssertTrue(midnightChart.dayMarkers[1].hoverLabel.hasPrefix("8/23 일"))
+        XCTAssertTrue(midnightChart.dayMarkers[1].hoverLabel.contains("75%"))
+
+        let resetChart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [currentSample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 75, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar,
+            dateBaseline: .resetWindow
+        )
+        XCTAssertEqual(resetChart.dayGridPositions.count, 8)
+        XCTAssertEqual(resetChart.dayMarkers.map(\.id), [0])
+        XCTAssertTrue(resetChart.dayMarkers[0].hoverLabel.hasPrefix("8/22 토"))
+        XCTAssertFalse(resetChart.dayMarkers[0].hoverLabel.contains("종료"))
+    }
+
+    func testUsageGraphDateBaselineDefaultIsCalendarMidnight() {
+        XCTAssertEqual(UsageGraphDateBaseline.defaultBaseline, .calendarMidnight)
+        XCTAssertEqual(UsageGraphDateBaseline.calendarMidnight.label, "00:00")
+        XCTAssertEqual(UsageGraphDateBaseline.resetWindow.label, "리셋 시각")
+    }
+
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
         let now = 1_900_000_000
         let state = UsageMonitorState(

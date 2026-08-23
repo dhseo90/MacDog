@@ -31,6 +31,7 @@ struct RunnerPreferences: Equatable {
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
     static let usageProviderModeKey = "usageProviderMode"
+    static let usageGraphDateBaselineKey = "usageGraphDateBaseline"
     static let claudeUsageProviderReenabledKey = "claudeUsageProviderReenabled"
     private static let legacyUsageProviderKeys = [
         "claudeUsagePreviewEnabled",
@@ -59,6 +60,7 @@ struct RunnerPreferences: Equatable {
     static let defaultUsageNotificationsEnabled = false
     static let defaultUsageResetSoonNotificationsEnabled = true
     static let defaultUsageProviderMode = UsageProviderMode.codex
+    static let defaultUsageGraphDateBaseline = UsageGraphDateBaseline.defaultBaseline
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -97,7 +99,8 @@ struct RunnerPreferences: Equatable {
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent,
             usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
             usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled,
-            usageProviderModeKey: defaultUsageProviderMode.rawValue
+            usageProviderModeKey: defaultUsageProviderMode.rawValue,
+            usageGraphDateBaselineKey: defaultUsageGraphDateBaseline.rawValue
         ])
     }
 
@@ -142,6 +145,7 @@ struct RunnerPreferences: Equatable {
     let usageNotificationsEnabled: Bool
     let usageResetSoonNotificationsEnabled: Bool
     let usageProviderMode: UsageProviderMode
+    let usageGraphDateBaseline: UsageGraphDateBaseline
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -218,6 +222,7 @@ struct RunnerPreferences: Equatable {
         self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
         self.usageProviderMode = Self.usageProviderMode(defaults: defaults)
+        self.usageGraphDateBaseline = UsageGraphDateBaseline.preferred(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -435,6 +440,13 @@ struct RunnerPreferences: Equatable {
 
     static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
         defaults.set(mode.rawValue, forKey: usageProviderModeKey)
+    }
+
+    static func setUsageGraphDateBaseline(
+        _ baseline: UsageGraphDateBaseline,
+        defaults: UserDefaults = .standard
+    ) {
+        defaults.set(baseline.rawValue, forKey: usageGraphDateBaselineKey)
     }
 
     static func isClaudeUsageProviderReenabled(defaults: UserDefaults = .standard) -> Bool {

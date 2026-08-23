@@ -27,7 +27,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
 
     init?(
         state: UsageMonitorState,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dateBaseline: UsageGraphDateBaseline = .resetWindow
     ) {
         self.init(
             history: state.weeklyUsageHistory,
@@ -35,7 +36,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
             weeklyWindow: state.codexLimit?.weekly,
             currentReport: state.report,
             currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
-            calendar: calendar
+            calendar: calendar,
+            dateBaseline: dateBaseline
         )
     }
 
@@ -45,7 +47,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         weeklyWindow: UsageWindowReport?,
         currentReport: CodexUsageReport?,
         currentTimestamp: Int?,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dateBaseline: UsageGraphDateBaseline = .resetWindow
     ) {
         guard let weeklyWindow else {
             return nil
@@ -62,7 +65,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
             history: history,
             weeklyWindow: weeklyWindow,
             currentSample: currentSample,
-            calendar: calendar
+            calendar: calendar,
+            dateBaseline: dateBaseline
         )
         self.resetWindowHistory = Self.resetWindowHistory(
             resetWindowHistory,

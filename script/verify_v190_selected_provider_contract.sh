@@ -17,6 +17,7 @@ STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
 CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
+DATE_BASELINE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageGraphDateBaseline.swift"
 GROK_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokUsagePanel.swift"
 GROK_ADAPTER_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokWeeklyRemainingHistoryAdapter.swift"
 GROK_CACHE_SOURCE="$ROOT_DIR/Sources/CodexUsageCore/Grok/GrokUsageCache.swift"
@@ -80,7 +81,8 @@ verify_contract() {
   for file in "$DOC" "$SPIKE" "$CONTRACT" "$READINESS" "$README" "$ROADMAP" \
     "$AGENTS" "$ONBOARDING" "$V180_VERIFIER" \
     "$MODE_SOURCE" "$PREFERENCES_SOURCE" "$STATE_SOURCE" "$CONTROLLER_SOURCE" \
-    "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$GROK_PANEL_SOURCE" "$GROK_ADAPTER_SOURCE" \
+    "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$DATE_BASELINE_SOURCE" \
+    "$GROK_PANEL_SOURCE" "$GROK_ADAPTER_SOURCE" \
     "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_SANITIZER_SOURCE" \
     "$GROK_AUTH_SOURCE" "$GROK_FETCH_SOURCE" "$GROK_CLI_SOURCE" \
     "$GROK_NOTIFICATION_SOURCE" "$USER_COMPONENT_SOURCE" \
@@ -136,6 +138,14 @@ verify_contract() {
   require_match 'grokCacheAgentAction' "$USER_COMPONENT_SOURCE" "Grok LaunchAgent action"
   require_match 'macdog-grok-usage' "$USER_COMPONENT_SOURCE" "Grok writer LaunchAgent"
   require_match 'GrokUsagePanel' "$POPOVER_SOURCE" "Grok usage tab"
+  require_match 'Picker\("날짜 기준"' "$SETTINGS_SOURCE" "shared graph date baseline picker"
+  require_match 'calendarMidnight' "$DATE_BASELINE_SOURCE" "calendar midnight baseline"
+  require_match 'resetWindow' "$DATE_BASELINE_SOURCE" "reset-window baseline option"
+  require_match 'testCalendarMidnightBaselineMovesHoverToSundayAfterLocalMidnight' \
+    "$STATE_TEST" "calendar midnight hover regression"
+  require_match 'dateBaseline' \
+    "$ROOT_DIR/Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift" \
+    "Claude graph uses shared date baseline"
   reject_match '5시간' "$GROK_PANEL_SOURCE" "Grok five-hour card"
   require_match 'WeeklyRemainingHistoryBlock' "$GROK_PANEL_SOURCE" "shared weekly graph"
   reject_match 'GrokUsageGraphSnapshotView' "$GROK_PANEL_SOURCE" "Grok-only graph view"

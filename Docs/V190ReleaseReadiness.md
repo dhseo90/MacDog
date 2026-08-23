@@ -148,22 +148,28 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ## 릴리즈 잔여 이슈
 
-`ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~3을 닫기 전에 published release를
+`ROADMAP.md` v1.9.0 후속 이슈와 같은 번호다. 1~5를 닫기 전에 published release를
 시작하지 않는다.
 
-### 1. 1번 탭 주간 그래프 hover — 코드 완료, GUI 확인 미수행
+### 1. Grok `auth.json` sibling 주기 — 코드 완료, GUI 확인 미수행
 
-잔여 사용량 조회만 provider별로 두고, 그래프·hover·현재/지난/비교는 공통 로직을 쓴다.
-새 hover를 만들지 않는다. Grok 탭은 공통 `WeeklyRemainingHistoryBlock`을 쓰고,
-`CodexUsageReport` 없이 history와 `currentTimestamp`로 `currentSample`을 만든다.
-빈 완료일 hover는 Codex `completedDayMarkers`와 같다. 실제 popover 확인은 사용자
-설치 검수로 남긴다.
+`ROADMAP.md` 후속 1과 같다.
+
+### 2. 1번 탭 주간 그래프 hover — 코드 완료, 오늘 칸 GUI 확인
+
+`ROADMAP.md` 후속 2와 같다. 이후 날짜 hover는 3번 자정 칸과 함께 확인한다.
+
+### 3. 주간 그래프 날짜 칸을 로컬 자정 기준 — 코드 완료, GUI 확인 미수행
+
+잔여량 선 x축은 `resetStart → resetsAt`을 유지한다. 설정 탭 `날짜 기준`에서 로컬
+00:00(기본)과 리셋 시각 칸을 고른다. Codex/Grok/Claude 그래프가 같은 설정을 쓴다.
+페이스메이커 day slot과 cache `dayIndex`는 리셋 24시간 × 7을 유지한다.
 
 추천 모델: `grok-4.6`
-추론 수준: 중간 (medium)
-선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
+추론 수준: 높음 (high)
+선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 6점.
 
-### 2. 선택 provider 기준 문구
+### 4. 선택 provider 기준 문구
 
 3번 탭과 우클릭 메뉴의 `코덱스`/`Codex` 고정 문구를 선택 provider로 바꾼다. hidden
 Claude re-enable일 때만 Claude 이름을 쓴다.
@@ -172,7 +178,7 @@ Claude re-enable일 때만 Claude 이름을 쓴다.
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
 
-### 3. `uninstall.sh` Grok 잔여물
+### 5. `uninstall.sh` Grok 잔여물
 
 Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다.
 
@@ -180,7 +186,7 @@ Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다.
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.
 
-### 4. published DMG와 final-state
+### 6. published DMG와 final-state
 
 `v1.9.0` → `main` merge와 signed tag 이후에만 실행한다.
 

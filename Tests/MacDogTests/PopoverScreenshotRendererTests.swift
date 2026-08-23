@@ -265,6 +265,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let grokPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/GrokUsagePanel.swift")
 
         XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
+        XCTAssertTrue(settingsSource.contains("Picker(\"날짜 기준\""))
+        XCTAssertTrue(settingsSource.contains("UsageGraphDateBaseline.allCases"))
         XCTAssertTrue(settingsSource.contains("UsageProviderMode.visibleCases"))
         XCTAssertFalse(settingsSource.contains("UsageProviderMode.allCases"))
         XCTAssertFalse(settingsSource.contains("Claude Usage Preview"))
