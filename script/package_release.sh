@@ -139,7 +139,7 @@ DMG path: $DMG_PATH
 SHA-256 path: $CHECKSUM_PATH
 Release notes path: $NOTES_PATH
 Payload:
-  - MacDog.app (includes bundled codex-usage and macdog-claude-statusline bridge)
+  - MacDog.app (includes bundled codex-usage, macdog-claude-statusline bridge, and macdog-grok-usage writer)
   - Applications symlink
   - Hidden DMG background artwork for drag-and-drop layout
 DMG layout:
@@ -535,6 +535,21 @@ HIGHLIGHTS
 - Codex와 Claude를 동시에 합산·비교하거나 선택하지 않은 provider로 자동 fallback하지 않습니다.
 - `macdog-claude-statusline` bridge를 앱 번들에 포함하고 설치·release final-state 검증에서 실행 파일 누락을 실패로 처리합니다.
 - 기존 Codex CLI JSON/cache/app-server 계약과 legacy history decode 호환은 유지합니다.
+HIGHLIGHTS
+)
+    ;;
+  1.9.0)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- 설정 visible mode는 `Codex`와 `Grok`만 보여 주고, Claude source는 남긴 채 기본 picker에서 숨깁니다.
+- 1번 탭·메뉴바 러너·사용량 알림은 선택한 provider 하나만 사용하며 합산·비교·다른 provider fallback은 하지 않습니다.
+- Grok는 SuperGrok / Grok Build 공유 주간 pool만 표시합니다. 5시간 window는 `현재 제공되지 않음`이며 Extra Usage Credits를 Codex 초기화권처럼 보여 주지 않습니다.
+- `macdog-grok-usage`는 Grok CLI와 같은 `~/.grok/auth.json` sibling으로 만료 access token을 갱신하고, 메뉴바 앱은 auth store를 읽지 않습니다.
+- 주간 그래프 날짜 칸 기본값은 로컬 자정이며, 설정 탭 `날짜 기준`에서 리셋 시각 24시간 칸을 고를 수 있습니다. Codex/Grok/Claude 그래프가 같은 설정을 씁니다.
+- 잠들지 않기 실행 중 토글과 우클릭 메뉴의 펫 제목/`사용량 종료`는 선택한 provider 이름을 씁니다.
+- `uninstall.sh`는 Grok cache/history/lock과 Grok usage cache LaunchAgent를 Codex/Claude와 같은 수준으로 제거합니다.
+- 기존 Codex CLI JSON/cache/app-server 계약과 Claude sanitizer/cache/privacy backend는 유지합니다.
 HIGHLIGHTS
 )
     ;;

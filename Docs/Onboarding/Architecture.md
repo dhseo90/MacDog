@@ -14,6 +14,7 @@ flowchart TD
     App --> Bridge["MacDogPowerUIBridge"]
     App --> HelperSupport["MacDogPrivilegedHelperSupport"]
     CLI["codex-usage"] --> Core
+    GrokCLI["macdog-grok-usage"] --> Core
     ClaudeCLI["macdog-claude-statusline"] --> Core
     WidgetLib["MacDogWidget"] --> Core
     Helper["MacDogPrivilegedHelper"] --> HelperSupport
@@ -23,9 +24,10 @@ flowchart TD
 
 | Product/target | 위치 | 책임 |
 | --- | --- | --- |
-| `CodexUsageCore` | `Sources/CodexUsageCore` | Codex app-server client, 사용량 모델/formatter, cache/history, Claude sanitizer/cache |
+| `CodexUsageCore` | `Sources/CodexUsageCore` | Codex app-server client, 사용량 모델/formatter, cache/history, Claude sanitizer/cache, Grok weekly sanitizer/cache |
 | `codex-usage` | `Sources/CodexUsageCLI` | `status`, `doctor`, JSON 출력, app-owned cache writer |
-| `macdog-claude-statusline` | `Sources/ClaudeUsageBridgeCLI` | bounded stdin event 수신, Claude 사용량 정제와 별도 cache writer |
+| `macdog-grok-usage` | `Sources/GrokUsageCLI` | Grok weekly-only `status`/`--write-cache`, unofficial billing writer |
+| `macdog-claude-statusline` | `Sources/ClaudeUsageBridgeCLI` | bounded stdin event 수신, Claude 사용량 정제와 별도 cache writer. 기본 UI에서는 숨김 |
 | `MacDog` | `Sources/MacDog` | 메뉴바 앱, popover, 러너, 시스템 상태, 알림, user component orchestration |
 | `MacDogPowerUIBridge` | `Sources/MacDogPowerUIBridge` | macOS power/charge limit 관련 Objective-C bridge |
 | `MacDogPrivilegedHelperSupport` | `Sources/MacDogPrivilegedHelperSupport` | helper XPC 계약, 허용 command, 설치 script 생성 |
@@ -39,16 +41,19 @@ flowchart TD
 flowchart LR
     subgraph Provider["Provider 입력"]
         Codex["Codex app-server"]
+        Grok["unofficial x.ai/billing"]
         Claude["Claude statusLine event"]
     end
 
     subgraph Boundary["조회·정제 경계"]
         UsageCLI["codex-usage"]
+        GrokWriter["macdog-grok-usage"]
         StatusBridge["macdog-claude-statusline"]
     end
 
     subgraph Storage["MacDog 소유 저장소"]
         CodexCache[("usage.json + Codex history")]
+        GrokCache[("grok-usage.json + history")]
         ClaudeCache[("claude-usage.json + history")]
     end
 
@@ -60,8 +65,10 @@ flowchart LR
     end
 
     Codex --> UsageCLI --> CodexCache
+    Grok --> GrokWriter --> GrokCache
     Claude --> StatusBridge --> ClaudeCache
     CodexCache --> Controller
+    GrokCache --> Controller
     ClaudeCache --> Controller
     Controller --> State --> Popover
     State --> Runner
@@ -112,6 +119,39 @@ sequenceDiagram
 사용할 수 있습니다. token은 출력·cache·log·fixture에 남기지 않습니다. 이 경계를 수정하려면
 `AGENTS.md`의 인증 규칙과 privacy test를 함께 검토해야 합니다.
 
+## Grok 사용량 흐름
+
+```mermaid
+sequenceDiagram
+    participant Timer as MacDog timer / LaunchAgent
+    participant CLI as bundled macdog-grok-usage
+    participant Billing as unofficial x.ai/billing
+    participant Cache as grok-usage.json / history
+    participant App as MacDog UI
+
+    Timer->>CLI: status --write-cache
+    CLI->>CLI: auth.json sibling read; refresh under lock only if expired or 401
+    CLI->>Billing: GET /v1/billing?format=credits
+    Billing-->>CLI: creditUsagePercent
+    CLI->>CLI: weekly-only sanitize, drop token and raw payload
+    CLI->>Cache: atomic success 또는 redacted failure 상태 기록
+    App->>Cache: grok-usage.json과 history 읽기
+    Cache-->>App: fresh / stale / error / empty
+```
+
+핵심 해석 규칙:
+
+| 입력 | 해석 |
+| --- | --- |
+| `creditUsagePercent` | 주간 `usedPercent`. 잔여율은 `100 - usedPercent` |
+| 5시간 window | 없음. UI는 `현재 제공되지 않음` |
+| `resetsAt` | 확인된 unix epoch만. 모르면 생략하고 합성하지 않음 |
+| Extra Credits / prepaid / MONTHLY | 거부. 기본 UI 입력이 아님 |
+| `XAI_API_KEY` | SuperGrok 주간 pool 인증으로 쓰지 않음 |
+
+Grok cache는 Codex/Claude 파일과 분리합니다. live billing과 `~/.grok/auth.json` 조회는
+사용자 승인 없이 하지 않습니다. unofficial 경로이므로 fixture 검증과 live 검증을 구분합니다.
+
 ## Claude 사용량 흐름
 
 ```mermaid
@@ -140,20 +180,22 @@ transcript, raw event를 읽지 않습니다. 사용자가 statusLine bridge를 
 ```mermaid
 stateDiagram-v2
     [*] --> Codex
-    Codex --> Claude: 설정에서 Claude 선택
-    Claude --> Codex: 설정에서 Codex 선택
-    Codex: 관리 대상 설치본에서 Codex cache refresh 활성
+    Codex --> Grok: 설정에서 Grok 선택
+    Grok --> Codex: 설정에서 Codex 선택
+    Codex: 관리 대상 설치본에서 Codex cache LaunchAgent 활성
     Codex: Codex runner·알림·첫 탭
-    Claude: 관리 대상 설치본에서 Codex cache LaunchAgent 비활성
-    Claude: Claude cache만 표시
+    Grok: 관리 대상 설치본에서 Grok cache LaunchAgent 활성
+    Grok: Grok cache만 표시
+    Claude: hidden re-enable일 때만 유지
 ```
 
-- 선택값은 단일 preference입니다.
+- 선택값은 단일 preference입니다. 기본 UI visible 값은 `Codex`와 `Grok`입니다.
+- 저장된 `claude`는 hidden re-enable이 켜진 경우가 아니면 `codex`로 되돌립니다.
 - provider를 바꾸면 탭 label, refresh route, runner phase, notification source가 함께 바뀝니다.
 - 두 provider를 합산·비교하거나 이전 provider 수치로 empty state를 채우지 않습니다.
-- `/Applications` 또는 `~/Applications`의 관리 대상 설치본에서 Codex mode로 돌아오면 user
-  component installer가 Codex cache LaunchAgent를 복구합니다. `dist/MacDog.app`은 설치 구성요소를
-  관리하지 않으므로 provider 전환이 LaunchAgent를 설치·제거하지 않습니다.
+- `/Applications` 또는 `~/Applications`의 관리 대상 설치본에서 mode를 바꾸면 user
+  component installer가 Codex 또는 Grok cache LaunchAgent를 맞춥니다. `dist/MacDog.app`은
+  설치 구성요소를 관리하지 않으므로 provider 전환이 LaunchAgent를 설치·제거하지 않습니다.
 
 ## 소스 트리 지도
 
@@ -163,10 +205,12 @@ stateDiagram-v2
 | `Sources/CodexUsageCore/Usage` | `CodexUsageService.swift` | model/formatter, CLI JSON, reset credit privacy |
 | `Sources/CodexUsageCore/Cache` | `CodexUsageCache.swift` | weekly/five-hour/reset history, stale/error, atomic write |
 | `Sources/CodexUsageCore/Claude` | `ClaudeUsageCache.swift` | statusLine sanitizer, Claude history, privacy test |
+| `Sources/CodexUsageCore/Grok` | `GrokUsageCache.swift` | weekly-only sanitizer, Grok history, auth.json sibling |
 | `Sources/CodexUsageCLI` | `main.swift` | README CLI 계약, cache writer, `doctor` |
+| `Sources/GrokUsageCLI` | `main.swift` | Grok weekly writer, token 미출력 |
 | `Sources/ClaudeUsageBridgeCLI` | `main.swift` | bounded stdin/output, bundle packaging gate |
 | `Sources/MacDog` | `MacDogMain.swift`, `MenuBarController.swift`, `UsagePopoverView.swift` | app lifecycle, timers, root popover, user components |
-| `Sources/MacDog/Popover` | `CodexUsagePanel.swift`, `ClaudeUsagePreviewPanel.swift`와 각 panel | tab UI, screenshot renderer, accessibility identifier |
+| `Sources/MacDog/Popover` | `CodexUsagePanel.swift`, `GrokUsagePanel.swift`, `ClaudeUsagePreviewPanel.swift`와 각 panel | tab UI, screenshot renderer, accessibility identifier |
 | `Sources/MacDog/Resources` | character profile manifest | character verifier와 screenshot test |
 | `Sources/MacDogWidget` | widget view/provider | app group cache, empty/stale/error, deep link |
 | `Sources/MacDogPrivilegedHelperSupport` | `PrivilegedHelperContract.swift` | helper executable, install/preflight/XPC tests |
@@ -184,6 +228,7 @@ stateDiagram-v2
 | popover 상태 갱신 | `Sources/MacDog/MenuBarController.swift` | cache store → `UsageMonitorState` → SwiftUI view |
 | 선택 provider 계산 | `Sources/MacDog/UsageMonitorState.swift` | preference → runner/notification/tab state |
 | Codex live 조회 | `Sources/CodexUsageCLI/main.swift` | `CodexUsageService` → app-server client → cache store |
+| Grok weekly 조회 | `Sources/GrokUsageCLI/main.swift` | `GrokUsageFetchService` → billing sanitizer → Grok cache |
 | Claude event 정제 | `Sources/ClaudeUsageBridgeCLI/main.swift` | `ClaudeUsageCacheStore` → snapshot/history |
 | 첫 실행 설치/복구 | `Sources/MacDog/UserComponentInstaller.swift` | CLI symlink, usage LaunchAgent, provider reconciliation |
 | 로그인 실행 | `Sources/MacDog/LoginLaunchController.swift` | `SMAppService` status/register/unregister |
@@ -198,12 +243,16 @@ stateDiagram-v2
 | 5시간 history | 같은 디렉터리의 `usage-five-hour-history.json` | `codex-usage` | Codex UI | 5시간 미제공 중에도 기존 history 보존 |
 | 주간 history | `usage-weekly-history.json` | `codex-usage` | Codex graph/pace | 같은 reset 안에서 표시 잔여율 비증가 |
 | reset history | `usage-reset-window-history.json` | `codex-usage` | 비교/진단 UI | 완료 window의 축약 record만 저장 |
+| Grok snapshot | `grok-usage.json` | `macdog-grok-usage` | MacDog | token/원문 billing 저장 금지 |
+| Grok history | `grok-usage-history.json` | `macdog-grok-usage` | MacDog | weekly-only sanitized history |
+| Grok lock | `grok-usage.lock` | `macdog-grok-usage` | Grok writer | concurrent atomic write 보호 |
 | Claude snapshot | `claude-usage.json` | Claude bridge | MacDog | raw event/transcript 저장 금지 |
 | Claude history | `claude-usage-history.json` | Claude bridge | MacDog | sanitized bounded history |
 | Claude lock | `claude-usage.lock` | Claude bridge | Claude bridge | concurrent atomic write 보호 |
 | preferences | `com.dhseo.macdog.MacDog` UserDefaults | MacDog | MacDog | reset은 명시적 uninstall 옵션 |
 | optional widget mirror | `~/Library/Group Containers/group.com.dhseo.macdog.MacDog/usage.json` | opt-in CLI mirror | WidgetKit | provisioning 없는 ad-hoc build로 실제 UI 완료 주장 금지 |
 | user LaunchAgent | `~/Library/LaunchAgents/com.dhseo.macdog.usage-cache.plist` | installer | launchd | Codex mode에서만 유지 |
+| Grok LaunchAgent | `~/Library/LaunchAgents/com.dhseo.macdog.grok-usage-cache.plist` | installer | launchd | Grok mode에서만 유지 |
 | user CLI link | `~/bin/codex-usage` | installer | 사용자/LaunchAgent | 설치 app payload를 가리켜야 함 |
 | helper tool | `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper` | 승인된 helper 설치 | launchd | 관리자 승인 필요 |
 | helper plist | `/Library/LaunchDaemons/com.dhseo.macdog.helper.plist` | 승인된 helper 설치 | launchd | 관리자 승인 필요 |
@@ -241,6 +290,7 @@ stateDiagram-v2
 2. `MacDogMain.swift`와 `MenuBarController.start()`로 app lifecycle을 따라갑니다.
 3. `UsageMonitorState.swift`에서 selected provider와 UI 파생 상태를 확인합니다.
 4. Codex 작업이면 `CodexUsageCLI/main.swift` → `CodexUsageService.swift` → cache/history 순서로 봅니다.
-5. Claude 작업이면 `ClaudeUsageBridgeCLI/main.swift` → `Sources/CodexUsageCore/Claude` 순서로 봅니다.
-6. 같은 이름의 `Tests/*Tests.swift`와 `script/verify_*contract.sh`를 찾아 계약을 확인합니다.
-7. UI 변경이면 screenshot renderer와 [../Images/README](../Images/README) 기준 이미지까지 확인합니다.
+5. Grok 작업이면 `GrokUsageCLI/main.swift` → `Sources/CodexUsageCore/Grok` 순서로 봅니다.
+6. Claude 작업이면 `ClaudeUsageBridgeCLI/main.swift` → `Sources/CodexUsageCore/Claude` 순서로 봅니다.
+7. 같은 이름의 `Tests/*Tests.swift`와 `script/verify_*contract.sh`를 찾아 계약을 확인합니다.
+8. UI 변경이면 screenshot renderer와 [../Images/README](../Images/README) 기준 이미지까지 확인합니다.

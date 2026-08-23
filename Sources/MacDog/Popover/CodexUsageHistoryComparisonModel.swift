@@ -27,7 +27,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
 
     init?(
         state: UsageMonitorState,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dateBaseline: UsageGraphDateBaseline = .resetWindow
     ) {
         self.init(
             history: state.weeklyUsageHistory,
@@ -35,7 +36,8 @@ struct CodexUsageHistoryComparisonModel: Equatable {
             weeklyWindow: state.codexLimit?.weekly,
             currentReport: state.report,
             currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
-            calendar: calendar
+            calendar: calendar,
+            dateBaseline: dateBaseline
         )
     }
 
@@ -45,28 +47,26 @@ struct CodexUsageHistoryComparisonModel: Equatable {
         weeklyWindow: UsageWindowReport?,
         currentReport: CodexUsageReport?,
         currentTimestamp: Int?,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dateBaseline: UsageGraphDateBaseline = .resetWindow
     ) {
         guard let weeklyWindow else {
             return nil
         }
 
-        let currentSample: CodexUsageWeeklyHistorySample?
-        if let currentReport,
-           let currentTimestamp {
-            currentSample = CodexUsageWeeklyHistorySample(
-                report: currentReport,
-                recordedAt: currentTimestamp
-            )
-        } else {
-            currentSample = nil
-        }
+        let currentSample = Self.currentSample(
+            history: history,
+            weeklyWindow: weeklyWindow,
+            currentReport: currentReport,
+            currentTimestamp: currentTimestamp
+        )
 
         self.currentChart = WeeklyRemainingHistoryChart(
             history: history,
             weeklyWindow: weeklyWindow,
             currentSample: currentSample,
-            calendar: calendar
+            calendar: calendar,
+            dateBaseline: dateBaseline
         )
         self.resetWindowHistory = Self.resetWindowHistory(
             resetWindowHistory,
@@ -104,6 +104,36 @@ struct CodexUsageHistoryComparisonModel: Equatable {
                 $0 > window.resetStartAt && $0 < window.resetsAt
             }
         return newerResetStarts.min() ?? window.resetsAt
+    }
+
+    private static func currentSample(
+        history: CodexUsageWeeklyHistory,
+        weeklyWindow: UsageWindowReport,
+        currentReport: CodexUsageReport?,
+        currentTimestamp: Int?
+    ) -> CodexUsageWeeklyHistorySample? {
+        if let currentReport, let currentTimestamp {
+            return CodexUsageWeeklyHistorySample(
+                report: currentReport,
+                recordedAt: currentTimestamp
+            )
+        }
+
+        guard let currentTimestamp,
+              let resetsAt = weeklyWindow.resetsAt,
+              let windowDurationMins = weeklyWindow.windowDurationMins
+        else {
+            return nil
+        }
+
+        let matching = history.samples.filter {
+            $0.matchesResetWindow(
+                resetsAt: resetsAt,
+                windowDurationMins: windowDurationMins
+            )
+        }
+        return matching.last(where: { $0.recordedAt == currentTimestamp })
+            ?? matching.last(where: { $0.recordedAt <= currentTimestamp })
     }
 
     private static func resetWindowHistory(

@@ -24,10 +24,18 @@ struct UsageNotificationDeliverySettings: Equatable, Sendable {
 
 enum UsageNotificationRoute: Equatable, Sendable {
     case codex
+    case grok
     case claude
 
     init(mode: UsageProviderMode) {
-        self = mode == .codex ? .codex : .claude
+        switch mode {
+        case .codex:
+            self = .codex
+        case .grok:
+            self = .grok
+        case .claude:
+            self = .claude
+        }
     }
 }
 

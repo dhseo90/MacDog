@@ -335,6 +335,16 @@ struct ClaudeUsageGraphSnapshotView: View {
     let currentResetsAt: Int?
     let pastResetsAt: Int?
     let history: ClaudeUsageHistory
+    var dateBaselineOverride: UsageGraphDateBaseline? = nil
+
+    @AppStorage(RunnerPreferences.usageGraphDateBaselineKey) private var storedDateBaselineRaw =
+        UsageGraphDateBaseline.calendarMidnight.rawValue
+
+    private var dateBaseline: UsageGraphDateBaseline {
+        dateBaselineOverride
+            ?? UsageGraphDateBaseline(rawValue: storedDateBaselineRaw)
+            ?? .calendarMidnight
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -381,6 +391,35 @@ struct ClaudeUsageGraphSnapshotView: View {
             path.addLine(to: CGPoint(x: size.width, y: size.height * ratio))
             context.stroke(path, with: .color(.secondary.opacity(0.16)), lineWidth: 0.5)
         }
+
+        guard let resetsAt = gridResetsAt else { return }
+        let startsAt = resetsAt - kind.windowDurationMins * 60
+        let baseline: UsageGraphDateBaseline
+        if kind == .fiveHour, dateBaseline == .resetWindow {
+            return
+        } else if kind == .fiveHour {
+            baseline = .calendarMidnight
+        } else {
+            baseline = dateBaseline
+        }
+        for fraction in UsageGraphDateBaseline.gridPositions(
+            resetStartAt: startsAt,
+            resetsAt: resetsAt,
+            baseline: baseline,
+            calendar: .current
+        ) {
+            var path = Path()
+            path.move(to: CGPoint(x: size.width * fraction, y: 0))
+            path.addLine(to: CGPoint(x: size.width * fraction, y: size.height))
+            context.stroke(path, with: .color(.secondary.opacity(0.16)), lineWidth: 0.5)
+        }
+    }
+
+    private var gridResetsAt: Int? {
+        if mode != .past {
+            return currentResetsAt
+        }
+        return pastResetsAt
     }
 
     private func drawSeries(

@@ -15,12 +15,13 @@ enum MacDogDemoData {
         preferences: RunnerPreferences = RunnerPreferences(),
         now: Int = Int(Date().timeIntervalSince1970)
     ) -> UsageMonitorState {
+        let usesCodexDemo = preferences.usageProviderMode != .grok
         return UsageMonitorState(
-            report: report(now: now),
+            report: usesCodexDemo ? report(now: now) : nil,
             cacheSnapshot: nil,
-            fiveHourUsageHistory: fiveHourUsageHistory(now: now),
-            weeklyUsageHistory: weeklyUsageHistory(now: now),
-            resetWindowHistory: resetWindowHistory(now: now),
+            fiveHourUsageHistory: usesCodexDemo ? fiveHourUsageHistory(now: now) : .empty,
+            weeklyUsageHistory: usesCodexDemo ? weeklyUsageHistory(now: now) : .empty,
+            resetWindowHistory: usesCodexDemo ? resetWindowHistory(now: now) : .empty,
             errorMessage: nil,
             displayBasis: preferences.displayBasis,
             reducedMotion: preferences.reducedMotion,
@@ -36,7 +37,37 @@ enum MacDogDemoData {
             claudeUsagePreview: preferences.usageProviderMode == .claude
                 ? claudeUsagePreview(now: now)
                 : .disabled,
+            grokUsage: preferences.usageProviderMode == .grok
+                ? grokUsagePreview(now: now)
+                : .disabled,
             usageProviderMode: preferences.usageProviderMode
+        )
+    }
+
+    private static func grokUsagePreview(now: Int) -> GrokUsagePreviewState {
+        let resetsAt = weeklyResetTimestamp(now: now)
+        let remaining = weeklyRemainingPercent(now: now)
+        let used = 100 - remaining
+        let weekly = GrokUsageWeeklyWindow(usedPercent: used, resetsAt: resetsAt)
+        let samples = weeklyUsageHistory(now: now).samples.compactMap { sample in
+            GrokUsageHistorySample(
+                recordedAt: sample.recordedAt,
+                usedPercent: sample.usedPercent,
+                remainingPercent: sample.remainingPercent,
+                resetsAt: sample.resetsAt
+            )
+        }
+        return GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: GrokUsageCacheStore.defaultStaleAfterSeconds,
+                weekly: weekly,
+                issue: nil
+            ),
+            history: GrokUsageHistory(samples: samples),
+            loadIssue: nil
         )
     }
 
@@ -355,6 +386,7 @@ enum MacDogDemoData {
             powerAdapterConnected: true,
             codexAppRunning: true,
             appMatchText: preferences.sleepPreventionAppMatchText,
+            usageProviderMode: preferences.usageProviderMode,
             chargingBelowThreshold: true,
             cpuAboveThreshold: false,
             memoryAboveThreshold: false,

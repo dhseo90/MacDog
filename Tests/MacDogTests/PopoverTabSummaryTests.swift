@@ -44,6 +44,7 @@ final class PopoverTabSummaryTests: XCTestCase {
                 powerAdapterConnected: true,
                 codexAppRunning: true,
                 appMatchText: "Codex",
+                usageProviderMode: .codex,
                 chargingBelowThreshold: false,
                 cpuAboveThreshold: false,
                 memoryAboveThreshold: false,

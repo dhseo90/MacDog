@@ -19,10 +19,16 @@ struct SleepPreventionPanel: View {
     @AppStorage(RunnerPreferences.sleepPreventionCPUThresholdPercentKey) private var cpuThresholdPercent = RunnerPreferences.defaultSleepPreventionCPUThresholdPercent
     @AppStorage(RunnerPreferences.sleepPreventionMemoryThresholdPercentKey) private var memoryThresholdPercent = RunnerPreferences.defaultSleepPreventionMemoryThresholdPercent
     @AppStorage(RunnerPreferences.sleepPreventionNetworkThresholdKBPerSecondKey) private var networkThresholdKBPerSecond = RunnerPreferences.defaultSleepPreventionNetworkThresholdKBPerSecond
+    @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw =
+        RunnerPreferences.defaultUsageProviderMode.rawValue
     @AppStorage(RunnerPreferences.sleepPreventionAppMatchTextKey) private var appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
     @AppStorage(RunnerPreferences.sleepPreventionPreventDisplaySleepKey) private var preventDisplaySleep = RunnerPreferences.defaultSleepPreventionPreventDisplaySleep
     @AppStorage(RunnerPreferences.sleepPreventionPreventClosedLidSleepKey) private var preventClosedLidSleep = RunnerPreferences.defaultSleepPreventionPreventClosedLidSleep
     @AppStorage(RunnerPreferences.sleepPreventionDisableScreenLockKey) private var disableScreenLock = RunnerPreferences.defaultSleepPreventionDisableScreenLock
+
+    private var usageProviderMode: UsageProviderMode {
+        UsageProviderMode(rawValue: usageProviderModeRaw) ?? .codex
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -62,7 +68,7 @@ struct SleepPreventionPanel: View {
                     VStack(alignment: .leading, spacing: 7) {
                         HStack(spacing: 14) {
                             triggerToggle("전원 연결", isOn: $powerAdapterTriggerEnabled)
-                            triggerToggle("Codex 실행 중", isOn: $codexAppTriggerEnabled)
+                            triggerToggle(usageProviderMode.runningTriggerTitle, isOn: $codexAppTriggerEnabled)
                         }
                         HStack(spacing: 14) {
                             triggerToggle("배터리 \(effectiveBatteryThresholdPercent)% 이상", isOn: $chargingBelowThresholdTriggerEnabled)

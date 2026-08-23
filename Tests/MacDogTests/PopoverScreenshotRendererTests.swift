@@ -262,9 +262,20 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
         let claudePanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
+        let grokPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/GrokUsagePanel.swift")
 
         XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
-        XCTAssertTrue(settingsSource.contains("UsageProviderMode.allCases"))
+        XCTAssertTrue(settingsSource.contains("Picker(\"날짜 기준\""))
+        XCTAssertTrue(settingsSource.contains("UsageGraphDateBaseline.allCases"))
+        let dateBaselineSource = try String(contentsOfFile: "Sources/MacDog/UsageGraphDateBaseline.swift")
+        let petMenuSource = try String(contentsOfFile: "Sources/MacDog/PetMenuModel.swift")
+        let sleepPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/SleepPreventionPanel.swift")
+        XCTAssertTrue(dateBaselineSource.contains("return \"자정\""))
+        XCTAssertTrue(petMenuSource.contains("usageProviderMode.petTitle"))
+        XCTAssertFalse(petMenuSource.contains("코덱스 펫"))
+        XCTAssertTrue(sleepPanelSource.contains("runningTriggerTitle"))
+        XCTAssertTrue(settingsSource.contains("UsageProviderMode.visibleCases"))
+        XCTAssertFalse(settingsSource.contains("UsageProviderMode.allCases"))
         XCTAssertFalse(settingsSource.contains("Claude Usage Preview"))
         XCTAssertFalse(settingsSource.contains("Claude Preview 사용"))
         XCTAssertFalse(settingsSource.contains("러너 반영"))
@@ -275,6 +286,17 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
         XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
+        XCTAssertTrue(popoverSource.contains("GrokUsagePanel(preview: state.grokUsage, now: now)"))
+        XCTAssertFalse(grokPanelSource.contains("5시간"))
+        XCTAssertTrue(grokPanelSource.contains("주간"))
+        XCTAssertTrue(grokPanelSource.contains("WeeklyRemainingHistoryBlock("))
+        XCTAssertFalse(grokPanelSource.contains("GrokUsageGraphSnapshotView"))
+        XCTAssertTrue(grokPanelSource.contains("grok login"))
+        XCTAssertTrue(grokPanelSource.contains("터미널에서 로그인"))
+        XCTAssertTrue(grokPanelSource.contains("로그인 명령 복사"))
+        XCTAssertFalse(grokPanelSource.contains("초기화권"))
+        XCTAssertFalse(grokPanelSource.contains("reset credit"))
+        XCTAssertTrue(controllerSource.contains("grokUsageNotificationDispatcher.dispatch"))
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
@@ -537,7 +559,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.loginLaunchEnabledKey,
             RunnerPreferences.usageNotificationsEnabledKey,
             RunnerPreferences.usageResetSoonNotificationsEnabledKey,
-            RunnerPreferences.usageProviderModeKey
+            RunnerPreferences.usageProviderModeKey,
+            RunnerPreferences.usageGraphDateBaselineKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -559,6 +582,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 .split(separator: ",")
                 .map { String($0) } ?? []
         )
+        let screenshotNow = Date(timeIntervalSince1970: TimeInterval(MacDogDemoData.readmeScreenshotTimestamp))
         for module in MacDogPopoverModule.allCases where
             requestedModules.isEmpty || requestedModules.contains(module.rawValue) {
             configureDefaults(for: module, defaults: defaults)
@@ -569,10 +593,28 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             )
             let view = UsagePopoverView(
                 state: state,
-                notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+                notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+                now: screenshotNow
             )
             let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
             try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-\(module.rawValue).png"))
+        }
+
+        if requestedModules.isEmpty || requestedModules.contains("grok") {
+            configureDefaults(for: .codex, defaults: defaults)
+            RunnerPreferences.setUsageProviderMode(.grok, defaults: defaults)
+            let preferences = RunnerPreferences(defaults: defaults)
+            let state = MacDogDemoData.state(
+                preferences: preferences,
+                now: MacDogDemoData.readmeScreenshotTimestamp
+            )
+            let view = UsagePopoverView(
+                state: state,
+                notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+                now: screenshotNow
+            )
+            let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
+            try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-grok.png"))
         }
 
         let petSource = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -723,6 +765,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
         RunnerPreferences.setSleepPreventionControlMode(.off, defaults: defaults)
         RunnerPreferences.setUsageProviderMode(.codex, defaults: defaults)
+        RunnerPreferences.setUsageGraphDateBaseline(.calendarMidnight, defaults: defaults)
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
         if module == .sleep {

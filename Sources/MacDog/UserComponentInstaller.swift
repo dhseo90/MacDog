@@ -4,6 +4,7 @@ import Foundation
 
 struct UserComponentInstaller {
     static let cacheLabel = "com.dhseo.macdog.usage-cache"
+    static let grokCacheLabel = "com.dhseo.macdog.grok-usage-cache"
     static let firstRunHelperPromptDismissedKey = "firstRunHelperPromptDismissed"
 
     private let appBundleURL: URL
@@ -55,6 +56,10 @@ struct UserComponentInstaller {
         mode == .codex ? .install : .remove
     }
 
+    static func grokCacheAgentAction(for mode: UsageProviderMode) -> UsageCacheAgentAction {
+        mode == .grok ? .install : .remove
+    }
+
     func synchronizeUsageCacheAgent(for mode: UsageProviderMode) throws {
         guard Self.shouldManage(appBundleURL: appBundleURL, homeDirectory: homeDirectory) else { return }
         switch Self.cacheAgentAction(for: mode) {
@@ -64,6 +69,14 @@ struct UserComponentInstaller {
             try installCacheLaunchAgentIfNeeded()
         case .remove:
             try removeCacheLaunchAgentIfPresent()
+        }
+        switch Self.grokCacheAgentAction(for: mode) {
+        case .install:
+            try fileManager.createDirectory(at: launchAgentDirectoryURL, withIntermediateDirectories: true)
+            try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
+            try installGrokCacheLaunchAgentIfNeeded()
+        case .remove:
+            try removeGrokCacheLaunchAgentIfPresent()
         }
     }
 
@@ -96,11 +109,39 @@ struct UserComponentInstaller {
         return try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
     }
 
+    static func grokCachePlistData(
+        appCLIPath: String,
+        logDirectoryPath: String
+    ) throws -> Data {
+        let plist: [String: Any] = [
+            "Label": grokCacheLabel,
+            "ProgramArguments": [
+                appCLIPath,
+                "status",
+                "--write-cache",
+                "--timeout",
+                String(Int(GrokUsageCacheRefreshPolicy.requestTimeout))
+            ],
+            "RunAtLoad": true,
+            "StartInterval": CodexUsageCacheStore.cacheAgentRefreshIntervalSeconds,
+            "StandardOutPath": "\(logDirectoryPath)/grok-cache.out.log",
+            "StandardErrorPath": "\(logDirectoryPath)/grok-cache.err.log"
+        ]
+        return try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+    }
+
     private var bundledCLIURL: URL {
         appBundleURL
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
             .appendingPathComponent("codex-usage")
+    }
+
+    private var bundledGrokCLIURL: URL {
+        appBundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("MacOS", isDirectory: true)
+            .appendingPathComponent("macdog-grok-usage")
     }
 
     private var bundledWidgetExtensionURL: URL {
@@ -126,6 +167,10 @@ struct UserComponentInstaller {
 
     private var cachePlistURL: URL {
         launchAgentDirectoryURL.appendingPathComponent("\(Self.cacheLabel).plist")
+    }
+
+    private var grokCachePlistURL: URL {
+        launchAgentDirectoryURL.appendingPathComponent("\(Self.grokCacheLabel).plist")
     }
 
     private var logDirectoryURL: URL {
@@ -214,6 +259,48 @@ struct UserComponentInstaller {
         }
     }
 
+    private func installGrokCacheLaunchAgentIfNeeded() throws {
+        guard fileManager.isExecutableFile(atPath: bundledGrokCLIURL.path) else {
+            throw UserComponentInstallerError.missingBundledGrokCLI(bundledGrokCLIURL.path)
+        }
+        let plistData = try Self.grokCachePlistData(
+            appCLIPath: bundledGrokCLIURL.path,
+            logDirectoryPath: logDirectoryURL.path
+        )
+        let existingData = try? Data(contentsOf: grokCachePlistURL)
+        guard existingData != plistData else {
+            _ = try? launchctl(arguments: ["bootout", guiTarget, grokCachePlistURL.path])
+            try launchctl(arguments: ["bootstrap", guiTarget, grokCachePlistURL.path])
+            return
+        }
+
+        _ = try? launchctl(arguments: ["bootout", guiTarget, grokCachePlistURL.path])
+        try plistData.write(to: grokCachePlistURL, options: .atomic)
+        try launchctl(arguments: ["bootstrap", guiTarget, grokCachePlistURL.path])
+    }
+
+    private func removeGrokCacheLaunchAgentIfPresent() throws {
+        do {
+            try launchctl(arguments: ["bootout", "\(guiTarget)/\(Self.grokCacheLabel)"])
+        } catch {
+            do {
+                try launchctl(arguments: ["bootout", guiTarget, grokCachePlistURL.path])
+            } catch {
+                do {
+                    try launchctl(arguments: ["print", "\(guiTarget)/\(Self.grokCacheLabel)"])
+                    throw error
+                } catch let verificationError {
+                    guard Self.isMissingLaunchctlServiceError(verificationError) else {
+                        throw verificationError
+                    }
+                }
+            }
+        }
+        if fileManager.fileExists(atPath: grokCachePlistURL.path) {
+            try fileManager.removeItem(at: grokCachePlistURL)
+        }
+    }
+
     private func installLoginLaunchIfNeeded(isEnabled: Bool) throws {
         let controller = LoginLaunchController(
             appBundleURL: appBundleURL,
@@ -270,6 +357,7 @@ enum UsageCacheAgentAction: Equatable {
 
 enum UserComponentInstallerError: LocalizedError, Equatable {
     case missingBundledCLI(String)
+    case missingBundledGrokCLI(String)
     case cliSymlinkConflict(path: String, existingTarget: String?)
     case launchctlFailed(String, String)
 
@@ -277,6 +365,8 @@ enum UserComponentInstallerError: LocalizedError, Equatable {
         switch self {
         case .missingBundledCLI(let path):
             return "번들 내부 codex-usage 실행 파일을 찾을 수 없습니다: \(path)"
+        case .missingBundledGrokCLI(let path):
+            return "번들 내부 macdog-grok-usage 실행 파일을 찾을 수 없습니다: \(path)"
         case .cliSymlinkConflict(let path, let existingTarget):
             if let existingTarget {
                 return "\(path)에 MacDog가 만들지 않은 codex-usage symlink가 있어 덮어쓰지 않았습니다: \(existingTarget)"

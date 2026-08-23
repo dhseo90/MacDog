@@ -26,6 +26,7 @@ struct UsageMonitorState: Equatable {
     let sleepPreventionTriggerStatus: SleepPreventionTriggerStatus
     let privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot
     let claudeUsagePreview: ClaudeUsagePreviewState
+    let grokUsage: GrokUsagePreviewState
     let usageProviderMode: UsageProviderMode
     let runnerEvaluationDate: Date
 
@@ -46,6 +47,7 @@ struct UsageMonitorState: Equatable {
         sleepPreventionTriggerStatus: SleepPreventionTriggerStatus = .disabled,
         privilegedHelperInstallSnapshot: PrivilegedHelperInstallSnapshot = .missing,
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
+        grokUsage: GrokUsagePreviewState = .disabled,
         usageProviderMode: UsageProviderMode = .codex,
         runnerEvaluationDate: Date = Date()
     ) {
@@ -65,6 +67,7 @@ struct UsageMonitorState: Equatable {
         self.sleepPreventionTriggerStatus = sleepPreventionTriggerStatus
         self.privilegedHelperInstallSnapshot = privilegedHelperInstallSnapshot
         self.claudeUsagePreview = claudeUsagePreview
+        self.grokUsage = grokUsage
         self.usageProviderMode = usageProviderMode
         self.runnerEvaluationDate = runnerEvaluationDate
     }
@@ -87,6 +90,7 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
+            grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
             runnerEvaluationDate: runnerEvaluationDate
         )
@@ -116,6 +120,7 @@ struct UsageMonitorState: Equatable {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot,
             claudeUsagePreview: claudeUsagePreview,
+            grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
             runnerEvaluationDate: runnerEvaluationDate
         )
@@ -155,6 +160,11 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexPhase
+        case .grok:
+            guard let usedPercent = grokUsage.runnerUsedPercent(now: runnerEvaluationDate) else {
+                return .calm
+            }
+            return UsagePressurePhase(usedPercent: usedPercent)
         case .claude:
             guard let usedPercent = claudeUsagePreview.runnerUsedPercent(now: runnerEvaluationDate) else {
                 return .calm
@@ -240,6 +250,8 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexNextResetGlance(now: now)
+        case .grok:
+            return grokNextResetGlance(now: now)
         case .claude:
             return claudeNextResetGlance(now: now)
         }
@@ -263,6 +275,15 @@ struct UsageMonitorState: Equatable {
 
         guard let next = candidates.first else { return nil }
         return "다음 초기화: \(next.label) \(Self.relativeDuration(next.remainingSeconds))"
+    }
+
+    private func grokNextResetGlance(now: Date) -> String? {
+        guard let resetsAt = grokUsage.cacheSnapshot?.freshWeekly(now: now)?.resetsAt else {
+            return nil
+        }
+        let remaining = Int(ceil(Date(timeIntervalSince1970: TimeInterval(resetsAt)).timeIntervalSince(now)))
+        guard remaining > 0 else { return nil }
+        return "다음 초기화: 주간 \(Self.relativeDuration(remaining))"
     }
 
     private func claudeNextResetGlance(now: Date) -> String? {
@@ -374,6 +395,8 @@ struct UsageMonitorState: Equatable {
         switch usageProviderMode {
         case .codex:
             return codexToolTip
+        case .grok:
+            return grokToolTip
         case .claude:
             return claudeToolTip
         }
@@ -391,6 +414,14 @@ struct UsageMonitorState: Equatable {
         let weekly = limit.weekly.map { "\(Self.percent($0.usedPercent))% 주간" } ?? "주간 확인 불가"
         let motion = animationPaused ? ", 일시 정지" : ""
         return "코덱스 사용량: \(fiveHour), \(weekly), 기준 \(displayBasis.label)\(motion)"
+    }
+
+    private var grokToolTip: String {
+        let motion = animationPaused ? ", 일시 정지" : ""
+        guard let weekly = grokUsage.cacheSnapshot?.freshWeekly(now: runnerEvaluationDate) else {
+            return "Grok 사용량: \(grokUsage.statusTitle(now: runnerEvaluationDate))\(motion)"
+        }
+        return "Grok 사용량: \(Self.percent(weekly.usedPercent))% 주간\(motion)"
     }
 
     private var claudeToolTip: String {

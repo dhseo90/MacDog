@@ -85,7 +85,7 @@ verify_contract() {
     die "v1.8 selected-provider verifier is not executable"
 
   require_match '선택형 Codex/Claude 사용량 mode와 안정화' "$ROADMAP" "selected-provider roadmap"
-  reject_match 'v1\.8\.1|v1\.9\.0' "$ROADMAP" "removed future milestone"
+  reject_match 'v1\.8\.1' "$ROADMAP" "unplanned v1.8.1 milestone"
   require_match '두 provider 동시 사용' "$DOC" "single-provider boundary"
   require_match '합산·비교.*구현하지 않습니다' "$DOC" "no combined usage boundary"
   require_match '사용량 mode.*Codex' "$DOC" "single mode setting"

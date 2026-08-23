@@ -180,6 +180,12 @@ echo "==> Verifying v1.8.0 selected-provider product contract"
 echo "==> Verifying v1.8.0 release readiness"
 ./script/verify_v180_release_readiness.sh --self-test
 
+echo "==> Verifying v1.9.0 selected-provider product contract"
+./script/verify_v190_selected_provider_contract.sh --self-test
+
+echo "==> Verifying v1.9.0 release readiness"
+./script/verify_v190_release_readiness.sh --self-test
+
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test
 

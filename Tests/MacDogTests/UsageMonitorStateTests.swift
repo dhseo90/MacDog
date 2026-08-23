@@ -127,6 +127,347 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(claudeMode.codexPanelSummary()?.statusTitle, claudeMode.codexPhase.statusLabel)
     }
 
+    func testSelectedUsageSourcePolicyDoesNotEvaluateCodexCacheOutsideCodexMode() {
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .codex))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .claude))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .claude))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: .codex))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .grok))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex))
+    }
+
+    func testVisibleSettingsModesHideClaudeAndKeepGrok() {
+        XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
+        XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))
+        XCTAssertFalse(UsageProviderMode.claude.isVisibleInSettings)
+        XCTAssertEqual(UsageProviderMode.grok.label, "Grok")
+    }
+
+    func testGrokModeDoesNotUseCodexRunnerOrTooltip() {
+        let now = 1_900_000_000
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: Self.claudePreview(observedAt: now, usedPercent: 96),
+            usageProviderMode: .grok,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(state.phase, .calm)
+        XCTAssertEqual(state.codexPhase, .sprint)
+        XCTAssertTrue(state.toolTip.hasPrefix("Grok 사용량:"))
+        XCTAssertFalse(state.toolTip.contains("코덱스"))
+        XCTAssertFalse(state.toolTip.contains("Claude"))
+        XCTAssertNil(state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))))
+    }
+
+    func testGrokWeeklyCacheDrivesRunnerWithoutCodexFallback() throws {
+        let now = 1_900_000_000
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 96, resetsAt: now + 3_600))
+        let preview = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: preview,
+            usageProviderMode: .grok,
+            runnerEvaluationDate: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+
+        XCTAssertEqual(state.phase, .sprint)
+        XCTAssertEqual(state.codexPhase, .calm)
+        XCTAssertEqual(state.toolTip, "Grok 사용량: 96% 주간")
+        XCTAssertEqual(
+            state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))),
+            "다음 초기화: 주간 1시간 후"
+        )
+    }
+
+    func testGrokEmptyStateAsksForLoginInsteadOfBareMissingCache() throws {
+        let now = 1_900_000_000
+        let unavailable = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: nil,
+                staleAfterSeconds: 180,
+                weekly: nil,
+                issue: GrokUsageCacheIssue(code: "auth-unavailable", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(unavailable.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "로그인 필요")
+        XCTAssertEqual(unavailable.emptyStateTitle(), "Grok 로그인 필요")
+        XCTAssertTrue(unavailable.needsLoginGuidance)
+        XCTAssertTrue(unavailable.emptyStateDetail().contains("grok login"))
+
+        let waiting = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: nil,
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(waiting.emptyStateTitle(), "Grok 로그인 필요")
+        XCTAssertTrue(waiting.needsLoginGuidance)
+
+        let guide = GrokLoginGuide()
+        XCTAssertEqual(guide.standaloneCommand, "grok login")
+        XCTAssertTrue(guide.appleScriptSource().contains("grok login"))
+        XCTAssertTrue(guide.appleScriptSource().contains("Terminal"))
+        XCTAssertTrue(unavailable.showsLoginActions)
+
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 10, resetsAt: now + 3_600))
+        let expired = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: GrokUsageCacheIssue(code: "auth-expired", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(expired.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "세션 갱신 실패")
+        XCTAssertEqual(expired.emptyStateTitle(), "Grok 세션 갱신 실패")
+        XCTAssertFalse(expired.needsLoginGuidance)
+        XCTAssertTrue(expired.showsLoginActions)
+        XCTAssertEqual(expired.weeklyCardUnavailableText(), "세션 갱신 실패")
+        XCTAssertTrue(expired.emptyStateDetail().contains("grok login"))
+
+        let lookupFailed = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: GrokUsageCacheIssue(code: "request-failed", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(lookupFailed.statusTitle(now: Date(timeIntervalSince1970: TimeInterval(now))), "조회 오류")
+        XCTAssertEqual(lookupFailed.emptyStateTitle(), "Grok 조회 오류")
+        XCTAssertFalse(lookupFailed.needsLoginGuidance)
+        XCTAssertFalse(lookupFailed.showsLoginActions)
+        XCTAssertTrue(lookupFailed.emptyStateDetail().contains("grok login이 필요한 상태가 아닙니다"))
+
+        let missingWindow = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 180,
+                weekly: try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 99, resetsAt: now)),
+                issue: GrokUsageCacheIssue(code: "weekly-window-missing", recordedAt: now)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertEqual(missingWindow.emptyStateTitle(), "Grok 주간 window 없음")
+        XCTAssertFalse(missingWindow.needsLoginGuidance)
+        XCTAssertFalse(missingWindow.showsLoginActions)
+    }
+
+    func testGrokWeeklyHistoryMapsToSharedRemainingChartWithHoverLabels() throws {
+        let resetsAt = 1_787_367_003
+        let recordedAt = resetsAt - (6 * 24 * 60 * 60)
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 75, resetsAt: resetsAt))
+        let grokSample = try XCTUnwrap(
+            GrokUsageHistorySample(
+                recordedAt: recordedAt,
+                usedPercent: 75,
+                remainingPercent: 25,
+                resetsAt: resetsAt
+            )
+        )
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [grokSample]),
+            currentWeekly: weekly,
+            currentRecordedAt: recordedAt
+        )
+        let chart = WeeklyRemainingHistoryChart(
+            history: history,
+            weeklyWindow: window,
+            currentSample: history.samples.first,
+            calendar: Self.utcCalendar
+        )
+
+        XCTAssertEqual(window.windowDurationMins, 10_080)
+        XCTAssertEqual(history.samples.count, 1)
+        XCTAssertEqual(chart.latestActualPoint?.remainingPercent, 25)
+        XCTAssertFalse(chart.dayMarkers.isEmpty)
+        XCTAssertTrue(chart.dayMarkers.contains { $0.hoverLabel.contains("%") })
+        XCTAssertTrue(chart.points.contains { $0.remainingPercent == 100 && $0.isResetAnchor })
+
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: recordedAt,
+            calendar: Self.utcCalendar
+        ))
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), chart.dayMarkers.map(\.id))
+        XCTAssertEqual(
+            model.currentChart.dayMarkers.map(\.hoverLabel),
+            chart.dayMarkers.map(\.hoverLabel)
+        )
+    }
+
+    func testGrokWeeklyHistoryComparisonModelFillsCompletedDayHoverWithoutCodexReport() throws {
+        let calendar = Self.utcCalendar
+        let startDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 0,
+            minute: 21,
+            second: 23
+        )))
+        let start = Int(startDate.timeIntervalSince1970)
+        let reset = start + 604_800
+        let currentRecordedAt = start + 2 * 86_400 + 17 * 3_600 + 2 * 60
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 36, resetsAt: reset))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 86_400 + 18 * 3_600,
+                    usedPercent: 13,
+                    remainingPercent: 87,
+                    resetsAt: reset
+                )),
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 2 * 86_400 - 5 * 60,
+                    usedPercent: 17,
+                    remainingPercent: 83,
+                    resetsAt: reset
+                )),
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: start + 2 * 86_400 + 17 * 3_600,
+                    usedPercent: 36,
+                    remainingPercent: 64,
+                    resetsAt: reset
+                ))
+            ]),
+            currentWeekly: weekly,
+            currentRecordedAt: currentRecordedAt
+        )
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: currentRecordedAt,
+            calendar: calendar
+        ))
+
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), [0, 1, 2])
+        XCTAssertEqual(
+            model.currentChart.dayMarkers.map(\.hoverLabel),
+            ["6/1 월 종료 · 100%", "6/2 화 종료 · 83%", "6/3 수 · 64%"]
+        )
+        XCTAssertEqual(model.currentChart.dayMarkers[0].point.recordedAt, start + 86_400)
+        XCTAssertEqual(model.currentChart.dayMarkers[2].point.recordedAt, currentRecordedAt)
+    }
+
+    func testGrokWeeklyHistoryComparisonModelHoversOnlyCurrentDayAfterReset() throws {
+        let calendar = Self.utcCalendar
+        let start = Self.timestamp(year: 2026, month: 8, day: 22, hour: 11, minute: 50)
+        let reset = start + 604_800
+        let currentRecordedAt = start + 10 * 60
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 4, resetsAt: reset))
+        let history = GrokWeeklyRemainingHistoryAdapter.history(
+            GrokUsageHistory(samples: [
+                try XCTUnwrap(GrokUsageHistorySample(
+                    recordedAt: currentRecordedAt,
+                    usedPercent: 4,
+                    remainingPercent: 96,
+                    resetsAt: reset
+                ))
+            ]),
+            currentWeekly: weekly,
+            currentRecordedAt: currentRecordedAt
+        )
+        let window = try XCTUnwrap(GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly))
+        let model = try XCTUnwrap(CodexUsageHistoryComparisonModel(
+            history: history,
+            resetWindowHistory: .empty,
+            weeklyWindow: window,
+            currentReport: nil,
+            currentTimestamp: currentRecordedAt,
+            calendar: calendar
+        ))
+
+        XCTAssertEqual(model.currentChart.dayMarkers.map(\.id), [0])
+        XCTAssertTrue(model.currentChart.dayMarkers[0].hoverLabel.contains("96%"))
+        XCTAssertFalse(model.currentChart.dayMarkers.contains { $0.id == 1 })
+    }
+
+    func testCalendarMidnightBaselineMovesHoverToSundayAfterLocalMidnight() throws {
+        let calendar = Self.utcCalendar
+        let start = Self.timestamp(year: 2026, month: 8, day: 22, hour: 11, minute: 50)
+        let reset = start + 604_800
+        let sundayMorning = Self.timestamp(year: 2026, month: 8, day: 23, hour: 11, minute: 18)
+        let currentSample = Self.weeklySample(
+            recordedAt: sundayMorning,
+            remainingPercent: 75,
+            resetsAt: reset
+        )
+
+        let midnightChart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [currentSample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 75, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar,
+            dateBaseline: .calendarMidnight
+        )
+        XCTAssertEqual(midnightChart.dayGridPositions.count, 9)
+        XCTAssertEqual(midnightChart.dayMarkers.map(\.id), [0, 1])
+        XCTAssertTrue(midnightChart.dayMarkers[0].hoverLabel.hasPrefix("8/22 토 종료"))
+        XCTAssertTrue(midnightChart.dayMarkers[1].hoverLabel.hasPrefix("8/23 일"))
+        XCTAssertTrue(midnightChart.dayMarkers[1].hoverLabel.contains("75%"))
+
+        let resetChart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [currentSample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 75, resetsAt: reset),
+            currentSample: currentSample,
+            calendar: calendar,
+            dateBaseline: .resetWindow
+        )
+        XCTAssertEqual(resetChart.dayGridPositions.count, 8)
+        XCTAssertEqual(resetChart.dayMarkers.map(\.id), [0])
+        XCTAssertTrue(resetChart.dayMarkers[0].hoverLabel.hasPrefix("8/22 토"))
+        XCTAssertFalse(resetChart.dayMarkers[0].hoverLabel.contains("종료"))
+    }
+
+    func testUsageGraphDateBaselineDefaultIsCalendarMidnight() {
+        XCTAssertEqual(UsageGraphDateBaseline.defaultBaseline, .calendarMidnight)
+        XCTAssertEqual(UsageGraphDateBaseline.calendarMidnight.label, "자정")
+        XCTAssertEqual(UsageGraphDateBaseline.resetWindow.label, "리셋 시각")
+    }
+
     func testClaudeModeTooltipAndResetNeverUseCodexFallback() {
         let now = 1_900_000_000
         let state = UsageMonitorState(
@@ -251,14 +592,36 @@ final class UsageMonitorStateTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
 
+        defaults.set("grok", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .grok)
+
         defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
 
         defaults.set("invalid", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
         XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+    }
+
+    func testUsageProviderMigrationKeepsClaudeOnlyWhenHiddenReenableIsOn() throws {
+        let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
+        RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "claude")
+
+        RunnerPreferences.setClaudeUsageProviderReenabled(false, defaults: defaults)
+        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
     }
 
     func testIncompleteCodexReportDoesNotLookLikeZeroUsage() {
@@ -1371,35 +1734,101 @@ final class UsageMonitorStateTests: XCTestCase {
         )
     }
 
-    func testWeeklyHistoryMarkerHitTestingUsesTouchFriendlyRadius() {
+    func testWeeklyHistoryHoverSelectsDayColumnNotMarkerDot() {
         let size = CGSize(width: 244, height: 74)
-        let marker = WeeklyRemainingHistoryDayMarker(
-            id: 1,
+        let dayGrid = (0...7).map { Double($0) / 7 }
+        let saturday = WeeklyRemainingHistoryDayMarker(
+            id: 0,
             point: WeeklyRemainingHistoryPoint(
-                recordedAt: 1_800_000_000,
-                remainingPercent: 83,
-                xPosition: 0.25,
+                recordedAt: 1_786_762_203 + 86_400,
+                remainingPercent: 25,
+                xPosition: 1.0 / 7.0,
                 isResetAnchor: false
             ),
-            hoverLabel: "6/2 화 · 83%"
+            hoverLabel: "8/15 토 종료 · 25%"
         )
-        let markerPoint = WeeklyRemainingHistoryInteraction.point(for: marker.point, in: size)
+        let sunday = WeeklyRemainingHistoryDayMarker(
+            id: 1,
+            point: WeeklyRemainingHistoryPoint(
+                recordedAt: 1_786_762_203 + 98_010,
+                remainingPercent: 25,
+                xPosition: 98_010.0 / 604_800.0,
+                isResetAnchor: false
+            ),
+            hoverLabel: "8/16 일 · 25%"
+        )
 
         XCTAssertEqual(
             WeeklyRemainingHistoryInteraction.nearestMarkerID(
-                to: CGPoint(x: markerPoint.x + 18, y: markerPoint.y),
-                markers: [marker],
-                in: size
+                to: CGPoint(x: size.width * 0.05, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: size.width * 0.20, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
             ),
             1
         )
-        XCTAssertNil(
+        XCTAssertEqual(
             WeeklyRemainingHistoryInteraction.nearestMarkerID(
-                to: CGPoint(x: markerPoint.x + 30, y: markerPoint.y),
-                markers: [marker],
-                in: size
-            )
+                to: CGPoint(x: size.width / 7, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0,
+            "Completed Saturday marker sits on the first grid line and belongs to Saturday"
         )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.nearestMarkerID(
+                to: CGPoint(x: -8, y: size.height * 0.5),
+                markers: [saturday, sunday],
+                in: size,
+                dayGridPositions: dayGrid
+            ),
+            0
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.hoverAnchor(
+                for: saturday,
+                dayGridPositions: dayGrid,
+                in: size
+            ).x,
+            size.width / 14,
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            WeeklyRemainingHistoryInteraction.dayColumns(dayGridPositions: dayGrid).map(\.id),
+            [0, 1, 2, 3, 4, 5, 6]
+        )
+    }
+
+    func testGrokWeeklyDayLabelsFollowResetStartWeekday() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 9 * 3600) ?? .current
+        let start = 1_786_762_203
+        let reset = start + 604_800
+        let sample = Self.weeklySample(
+            recordedAt: start + 98_010,
+            remainingPercent: 25,
+            resetsAt: reset
+        )
+        let chart = WeeklyRemainingHistoryChart(
+            history: CodexUsageWeeklyHistory(samples: [sample]),
+            weeklyWindow: Self.weeklyWindow(remainingPercent: 25, resetsAt: reset),
+            currentSample: sample,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(chart.dayMarkers.contains { $0.id == 0 && $0.hoverLabel.contains("토") })
+        XCTAssertTrue(chart.dayMarkers.contains { $0.id == 1 && $0.hoverLabel.contains("일") })
     }
 
     func testWeeklyHistoryLineIncludesCurrentMarkerPoint() {

@@ -12,6 +12,12 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.requestTimeout, 15)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.processTimeout, 17)
         XCTAssertEqual(CodexUsageCacheRefreshPolicy.minimumRetryInterval, 60)
+        XCTAssertEqual(GrokUsageCacheRefreshPolicy.requestTimeout, 15)
+        XCTAssertEqual(GrokUsageCacheRefreshPolicy.processTimeout, 40)
+        XCTAssertGreaterThan(
+            GrokUsageCacheRefreshPolicy.processTimeout,
+            GrokUsageCacheRefreshPolicy.requestTimeout
+        )
     }
 
     func testRefreshCommandUsesWriteCacheTimeoutAndOptionalMirror() {
@@ -71,7 +77,23 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
 
     func testLiveCodexRefreshRunsOnlyInCodexMode() {
         XCTAssertTrue(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .codex))
+        XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .grok))
         XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude))
+        XCTAssertTrue(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .grok))
+        XCTAssertFalse(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .codex))
+        XCTAssertFalse(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude))
+    }
+
+    func testGrokRefreshCommandWritesCacheWithoutMirror() {
+        let command = UsageCacheRefreshCommand.grokWriteCache(
+            grokUsageURL: URL(fileURLWithPath: "/Applications/MacDog.app/Contents/MacOS/macdog-grok-usage")
+        )
+        XCTAssertEqual(command.arguments, [
+            "status",
+            "--write-cache",
+            "--timeout",
+            "15"
+        ])
     }
 
     func testRefreshRunnerTerminatesProcessWhenProviderTaskIsCancelled() async throws {

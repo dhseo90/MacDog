@@ -3,8 +3,9 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: `v1.8.0` published release. MacDog는 `Codex` 또는 `Claude` 중 사용자가 선택한
-> **하나의 provider만** 사용량 화면, 러너 속도, 알림, refresh 대상으로 사용합니다.
+> 기준 상태: published release는 `v1.8.0`. `v1.9.0` 제품의 설정 visible mode는
+> `Codex` 또는 `Grok` 중 사용자가 선택한 **하나의 provider만** 사용량 화면, 러너 속도,
+> 알림, refresh 대상으로 사용합니다. Claude source는 남아 있지만 기본 UI에서는 숨깁니다.
 
 ## 읽는 순서
 
@@ -24,14 +25,15 @@ MacDog는 macOS 14 이상에서 동작하는 메뉴바 유틸리티입니다. AI
 
 | 질문 | 답 |
 | --- | --- |
-| 주 사용자는 누구인가? | Codex 또는 Claude 중 하나를 주로 사용하는 macOS 개발자 |
+| 주 사용자는 누구인가? | Codex 또는 Grok 중 하나를 주로 사용하는 macOS 개발자 |
 | 핵심 화면은 무엇인가? | 선택 provider 사용량을 보여주는 첫 번째 탭 |
 | 기본 사용량 데이터 소스는? | Codex app-server `account/rateLimits/read` |
-| Claude 데이터는 어떻게 들어오는가? | 사용자가 연결한 Claude statusLine event를 bundled bridge가 sanitize한 별도 cache |
-| 앱이 인증 파일을 직접 읽는가? | 메뉴바 UI는 읽지 않는다. reset-credit 상세 조회의 제한된 memory-only 예외만 `codex-usage`에 있다. |
+| Grok 데이터는 어떻게 들어오는가? | bundled `macdog-grok-usage`가 unofficial CLI-proxy `x.ai/billing` 주간 pool을 sanitize한 별도 cache |
+| Claude 데이터는 어떻게 들어오는가? | 사용자가 연결한 Claude statusLine event를 bundled bridge가 sanitize한 별도 cache. 기본 UI에서는 숨김 |
+| 앱이 인증 파일을 직접 읽는가? | 메뉴바 UI는 읽지 않는다. Codex reset-credit은 조회 직전 memory-only 예외다. Grok billing은 `macdog-grok-usage`만 `~/.grok/auth.json` sibling이다. 유효하면 읽고, 만료/401이면 lock 아래 refresh 후 같은 파일에 다시 쓴다. |
 | 주요 언어와 UI 기술은? | Swift 6, SwiftUI, AppKit, 일부 Objective-C bridge |
 | 패키지 관리 방식은? | Swift Package Manager. 외부 Swift package dependency는 현재 없다. |
-| 기본 배포물은? | `MacDog.app`, `codex-usage`, `macdog-claude-statusline`, optional privileged helper가 포함된 DMG |
+| 기본 배포물은? | `MacDog.app`, `codex-usage`, `macdog-grok-usage`, `macdog-claude-statusline`, optional privileged helper가 포함된 DMG |
 | WidgetKit은 기본 배포물인가? | 아니다. source는 보존하지만 `--with-widget` opt-in build 대상이다. |
 
 ```mermaid
@@ -46,8 +48,9 @@ flowchart LR
 ```
 
 핵심 설계 원칙은 **조회와 표시의 분리**입니다. Codex 조회는 bundled `codex-usage`가 담당하고,
-Claude 입력은 bundled `macdog-claude-statusline`이 정제합니다. 메뉴바 앱은 두 경로가 만든
-MacDog 전용 cache만 읽으므로, 인증·세션·원문 transcript를 UI 프로세스 경계 안으로 가져오지 않습니다.
+Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bundled
+`macdog-claude-statusline`이 정제합니다. 메뉴바 앱은 writer가 만든 MacDog 전용 cache만
+읽으므로, 인증·세션·원문 transcript를 UI 프로세스 경계 안으로 가져오지 않습니다.
 
 ## 현재 화면
 
@@ -85,8 +88,8 @@ MacDog 전용 cache만 읽으므로, 인증·세션·원문 transcript를 UI 프
 
 | 용어 | 이 저장소에서의 의미 |
 | --- | --- |
-| selected provider | 설정에서 선택한 `Codex` 또는 `Claude` 하나. 동시 사용·합산·비교는 지원하지 않음 |
-| usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함 |
+| selected provider | 설정에서 선택한 `Codex` 또는 `Grok` 하나. Claude는 hidden re-enable만. 동시 사용·합산·비교는 지원하지 않음 |
+| usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함. Grok는 주간만 있음 |
 | weekly-only | Codex가 일시적으로 5시간 window를 제공하지 않고 주간 window만 제공하는 정상 partial success |
 | remaining | `100 - usedPercent`로 계산한 공식 잔여율 |
 | stale/error | 마지막 성공 값을 보존하되 현재 refresh 실패 또는 오래된 상태를 함께 표시하는 상태 |
@@ -98,8 +101,8 @@ MacDog 전용 cache만 읽으므로, 인증·세션·원문 transcript를 UI 프
 
 ## 절대 깨뜨리면 안 되는 계약
 
-1. `~/.codex/auth.json`을 일반 진단·UI·문서 작업에서 직접 읽거나 출력하지 않습니다.
-2. token, cookie, session, auth header, Claude 원문 transcript/event를 cache·log·fixture에 저장하지 않습니다.
+1. `~/.codex/auth.json`과 `~/.grok/auth.json`을 일반 진단·UI·문서 작업에서 직접 읽거나 출력하지 않습니다.
+2. token, cookie, session, auth header, Claude 원문 transcript/event, Grok billing 원문을 cache·log·fixture에 저장하지 않습니다.
 3. Codex 주간 window는 성공 cache의 필수 데이터이며, 5시간 window는 없어도 정상입니다.
 4. 없는 5시간 사용량을 `0%`나 이전 값으로 합성하지 않습니다.
 5. 같은 `resetsAt` 안에서 주간 그래프의 표시 잔여율이 증가하지 않게 유지합니다.
@@ -126,9 +129,11 @@ MacDog 전용 cache만 읽으므로, 인증·세션·원문 transcript를 UI 프
 | 구분 | 상태 |
 | --- | --- |
 | v1.8.0 Codex weekly-only 조회·cache·설치본 UI | published release smoke에서 확인됨 |
-| Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | 설치본에서 확인됨 |
-| Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨 |
+| v1.9.0 Claude hide·Grok weekly-only source/test | 1차 구현과 focused test로 확인됨. published DMG·final-state는 미수행 |
+| Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
+| Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |
 | 실제 유료 Claude 계정의 `rate_limits` live event | 현재 환경에서 미확인. 후보 provider 검증으로 분리 |
+| 실제 Grok SuperGrok 주간 billing live event | 미확인. unofficial 경로이며 사용자 승인 전 `~/.grok/auth.json`을 열지 않음 |
 | 기본 DMG의 WidgetKit UI | 대상 아님. WidgetKit은 opt-in source/build 경계 |
 | Developer ID·notarization 기반 public stable 배포 | 별도 권한과 milestone 승인 전 현재 계획에서 제외 |
 

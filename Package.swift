@@ -29,6 +29,10 @@ let package = Package(
             targets: ["ClaudeUsageBridgeCLI"]
         ),
         .executable(
+            name: "macdog-grok-usage",
+            targets: ["GrokUsageCLI"]
+        ),
+        .executable(
             name: "MacDog",
             targets: ["MacDog"]
         ),
@@ -54,6 +58,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "ClaudeUsageBridgeCLI",
+            dependencies: ["CodexUsageCore"]
+        ),
+        .executableTarget(
+            name: "GrokUsageCLI",
             dependencies: ["CodexUsageCore"]
         ),
         .executableTarget(

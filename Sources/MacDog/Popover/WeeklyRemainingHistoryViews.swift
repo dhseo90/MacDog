@@ -9,7 +9,10 @@ struct WeeklyRemainingHistoryBlock: View {
     let currentReport: CodexUsageReport?
     let currentTimestamp: Int?
     let graphHeight: CGFloat
+    let dateBaselineOverride: UsageGraphDateBaseline?
 
+    @AppStorage(RunnerPreferences.usageGraphDateBaselineKey) private var storedDateBaselineRaw =
+        UsageGraphDateBaseline.calendarMidnight.rawValue
     @State private var selectedMode: CodexUsageHistoryGraphMode = .current
     @State private var selectedPastWindowID: String?
 
@@ -21,7 +24,8 @@ struct WeeklyRemainingHistoryBlock: View {
         currentTimestamp: Int?,
         graphHeight: CGFloat = CodexUsagePanelLayout.weeklyGraphHeight,
         initialMode: CodexUsageHistoryGraphMode = .current,
-        initialPastWindowID: String? = nil
+        initialPastWindowID: String? = nil,
+        dateBaseline: UsageGraphDateBaseline? = nil
     ) {
         self.history = history
         self.resetWindowHistory = resetWindowHistory
@@ -29,8 +33,15 @@ struct WeeklyRemainingHistoryBlock: View {
         self.currentReport = currentReport
         self.currentTimestamp = currentTimestamp
         self.graphHeight = graphHeight
+        self.dateBaselineOverride = dateBaseline
         _selectedMode = State(initialValue: initialMode)
         _selectedPastWindowID = State(initialValue: initialPastWindowID)
+    }
+
+    private var dateBaseline: UsageGraphDateBaseline {
+        dateBaselineOverride
+            ?? UsageGraphDateBaseline(rawValue: storedDateBaselineRaw)
+            ?? .calendarMidnight
     }
 
     private var comparisonModel: CodexUsageHistoryComparisonModel? {
@@ -39,7 +50,8 @@ struct WeeklyRemainingHistoryBlock: View {
             resetWindowHistory: resetWindowHistory,
             weeklyWindow: weeklyWindow,
             currentReport: currentReport,
-            currentTimestamp: currentTimestamp
+            currentTimestamp: currentTimestamp,
+            dateBaseline: dateBaseline
         )
     }
 
@@ -116,7 +128,8 @@ struct WeeklyRemainingHistoryBlock: View {
         CodexUsageGraphDisplay(
             mode: mode,
             currentChart: model.currentChart,
-            selectedSeries: selectedSeries
+            selectedSeries: selectedSeries,
+            dateBaseline: dateBaseline
         )
     }
 
@@ -278,7 +291,8 @@ struct WeeklyRemainingHistoryBlock: View {
             for: CodexUsageGraphSnapshotView(
                 mode: mode,
                 currentChart: model.currentChart,
-                selectedSeries: selectedSeries
+                selectedSeries: selectedSeries,
+                dateBaseline: dateBaseline
             ),
             size: CodexUsageGraphImageExporter.defaultImageSize,
             scale: 2
@@ -398,6 +412,7 @@ private struct CodexUsageGraphDisplay: View {
     let mode: CodexUsageHistoryGraphMode
     let currentChart: WeeklyRemainingHistoryChart
     let selectedSeries: CodexUsageResetWindowOverlaySeries?
+    let dateBaseline: UsageGraphDateBaseline
 
     var body: some View {
         switch mode {
@@ -405,13 +420,21 @@ private struct CodexUsageGraphDisplay: View {
             WeeklyRemainingHistoryGraph(chart: currentChart)
         case .past:
             if let selectedSeries {
-                ResetWindowOverlayGraph(currentChart: nil, series: selectedSeries)
+                ResetWindowOverlayGraph(
+                    currentChart: nil,
+                    series: selectedSeries,
+                    dateBaseline: dateBaseline
+                )
             } else {
                 ResetWindowHistoryUnavailableGraph(message: "지난 기록 없음")
             }
         case .overlay:
             if let selectedSeries {
-                ResetWindowOverlayGraph(currentChart: currentChart, series: selectedSeries)
+                ResetWindowOverlayGraph(
+                    currentChart: currentChart,
+                    series: selectedSeries,
+                    dateBaseline: dateBaseline
+                )
             } else {
                 ResetWindowHistoryUnavailableGraph(message: "비교할 지난 기록 없음")
             }
@@ -423,13 +446,15 @@ private struct CodexUsageGraphSnapshotView: View {
     let mode: CodexUsageHistoryGraphMode
     let currentChart: WeeklyRemainingHistoryChart
     let selectedSeries: CodexUsageResetWindowOverlaySeries?
+    let dateBaseline: UsageGraphDateBaseline
 
     var body: some View {
         VStack(spacing: 8) {
             CodexUsageGraphDisplay(
                 mode: mode,
                 currentChart: currentChart,
-                selectedSeries: selectedSeries
+                selectedSeries: selectedSeries,
+                dateBaseline: dateBaseline
             )
             WeeklyRemainingTimelineLabels(
                 startLabel: snapshotStartLabel,
@@ -608,33 +633,18 @@ private struct WeeklyRemainingHistoryPlot: View {
                 chartLine(in: geometry.size)
                     .stroke(tint, style: StrokeStyle(lineWidth: 1.8, lineCap: .butt, lineJoin: .round))
 
+                columnHoverOverlay(in: geometry.size)
+
                 ForEach(chart.dayMarkers) { marker in
                     let markerPoint = point(for: marker.point, in: geometry.size)
-
-                    ZStack {
-                        Circle()
-                            .fill(marker.id == hoveredMarkerID ? tint : Color.primary.opacity(0.42))
-                            .frame(
-                                width: marker.id == hoveredMarkerID ? 6 : 4,
-                                height: marker.id == hoveredMarkerID ? 6 : 4
-                            )
-                    }
-                    .frame(
-                        width: WeeklyRemainingHistoryInteraction.markerHitDiameter,
-                        height: WeeklyRemainingHistoryInteraction.markerHitDiameter
-                    )
-                    .contentShape(Rectangle())
-                    .onHover { isHovering in
-                        if isHovering {
-                            hoveredMarkerID = marker.id
-                        } else if hoveredMarkerID == marker.id {
-                            hoveredMarkerID = nil
-                        }
-                    }
-                    .onTapGesture {
-                        hoveredMarkerID = marker.id
-                    }
+                    Circle()
+                        .fill(marker.id == hoveredMarkerID ? tint : Color.primary.opacity(0.42))
+                        .frame(
+                            width: marker.id == hoveredMarkerID ? 6 : 4,
+                            height: marker.id == hoveredMarkerID ? 6 : 4
+                        )
                         .position(markerPoint)
+                        .allowsHitTesting(false)
                 }
 
                 if let latest = chart.latestActualPoint {
@@ -668,7 +678,11 @@ private struct WeeklyRemainingHistoryPlot: View {
                 }
 
                 if let hoveredMarker {
-                    let markerPoint = point(for: hoveredMarker.point, in: geometry.size)
+                    let markerPoint = WeeklyRemainingHistoryInteraction.hoverAnchor(
+                        for: hoveredMarker,
+                        dayGridPositions: chart.dayGridPositions,
+                        in: geometry.size
+                    )
                     let latestLabelPosition = latestLabelPositionToAvoid(for: hoveredMarker, in: geometry.size)
 
                     Text(hoveredMarker.hoverLabel)
@@ -685,21 +699,34 @@ private struct WeeklyRemainingHistoryPlot: View {
                         .allowsHitTesting(false)
                 }
             }
-            .contentShape(Rectangle())
-            .onContinuousHover { phase in
-                switch phase {
-                case .active(let location):
-                    hoveredMarkerID = nearestMarkerID(to: location, in: geometry.size)
-                case .ended:
-                    hoveredMarkerID = nil
-                }
-            }
         }
     }
 
     private var hoveredMarker: WeeklyRemainingHistoryDayMarker? {
         guard let hoveredMarkerID else { return nil }
         return chart.dayMarkers.first { $0.id == hoveredMarkerID }
+    }
+
+    private func columnHoverOverlay(in size: CGSize) -> some View {
+        let columns = WeeklyRemainingHistoryInteraction.dayColumns(dayGridPositions: chart.dayGridPositions)
+        return ZStack(alignment: .leading) {
+            if let hoveredMarker,
+               let column = columns.first(where: { $0.id == hoveredMarker.id }) {
+                let columnWidth = max(0, size.width * (column.end - column.start))
+                Rectangle()
+                    .fill(Color.primary.opacity(0.07))
+                    .frame(width: columnWidth, height: size.height)
+                    .offset(x: size.width * column.start)
+                    .allowsHitTesting(false)
+            }
+
+            WeeklyRemainingHistoryColumnHoverCatcher(
+                columns: columns,
+                markerIDs: Set(chart.dayMarkers.map(\.id)),
+                onHoverColumn: { hoveredMarkerID = $0 }
+            )
+        }
+        .frame(width: size.width, height: size.height)
     }
 
     private func guideLines(in size: CGSize) -> Path {
@@ -752,19 +779,106 @@ private struct WeeklyRemainingHistoryPlot: View {
             in: size
         )
     }
+}
 
-    private func nearestMarkerID(to location: CGPoint, in size: CGSize) -> Int? {
-        WeeklyRemainingHistoryInteraction.nearestMarkerID(
-            to: location,
-            markers: chart.dayMarkers,
-            in: size
+private struct WeeklyRemainingHistoryColumnHoverCatcher: NSViewRepresentable {
+    var columns: [WeeklyRemainingHistoryInteraction.DayColumn]
+    var markerIDs: Set<Int>
+    var onHoverColumn: (Int?) -> Void
+
+    func makeNSView(context: Context) -> WeeklyRemainingHistoryColumnHoverView {
+        let view = WeeklyRemainingHistoryColumnHoverView()
+        view.columns = columns
+        view.markerIDs = markerIDs
+        view.onHoverColumn = onHoverColumn
+        return view
+    }
+
+    func updateNSView(_ nsView: WeeklyRemainingHistoryColumnHoverView, context: Context) {
+        nsView.columns = columns
+        nsView.markerIDs = markerIDs
+        nsView.onHoverColumn = onHoverColumn
+    }
+
+    static func dismantleNSView(_ nsView: WeeklyRemainingHistoryColumnHoverView, coordinator: ()) {
+        nsView.onHoverColumn = nil
+    }
+}
+
+private final class WeeklyRemainingHistoryColumnHoverView: NSView {
+    var columns: [WeeklyRemainingHistoryInteraction.DayColumn] = []
+    var markerIDs: Set<Int> = []
+    var onHoverColumn: ((Int?) -> Void)?
+    private var lastEmittedID: Int?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(
+            NSTrackingArea(
+                rect: bounds,
+                options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self,
+                userInfo: nil
+            )
         )
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        emit(nil)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        emit(at: convert(event.locationInWindow, from: nil))
+    }
+
+    private func emit(at location: CGPoint) {
+        let width = bounds.width
+        guard width > 0 else {
+            emit(nil)
+            return
+        }
+        emit(
+            WeeklyRemainingHistoryInteraction.hoveredColumnID(
+                xRatio: location.x / width,
+                columns: columns,
+                markerIDs: markerIDs
+            )
+        )
+    }
+
+    private func emit(_ id: Int?) {
+        guard id != lastEmittedID else { return }
+        lastEmittedID = id
+        onHoverColumn?(id)
     }
 }
 
 private struct ResetWindowOverlayGraph: View {
     let currentChart: WeeklyRemainingHistoryChart?
     let series: CodexUsageResetWindowOverlaySeries
+    let dateBaseline: UsageGraphDateBaseline
 
     var body: some View {
         GeometryReader { geometry in
@@ -774,7 +888,8 @@ private struct ResetWindowOverlayGraph: View {
 
                 ResetWindowOverlayPlot(
                     currentChart: currentChart,
-                    series: series
+                    series: series,
+                    dateBaseline: dateBaseline
                 )
                 .frame(
                     width: max(
@@ -792,6 +907,7 @@ private struct ResetWindowOverlayGraph: View {
 private struct ResetWindowOverlayPlot: View {
     let currentChart: WeeklyRemainingHistoryChart?
     let series: CodexUsageResetWindowOverlaySeries
+    let dateBaseline: UsageGraphDateBaseline
 
     @State private var hoveredMarkerID: String?
 
@@ -879,12 +995,24 @@ private struct ResetWindowOverlayPlot: View {
                 path.addLine(to: CGPoint(x: size.width, y: y))
             }
 
-            for day in 0...7 {
-                let x = size.width * CGFloat(Double(day) / 7.0)
+            for fraction in overlayDayGridPositions {
+                let x = size.width * CGFloat(fraction)
                 path.move(to: CGPoint(x: x, y: 0))
                 path.addLine(to: CGPoint(x: x, y: size.height))
             }
         }
+    }
+
+    private var overlayDayGridPositions: [Double] {
+        if let currentChart {
+            return currentChart.dayGridPositions
+        }
+        return UsageGraphDateBaseline.gridPositions(
+            resetStartAt: series.resetStartMarker.recordedAt,
+            resetsAt: series.key.resetsAt,
+            baseline: dateBaseline,
+            calendar: .current
+        )
     }
 
     private func currentLine(chart: WeeklyRemainingHistoryChart, in size: CGSize) -> Path {
@@ -1062,7 +1190,8 @@ struct WeeklyRemainingHistoryChart: Equatable {
         history: CodexUsageWeeklyHistory,
         weeklyWindow: UsageWindowReport?,
         currentSample: CodexUsageWeeklyHistorySample? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dateBaseline: UsageGraphDateBaseline = .resetWindow
     ) {
         guard let weeklyWindow,
               let resetsAt = weeklyWindow.resetsAt
@@ -1117,7 +1246,19 @@ struct WeeklyRemainingHistoryChart: Equatable {
                 $0.recordedAt <= canonicalResetsAt + resetWindowToleranceSeconds
         }
 
-        let dayGridPositions = Self.dayGridPositions(durationSeconds: durationSeconds)
+        let dayBoundaries = UsageGraphDateBaseline.boundaryTimestamps(
+            resetStartAt: resetStartAt,
+            resetsAt: canonicalResetsAt,
+            baseline: dateBaseline,
+            calendar: calendar
+        )
+        let dayGridPositions = dayBoundaries.map {
+            Self.xPosition(
+                recordedAt: $0,
+                resetStartAt: resetStartAt,
+                durationSeconds: durationSeconds
+            )
+        }
         var displayedRemainingPercent = 100.0
         let actualPoints = samples.map {
             displayedRemainingPercent = min(displayedRemainingPercent, $0.remainingPercent)
@@ -1142,6 +1283,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
         let completedMarkers = Self.completedDayMarkers(
             from: actualPoints,
             resetAnchor: resetAnchor,
+            boundaries: dayBoundaries,
             resetStartAt: resetStartAt,
             durationSeconds: durationSeconds,
             currentSampleRecordedAt: currentSample?.recordedAt,
@@ -1158,6 +1300,7 @@ struct WeeklyRemainingHistoryChart: Equatable {
         self.dayMarkers = Self.dayMarkers(
             from: actualPoints,
             completedMarkers: completedMarkers,
+            boundaries: dayBoundaries,
             resetStartAt: resetStartAt,
             durationSeconds: durationSeconds,
             currentSampleRecordedAt: currentSample?.recordedAt,
@@ -1202,15 +1345,6 @@ struct WeeklyRemainingHistoryChart: Equatable {
         return min(max(elapsed / Double(durationSeconds), 0), 1)
     }
 
-    private static func dayGridPositions(durationSeconds: Int) -> [Double] {
-        let daySeconds = 86_400
-        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
-
-        return (0...dayCount).map {
-            min(Double($0 * daySeconds) / Double(durationSeconds), 1)
-        }
-    }
-
     private static func resetStartAt(for sample: CodexUsageWeeklyHistorySample) -> Int {
         sample.resetsAt - max(sample.windowDurationMins * 60, 1)
     }
@@ -1230,38 +1364,29 @@ struct WeeklyRemainingHistoryChart: Equatable {
     private static func dayMarkers(
         from actualPoints: [WeeklyRemainingHistoryPoint],
         completedMarkers: [WeeklyRemainingHistoryDayMarker],
+        boundaries: [Int],
         resetStartAt: Int,
         durationSeconds: Int,
         currentSampleRecordedAt: Int?,
         calendar: Calendar
     ) -> [WeeklyRemainingHistoryDayMarker] {
-        let daySeconds = 86_400
-        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
-        let maxDayIndex = max(0, dayCount - 1)
         let currentDayIndex = currentSampleRecordedAt.map {
-            dayIndex(
-                recordedAt: $0,
-                resetStartAt: resetStartAt,
-                durationSeconds: durationSeconds,
-                daySeconds: daySeconds,
-                maxDayIndex: maxDayIndex
-            )
+            UsageGraphDateBaseline.columnIndex(recordedAt: $0, boundaries: boundaries)
         }
 
         guard let currentDayIndex,
+              currentDayIndex < max(boundaries.count - 1, 0),
               let currentRecordedAt = currentSampleRecordedAt,
               let currentPoint = actualPoints.last(where: { $0.recordedAt == currentRecordedAt }) ?? actualPoints.last
         else {
             return measuredDayMarkers(
                 from: actualPoints,
-                resetStartAt: resetStartAt,
-                durationSeconds: durationSeconds,
-                daySeconds: daySeconds,
+                boundaries: boundaries,
                 calendar: calendar
             )
         }
 
-        let currentDayLabel = resetDayLabel(timestamp: resetStartAt + currentDayIndex * daySeconds, calendar: calendar)
+        let currentDayLabel = resetDayLabel(timestamp: boundaries[currentDayIndex], calendar: calendar)
         let currentMarker = WeeklyRemainingHistoryDayMarker(
             id: currentDayIndex,
             point: currentPoint,
@@ -1273,28 +1398,22 @@ struct WeeklyRemainingHistoryChart: Equatable {
 
     private static func measuredDayMarkers(
         from actualPoints: [WeeklyRemainingHistoryPoint],
-        resetStartAt: Int,
-        durationSeconds: Int,
-        daySeconds: Int,
+        boundaries: [Int],
         calendar: Calendar
     ) -> [WeeklyRemainingHistoryDayMarker] {
         var latestByDay: [Int: WeeklyRemainingHistoryPoint] = [:]
-        let maxDayIndex = max(0, Int(ceil(Double(durationSeconds) / Double(daySeconds))) - 1)
 
         for point in actualPoints.sorted(by: { $0.recordedAt < $1.recordedAt }) {
-            let pointDayIndex = dayIndex(
+            let pointDayIndex = UsageGraphDateBaseline.columnIndex(
                 recordedAt: point.recordedAt,
-                resetStartAt: resetStartAt,
-                durationSeconds: durationSeconds,
-                daySeconds: daySeconds,
-                maxDayIndex: maxDayIndex
+                boundaries: boundaries
             )
             latestByDay[pointDayIndex] = point
         }
 
         return latestByDay.keys.sorted().compactMap { dayIndex in
-            guard let point = latestByDay[dayIndex] else { return nil }
-            let dayLabel = resetDayLabel(timestamp: resetStartAt + dayIndex * daySeconds, calendar: calendar)
+            guard let point = latestByDay[dayIndex], dayIndex < boundaries.count else { return nil }
+            let dayLabel = resetDayLabel(timestamp: boundaries[dayIndex], calendar: calendar)
             return WeeklyRemainingHistoryDayMarker(
                 id: dayIndex,
                 point: point,
@@ -1306,34 +1425,28 @@ struct WeeklyRemainingHistoryChart: Equatable {
     private static func completedDayMarkers(
         from actualPoints: [WeeklyRemainingHistoryPoint],
         resetAnchor: WeeklyRemainingHistoryPoint,
+        boundaries: [Int],
         resetStartAt: Int,
         durationSeconds: Int,
         currentSampleRecordedAt: Int?,
         calendar: Calendar
     ) -> [WeeklyRemainingHistoryDayMarker] {
-        guard let currentSampleRecordedAt else { return [] }
+        guard let currentSampleRecordedAt, boundaries.count >= 2 else { return [] }
 
-        let daySeconds = 86_400
-        let dayCount = max(1, Int(ceil(Double(durationSeconds) / Double(daySeconds))))
-        let maxDayIndex = max(0, dayCount - 1)
-        let currentDayIndex = dayIndex(
+        let currentDayIndex = UsageGraphDateBaseline.columnIndex(
             recordedAt: currentSampleRecordedAt,
-            resetStartAt: resetStartAt,
-            durationSeconds: durationSeconds,
-            daySeconds: daySeconds,
-            maxDayIndex: maxDayIndex
+            boundaries: boundaries
         )
-        let maxCompletedDayIndex = min(currentDayIndex - 1, maxDayIndex)
-        guard maxCompletedDayIndex >= 0 else { return [] }
+        guard currentDayIndex > 0 else { return [] }
 
         let sortedPoints = actualPoints.sorted { $0.recordedAt < $1.recordedAt }
         var latestPoint = resetAnchor
         var nextPointIndex = 0
         var markers: [WeeklyRemainingHistoryDayMarker] = []
 
-        for dayIndex in 0...maxCompletedDayIndex {
-            let slotStartAt = resetStartAt + dayIndex * daySeconds
-            let slotEndAt = min(resetStartAt + (dayIndex + 1) * daySeconds, resetStartAt + durationSeconds)
+        for dayIndex in 0..<currentDayIndex {
+            let slotStartAt = boundaries[dayIndex]
+            let slotEndAt = boundaries[dayIndex + 1]
 
             while nextPointIndex < sortedPoints.count,
                   sortedPoints[nextPointIndex].recordedAt <= slotEndAt {
@@ -1389,17 +1502,6 @@ struct WeeklyRemainingHistoryChart: Equatable {
                 result.append(point)
             }
         }
-    }
-
-    private static func dayIndex(
-        recordedAt: Int,
-        resetStartAt: Int,
-        durationSeconds: Int,
-        daySeconds: Int,
-        maxDayIndex: Int
-    ) -> Int {
-        let elapsed = min(max(recordedAt - resetStartAt, 0), max(durationSeconds - 1, 0))
-        return min(max(Int(Double(elapsed) / Double(daySeconds)), 0), maxDayIndex)
     }
 
     private static func resetDayLabel(timestamp: Int, calendar inputCalendar: Calendar) -> String {
@@ -1458,8 +1560,18 @@ struct WeeklyRemainingHistoryInteraction {
         to location: CGPoint,
         markers: [WeeklyRemainingHistoryDayMarker],
         in size: CGSize,
+        dayGridPositions: [Double] = [],
         hitRadius: CGFloat = markerHitRadius
     ) -> Int? {
+        if let columnID = columnMarkerID(
+            at: location,
+            markers: markers,
+            in: size,
+            dayGridPositions: dayGridPositions
+        ) {
+            return columnID
+        }
+
         var nearestID: Int?
         var nearestDistance = hitRadius
 
@@ -1473,6 +1585,66 @@ struct WeeklyRemainingHistoryInteraction {
         }
 
         return nearestID
+    }
+
+    struct DayColumn: Equatable {
+        let id: Int
+        let start: Double
+        let end: Double
+    }
+
+    static func dayColumns(dayGridPositions: [Double]) -> [DayColumn] {
+        guard dayGridPositions.count >= 2 else { return [] }
+        return (0..<(dayGridPositions.count - 1)).map { index in
+            DayColumn(id: index, start: dayGridPositions[index], end: dayGridPositions[index + 1])
+        }
+    }
+
+    static func hoveredColumnID(
+        xRatio: Double,
+        columns: [DayColumn],
+        markerIDs: Set<Int>
+    ) -> Int? {
+        guard !columns.isEmpty else { return nil }
+        let clamped = min(max(xRatio, 0), 1)
+        let firstID = columns.first?.id
+        let match = columns.first { column in
+            if column.id == firstID {
+                return clamped >= column.start && clamped <= column.end
+            }
+            return clamped > column.start && clamped <= column.end
+        }
+        guard let match, markerIDs.contains(match.id) else { return nil }
+        return match.id
+    }
+
+    static func columnMarkerID(
+        at location: CGPoint,
+        markers: [WeeklyRemainingHistoryDayMarker],
+        in size: CGSize,
+        dayGridPositions: [Double]
+    ) -> Int? {
+        guard size.width > 0 else { return nil }
+        return hoveredColumnID(
+            xRatio: location.x / size.width,
+            columns: dayColumns(dayGridPositions: dayGridPositions),
+            markerIDs: Set(markers.map(\.id))
+        )
+    }
+
+    static func hoverAnchor(
+        for marker: WeeklyRemainingHistoryDayMarker,
+        dayGridPositions: [Double],
+        in size: CGSize
+    ) -> CGPoint {
+        let markerPoint = point(for: marker.point, in: size)
+        guard let column = dayColumns(dayGridPositions: dayGridPositions).first(where: { $0.id == marker.id }) else {
+            return markerPoint
+        }
+        return CGPoint(
+            x: size.width * CGFloat((column.start + column.end) / 2),
+            y: markerPoint.y
+        )
     }
 }
 

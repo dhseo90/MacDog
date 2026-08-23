@@ -13,6 +13,7 @@ struct SleepPreventionTriggerStatus: Equatable {
         powerAdapterConnected: false,
         codexAppRunning: false,
         appMatchText: RunnerPreferences.defaultSleepPreventionAppMatchText,
+        usageProviderMode: .codex,
         chargingBelowThreshold: false,
         cpuAboveThreshold: false,
         memoryAboveThreshold: false,
@@ -39,6 +40,7 @@ struct SleepPreventionTriggerStatus: Equatable {
     let powerAdapterConnected: Bool
     let codexAppRunning: Bool
     let appMatchText: String
+    let usageProviderMode: UsageProviderMode
     let chargingBelowThreshold: Bool
     let cpuAboveThreshold: Bool
     let memoryAboveThreshold: Bool
@@ -99,6 +101,7 @@ struct SleepPreventionTriggerStatus: Equatable {
             powerAdapterConnected: battery.isConnectedToPower == true,
             codexAppRunning: codexAppRunning,
             appMatchText: preferences.sleepPreventionAppMatchText,
+            usageProviderMode: preferences.usageProviderMode,
             chargingBelowThreshold: (battery.percent ?? -1) >= batteryThreshold,
             cpuAboveThreshold: (systemMetrics.cpuLoadPercent ?? 0) >= Double(cpuThreshold),
             memoryAboveThreshold: (systemMetrics.memoryUsedPercent ?? 0) >= Double(memoryThreshold),
@@ -154,7 +157,7 @@ struct SleepPreventionTriggerStatus: Equatable {
             labels.append("전원")
         }
         if codexAppTriggerEnabled && codexAppRunning {
-            labels.append("Codex 실행")
+            labels.append(usageProviderMode.runningTriggerSummary)
         }
         if chargingBelowThresholdTriggerEnabled && chargingBelowThreshold {
             labels.append("배터리 \(batteryThresholdPercent)% 이상")

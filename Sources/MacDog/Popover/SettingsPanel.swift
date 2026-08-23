@@ -16,6 +16,8 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.usageNotificationsEnabledKey) private var usageNotificationsEnabled = RunnerPreferences.defaultUsageNotificationsEnabled
     @AppStorage(RunnerPreferences.usageResetSoonNotificationsEnabledKey) private var usageResetSoonNotificationsEnabled = RunnerPreferences.defaultUsageResetSoonNotificationsEnabled
     @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw = RunnerPreferences.defaultUsageProviderMode.rawValue
+    @AppStorage(RunnerPreferences.usageGraphDateBaselineKey) private var usageGraphDateBaselineRaw =
+        RunnerPreferences.defaultUsageGraphDateBaseline.rawValue
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
     @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
@@ -65,8 +67,16 @@ struct SettingsPanel: View {
 
             PopoverFormSection(title: "사용량", systemImage: "gauge.with.dots.needle.33percent") {
                 Picker("사용량 mode", selection: $usageProviderModeRaw) {
-                    ForEach(UsageProviderMode.allCases) { mode in
+                    ForEach(UsageProviderMode.visibleCases) { mode in
                         Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+
+                Picker("날짜 기준", selection: $usageGraphDateBaselineRaw) {
+                    ForEach(UsageGraphDateBaseline.allCases) { baseline in
+                        Text(baseline.label).tag(baseline.rawValue)
                     }
                 }
                 .pickerStyle(.menu)
@@ -162,6 +172,12 @@ struct SettingsPanel: View {
         .onChange(of: usageProviderModeRaw) { _, rawValue in
             RunnerPreferences.setUsageProviderMode(
                 UsageProviderMode(rawValue: rawValue) ?? .codex
+            )
+            deferredPreferencesChanged()
+        }
+        .onChange(of: usageGraphDateBaselineRaw) { _, rawValue in
+            RunnerPreferences.setUsageGraphDateBaseline(
+                UsageGraphDateBaseline(rawValue: rawValue) ?? .calendarMidnight
             )
             deferredPreferencesChanged()
         }

@@ -27,7 +27,8 @@ flowchart LR
 | 문서 전용 | `git diff --check`, markdownlint | README 이미지 변경 시 screenshot verifier |
 | Codex parser/model/JSON | `git diff --check`, focused core test, 전체 `swift test` | protocol drift, README/AGENTS schema 용어 |
 | cache/history/polling | 위 항목 + cache verifier | atomic write, stale/error, weekly-only, token 미저장 |
-| Claude sanitizer/bridge | focused Claude tests + selected-provider verifier | bounded input, raw event/transcript 미저장, bundle bridge |
+| Claude sanitizer/bridge | focused Claude tests + v1.8 selected-provider verifier | bounded input, raw event/transcript 미저장, bundle bridge. 기본 UI 숨김 |
+| Grok weekly writer/cache | focused Grok tests + v1.9 selected-provider verifier | unofficial billing, weekly-only, token 미저장, no-fallback |
 | menu bar app/state | 전체 `swift test`, app bundle build | selected provider, runner/notification/refresh, 실제 UI 여부 |
 | popover layout/asset | app tests, screenshot renderer, character/screenshot verifier | 최신 app GUI를 직접 보지 않았다면 미수행 표기 |
 | helper/support | helper support tests, preflight/state read-only | 실제 설치/삭제/XPC write는 승인 필요 |
@@ -83,9 +84,10 @@ MACDOG_APP_VERSION=9.9.9 ./script/check.sh --no-run
 
 - access/refresh token, cookie, session material, auth header
 - `~/.codex/auth.json` 원문과 일반 진단 목적의 직접 read 결과
+- `~/.grok/auth.json` 원문과 사용자 승인 없는 billing 조회
 - Claude auth/settings/Keychain 내용
 - Claude transcript 또는 raw statusLine event
-- 민감정보 검토 전 app-server response 전체 원문
+- 민감정보 검토 전 app-server 또는 Grok billing response 전체 원문
 
 ### 허용되는 경계
 
@@ -112,7 +114,7 @@ MACDOG_APP_VERSION=9.9.9 ./script/check.sh --no-run
 
 | 코드 변경 | 함께 확인할 문서 |
 | --- | --- |
-| provider 제품 정의 | `README.md`, `ROADMAP.md`, v1.8 문서, onboarding |
+| provider 제품 정의 | `README.md`, `ROADMAP.md`, v1.8/v1.9 문서, onboarding |
 | usage window/schema | `README.md`, `AGENTS.md`, version contract 문서 |
 | notification/settings | `README.md`, `ROADMAP.md`, UI snapshot 설명 |
 | install/helper | `Docs/Scripts.md`, `ReleasePackaging.md`, helper 문서 |
@@ -172,7 +174,7 @@ flowchart LR
 3. payload와 `/Applications/MacDog.app` executable checksum, version, codesign을 비교합니다.
 4. 설치본에서 runner, popover, 주요 tab, provider 전환, CLI/cache/LaunchAgent를 확인합니다.
 5. live fetch 성공과 weekly-only partial success, stale/error를 구분해 기록합니다.
-6. Claude 유료 live 입력이 없으면 미수행으로 남기고 fixture 검증과 섞지 않습니다.
+6. Claude 유료 live 입력이나 Grok live billing이 없으면 미수행으로 남기고 fixture 검증과 섞지 않습니다.
 
 ### 5. 종료와 branch 정리
 
@@ -218,16 +220,20 @@ flowchart LR
 release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)의 모델·추론 수준 추천
 형식도 적용합니다. 남은 작업이 없다면 `후속 이슈: 없음`이라고 명확히 닫습니다.
 
-## 현재 v1.8.0 기준선
+## 현재 기준선
 
 | 항목 | 기준 |
 | --- | --- |
-| current release | `v1.8.0` |
-| release tag | signed annotated, GitHub `Verified` |
+| published release | `v1.8.0` |
+| current development | `v1.9.0` |
+| release tag | published `v1.8.0`만 signed annotated, GitHub `Verified`. `v1.9.0` tag 없음 |
 | default provider | `Codex` |
-| supported provider selection | Codex 또는 Claude 하나만 선택 |
+| visible provider selection | Codex 또는 Grok 하나만 선택 |
+| Claude | source 보존, 기본 UI 숨김. hidden re-enable만 |
 | Codex 5시간 window | 일시 미제공 가능. 주간-only success 유지 |
+| Grok window | 주간만. 5시간은 `현재 제공되지 않음` |
 | Claude live paid event | 현재 환경 미확인. candidate provider로 분리 |
+| Grok live billing | 미수행. unofficial 경로 |
 | 기본 Widget 포함 | 아니오 |
 | Developer ID/notarization stable | 별도 권한·milestone 전 제외 |
 

@@ -31,6 +31,8 @@ struct RunnerPreferences: Equatable {
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
     static let usageProviderModeKey = "usageProviderMode"
+    static let usageGraphDateBaselineKey = "usageGraphDateBaseline"
+    static let claudeUsageProviderReenabledKey = "claudeUsageProviderReenabled"
     private static let legacyUsageProviderKeys = [
         "claudeUsagePreviewEnabled",
         "usagePreviewProvider",
@@ -58,6 +60,7 @@ struct RunnerPreferences: Equatable {
     static let defaultUsageNotificationsEnabled = false
     static let defaultUsageResetSoonNotificationsEnabled = true
     static let defaultUsageProviderMode = UsageProviderMode.codex
+    static let defaultUsageGraphDateBaseline = UsageGraphDateBaseline.defaultBaseline
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
     static let minimumSleepPreventionCPUThresholdPercent = 10
@@ -96,13 +99,17 @@ struct RunnerPreferences: Equatable {
             chargeLimitTargetPercentKey: defaultChargeLimitTargetPercent,
             usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
             usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled,
-            usageProviderModeKey: defaultUsageProviderMode.rawValue
+            usageProviderModeKey: defaultUsageProviderMode.rawValue,
+            usageGraphDateBaselineKey: defaultUsageGraphDateBaseline.rawValue
         ])
     }
 
     static func migrateUsageProviderMode(defaults: UserDefaults = .standard) {
         let storedMode = defaults.string(forKey: usageProviderModeKey)
-        if storedMode.flatMap({ UsageProviderMode(rawValue: $0) }) == nil {
+            .flatMap(UsageProviderMode.init(rawValue:))
+        if storedMode == nil {
+            defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
+        } else if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
             defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
         }
         for key in legacyUsageProviderKeys {
@@ -138,6 +145,7 @@ struct RunnerPreferences: Equatable {
     let usageNotificationsEnabled: Bool
     let usageResetSoonNotificationsEnabled: Bool
     let usageProviderMode: UsageProviderMode
+    let usageGraphDateBaseline: UsageGraphDateBaseline
 
     var sleepPreventionMode: SleepPreventionMode {
         switch sleepPreventionControlMode {
@@ -214,6 +222,7 @@ struct RunnerPreferences: Equatable {
         self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
         self.usageProviderMode = Self.usageProviderMode(defaults: defaults)
+        self.usageGraphDateBaseline = UsageGraphDateBaseline.preferred(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
             ?? Self.defaultSleepPreventionControlMode
@@ -421,12 +430,31 @@ struct RunnerPreferences: Equatable {
     }
 
     static func usageProviderMode(defaults: UserDefaults = .standard) -> UsageProviderMode {
-        UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
+        let storedMode = UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
             defaultUsageProviderMode
+        if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
+            return defaultUsageProviderMode
+        }
+        return storedMode
     }
 
     static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
         defaults.set(mode.rawValue, forKey: usageProviderModeKey)
+    }
+
+    static func setUsageGraphDateBaseline(
+        _ baseline: UsageGraphDateBaseline,
+        defaults: UserDefaults = .standard
+    ) {
+        defaults.set(baseline.rawValue, forKey: usageGraphDateBaselineKey)
+    }
+
+    static func isClaudeUsageProviderReenabled(defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: claudeUsageProviderReenabledKey)
+    }
+
+    static func setClaudeUsageProviderReenabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isEnabled, forKey: claudeUsageProviderReenabledKey)
     }
 
     static func setSleepPreventionEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
@@ -702,6 +730,15 @@ enum SleepPreventionMode: String, CaseIterable, Identifiable {
             "Codex 앱 실행 중"
         case .condition:
             "상태 기준 제어"
+        }
+    }
+
+    func label(for usageProviderMode: UsageProviderMode) -> String {
+        switch self {
+        case .application:
+            usageProviderMode.runningAppModeLabel
+        case .off, .always, .charging, .timed, .condition:
+            label
         }
     }
 }

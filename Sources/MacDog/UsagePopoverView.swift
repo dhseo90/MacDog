@@ -109,7 +109,7 @@ struct UsagePopoverView: View {
 
     private var usesScrollableSelectedContent: Bool {
         selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && state.usageProviderMode == .claude)
+            (selectedModule == .codex && (state.usageProviderMode == .claude || state.usageProviderMode == .grok))
     }
 
     @ViewBuilder
@@ -167,9 +167,13 @@ struct UsagePopoverView: View {
     private var selectedModuleSubtitle: String {
         switch selectedModule {
         case .codex:
-            return state.usageProviderMode == .claude
-                ? state.claudeUsagePreview.statusTitle(now: now)
-                : state.codexPhase.statusLabel
+            if state.usageProviderMode == .claude {
+                return state.claudeUsagePreview.statusTitle(now: now)
+            }
+            if state.usageProviderMode == .grok {
+                return state.grokUsage.statusTitle(now: now)
+            }
+            return state.codexPhase.statusLabel
         case .mac:
             return state.systemMetrics.cpuSummary
         case .sleep:
@@ -185,6 +189,9 @@ struct UsagePopoverView: View {
         if selectedModule == .codex, state.usageProviderMode == .claude {
             return "Claude 사용량"
         }
+        if selectedModule == .codex, state.usageProviderMode == .grok {
+            return "Grok 사용량"
+        }
         return selectedModule.title
     }
 
@@ -192,6 +199,8 @@ struct UsagePopoverView: View {
     private var usageProviderContent: some View {
         if state.usageProviderMode == .claude {
             ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
+        } else if state.usageProviderMode == .grok {
+            GrokUsagePanel(preview: state.grokUsage, now: now)
         } else {
             CodexUsagePanel(state: state)
         }

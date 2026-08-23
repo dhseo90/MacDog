@@ -3,7 +3,7 @@
 이 문서는 MacDog 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙입니다.
 제품 로드맵과 구현 계획은 `README.md`, `ROADMAP.md`, `Docs/`에 두고, 이 파일은 에이전트 실행 규칙만 다룹니다.
 
-MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, shared cache, 권한 도우미, 설치/배포 스크립트를 포함합니다.
+MacDog는 Codex 사용량 CLI, Grok weekly-only writer(`macdog-grok-usage`), macOS menu bar 앱, optional WidgetKit 코드, shared cache, 권한 도우미, 설치/배포 스크립트를 포함합니다. 설정 visible mode는 `Codex`와 `Grok`입니다. Claude source는 보존하지만 기본 UI에서는 숨깁니다.
 
 ---
 
@@ -23,6 +23,20 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
       (`$CODEX_HOME/auth.json`, `~/.config/codex/auth.json`, `~/.codex/auth.json`, macOS Keychain `Codex Auth`)
    이 예외는 token 출력, token cache 저장, raw response 저장, fixture/문서 token 저장을 허용하지 않습니다.
    auth store 직접 읽기는 초기화권 만료일 backend 요청 직전의 메모리 사용으로만 제한합니다.
+   같은 종류의 예외로, Grok SuperGrok/Grok Build 공유 주간 pool 조회를 위해
+   `macdog-grok-usage`가 grok.com session을 `~/.grok/auth.json`에서 쓰는 것은 허용합니다.
+   허용 순서:
+   - 조회 직전에 access token을 메모리로 읽어 unofficial CLI-proxy `x.ai/billing`
+     요청의 `Authorization` header에 즉시 사용한다.
+   - access token이 유효하면 refresh 하지 않고 파일을 고치지 않는다.
+   - access token이 만료되었거나 billing이 401이면 `auth.json.lock`을 잡고,
+     디스크에 이미 새 값이 있으면 채택한다. 없으면 OIDC `refresh_token`으로
+     갱신하고 새 access/refresh를 같은 파일에 atomic merge write한다.
+   이 예외는 token 출력, token cache 저장, raw billing 응답 저장, fixture/문서 token 저장,
+   에이전트가 사용자 승인 없이 `~/.grok/auth.json` 원문을 열거나 출력하는 행위,
+   `XAI_API_KEY`로 주간 pool을 조회하는 행위, 메뉴바 앱의 auth store 읽기/쓰기,
+   MacDog 전용 토큰 파일, 메모리 단독 세션을 허용하지 않습니다.
+   로그인/로그아웃은 `grok login` / `grok logout`만 사용합니다.
 7. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, helper 설치/삭제, codesign/notarization, push는 사용자 명시 요청 없이 실행하지 않습니다.
 8. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획, 완료 조건, 후속 이슈에 넣지 않습니다. 사용자가 해당 권한 사용 가능 상태와 별도 milestone을 승인한 경우만 예외입니다.
 9. WidgetKit 코드는 보존/opt-in build 대상입니다. 기본 앱/DMG 완료 조건에 넣지 않고, source/test/fixture/opt-in build 수준까지만 확인한 경우 실제 위젯 UI 검수 완료로 보고하지 않습니다.
@@ -71,19 +85,29 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 이슈 로드맵 또는 후속 이슈를 제시할 때는 해당 작업의 복잡도와 위험도에 맞는
 권장 분석 모델명, 추론 수준, 선정 근거를 함께 제시합니다.
 
-모델과 추론 수준은 [OpenAI GPT-5.6 모델 가이드](https://developers.openai.com/api/docs/guides/latest-model)를
-기준으로 다음과 같이 표기합니다.
+모델과 추론 수준은 Grok Build에서 실제로 선택 가능한 모델과
+[xAI Models](https://docs.x.ai/developers/models), Grok `/effort` 계약을 기준으로
+표기합니다. OpenAI `5.6 Sol`/`Terra`/`Luna` 명칭은 사용하지 않습니다.
 
-- `5.6 Sol`: 최상위 성능이 필요한 flagship 작업
-- `5.6 Terra`: 지능과 비용의 균형이 필요한 작업
-- `5.6 Luna`: 고효율 반복 작업과 대량 처리
-- 공식 명칭은 `Luna`입니다. `Runa`로 표기하지 않습니다.
-- 추론 수준은 `none`, `low`, `medium`, `high`, `xhigh`, `max` 중 하나를 사용합니다.
-- 보고에는 `없음 (none)`, `낮음 (low)`, `중간 (medium)`, `높음 (high)`,
-  `매우 높음 (xhigh)`, `최대 (max)` 형식으로 표기합니다.
+현재 선택 가능 모델은 `grok models`에 나온 이름만 씁니다. 2026-08-15 기준:
+
+- `grok-4.6`: 기본 모델. 코딩·에이전트·flagship 작업
+- `grok-4.5`: 이전 세대. 반복·고효율·판단 변화가 적은 작업
+
+확인할 수 없는 모델명, `Sol`/`Terra`/`Luna` 별칭, 로컬 `grok models`에 없는 ID는
+만들지 않습니다. 사용 가능 목록이 바뀌면 이 절의 모델명만 갱신합니다.
+
+추론 수준은 Grok `/effort`와 `--reasoning-effort`가 받는 값만 사용합니다.
+
+- TUI `/effort`: `low`, `medium`, `high`, `xhigh`
+- headless `--reasoning-effort`: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`
+- 보고에는 `없음 (none)`, `최소 (minimal)`, `낮음 (low)`, `중간 (medium)`,
+  `높음 (high)`, `매우 높음 (xhigh)`, `최대 (max)` 형식으로 표기합니다.
 - 기본 출발점은 `medium`입니다.
 - `high`와 `xhigh`는 추가 추론으로 품질 향상이 필요한 경우 사용합니다.
 - `max`는 가장 어려운 품질 우선 작업에만 사용합니다.
+- 선택한 모델이 해당 수준을 받지 않으면 그 모델이 받는 가장 가까운 상위 수준을
+  쓰고, 없는 수준을 지어내지 않습니다.
 
 #### 모델 선정 점수
 
@@ -98,15 +122,17 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 
 합계에 따른 기본 모델은 다음과 같습니다.
 
-- `0~2점`: `5.6 Luna`
-- `3~5점`: `5.6 Terra`
-- `6~8점`: `5.6 Sol`
+- `0~2점`: `grok-4.5`
+- `3~8점`: `grok-4.6`
+
+`3~5점`과 `6~8점`은 같은 `grok-4.6`을 쓰고 추론 수준으로 구분합니다.
+선택 가능 모델이 두 개뿐이라 OpenAI 시대의 3단 별칭을 유지하지 않습니다.
 
 작업 유형 기본값도 함께 적용합니다.
 
-- 반복적이고 판단 변화가 적은 작업은 `5.6 Luna`를 우선합니다.
-- 간단한 개발 작업은 `5.6 Terra`를 우선합니다.
-- 위 두 유형으로 명확히 낮출 수 없는 일반 작업은 `5.6 Sol`을 기본값으로 합니다.
+- 반복적이고 판단 변화가 적은 작업은 `grok-4.5`를 우선합니다.
+- 간단한 개발을 포함한 일반 개발 작업은 `grok-4.6`을 우선합니다.
+- 위 유형으로 명확히 낮출 수 없는 작업은 `grok-4.6`을 기본값으로 합니다.
 - 점수표와 작업 유형 기본값이 충돌하면 더 높은 모델을 선택하고 이유를 기록합니다.
 
 #### 위험 상향 규칙
@@ -114,14 +140,17 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 정확도, 동등성, 보안, 데이터 손상 위험은 합산 점수와 별도로 평가합니다.
 
 - 정확도 또는 동등성 계약을 변경·검증하면 기본 점수보다 한 단계 상향할 수 있습니다.
-- 인증, 권한, 비밀정보, 취약점 등 보안 경계를 다루면 최소 `5.6 Sol`, `high`를 사용합니다.
-- 사용자 데이터 손상·유실·복구 또는 비가역 변경 위험이 있으면 최소 `5.6 Sol`, `xhigh`를 사용합니다.
+  모델이 이미 `grok-4.6`이면 추론 수준만 올립니다.
+- 인증, 권한, 비밀정보, 취약점 등 보안 경계를 다루면 최소 `grok-4.6`, `high`를 사용합니다.
+- 사용자 데이터 손상·유실·복구 또는 비가역 변경 위험이 있으면 최소 `grok-4.6`,
+  `xhigh`를 사용합니다.
 - 여러 고위험 경계가 겹치고 실패 비용이 매우 큰 경우에만 `max`를 사용합니다.
 - 상향 규칙을 적용하면 어떤 위험 때문에 상향했는지 선정 근거에 명시합니다.
 
 추론 수준은 모델 점수와 독립적으로 다음 기준을 적용합니다.
 
 - `none`: 추론이 필요 없는 결정적 변환·단순 실행
+- `minimal`: 아주 짧은 판단만 있는 단순 변환. TUI `/effort`가 받지 않으면 `low`를 쓴다
 - `low`: 판단이 거의 없는 반복 작업
 - `medium`: 기본 출발점, 일반적인 구현·문서·검증
 - `high`: 복수 파일·통합 경계·회귀 가능성을 함께 검토
@@ -129,13 +158,15 @@ MacDog는 Codex 사용량 CLI, macOS menu bar 앱, optional WidgetKit 코드, sh
 - `max`: 가장 어려운 품질 우선 작업이며 다른 수준으로 충분하지 않을 때만 사용
 
 ```text
-추천 모델: 5.6 Terra
+추천 모델: grok-4.6
 추론 수준: 높음 (high)
 선정 근거: 여러 스크립트와 Docker 빌드 경계를 검증하지만 모델 정확도 계약을 변경하지 않는 통합 작업
 ```
 
 - 선정 근거에는 가능하면 `영향도 + 불확실성 + 검증 난이도 + 변경 범위 = 합계`를 포함합니다.
-- 실제로 선택 가능한 모델명을 사용하고 확인할 수 없는 모델명은 임의로 만들지 않습니다.
+- 실제로 선택 가능한 Grok 모델명만 사용하고 확인할 수 없는 모델명은 임의로 만들지 않습니다.
+- 완료된 v1.8.0 이전 문서의 `5.6 Sol`/`Terra`/`Luna` 표기는 Codex 개발 당시 기록이므로
+  소급 수정하지 않습니다. 새 로드맵과 후속 이슈부터 Grok 모델명을 씁니다.
 - 단순 문서 오탈자처럼 범위와 위험이 작은 작업에는 과도한 모델이나 추론 수준을 추천하지 않습니다.
 - 여러 이슈의 난이도가 크게 다르면 이슈별로 각각 추천합니다.
 - 남은 이슈가 없어 `후속 이슈: 없음`으로 보고할 때는 모델 추천을 생략할 수 있습니다.
@@ -272,8 +303,10 @@ codex-usage status --watch 60
 4. CLI JSON schema 변경이 README/AGENTS/ROADMAP과 불일치
 5. cache schema 변경이 앱/위젯 문서와 불일치
 6. Codex auth token 또는 session material 노출 징후
-7. `~/.codex/auth.json` 직접 읽기 또는 출력 징후
-8. app-server response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
+7. Codex/Grok auth.json 원문 출력, 또는 허용된 writer 경로 밖의 auth store 읽기/쓰기 징후.
+   `macdog-grok-usage`의 billing 직전 읽기, 만료/401 시 `auth.json.lock` 아래 refresh와
+   atomic merge write는 예외입니다. 메뉴바 앱의 Grok auth store 접근은 중단 조건입니다.
+8. app-server 또는 Grok billing response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
 9. WidgetKit extension이 shared cache 대신 app-server를 직접 호출
 10. menu bar runner의 과도한 CPU/RAM 사용 측정 또는 명백한 정황
 11. 설치/삭제 스크립트가 사용자 홈 또는 시스템 파일을 과도하게 수정할 위험
@@ -300,6 +333,25 @@ codex-usage status --watch 60
 13. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않습니다.
 14. 주간 잔여량 그래프는 같은 `resetsAt` window 안에서 표시 잔여율이 증가하지 않도록 그립니다.
 15. OpenAI가 주간 한도를 실제 리셋해 `resetsAt`이 바뀐 경우에만 이전 history와 분리하고 새 타임라인을 왼쪽 100%에서 시작합니다.
+
+### 7.1 Grok 사용량 데이터 규칙
+
+1. 기본 UI 입력은 unofficial CLI-proxy `x.ai/billing`의 SuperGrok / Grok Build 공유 주간
+   pool만 사용합니다. 공개 REST 문서의 공식 구독 잔여율 API는 아닙니다.
+2. `usedPercent`는 `creditUsagePercent`를 그대로 쓰고 잔여율은 `100 - usedPercent`입니다.
+3. Grok 5시간 window는 없습니다. 없으면 `현재 제공되지 않음`으로 두고 합성하지 않습니다.
+4. Extra Usage Credits, Auto Top Up, console prepaid, RPS/TPM, OTEL, TUI parser,
+   `XAI_API_KEY`는 기본 UI 입력이 아닙니다.
+5. `MONTHLY`, prepaid, on-demand cycle은 거부합니다.
+6. `resetsAt`을 모르면 field를 생략합니다. `billingPeriodStart + 7일`로 합성하지 않습니다.
+7. Grok cache는 `grok-usage.json`, `grok-usage-history.json`, `grok-usage.lock`이며
+   Codex/Claude 파일과 분리합니다. directory `0700`, file `0600`, atomic write를 유지합니다.
+8. 선택 provider가 stale/error여도 Codex 또는 Claude cache로 fallback하지 않습니다.
+9. Grok Extra Usage Credits를 Codex 초기화권처럼 표시하지 않습니다.
+10. grok.com session은 `~/.grok/auth.json` 하나입니다. `macdog-grok-usage`는 Grok CLI
+    sibling입니다. 유효한 access token은 읽기만 하고, 만료/401일 때만 `auth.json.lock`
+    아래에서 refresh 한 뒤 같은 파일에 atomic merge write합니다. 메뉴바는 auth store를
+    읽지 않습니다. 로그인 UI는 `grok login`입니다.
 
 ---
 

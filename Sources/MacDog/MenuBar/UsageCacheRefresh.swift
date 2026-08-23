@@ -9,6 +9,21 @@ struct UsageCacheRefreshCommand: Equatable, Sendable {
         self.arguments = arguments
     }
 
+    static func grokWriteCache(
+        grokUsageURL: URL,
+        requestTimeout: TimeInterval = GrokUsageCacheRefreshPolicy.requestTimeout
+    ) -> UsageCacheRefreshCommand {
+        UsageCacheRefreshCommand(
+            executableURL: grokUsageURL,
+            arguments: [
+                "status",
+                "--write-cache",
+                "--timeout",
+                String(Int(requestTimeout))
+            ]
+        )
+    }
+
     init(
         codexUsageURL: URL,
         widgetBundled: Bool,
@@ -46,6 +61,17 @@ enum UsageCacheRefreshThrottle {
 }
 
 enum UsageCacheRefreshBundleLocator {
+    static func bundledGrokUsageURL(
+        bundleURL: URL = Bundle.main.bundleURL,
+        fileManager: FileManager = .default
+    ) -> URL? {
+        let url = bundleURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("MacOS", isDirectory: true)
+            .appendingPathComponent("macdog-grok-usage")
+        return fileManager.isExecutableFile(atPath: url.path) ? url : nil
+    }
+
     static func bundledCodexUsageURL(
         bundleURL: URL = Bundle.main.bundleURL,
         fileManager: FileManager = .default
