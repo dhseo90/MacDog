@@ -559,7 +559,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.loginLaunchEnabledKey,
             RunnerPreferences.usageNotificationsEnabledKey,
             RunnerPreferences.usageResetSoonNotificationsEnabledKey,
-            RunnerPreferences.usageProviderModeKey
+            RunnerPreferences.usageProviderModeKey,
+            RunnerPreferences.usageGraphDateBaselineKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -745,6 +746,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
         RunnerPreferences.setSleepPreventionControlMode(.off, defaults: defaults)
         RunnerPreferences.setUsageProviderMode(.codex, defaults: defaults)
+        RunnerPreferences.setUsageGraphDateBaseline(.calendarMidnight, defaults: defaults)
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
         if module == .sleep {
