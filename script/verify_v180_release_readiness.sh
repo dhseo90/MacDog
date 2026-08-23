@@ -114,10 +114,10 @@ verify_contract() {
 
   require_match 'V180ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V180ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" "README current release"
-  require_match 'MacDog-1\.8\.0\.dmg' "$README" "README current installer"
+  require_match 'v1\.8\.0 GitHub Release publish' "$DOC" "v1.8.0 published status"
+  require_match 'MacDog-1\.8\.0\.dmg' "$DOC" "v1.8.0 installer"
   require_match '14d716a88ea10a77344a4f9aa3651c23b1160f8c' "$README" \
-    "README published release head"
+    "README v1.8.0 release head"
   require_match 'v1\.8\.0.*릴리즈 완료' "$ROADMAP" "ROADMAP completed release status"
   require_match 'v1\.8\.0 publish.*Finder 설치.*final-state 완료' "$PRODUCT_DOC" \
     "product release completion status"

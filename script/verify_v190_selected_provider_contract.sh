@@ -111,25 +111,28 @@ verify_contract() {
   require_match 'x\.ai/billing' "$SPIKE" "selected unofficial billing path"
   require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
     "$README" "README visible Codex/Grok product"
-  require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" \
-    "README keeps published v1.8.0"
-  require_match '`v1\.9\.0` tag와' "$README" "README mentions unpublished v1.9.0 tag"
-  require_match 'published DMG는 없습니다' "$README" \
-    "README does not claim published v1.9.0"
+  require_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" \
+    "README published v1.9.0"
+  require_match 'MacDog-1\.9\.0\.dmg' "$README" "README current installer"
+  require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
+    "README published release head"
   require_match '선택형 Codex/Grok 사용량 mode와 Claude hide' "$ROADMAP" \
     "ROADMAP v1.9.0 section"
-  require_match 'GUI·live Grok billing·published DMG 미수행' "$ROADMAP" \
+  require_match 'GUI·live Grok billing·Finder 설치·final-state 미수행' "$ROADMAP" \
     "ROADMAP honest smoke status"
   require_match 'macdog-grok-usage' "$AGENTS" "AGENTS Grok writer"
   require_match '~/\.grok/auth\.json' "$AGENTS" "AGENTS Grok auth exception"
   require_match '100 - usedPercent' "$AGENTS" "AGENTS Grok remaining rule"
   require_match '설정 visible mode는' "$ONBOARDING" "onboarding visible mode"
   require_match 'Codex` 또는 `Grok' "$ONBOARDING" "onboarding Codex/Grok selection"
-  require_match '현재 상태: 미수행' "$READINESS" "release readiness pending smoke"
-  require_match '현재 GitHub Release는 `v1\.8\.0`' "$READINESS" \
-    "readiness keeps published v1.8.0"
-  reject_match 'v1\.9\.0 GitHub Release publish' "$READINESS" \
-    "unpublished v1.9.0 claimed as published"
+  require_match '실제 Grok live smoke \| 미수행' "$READINESS" \
+    "release readiness pending live smoke"
+  require_match 'published GitHub Release는 \[v1\.9\.0\]' "$READINESS" \
+    "readiness published v1.9.0"
+  require_match 'Finder drag-and-drop와 GUI smoke \| 미수행' "$READINESS" \
+    "readiness pending Finder install"
+  reject_match '`v1\.9\.0` tag와 published DMG는 없습니다' "$READINESS" \
+    "stale unpublished v1.9.0 claim"
 
   require_match 'case grok' "$MODE_SOURCE" "grok provider case"
   require_match 'visibleCases' "$MODE_SOURCE" "hidden Claude picker cases"

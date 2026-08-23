@@ -57,8 +57,8 @@ verify_contract() {
   [[ -x "$V190_VERIFIER" ]] || die "v1.9 selected-provider verifier is not executable"
   [[ -x "$V180_VERIFIER" ]] || die "v1.8 release-readiness verifier is not executable"
 
-  require_match '^상태: 1차 구현·문서 정렬 완료' "$DOC" "implementation and docs status"
-  require_match 'GUI·live Grok billing·published DMG·Finder 설치·final-state' "$DOC" \
+  require_match '^상태: v1\.9\.0 GitHub Release publish' "$DOC" "published release status"
+  require_match 'GUI·live Grok billing·Finder 설치·final-state 미수행' "$DOC" \
     "unfinished smoke status"
   require_match '미수행' "$DOC" "honest unfinished marker"
   require_match 'MACDOG_APP_VERSION=1\.9\.0 \./script/check\.sh --no-run' "$DOC" \
@@ -67,9 +67,14 @@ verify_contract() {
     "v1.9 product gate"
   require_match 'verify_v180_selected_provider_contract\.sh --self-test' "$DOC" \
     "preserved v1.8 product gate"
-  require_match '현재 GitHub Release는 `v1\.8\.0`' "$DOC" "published release stays v1.8.0"
-  require_match '`v1\.9\.0` tag와 published DMG는 없습니다' "$DOC" \
-    "no published v1.9.0 claim"
+  require_match 'published GitHub Release는 \[v1\.9\.0\]' "$DOC" "published release is v1.9.0"
+  require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$DOC" "published release head"
+  require_match 'd5e29a931f589746eb0b584fdf1ae587e0d951a0' "$DOC" "signed tag object"
+  require_match '32615383862' "$DOC" "release candidate run"
+  require_match '32615634996' "$DOC" "draft release run"
+  require_match '375106008' "$DOC" "published release id"
+  require_match '471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011' \
+    "$DOC" "published DMG checksum"
   require_match 'creditUsagePercent' "$DOC" "live Grok field"
   require_match '100 - usedPercent' "$DOC" "Grok remaining calculation"
   require_match '~/\.grok/auth\.json' "$DOC" "Grok auth privacy boundary"
@@ -82,22 +87,24 @@ verify_contract() {
   require_match '실제 Grok live smoke \| 미수행' "$DOC" "honest live evidence"
   require_match 'Finder drag-and-drop와 GUI smoke \| 미수행' "$DOC" \
     "honest GUI evidence"
-  require_match 'Published `v1\.9\.0` DMG \| 없음' "$DOC" "honest unpublished DMG"
-  require_match '사용자가 릴리즈 전 직접 검수' "$DOC" "user-owned UI review"
+  require_match 'Published `v1\.9\.0` DMG \| 있음' "$DOC" "published DMG evidence"
+  require_match '설치는 사용자가 직접 검수' "$DOC" "user-owned UI review"
   require_match '`Stable Release` workflow' "$DOC" "stable workflow scope"
   require_match '승인되지 않았으므로 실행하지 않습니다' "$DOC" "stable workflow exclusion"
-  require_absent_match 'v1\.9\.0 GitHub Release publish / published DMG Finder 설치' \
-    "$DOC" "completed publish status"
   require_absent_match '실제 Grok live smoke \| 통과' "$DOC" "false live completion"
   require_absent_match 'Finder drag-and-drop와 GUI smoke \| 통과' "$DOC" \
     "false GUI completion"
+  require_absent_match '`v1\.9\.0` tag와 published DMG는 없습니다' "$DOC" \
+    "stale unpublished v1.9.0 claim"
 
   require_match 'V190ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V190ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" "README current release"
-  require_match 'MacDog-1\.8\.0\.dmg' "$README" "README current installer"
+  require_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" "README current release"
+  require_match 'MacDog-1\.9\.0\.dmg' "$README" "README current installer"
+  require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
+    "README published release head"
   require_match 'v1\.9\.0.*미수행' "$ROADMAP" "ROADMAP unfinished smoke"
-  require_match 'GUI·live·published release 미수행' "$PRODUCT_DOC" \
+  require_match 'GUI·live·Finder 설치·final-state 미수행' "$PRODUCT_DOC" \
     "product honest smoke status"
   require_match 'verify_v190_release_readiness\.sh --self-test' "$SCRIPTS_DOC" \
     "Scripts gate entry"
