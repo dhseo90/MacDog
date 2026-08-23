@@ -55,6 +55,7 @@ fi
 
 required_images=(
   "Docs/Images/README/PopoverTabs/macdog-popover-codex.png"
+  "Docs/Images/README/PopoverTabs/macdog-popover-grok.png"
   "Docs/Images/README/PopoverTabs/macdog-popover-mac.png"
   "Docs/Images/README/PopoverTabs/macdog-popover-sleep.png"
   "Docs/Images/README/PopoverTabs/macdog-popover-battery.png"

@@ -109,8 +109,8 @@ verify_contract() {
   require_match 'auth.json.lock' "$CONTRACT" "sibling auth lock"
   require_match 'atomic merge write' "$CONTRACT" "sibling auth write"
   require_match 'x\.ai/billing' "$SPIKE" "selected unofficial billing path"
-  require_match '현재 개발 중인 `1\.9\.0`은 설정 visible mode를 `Codex`와 `Grok`' \
-    "$README" "README visible Codex/Grok development"
+  require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
+    "$README" "README visible Codex/Grok product"
   require_match '현재 GitHub Release는 \[v1\.8\.0\]' "$README" \
     "README keeps published v1.8.0"
   require_match '`v1\.9\.0` tag와' "$README" "README mentions unpublished v1.9.0 tag"

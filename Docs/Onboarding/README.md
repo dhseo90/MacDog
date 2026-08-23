@@ -3,7 +3,7 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: published release는 `v1.8.0`. 현재 개발은 `v1.9.0`이며 설정 visible mode는
+> 기준 상태: published release는 `v1.8.0`. `v1.9.0` 제품의 설정 visible mode는
 > `Codex` 또는 `Grok` 중 사용자가 선택한 **하나의 provider만** 사용량 화면, 러너 속도,
 > 알림, refresh 대상으로 사용합니다. Claude source는 남아 있지만 기본 UI에서는 숨깁니다.
 
@@ -129,7 +129,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | 구분 | 상태 |
 | --- | --- |
 | v1.8.0 Codex weekly-only 조회·cache·설치본 UI | published release smoke에서 확인됨 |
-| v1.9.0 Claude hide·Grok weekly-only source/test | 1차 구현과 focused test로 확인됨. GUI·live·설치는 미수행 |
+| v1.9.0 Claude hide·Grok weekly-only source/test | 1차 구현과 focused test로 확인됨. published DMG·final-state는 미수행 |
 | Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
 | Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |
 | 실제 유료 Claude 계정의 `rate_limits` live event | 현재 환경에서 미확인. 후보 provider 검증으로 분리 |

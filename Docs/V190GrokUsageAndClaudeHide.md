@@ -46,10 +46,11 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 
 ## 제품 경계
 
-설정 탭에는 다음 한 항목만 노출한다.
+설정 탭 사용량 관련 visible 항목은 아래와 같다. Claude 전용 설정 section은 두지 않는다.
 
 ```text
 사용량 mode    Codex ▾
+날짜 기준      자정 ▾
 ```
 
 보이는 값:

@@ -37,7 +37,37 @@ enum MacDogDemoData {
             claudeUsagePreview: preferences.usageProviderMode == .claude
                 ? claudeUsagePreview(now: now)
                 : .disabled,
+            grokUsage: preferences.usageProviderMode == .grok
+                ? grokUsagePreview(now: now)
+                : .disabled,
             usageProviderMode: preferences.usageProviderMode
+        )
+    }
+
+    private static func grokUsagePreview(now: Int) -> GrokUsagePreviewState {
+        let resetsAt = weeklyResetTimestamp(now: now)
+        let remaining = weeklyRemainingPercent(now: now)
+        let used = 100 - remaining
+        let weekly = GrokUsageWeeklyWindow(usedPercent: used, resetsAt: resetsAt)
+        let samples = weeklyUsageHistory(now: now).samples.compactMap { sample in
+            GrokUsageHistorySample(
+                recordedAt: sample.recordedAt,
+                usedPercent: sample.usedPercent,
+                remainingPercent: sample.remainingPercent,
+                resetsAt: sample.resetsAt
+            )
+        }
+        return GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: GrokUsageCacheStore.defaultStaleAfterSeconds,
+                weekly: weekly,
+                issue: nil
+            ),
+            history: GrokUsageHistory(samples: samples),
+            loadIssue: nil
         )
     }
 

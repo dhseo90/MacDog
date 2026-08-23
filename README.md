@@ -1,9 +1,9 @@
 # MacDog
 
 MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS
-유틸리티입니다. 현재 published release는 `Codex` 또는 `Claude` 중 하나를 선택하는 mode를
-제공합니다. 현재 개발 중인 `1.9.0`은 설정 visible mode를 `Codex`와 `Grok`만 보여 주고
-Claude source는 남긴 채 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
+유틸리티입니다. `1.9.0` 제품의 설정 visible mode는 `Codex`와 `Grok`만 보여 주고 Claude
+source는 남긴 채 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다. 현재
+GitHub에 published된 설치본은 아래 [현재 릴리즈](#현재-릴리즈)를 따릅니다.
 
 기본 캐릭터는 `Codex Pup`입니다. 같은 캐릭터 세트가 메뉴바 러너, 데스크톱 펫, 우측 탭 버튼 이미지에 함께 적용되므로 나중에 캐릭터를 바꿀 때도 한 묶음으로 교체할 수 있습니다.
 
@@ -29,25 +29,25 @@ Claude source는 남긴 채 숨깁니다. 두 provider 동시 사용, 합산, �
 
 ## 현재 개발 (1.9.0)
 
-개발 브랜치는 `v1.9.0`이고 개발 검증 버전은 `MACDOG_APP_VERSION=1.9.0`입니다. GitHub Release는
+릴리즈 브랜치는 `v1.9.0`이고 검증 버전은 `MACDOG_APP_VERSION=1.9.0`입니다. GitHub Release는
 아직 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)이며, `v1.9.0` tag와
 published DMG는 없습니다.
 
-1차 구현 `[01/10]`~`[10/10]`과 문서 정렬은 저장소에 있습니다. 설정 picker의 보이는 값은
-`Codex`와 `Grok`뿐이고, Claude는 hidden/debug re-enable만 남깁니다. Grok는 SuperGrok /
-Grok Build 공유 주간 pool만 표시하며 5시간 window는 `현재 제공되지 않음`입니다. Extra
-Usage Credits를 Codex 초기화권처럼 보여 주지 않습니다.
+설정 picker의 보이는 값은 `Codex`와 `Grok`뿐입니다. Claude는 hidden/debug re-enable만
+남깁니다. Grok는 SuperGrok / Grok Build 공유 주간 pool만 표시하며 5시간 window는 `현재
+제공되지 않음`입니다. Extra Usage Credits를 Codex 초기화권처럼 보여 주지 않습니다. 설정
+탭 `날짜 기준` 기본값은 자정이고, 리셋 시각 24시간 칸은 옵션입니다. `uninstall.sh`는 Grok
+cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다.
 
 미수행으로 분리하는 항목:
 
-- 실제 앱 GUI와 설정 dropdown 직접 확인
-- Grok live billing 조회와 `~/.grok/auth.json` 사용
-- published `v1.9.0` DMG, Finder 설치, final-state
-- 사용자 설치 후 UI 검수. 릴리즈 전에 별도로 진행합니다.
+- published `v1.9.0` GitHub Release, Finder 설치, final-state
+- 공식 live Grok billing smoke 체크리스트 전체
+- 설정 dropdown을 연 상태의 PNG. 아래 설정 snapshot은 닫힌 picker입니다
 
 설정 탭 공식 snapshot은 demo renderer가 닫힌 picker를 그린 이미지입니다. 선택된 값은
-`Codex`이며, dropdown 안의 `Grok` 항목은 PNG에서 보이지 않습니다. 이 이미지를 실제 GUI
-검수 완료로 쓰지 않습니다.
+`Codex`이며, dropdown 안의 `Grok` 항목은 그 PNG에서 보이지 않습니다. Grok 탭 snapshot은
+별도 이미지로 둡니다. 이 이미지를 실제 GUI 검수 완료로 쓰지 않습니다.
 
 세부 범위는 [Docs/V190GrokUsageAndClaudeHide.md](Docs/V190GrokUsageAndClaudeHide.md),
 릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)를
@@ -60,27 +60,35 @@ Usage Credits를 Codex 초기화권처럼 보여 주지 않습니다.
 <table>
   <tr>
     <th>Codex 사용량</th>
-    <th>활성 자원</th>
+    <th>Grok 사용량</th>
   </tr>
   <tr>
     <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-codex.png" alt="MacDog Codex usage tab" width="360"></td>
-    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-mac.png" alt="MacDog active resources tab" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-grok.png" alt="MacDog Grok usage tab" width="360"></td>
   </tr>
   <tr>
+    <th>활성 자원</th>
     <th>잠들지 않기</th>
-    <th>배터리</th>
   </tr>
   <tr>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-mac.png" alt="MacDog active resources tab" width="360"></td>
     <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-sleep.png" alt="MacDog sleep prevention tab" width="360"></td>
-    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-battery.png" alt="MacDog battery tab" width="360"></td>
   </tr>
   <tr>
+    <th>배터리</th>
     <th>설정</th>
-    <th>데스크톱 펫</th>
   </tr>
   <tr>
-    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab with a single usage mode selector" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-battery.png" alt="MacDog battery tab" width="360"></td>
+    <td><img src="Docs/Images/README/PopoverTabs/macdog-popover-settings.png" alt="MacDog settings tab with usage mode and date baseline selectors" width="360"></td>
+  </tr>
+  <tr>
+    <th>데스크톱 펫</th>
+    <th></th>
+  </tr>
+  <tr>
     <td align="center"><img src="Docs/Images/README/macdog-desktop-pet-front.png" alt="MacDog desktop pet front sprite" width="160"></td>
+    <td></td>
   </tr>
 </table>
 
@@ -95,7 +103,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | provider mode 한 항목과 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태만 관리합니다. |
+| 설정 탭 | `사용량 mode`(`Codex`/`Grok`)와 주간 그래프 `날짜 기준`(자정/리셋 시각), 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
 | 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, 선택 mode 전용 usage cache LaunchAgent(`codex-usage` 또는 `macdog-grok-usage`), macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
@@ -135,14 +143,14 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - 선택 provider graph: current/past/compare와 pace를 유지하되 선택한 provider 하나만 평가합니다.
   Claude·Grok reset credit은 만들지 않습니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
-- 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, Codex 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
+- 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, 선택 provider 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80-100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
 - 설정: 로그인 시 실행, 데스크톱 펫, 움직임 줄이기, 러너 일시 정지, 권한 도우미와 기존
-  사용량 알림 opt-in을 관리합니다. `Codex` 또는 `Grok` 중 하나를 고르는 `사용량 mode`
-  한 항목만 두고 별도 플랜 전환·Claude Preview 설정은 제거했습니다. Claude는 기본 picker에
-  보이지 않습니다.
+  사용량 알림 opt-in을 관리합니다. `Codex` 또는 `Grok` 중 하나를 고르는 `사용량 mode`와
+  주간 그래프 `날짜 기준`(기본 자정, 옵션 리셋 시각)을 둡니다. 별도 플랜 전환·Claude Preview
+  설정은 없습니다. Claude는 기본 picker에 보이지 않습니다.
 - Claude 연결 경계: 기존 `~/.claude/settings.json`이나 auth store를 앱이 자동으로 읽거나 수정하지
   않습니다. Claude mode의 cache 없음 empty state에서 수동 연결 command만 제공하고 기존 status
   line을 자동 덮어쓰지 않습니다.

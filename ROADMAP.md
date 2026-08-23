@@ -4,8 +4,8 @@
 
 MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에서 즉시 확인하게 해주는 macOS
 유틸리티입니다. v1.7.0까지는 Codex 전용이며, v1.8.0은 `Codex` 또는 `Claude` 중 하나만
-사용량 mode로 선택합니다. 현재 개발 중인 v1.9.0은 설정 visible mode를 `Codex`와 `Grok`만
-보여 주고 Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
+사용량 mode로 선택합니다. v1.9.0은 설정 visible mode를 `Codex`와 `Grok`만 보여 주고
+Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
 작은 강아지 러너가 메뉴바에 상주하고 선택한 provider 사용량이 높아질수록 더 빠르게
 움직입니다. 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각,
 갱신 상태를 보여줍니다.
@@ -50,7 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: published release |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: PR merge·signed tag·published release |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
