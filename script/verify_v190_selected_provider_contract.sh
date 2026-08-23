@@ -118,7 +118,7 @@ verify_contract() {
     "README published release head"
   require_match '선택형 Codex/Grok 사용량 mode와 Claude hide' "$ROADMAP" \
     "ROADMAP v1.9.0 section"
-  require_match 'GUI·live Grok billing·Finder 설치·final-state 미수행' "$ROADMAP" \
+  require_match 'GUI·live Grok billing·Finder drag 관찰 미수행' "$ROADMAP" \
     "ROADMAP honest smoke status"
   require_match 'macdog-grok-usage' "$AGENTS" "AGENTS Grok writer"
   require_match '~/\.grok/auth\.json' "$AGENTS" "AGENTS Grok auth exception"
@@ -130,7 +130,9 @@ verify_contract() {
   require_match 'published GitHub Release는 \[v1\.9\.0\]' "$READINESS" \
     "readiness published v1.9.0"
   require_match 'Finder drag-and-drop와 GUI smoke \| 미수행' "$READINESS" \
-    "readiness pending Finder install"
+    "readiness pending GUI confirmation"
+  require_match 'cleanup / final-state \| 통과' "$READINESS" \
+    "readiness completed final-state"
   reject_match '`v1\.9\.0` tag와 published DMG는 없습니다' "$READINESS" \
     "stale unpublished v1.9.0 claim"
 

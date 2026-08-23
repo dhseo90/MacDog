@@ -58,7 +58,7 @@ verify_contract() {
   [[ -x "$V180_VERIFIER" ]] || die "v1.8 release-readiness verifier is not executable"
 
   require_match '^상태: v1\.9\.0 GitHub Release publish' "$DOC" "published release status"
-  require_match 'GUI·live Grok billing·Finder 설치·final-state 미수행' "$DOC" \
+  require_match 'GUI·live Grok billing·Finder drag 관찰 미수행' "$DOC" \
     "unfinished smoke status"
   require_match '미수행' "$DOC" "honest unfinished marker"
   require_match 'MACDOG_APP_VERSION=1\.9\.0 \./script/check\.sh --no-run' "$DOC" \
@@ -88,6 +88,11 @@ verify_contract() {
   require_match 'Finder drag-and-drop와 GUI smoke \| 미수행' "$DOC" \
     "honest GUI evidence"
   require_match 'Published `v1\.9\.0` DMG \| 있음' "$DOC" "published DMG evidence"
+  require_match 'GitHub Latest `v1\.9\.0`' "$DOC" "github latest release"
+  require_match '2e4ba860c1f91e228d5fd54ab7ad1ce5f4680c692fe8caf1290ff9f784cee9b6' \
+    "$DOC" "installed executable checksum"
+  require_match 'cleanup / final-state \| 통과' "$DOC" "final-state evidence"
+  require_match 'gh release edit v1\.9\.0 --latest' "$DOC" "latest release correction"
   require_match '설치는 사용자가 직접 검수' "$DOC" "user-owned UI review"
   require_match '`Stable Release` workflow' "$DOC" "stable workflow scope"
   require_match '승인되지 않았으므로 실행하지 않습니다' "$DOC" "stable workflow exclusion"
@@ -104,8 +109,9 @@ verify_contract() {
   require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
     "README published release head"
   require_match 'v1\.9\.0.*미수행' "$ROADMAP" "ROADMAP unfinished smoke"
-  require_match 'GUI·live·Finder 설치·final-state 미수행' "$PRODUCT_DOC" \
+  require_match 'GUI·live·Finder drag 관찰 미수행' "$PRODUCT_DOC" \
     "product honest smoke status"
+  require_match 'GitHub Releases Latest: `v1\.9\.0`' "$README" "README github latest"
   require_match 'verify_v190_release_readiness\.sh --self-test' "$SCRIPTS_DOC" \
     "Scripts gate entry"
   require_match 'verify_v190_release_readiness\.sh --self-test' "$CHECK_SCRIPT" \

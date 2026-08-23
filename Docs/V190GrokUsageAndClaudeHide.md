@@ -1,6 +1,6 @@
 # v1.9.0 Grok 사용량 mode와 Claude hide
 
-상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / GitHub Release publish 완료 / GUI·live·Finder 설치·final-state 미수행
+상태: 1차 구현 `[01/10]`~`[10/10]` 완료 / GitHub Release publish·final-state 완료 / GUI·live·Finder drag 관찰 미수행
 작성일: 2026-08-15
 대상 버전: `1.9.0`
 기준 브랜치: `v1.9.0`
@@ -189,7 +189,7 @@ Grok은 SuperGrok / Grok Build의 **공유 주간 사용량 pool**을 대상으�
 3. 주간 그래프 날짜 칸을 로컬 자정 기준 — 코드 완료, GUI 확인 미수행. 설정 `날짜 기준`에서 자정(기본)과 리셋 시각 선택. Codex/Grok/Claude 공통. 페이스메이커 7등분은 유지
 4. 선택 provider 기준 문구 — 코드 완료, GUI 확인 미수행. 3번 탭 실행 중 토글과 우클릭 펫 제목/`사용량 종료`가 선택 provider 이름. hidden Claude re-enable일 때만 Claude
 5. `uninstall.sh` Grok 잔여물 — 코드 완료, 실제 삭제 실행 미수행. cache/history/lock과 Grok LaunchAgent 제거. `--dry-run`만 검증
-6. Finder 설치와 final-state — GitHub Release publish 완료, Finder 설치 미수행
+6. Finder 설치와 final-state — 설치본 checksum·LaunchAgent·final-state 완료, GUI 미수행
 
 ## 모델 추천
 

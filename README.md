@@ -16,11 +16,19 @@ GitHub에 published된 설치본은 아래 [현재 릴리즈](#현재-릴리즈)
 - Published asset: `MacDog-1.9.0.dmg`, `MacDog-1.9.0.dmg.sha256`
 - Published DMG SHA-256: `471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
+- GitHub Releases Latest: `v1.9.0`
 - 확인된 smoke: published DMG 재다운로드 checksum과 `hdiutil verify`를 통과했습니다.
   payload 버전은 `1.9.0`이며 `macdog-grok-usage`를 포함합니다.
-- Finder drag-and-drop 설치, `/Applications/MacDog.app` executable checksum 일치,
-  설치본 GUI, cache LaunchAgent, `verify_release_final_state.sh --version 1.9.0`은
-  미수행입니다. published DMG Finder 창은 열었고 설치는 사용자가 직접 합니다.
+- `/Applications/MacDog.app` v1.9.0 executable SHA-256
+  `2e4ba860c1f91e228d5fd54ab7ad1ce5f4680c692fe8caf1290ff9f784cee9b6`가 published
+  payload와 일치합니다. 실행 중 app path는 `/Applications/MacDog.app`입니다.
+- 현재 선택 mode는 `Grok`입니다. Grok usage cache LaunchAgent
+  `com.dhseo.macdog.grok-usage-cache`가 설치 앱 `macdog-grok-usage`를 가리키고,
+  Codex cache LaunchAgent는 없습니다.
+- `./script/cleanup_release_smoke_state.sh --apply`와
+  `./script/verify_release_final_state.sh --version 1.9.0`을 통과했습니다.
+  Finder `응용 프로그램` 범위 `MacDog` 검색 결과는 `/Applications/MacDog.app` 하나입니다.
+- Finder drag-and-drop 자체 관찰과 설치본 popover GUI 직접 확인은 미수행입니다.
 - 공식 live Grok billing smoke 체크리스트 전체는 미수행으로 분리합니다.
 
 설정 picker의 보이는 값은 `Codex`와 `Grok`뿐입니다. Claude는 hidden/debug re-enable만
@@ -31,7 +39,7 @@ cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다
 
 미수행으로 분리하는 항목:
 
-- Finder drag-and-drop 설치와 release final-state
+- Finder drag-and-drop 자체 관찰과 설치본 popover GUI 직접 확인
 - 공식 live Grok billing smoke 체크리스트 전체
 - 설정 dropdown을 연 상태의 PNG. 아래 설정 snapshot은 닫힌 picker입니다
 

@@ -104,6 +104,10 @@ ID로 해석해 상태와 asset을 확인합니다. 검증 실패 시에도 같�
 보존합니다.
 이 draft는 외부 사용자를 위한 stable release가 아니라 설치 흐름 확인용입니다.
 
+publish 직후 GitHub Releases Latest를 확인합니다. `gh api`로 `draft=false`만 바꾸면
+이전 release가 Latest로 남을 수 있으므로 `gh release edit v<version> --latest --verify-tag`를
+실행하고 `gh release list`에서 Latest가 새 버전인지 확인합니다.
+
 release smoke가 끝나면 Finder 검색 중복을 막기 위해 아래 순서로 종료 상태를 확인합니다.
 
 ```sh
