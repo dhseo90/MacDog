@@ -9,29 +9,19 @@ GitHub에 published된 설치본은 아래 [현재 릴리즈](#현재-릴리즈)
 
 ## 현재 릴리즈
 
-현재 GitHub Release는 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
+현재 GitHub Release는 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)입니다.
 
-- Published release head: signed `v1.8.0` tag target `14d716a88ea10a77344a4f9aa3651c23b1160f8c`
+- Published release head: signed `v1.9.0` tag target `b7072003830798bb1603768c4efb0b41409100f6`
 - GitHub tag verification: `Verified`
-- Published asset: `MacDog-1.8.0.dmg`, `MacDog-1.8.0.dmg.sha256`
-- Published DMG SHA-256: `056926bd16668c288d132fab7ff8efb545f00d8eefb8f222440e3f389338a3af`
+- Published asset: `MacDog-1.9.0.dmg`, `MacDog-1.9.0.dmg.sha256`
+- Published DMG SHA-256: `471e10a976cafd469a445af0391e21804cec43bb64f595508f2988935af87011`
 - 상태: unsigned/ad-hoc signed GitHub Release입니다. Apple Developer Program 조건이 필요한 public stable 배포는 현재 구현 계획에서 제외하고 별도 milestone에서 다룹니다.
-- 확인된 smoke: published DMG 재다운로드 checksum, `hdiutil verify`, Finder drag-and-drop 설치,
-  `/Applications/MacDog.app` v1.8.0과 published payload executable checksum 일치, codesign,
-  `~/bin/codex-usage`, Codex mode cache LaunchAgent, weekly-only success cache와 공식 release
-  final-state를 확인했습니다.
-- 설치본 UI에서 1번 탭의 compact `현재`/`지난`/`비교` 배치와 설정 탭의 불필요한 plan
-  transition·Claude Preview UI 제거를 직접 확인했습니다. `Codex → Claude → Codex` 전환에서
-  Claude empty state, Codex cache LaunchAgent 제거·복구와 weekly-only 화면 복귀도 확인했습니다.
-- 실제 Claude 구독 `rate_limits` event는 현재 환경에서 제공되지 않아 live smoke를 미수행으로
-  분리합니다. sanitizer/cache/privacy와 selected-provider 상태 전이는 fixture와 자동 테스트로
-  검증했습니다.
-
-## 현재 개발 (1.9.0)
-
-릴리즈 브랜치는 `v1.9.0`이고 검증 버전은 `MACDOG_APP_VERSION=1.9.0`입니다. GitHub Release는
-아직 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)이며, `v1.9.0` tag와
-published DMG는 없습니다.
+- 확인된 smoke: published DMG 재다운로드 checksum과 `hdiutil verify`를 통과했습니다.
+  payload 버전은 `1.9.0`이며 `macdog-grok-usage`를 포함합니다.
+- Finder drag-and-drop 설치, `/Applications/MacDog.app` executable checksum 일치,
+  설치본 GUI, cache LaunchAgent, `verify_release_final_state.sh --version 1.9.0`은
+  미수행입니다. published DMG Finder 창은 열었고 설치는 사용자가 직접 합니다.
+- 공식 live Grok billing smoke 체크리스트 전체는 미수행으로 분리합니다.
 
 설정 picker의 보이는 값은 `Codex`와 `Grok`뿐입니다. Claude는 hidden/debug re-enable만
 남깁니다. Grok는 SuperGrok / Grok Build 공유 주간 pool만 표시하며 5시간 window는 `현재
@@ -41,7 +31,7 @@ cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다
 
 미수행으로 분리하는 항목:
 
-- published `v1.9.0` GitHub Release, Finder 설치, final-state
+- Finder drag-and-drop 설치와 release final-state
 - 공식 live Grok billing smoke 체크리스트 전체
 - 설정 dropdown을 연 상태의 PNG. 아래 설정 snapshot은 닫힌 picker입니다
 
@@ -52,6 +42,10 @@ cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다
 세부 범위는 [Docs/V190GrokUsageAndClaudeHide.md](Docs/V190GrokUsageAndClaudeHide.md),
 릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)를
 기준으로 합니다.
+
+이전 published release는 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
+v1.8.0 release head는 `14d716a88ea10a77344a4f9aa3651c23b1160f8c`이고 published asset는
+`MacDog-1.8.0.dmg`입니다.
 
 ## 화면
 
@@ -110,7 +104,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 사용자 설치는 GitHub Release의 DMG를 기준으로 합니다.
 
-1. [v1.8.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)에서 `MacDog-1.8.0.dmg`를 내려받습니다.
+1. [v1.9.0 Release](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)에서 `MacDog-1.9.0.dmg`를 내려받습니다.
 2. DMG를 Finder에서 엽니다.
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
