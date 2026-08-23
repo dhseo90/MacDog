@@ -20,6 +20,7 @@ SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
 PET_MENU_SOURCE="$ROOT_DIR/Sources/MacDog/PetMenuModel.swift"
 PET_MENU_TEST="$ROOT_DIR/Tests/MacDogTests/PetMenuModelTests.swift"
 SLEEP_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SleepPreventionPanel.swift"
+UNINSTALL_SOURCE="$ROOT_DIR/script/uninstall.sh"
 DATE_BASELINE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageGraphDateBaseline.swift"
 GROK_PANEL_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokUsagePanel.swift"
 GROK_ADAPTER_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/GrokWeeklyRemainingHistoryAdapter.swift"
@@ -86,6 +87,7 @@ verify_contract() {
     "$MODE_SOURCE" "$PREFERENCES_SOURCE" "$STATE_SOURCE" "$CONTROLLER_SOURCE" \
     "$POPOVER_SOURCE" "$SETTINGS_SOURCE" "$DATE_BASELINE_SOURCE" \
     "$PET_MENU_SOURCE" "$PET_MENU_TEST" "$SLEEP_PANEL_SOURCE" \
+    "$UNINSTALL_SOURCE" \
     "$GROK_PANEL_SOURCE" "$GROK_ADAPTER_SOURCE" \
     "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_SANITIZER_SOURCE" \
     "$GROK_AUTH_SOURCE" "$GROK_FETCH_SOURCE" "$GROK_CLI_SOURCE" \
@@ -167,6 +169,11 @@ verify_contract() {
   require_match 'showsLoginActions' "$GROK_PANEL_SOURCE" "login actions gated"
   reject_match '초기화권|reset credit' "$GROK_PANEL_SOURCE" "Grok reset credit UI"
   require_match 'grok-usage\.json' "$GROK_CACHE_SOURCE" "separate Grok cache"
+  require_match 'grok-usage\.json' "$UNINSTALL_SOURCE" "uninstall Grok cache"
+  require_match 'grok-usage-history\.json' "$UNINSTALL_SOURCE" "uninstall Grok history"
+  require_match 'grok-usage\.lock' "$UNINSTALL_SOURCE" "uninstall Grok lock"
+  require_match 'com\.dhseo\.macdog\.grok-usage-cache' "$UNINSTALL_SOURCE" \
+    "uninstall Grok LaunchAgent"
   require_match 'grok-usage-history\.json' "$GROK_HISTORY_SOURCE" "separate Grok history"
   require_match 'creditUsagePercent' "$GROK_SANITIZER_SOURCE" "weekly used percent field"
   require_match 'object\["config"\]' "$GROK_SANITIZER_SOURCE" "config wrapper unwrap"

@@ -198,10 +198,9 @@ network/auth 경계 없는 schema 회귀 확인은 redacted fixture와 자동 te
 | `/Library/PrivilegedHelperTools/com.dhseo.macdog.helper` | 승인된 helper install | root helper | 임의 삭제/교체 금지 |
 | `/Library/LaunchDaemons/com.dhseo.macdog.helper.plist` | 승인된 helper install | launchd 설정 | 관리자 승인 필요 |
 
-> `script/uninstall.sh`는 앱, CLI link, LaunchAgent, `usage.json`, 주간 history, Claude
+> `script/uninstall.sh`는 앱, CLI link, LaunchAgent, `usage.json`, 주간 history, Claude/Grok
 > cache/history/lock, widget mirror를 제거하지만 현재 구현상 `usage-five-hour-history.json`,
-> `usage-reset-window-history.json`, Grok cache/history/lock, Grok LaunchAgent,
-> `~/Library/Logs/MacDog`는 남을 수 있습니다. 또한
+> `usage-reset-window-history.json`, `~/Library/Logs/MacDog`는 남을 수 있습니다. 또한
 > `/Applications/MacDog.app`도 삭제 대상입니다. 삭제 전에는 반드시 `--dry-run`으로 대상과
 > 보존 파일을 확인하고, 실행은 사용자 환경 변경 승인을 받은 뒤 진행합니다.
 

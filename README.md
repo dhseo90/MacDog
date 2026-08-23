@@ -365,9 +365,9 @@ MACDOG_APP_VERSION=<version> ./script/install.sh --dry-run
 ```
 
 기본 삭제는 `~/Applications`와 `/Applications`의 앱, CLI symlink, user LaunchAgent,
-`usage.json`, 주간 history, Claude cache/history/lock과 widget mirror를 제거하고 UserDefaults와
-optional 권한 도우미는 유지합니다. 현재 5시간/reset history, Grok cache/history/lock과 cache
-logs는 남을 수 있습니다.
+`usage.json`, 주간 history, Claude/Grok cache/history/lock과 widget mirror를 제거하고
+UserDefaults와 optional 권한 도우미는 유지합니다. 현재 5시간/reset history와 cache logs는
+남을 수 있습니다.
 `--reset-preferences`는 provider, 알림, 로그인 실행, runner, 데스크톱 펫, 잠들지 않기,
 charge limit을 포함한 MacDog UserDefaults 전체를 함께 초기화합니다.
 

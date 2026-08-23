@@ -50,7 +50,7 @@ MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에
 | v1.6.1 | History Control Polish: Codex 탭 현재/지난/비교 control compact layout | 릴리즈 완료, published DMG 설치본 UI smoke와 final-state 검증 완료 | cache 로그 rotation 후속 이슈는 `Docs/V161ReleaseReadiness.md`에서 추적 |
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
-| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~4 코드 완료(부분 GUI), 남은 5~6: uninstall Grok 잔여, published release |
+| v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | 1차 구현·문서 정렬 완료, GUI·live Grok billing·published DMG 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: published release |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -629,9 +629,10 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
    일반 개발이므로 `grok-4.6`을 유지한다.
 
-5. `uninstall.sh` Grok 잔여물
+5. `uninstall.sh` Grok 잔여물 — 코드 완료, 실제 삭제 실행 미수행
    삭제가 `grok-usage.json`, history, lock과 `com.dhseo.macdog.grok-usage-cache`
-   LaunchAgent를 Codex/Claude와 같은 수준으로 제거한다.
+   LaunchAgent를 Codex/Claude와 같은 수준으로 제거한다. `--dry-run` 검증만 수행하고
+   실제 uninstall은 사용자 승인 뒤에만 실행한다.
    추천 모델: `grok-4.6`
    추론 수준: 중간 (medium)
    선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 1 + 변경 범위 1 = 3점.

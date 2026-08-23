@@ -142,9 +142,11 @@ Finder drag-and-drop 또는 실제 앱 UI를 직접 확인하지 않았다면 �
 
 ## 알려진 설치 잔여
 
-`script/uninstall.sh`는 현재 Grok cache/history/lock과
-`com.dhseo.macdog.grok-usage-cache` LaunchAgent를 제거하지 않습니다. 릴리즈 전 사용자
-설치 검수와 별도로 정리 여부를 확인할 수 있습니다.
+`script/uninstall.sh`는 Grok cache/history/lock과
+`com.dhseo.macdog.grok-usage-cache` LaunchAgent를 Codex/Claude와 같은 수준으로
+제거합니다. 실제 삭제는 `--dry-run` 확인 후 사용자 승인 뒤에만 실행합니다.
+`usage-five-hour-history.json`, `usage-reset-window-history.json`, cache logs는 남을 수
+있습니다.
 
 ## 릴리즈 잔여 이슈
 
@@ -178,9 +180,10 @@ hidden Claude re-enable일 때만 Claude 이름을 쓴다.
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점.
 
-### 5. `uninstall.sh` Grok 잔여물
+### 5. `uninstall.sh` Grok 잔여물 — 코드 완료, 실제 삭제 실행 미수행
 
-Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다.
+Grok cache/history/lock과 Grok LaunchAgent를 삭제 대상에 넣는다. `--dry-run`만
+검증했고 실제 uninstall은 실행하지 않는다.
 
 추천 모델: `grok-4.6`
 추론 수준: 중간 (medium)

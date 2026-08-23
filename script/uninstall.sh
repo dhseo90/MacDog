@@ -8,8 +8,10 @@ SYSTEM_APP_DEST="/Applications/$APP_NAME.app"
 CLI_DEST="$HOME/bin/codex-usage"
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 CACHE_LABEL="com.dhseo.macdog.usage-cache"
+GROK_CACHE_LABEL="com.dhseo.macdog.grok-usage-cache"
 MONITOR_LABEL="com.dhseo.macdog.monitor"
 CACHE_PLIST="$LAUNCH_AGENT_DIR/$CACHE_LABEL.plist"
+GROK_CACHE_PLIST="$LAUNCH_AGENT_DIR/$GROK_CACHE_LABEL.plist"
 MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
 APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
@@ -17,6 +19,9 @@ APP_HISTORY_FILE="$APP_CACHE_DIR/usage-weekly-history.json"
 CLAUDE_CACHE_FILE="$APP_CACHE_DIR/claude-usage.json"
 CLAUDE_HISTORY_FILE="$APP_CACHE_DIR/claude-usage-history.json"
 CLAUDE_LOCK_FILE="$APP_CACHE_DIR/claude-usage.lock"
+GROK_CACHE_FILE="$APP_CACHE_DIR/grok-usage.json"
+GROK_HISTORY_FILE="$APP_CACHE_DIR/grok-usage-history.json"
+GROK_LOCK_FILE="$APP_CACHE_DIR/grok-usage.lock"
 SHARED_CACHE_DIR="$HOME/Library/Group Containers/group.com.dhseo.macdog.MacDog"
 SHARED_CACHE_FILE="$SHARED_CACHE_DIR/usage.json"
 HELPER_LABEL="com.dhseo.macdog.helper"
@@ -190,10 +195,12 @@ case "$MODE" in
 
     echo "MacDog uninstall dry run"
     echo "Would bootout: gui/$UID_VALUE $CACHE_PLIST"
+    echo "Would bootout: gui/$UID_VALUE $GROK_CACHE_PLIST"
     echo "Would bootout: gui/$UID_VALUE $MONITOR_PLIST"
     echo "Would unregister macOS login item if app binary is present"
     echo "Would stop process: $APP_NAME"
     echo "Would remove: $CACHE_PLIST"
+    echo "Would remove: $GROK_CACHE_PLIST"
     echo "Would remove: $MONITOR_PLIST"
     echo "Would remove: $CLI_DEST"
     echo "Would remove: $APP_DEST"
@@ -203,6 +210,9 @@ case "$MODE" in
     echo "Would remove Claude usage cache file: $CLAUDE_CACHE_FILE"
     echo "Would remove Claude usage history file: $CLAUDE_HISTORY_FILE"
     echo "Would remove Claude usage lock file: $CLAUDE_LOCK_FILE"
+    echo "Would remove Grok usage cache file: $GROK_CACHE_FILE"
+    echo "Would remove Grok usage history file: $GROK_HISTORY_FILE"
+    echo "Would remove Grok usage lock file: $GROK_LOCK_FILE"
     echo "Would preserve Claude statusLine settings; restore the previous command manually"
     echo "Would remove shared cache file: $SHARED_CACHE_FILE"
     echo "Would remove empty cache directories: $APP_CACHE_DIR, $SHARED_CACHE_DIR"
@@ -243,13 +253,15 @@ if [[ "$WITH_HELPER" == "1" ]]; then
 fi
 
 /bin/launchctl bootout "gui/$UID_VALUE" "$CACHE_PLIST" >/dev/null 2>&1 || true
+/bin/launchctl bootout "gui/$UID_VALUE" "$GROK_CACHE_PLIST" >/dev/null 2>&1 || true
 /bin/launchctl bootout "gui/$UID_VALUE" "$MONITOR_PLIST" >/dev/null 2>&1 || true
 disable_login_item_if_possible
 restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
-rm -f "$CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE" \
-  "$CLAUDE_CACHE_FILE" "$CLAUDE_HISTORY_FILE" "$CLAUDE_LOCK_FILE"
+rm -f "$CACHE_PLIST" "$GROK_CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE" \
+  "$CLAUDE_CACHE_FILE" "$CLAUDE_HISTORY_FILE" "$CLAUDE_LOCK_FILE" \
+  "$GROK_CACHE_FILE" "$GROK_HISTORY_FILE" "$GROK_LOCK_FILE"
 if ! run_with_timeout 3 rm -f "$SHARED_CACHE_FILE"; then
   echo "Warning: failed to remove shared cache file within timeout: $SHARED_CACHE_FILE" >&2
 fi
