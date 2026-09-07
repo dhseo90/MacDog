@@ -560,6 +560,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.usageNotificationsEnabledKey,
             RunnerPreferences.usageResetSoonNotificationsEnabledKey,
             RunnerPreferences.usageProviderModeKey,
+            RunnerPreferences.usageEnabledProviderMaskKey,
+            RunnerPreferences.usageDetailGraphVisibleKey,
             RunnerPreferences.usageGraphDateBaselineKey
         ]
         var previousValues: [String: Any] = [:]

@@ -2,13 +2,17 @@
 
 ## 제품 방향
 
-MacDog는 사용자가 선택한 하나의 AI provider 사용량을 메뉴바에서 즉시 확인하게 해주는 macOS
+MacDog는 사용자가 선택한 AI provider 사용량을 메뉴바에서 즉시 확인하게 해주는 macOS
 유틸리티입니다. v1.7.0까지는 Codex 전용이며, v1.8.0은 `Codex` 또는 `Claude` 중 하나만
 사용량 mode로 선택합니다. v1.9.0은 설정 visible mode를 `Codex`와 `Grok`만 보여 주고
-Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다.
-작은 강아지 러너가 메뉴바에 상주하고 선택한 provider 사용량이 높아질수록 더 빠르게
-움직입니다. 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각,
-갱신 상태를 보여줍니다.
+Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 다 활성화하고,
+활성 provider 중 하나를 메인으로 정합니다. 작은 강아지 러너와 상세 UI는 메인 provider를
+기준으로 동작하고, 1번 탭 상단에는 활성 provider의 주간 게이지를 함께 보여 줍니다.
+기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
+보여줍니다.
+
+버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.0` 다음 기능 버전은
+`v1.9.1`로 이어 갑니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -17,9 +21,11 @@ Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고
 
 - Codex mode에서는 터미널에서 `codex-usage status` 한 줄로 사용량을 확인합니다.
 - 메뉴바에서는 러너 속도만 봐도 위험도를 알 수 있습니다.
-- 클릭하면 선택한 provider의 단기/주간 사용량과 잔여량 추이를 명확히 봅니다.
+- 클릭하면 메인 provider의 단기/주간 상세 정보와 활성 provider의 주간 게이지를 한 화면에서
+  봅니다.
 - Codex Pup의 기본 위치는 메뉴바이고, 사용자가 원할 때만 데스크톱으로 나와 뛰어다닙니다.
-- 메뉴바 popover는 선택 provider 사용량, Mac, Sleep, Battery, Settings 탭으로 나뉩니다.
+- 메뉴바 popover는 메인 provider 상세 사용량과 활성 provider 주간 게이지, Mac, Sleep,
+  Battery, Settings 탭으로 나뉩니다.
 - WidgetKit 코드는 보존하지만 기본 릴리즈 범위에서는 제외합니다. 현재 확인 범위는 source/test/opt-in build 경계까지이며, Apple Developer Program과 App Group provisioning이 필요한 실제 위젯 UI는 확인하지 못했습니다. 이 검수는 현재 구현 계획에서 제외합니다.
 
 ## 진행 상태 요약
@@ -51,6 +57,7 @@ Claude source는 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
+| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1번 TDD 완료, 2~7 미착수 | 두 writer 동시 운영, 메인 기준 routing, 단일 화면 보조 주간 게이지, GUI 검수 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -645,10 +652,72 @@ status line)만 provider별로 둔다. 주간 그래프, hover, 현재/지난/�
    추론 수준: 높음 (high)
    선정 근거: 영향도 2 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 5점. 릴리즈 영향.
 
+## v1.9.1: Codex/Grok 복수 활성화와 메인 provider UI
+
+`v1.9.1`은 visible provider `Codex`와 `Grok`을 하나 또는 둘 다 활성화하고, 활성 provider
+중 하나를 메인으로 지정하는 milestone입니다. 1번 탭은 provider 하위 탭 없이 같은 화면
+상단에 활성 provider의 주간 게이지를 함께 표시합니다. 상세 그래프, pace, 초기화권, 러너,
+tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로 합니다.
+
+구현 순서, preference migration, 두 cache writer 동시 운영, no-fallback, UI와 검증 경계는
+[Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)에 둡니다.
+
+현재 상태: 1번 TDD 완료, 2~7 미착수.
+
+구현 순서:
+
+1. 활성 provider 최소 1개와 main 포함 불변조건, 기존 단일 mode migration을 TDD로
+   고정합니다. `UsageProviderSelection`과 `usageEnabledProviderMask` /
+   `usageDetailGraphVisible` migration focused test를 통과했습니다.
+2. provider cache/history load와 installed cache writer 생명주기를 활성 집합 기준으로
+   분리합니다. 둘 다 활성화하면 Codex/Grok writer를 함께 유지합니다.
+3. 러너, tooltip, 다음 초기화, 알림, 펫·sleep 문구는 main provider만 평가합니다.
+4. 1번 탭 상단에 main 전체 게이지와 보조 provider 주간 게이지를 함께 표시합니다.
+5. 상세 그래프 표시를 끄면 main 그래프 control과 plot만 숨기고 모든 게이지는 유지합니다.
+6. controller task 전환, screenshot renderer, focused test, 전체 test와 Xcode build를
+   순서대로 닫습니다.
+7. 실제 GUI, 설치, LaunchAgent 실등록과 릴리즈 smoke는 별도 명시 요청 뒤 수행하고,
+   실행하지 않은 항목은 `미수행`으로 기록합니다.
+
+보존 대상:
+
+- Codex/Grok provider별 cache/history와 no-fallback
+- Codex CLI/JSON/cache schema와 Grok weekly-only/auth sibling 계약
+- Claude source와 hidden debug re-enable
+- 공통 주간 그래프, 날짜 기준, current/past/compare, copy/export
+- WidgetKit opt-in source/test 경계
+
+제외 경계:
+
+- Codex/Grok 사용률 합산·평균·비교 그래프
+- 보조 provider 5시간 window와 상세 그래프
+- provider 자동 failover
+- Claude 기본 UI 재노출 또는 visible provider와 동시 활성화
+- cache schema breaking change와 메뉴바 앱의 auth store 접근
+- 사용자 명시 요청 없는 GUI, 설치, LaunchAgent 실등록, 릴리즈 publish, push
+
+완료 기준:
+
+- 설정에서 Codex/Grok 하나 또는 둘 다 활성화할 수 있고 main이 항상 활성 집합에 포함됩니다.
+- 기존 사용자는 선택한 단일 provider와 main이 보존됩니다.
+- 두 provider가 활성일 때 두 writer/cache가 독립 운영됩니다.
+- 1번 탭에서 provider 전환 없이 활성 provider 주간 게이지를 함께 봅니다.
+- 나머지 상세 UI와 앱 반응은 main provider만 기준으로 하며 provider 간 fallback하지 않습니다.
+- 상세 그래프를 숨겨도 게이지는 유지됩니다.
+- `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build와
+  `verify_v191_multi_provider_contract.sh --self-test`가 통과합니다.
+- 실제 UI를 열지 않았다면 `UI 확인 미수행`으로 보고합니다.
+
+추천 모델: `grok-4.6`
+추론 수준: 높음 (high)
+선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 단일 provider
+상태가 preference, writer, runner, 알림, UI에 결합되어 있어 통합 회귀 검토가 필요하지만
+인증 방식과 cache schema는 변경하지 않습니다.
+
 ## RunCat UI 참고 방향
 
 RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이며, 시스템 부하에 따라 속도가
-달라지는 상태 표시"입니다. 이 프로젝트는 CPU 부하 대신 현재 선택한 provider 사용률을 속도
+달라지는 상태 표시"입니다. 이 프로젝트는 CPU 부하 대신 현재 메인 provider 사용률을 속도
 입력으로 사용합니다.
 
 적용할 원칙:
@@ -668,7 +737,7 @@ RunCat의 참고점은 "메뉴바에 작고 귀여운 러너가 계속 움직이
 
 ## 사용량 단계
 
-러너 속도는 선택 provider에서 현재 제공되는 window 사용률 중 더 높은 값을 기준으로 정합니다.
+러너 속도는 메인 provider에서 현재 제공되는 window 사용률 중 더 높은 값을 기준으로 정합니다.
 Codex의 장기 window는 주간, Claude의 장기 window는 7일이며 Codex weekly-only이면 주간 값만
 사용합니다.
 
@@ -676,7 +745,7 @@ Codex의 장기 window는 주간, Claude의 장기 window는 7일이며 Codex we
 usage = max(availableWindows.usedPercent)
 ```
 
-선택 provider가 stale/error이면 다른 provider로 fallback하지 않고 runner의 새 pressure 반영을
+메인 provider가 stale/error이면 다른 provider로 fallback하지 않고 runner의 새 pressure 반영을
 일시 중지합니다.
 
 | 단계 | 사용률 | 메뉴바 속도 | UI 상태 |

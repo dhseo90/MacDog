@@ -31,6 +31,8 @@ struct RunnerPreferences: Equatable {
     static let usageNotificationsEnabledKey = "usageNotificationsEnabled"
     static let usageResetSoonNotificationsEnabledKey = "usageResetSoonNotificationsEnabled"
     static let usageProviderModeKey = "usageProviderMode"
+    static let usageEnabledProviderMaskKey = "usageEnabledProviderMask"
+    static let usageDetailGraphVisibleKey = "usageDetailGraphVisible"
     static let usageGraphDateBaselineKey = "usageGraphDateBaseline"
     static let claudeUsageProviderReenabledKey = "claudeUsageProviderReenabled"
     private static let legacyUsageProviderKeys = [
@@ -60,6 +62,7 @@ struct RunnerPreferences: Equatable {
     static let defaultUsageNotificationsEnabled = false
     static let defaultUsageResetSoonNotificationsEnabled = true
     static let defaultUsageProviderMode = UsageProviderMode.codex
+    static let defaultUsageDetailGraphVisible = true
     static let defaultUsageGraphDateBaseline = UsageGraphDateBaseline.defaultBaseline
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
@@ -107,14 +110,24 @@ struct RunnerPreferences: Equatable {
     static func migrateUsageProviderMode(defaults: UserDefaults = .standard) {
         let storedMode = defaults.string(forKey: usageProviderModeKey)
             .flatMap(UsageProviderMode.init(rawValue:))
+        let claudeReenabled = isClaudeUsageProviderReenabled(defaults: defaults)
+        let resetVisibleSelectionToDefault: Bool
         if storedMode == nil {
             defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
-        } else if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
+            resetVisibleSelectionToDefault = true
+        } else if storedMode == .claude, !claudeReenabled {
             defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
+            resetVisibleSelectionToDefault = true
+        } else {
+            resetVisibleSelectionToDefault = false
         }
         for key in legacyUsageProviderKeys {
             defaults.removeObject(forKey: key)
         }
+        persistNormalizedUsageProviderSelection(
+            defaults: defaults,
+            resetVisibleSelectionToDefault: resetVisibleSelectionToDefault
+        )
     }
 
     let displayBasis: UsageDisplayBasis
@@ -145,6 +158,7 @@ struct RunnerPreferences: Equatable {
     let usageNotificationsEnabled: Bool
     let usageResetSoonNotificationsEnabled: Bool
     let usageProviderMode: UsageProviderMode
+    let usageProviderSelection: UsageProviderSelection
     let usageGraphDateBaseline: UsageGraphDateBaseline
 
     var sleepPreventionMode: SleepPreventionMode {
@@ -222,6 +236,7 @@ struct RunnerPreferences: Equatable {
         self.usageNotificationsEnabled = Self.usageNotificationsEnabled(defaults: defaults)
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
         self.usageProviderMode = Self.usageProviderMode(defaults: defaults)
+        self.usageProviderSelection = Self.usageProviderSelection(defaults: defaults)
         self.usageGraphDateBaseline = UsageGraphDateBaseline.preferred(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
@@ -438,8 +453,82 @@ struct RunnerPreferences: Equatable {
         return storedMode
     }
 
+    static func usageProviderSelection(defaults: UserDefaults = .standard) -> UsageProviderSelection {
+        UsageProviderSelection.normalized(
+            enabledRaw: optionalInteger(for: usageEnabledProviderMaskKey, defaults: defaults),
+            main: storedVisibleUsageProviderMode(defaults: defaults),
+            detailGraphVisible: optionalBool(for: usageDetailGraphVisibleKey, defaults: defaults)
+        )
+    }
+
     static func setUsageProviderMode(_ mode: UsageProviderMode, defaults: UserDefaults = .standard) {
-        defaults.set(mode.rawValue, forKey: usageProviderModeKey)
+        if mode == .claude {
+            defaults.set(mode.rawValue, forKey: usageProviderModeKey)
+            return
+        }
+        let graphVisible = optionalBool(for: usageDetailGraphVisibleKey, defaults: defaults)
+            ?? defaultUsageDetailGraphVisible
+        setUsageProviderSelection(
+            UsageProviderSelection.normalized(
+                enabledRaw: UsageProviderSelection.mask(for: mode).rawValue,
+                main: mode,
+                detailGraphVisible: graphVisible
+            ),
+            defaults: defaults
+        )
+    }
+
+    static func setUsageProviderSelection(
+        _ selection: UsageProviderSelection,
+        defaults: UserDefaults = .standard
+    ) {
+        let normalized = UsageProviderSelection.normalized(
+            enabledRaw: selection.enabled.rawValue,
+            main: selection.main,
+            detailGraphVisible: selection.detailGraphVisible
+        )
+        defaults.set(normalized.enabled.rawValue, forKey: usageEnabledProviderMaskKey)
+        defaults.set(normalized.detailGraphVisible, forKey: usageDetailGraphVisibleKey)
+        defaults.set(normalized.main.rawValue, forKey: usageProviderModeKey)
+    }
+
+    private static func persistNormalizedUsageProviderSelection(
+        defaults: UserDefaults,
+        resetVisibleSelectionToDefault: Bool = false
+    ) {
+        let resolvedMode = usageProviderMode(defaults: defaults)
+        let selection = UsageProviderSelection.normalized(
+            enabledRaw: resetVisibleSelectionToDefault
+                ? nil
+                : optionalInteger(for: usageEnabledProviderMaskKey, defaults: defaults),
+            main: resetVisibleSelectionToDefault || resolvedMode == .claude ? nil : resolvedMode,
+            detailGraphVisible: optionalBool(for: usageDetailGraphVisibleKey, defaults: defaults)
+        )
+        defaults.set(selection.enabled.rawValue, forKey: usageEnabledProviderMaskKey)
+        defaults.set(selection.detailGraphVisible, forKey: usageDetailGraphVisibleKey)
+        if resolvedMode != .claude {
+            defaults.set(selection.main.rawValue, forKey: usageProviderModeKey)
+        }
+    }
+
+    private static func storedVisibleUsageProviderMode(defaults: UserDefaults) -> UsageProviderMode? {
+        let mode = usageProviderMode(defaults: defaults)
+        switch mode {
+        case .codex, .grok:
+            return mode
+        case .claude:
+            return nil
+        }
+    }
+
+    private static func optionalInteger(for key: String, defaults: UserDefaults) -> Int? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.integer(forKey: key)
+    }
+
+    private static func optionalBool(for key: String, defaults: UserDefaults) -> Bool? {
+        guard defaults.object(forKey: key) != nil else { return nil }
+        return defaults.bool(forKey: key)
     }
 
     static func setUsageGraphDateBaseline(
