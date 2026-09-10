@@ -24,6 +24,9 @@ struct UsageProviderSelection: Equatable, Sendable {
         detailGraphVisible: true
     )
 
+    var includesCodex: Bool { enabled.contains(.codex) }
+    var includesGrok: Bool { enabled.contains(.grok) }
+
     static func mask(for mode: UsageProviderMode) -> UsageProviderMask {
         switch mode {
         case .codex:

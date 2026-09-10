@@ -10,6 +10,17 @@ enum CodexUsageCacheRefreshPolicy {
     static func shouldRunLiveRefresh(for mode: UsageProviderMode) -> Bool {
         mode == .codex
     }
+
+    static func shouldRunLiveRefresh(for selection: UsageProviderSelection) -> Bool {
+        selection.includesCodex
+    }
+
+    static func shouldRunLiveRefresh(
+        for mode: UsageProviderMode,
+        selection: UsageProviderSelection
+    ) -> Bool {
+        mode != .claude && shouldRunLiveRefresh(for: selection)
+    }
 }
 
 enum GrokUsageCacheRefreshPolicy {
@@ -18,5 +29,16 @@ enum GrokUsageCacheRefreshPolicy {
 
     static func shouldRunLiveRefresh(for mode: UsageProviderMode) -> Bool {
         mode == .grok
+    }
+
+    static func shouldRunLiveRefresh(for selection: UsageProviderSelection) -> Bool {
+        selection.includesGrok
+    }
+
+    static func shouldRunLiveRefresh(
+        for mode: UsageProviderMode,
+        selection: UsageProviderSelection
+    ) -> Bool {
+        mode != .claude && shouldRunLiveRefresh(for: selection)
     }
 }

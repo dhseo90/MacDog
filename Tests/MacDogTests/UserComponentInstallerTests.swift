@@ -31,6 +31,23 @@ final class UserComponentInstallerTests: XCTestCase {
         XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: .claude), .remove)
     }
 
+    func testEnabledProviderSetInstallsMatchingCacheAgentsIndependently() {
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let grokOnly = UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+        let codexOnly = UsageProviderSelection(enabled: .codex, main: .codex, detailGraphVisible: true)
+
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: dual), .install)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: dual), .install)
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: grokOnly), .remove)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: grokOnly), .install)
+        XCTAssertEqual(UserComponentInstaller.cacheAgentAction(for: codexOnly), .install)
+        XCTAssertEqual(UserComponentInstaller.grokCacheAgentAction(for: codexOnly), .remove)
+    }
+
     func testClaudeModeRemovesCodexCacheLaunchAgentWithoutTouchingUsageCache() throws {
         let home = try makeTemporaryHome()
         defer { try? fileManager.removeItem(at: home) }
@@ -258,6 +275,68 @@ final class UserComponentInstallerTests: XCTestCase {
         XCTAssertTrue(fileManager.fileExists(atPath: grokPlist.path))
         XCTAssertFalse(fileManager.fileExists(atPath: codexPlist.path))
         XCTAssertTrue(calls.contains(["bootstrap", "gui/\(getuid())", grokPlist.path]))
+    }
+
+    func testBothEnabledProvidersInstallBothLaunchAgentsWithoutRemovingTheOther() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let app = try makeTemporaryAppBundle(in: home)
+        var calls: [[String]] = []
+        let installer = UserComponentInstaller(
+            appBundleURL: app,
+            homeDirectory: home,
+            launchctlRunner: { arguments in
+                calls.append(arguments)
+                return ""
+            }
+        )
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+
+        try installer.synchronizeUsageCacheAgent(for: dual)
+
+        let grokPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.grokCacheLabel).plist")
+        let codexPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        XCTAssertTrue(fileManager.fileExists(atPath: grokPlist.path))
+        XCTAssertTrue(fileManager.fileExists(atPath: codexPlist.path))
+        XCTAssertTrue(calls.contains(["bootstrap", "gui/\(getuid())", grokPlist.path]))
+        XCTAssertTrue(calls.contains(["bootstrap", "gui/\(getuid())", codexPlist.path]))
+    }
+
+    func testDisablingCodexRemovesOnlyCodexAgentWhenGrokStaysEnabled() throws {
+        let home = try makeTemporaryHome()
+        defer { try? fileManager.removeItem(at: home) }
+        let app = try makeTemporaryAppBundle(in: home)
+        let installer = UserComponentInstaller(
+            appBundleURL: app,
+            homeDirectory: home,
+            launchctlRunner: { _ in "" }
+        )
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let grokOnly = UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+
+        try installer.synchronizeUsageCacheAgent(for: dual)
+        try installer.synchronizeUsageCacheAgent(for: grokOnly)
+
+        let grokPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.grokCacheLabel).plist")
+        let codexPlist = home
+            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
+            .appendingPathComponent("\(UserComponentInstaller.cacheLabel).plist")
+        XCTAssertTrue(fileManager.fileExists(atPath: grokPlist.path))
+        XCTAssertFalse(fileManager.fileExists(atPath: codexPlist.path))
     }
 
     func testCacheLaunchAgentPlistMirrorsWidgetCacheOnlyWhenRequested() throws {

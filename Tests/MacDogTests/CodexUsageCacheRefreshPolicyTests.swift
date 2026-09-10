@@ -84,6 +84,24 @@ final class CodexUsageCacheRefreshPolicyTests: XCTestCase {
         XCTAssertFalse(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude))
     }
 
+    func testLiveRefreshRunsIndependentlyForEnabledVisibleProviders() {
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let grokOnly = UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+
+        XCTAssertTrue(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: dual))
+        XCTAssertTrue(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: dual))
+        XCTAssertTrue(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .grok, selection: dual))
+        XCTAssertTrue(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .codex, selection: dual))
+        XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: grokOnly))
+        XCTAssertTrue(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: grokOnly))
+        XCTAssertFalse(CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude, selection: dual))
+        XCTAssertFalse(GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: .claude, selection: dual))
+    }
+
     func testGrokRefreshCommandWritesCacheWithoutMirror() {
         let command = UsageCacheRefreshCommand.grokWriteCache(
             grokUsageURL: URL(fileURLWithPath: "/Applications/MacDog.app/Contents/MacOS/macdog-grok-usage")

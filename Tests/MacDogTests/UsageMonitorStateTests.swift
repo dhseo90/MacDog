@@ -138,6 +138,36 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex))
     }
 
+    func testSelectedUsageSourcePolicyLoadsBothVisibleCachesWithoutFallback() {
+        let dualCodexMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let dualGrokMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let grokOnly = UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: dualCodexMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: dualCodexMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: dualGrokMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: dualGrokMain))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: dualCodexMain))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: grokOnly))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: grokOnly))
+        XCTAssertFalse(
+            SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .claude, selection: dualCodexMain)
+        )
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .claude, selection: dualCodexMain))
+        XCTAssertTrue(
+            SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .grok, selection: dualGrokMain)
+        )
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex, selection: dualCodexMain))
+    }
+
     func testVisibleSettingsModesHideClaudeAndKeepGrok() {
         XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
         XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))
