@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2 selection 모델 TDD 완료 / Step 3~11 미착수
+상태: Step 2~4 load/writer TDD 완료 / Step 5~11 미착수
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
