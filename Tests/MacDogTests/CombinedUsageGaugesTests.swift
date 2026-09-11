@@ -146,6 +146,61 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
     }
 
+    func testHidingDetailGraphKeepsGaugesPaceAndStatus() {
+        let hidden = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: false
+        )
+        let shown = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let hiddenVisibility = UsageTabSectionVisibility.make(mode: .codex, selection: hidden)
+        let shownVisibility = UsageTabSectionVisibility.make(mode: .grok, selection: shown)
+        let claudeVisibility = UsageTabSectionVisibility.make(mode: .claude, selection: hidden)
+
+        XCTAssertEqual(
+            hiddenVisibility,
+            UsageTabSectionVisibility(
+                showsCombinedGauges: true,
+                showsPaceAndCredits: true,
+                showsMainWeeklyGraph: false,
+                showsDataStatus: true
+            )
+        )
+        XCTAssertTrue(shownVisibility.showsMainWeeklyGraph)
+        XCTAssertTrue(shownVisibility.showsCombinedGauges)
+        XCTAssertFalse(claudeVisibility.showsCombinedGauges)
+        XCTAssertTrue(claudeVisibility.showsMainWeeklyGraph)
+    }
+
+    func testCombinedGaugesStayWhenDetailGraphIsHidden() throws {
+        let hidden = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: false
+        )
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: try Self.grokPreview(usedPercent: 96, resetsAt: 1_900_003_600),
+            usageProviderMode: .codex,
+            usageProviderSelection: hidden
+        )
+        let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
+
+        XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간", "Grok 주간"])
+        XCTAssertFalse(
+            UsageTabSectionVisibility.make(
+                mode: state.usageProviderMode,
+                selection: state.usageProviderSelection
+            ).showsMainWeeklyGraph
+        )
+    }
+
     func testClaudeDebugDoesNotBuildVisibleCombinedGauges() throws {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),

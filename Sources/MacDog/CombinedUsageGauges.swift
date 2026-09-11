@@ -22,6 +22,33 @@ struct UsageProviderGaugeItem: Equatable, Identifiable {
     var id: String { "\(provider.rawValue)-\(kind.rawValue)-\(isAuxiliary)" }
 }
 
+struct UsageTabSectionVisibility: Equatable {
+    let showsCombinedGauges: Bool
+    let showsPaceAndCredits: Bool
+    let showsMainWeeklyGraph: Bool
+    let showsDataStatus: Bool
+
+    static func make(
+        mode: UsageProviderMode,
+        selection: UsageProviderSelection
+    ) -> UsageTabSectionVisibility {
+        if mode == .claude {
+            return UsageTabSectionVisibility(
+                showsCombinedGauges: false,
+                showsPaceAndCredits: true,
+                showsMainWeeklyGraph: true,
+                showsDataStatus: true
+            )
+        }
+        return UsageTabSectionVisibility(
+            showsCombinedGauges: true,
+            showsPaceAndCredits: true,
+            showsMainWeeklyGraph: selection.detailGraphVisible,
+            showsDataStatus: true
+        )
+    }
+}
+
 struct CombinedUsageGauges: Equatable {
     let items: [UsageProviderGaugeItem]
 

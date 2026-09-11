@@ -5,11 +5,17 @@ import SwiftUI
 struct GrokUsagePanel: View {
     let preview: GrokUsagePreviewState
     let now: Date
+    let showsWeeklyGraph: Bool
     private let loginGuide = GrokLoginGuide()
 
-    init(preview: GrokUsagePreviewState, now: Date = Date()) {
+    init(
+        preview: GrokUsagePreviewState,
+        now: Date = Date(),
+        showsWeeklyGraph: Bool = true
+    ) {
         self.preview = preview
         self.now = now
+        self.showsWeeklyGraph = showsWeeklyGraph
     }
 
     var body: some View {
@@ -17,21 +23,23 @@ struct GrokUsagePanel: View {
             statusHeader
             if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
                 paceSummary(for: weekly)
-                Divider()
-                WeeklyRemainingHistoryBlock(
-                    history: GrokWeeklyRemainingHistoryAdapter.history(
-                        preview.history,
-                        currentWeekly: weekly,
-                        currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
-                            ?? Int(now.timeIntervalSince1970)
-                    ),
-                    resetWindowHistory: .empty,
-                    weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
-                    currentReport: nil, // Grok has no CodexUsageReport; currentSample comes from history + timestamp
-                    currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
-                        ?? Int(now.timeIntervalSince1970),
-                    graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
-                )
+                if showsWeeklyGraph {
+                    Divider()
+                    WeeklyRemainingHistoryBlock(
+                        history: GrokWeeklyRemainingHistoryAdapter.history(
+                            preview.history,
+                            currentWeekly: weekly,
+                            currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
+                                ?? Int(now.timeIntervalSince1970)
+                        ),
+                        resetWindowHistory: .empty,
+                        weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
+                        currentReport: nil, // Grok has no CodexUsageReport; currentSample comes from history + timestamp
+                        currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
+                            ?? Int(now.timeIntervalSince1970),
+                        graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
+                    )
+                }
             } else {
                 waitingContent
             }

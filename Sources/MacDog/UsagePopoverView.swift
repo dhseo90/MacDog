@@ -227,7 +227,14 @@ struct UsagePopoverView: View {
         if state.usageProviderMode == .claude {
             ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
         } else if state.runtimeProviderMode == .grok {
-            GrokUsagePanel(preview: state.grokUsage, now: now)
+            GrokUsagePanel(
+                preview: state.grokUsage,
+                now: now,
+                showsWeeklyGraph: UsageTabSectionVisibility.make(
+                    mode: state.usageProviderMode,
+                    selection: state.usageProviderSelection
+                ).showsMainWeeklyGraph
+            )
         } else {
             CodexUsagePanel(state: state)
         }

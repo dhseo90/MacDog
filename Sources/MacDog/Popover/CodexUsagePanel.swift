@@ -27,16 +27,21 @@ struct CodexUsagePanel: View {
 
                 CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
 
-                WeeklyRemainingHistoryBlock(
-                    history: state.weeklyUsageHistory,
-                    resetWindowHistory: state.resetWindowHistory,
-                    weeklyWindow: limit.weekly,
-                    currentReport: state.report,
-                    currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
-                    graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(
-                        fiveHourIsAvailable: false
+                if UsageTabSectionVisibility.make(
+                    mode: state.usageProviderMode,
+                    selection: state.usageProviderSelection
+                ).showsMainWeeklyGraph {
+                    WeeklyRemainingHistoryBlock(
+                        history: state.weeklyUsageHistory,
+                        resetWindowHistory: state.resetWindowHistory,
+                        weeklyWindow: limit.weekly,
+                        currentReport: state.report,
+                        currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
+                        graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(
+                            fiveHourIsAvailable: false
+                        )
                     )
-                )
+                }
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)
             } else if state.isRefreshing {
