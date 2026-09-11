@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~5 main runtime TDD 완료 / Step 6~11 미착수
+상태: Step 2~6 통합 게이지 TDD 완료 / Step 7~11 미착수
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
