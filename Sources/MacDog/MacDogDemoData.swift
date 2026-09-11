@@ -16,6 +16,9 @@ enum MacDogDemoData {
         now: Int = Int(Date().timeIntervalSince1970)
     ) -> UsageMonitorState {
         let usesCodexDemo = preferences.usageProviderMode != .grok
+            || preferences.usageProviderSelection.includesCodex
+        let usesGrokDemo = preferences.usageProviderMode == .grok
+            || preferences.usageProviderSelection.includesGrok
         return UsageMonitorState(
             report: usesCodexDemo ? report(now: now) : nil,
             cacheSnapshot: nil,
@@ -37,7 +40,7 @@ enum MacDogDemoData {
             claudeUsagePreview: preferences.usageProviderMode == .claude
                 ? claudeUsagePreview(now: now)
                 : .disabled,
-            grokUsage: preferences.usageProviderMode == .grok
+            grokUsage: usesGrokDemo
                 ? grokUsagePreview(now: now)
                 : .disabled,
             usageProviderMode: preferences.usageProviderMode,

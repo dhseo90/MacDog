@@ -8,28 +8,15 @@ struct CodexUsagePanel: View {
         VStack(alignment: .leading, spacing: CodexUsagePanelLayout.sectionSpacing) {
             if let limit = state.codexLimit,
                let summary = state.codexPanelSummary(now: resetSummaryNow) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("현재 사용량")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Spacer(minLength: 6)
-                        CodexUsageSummaryInline(
-                            summary: summary,
-                            phase: state.codexPhase,
-                            selectedBasisLabel: state.selectedWindowStatus?.label
-                        )
-                    }
-
-                    UsageRow(
-                        title: "5시간",
-                        window: limit.fiveHour,
-                        resetSummary: resetSummary(at: 0, in: summary)
-                    )
-                    UsageRow(
-                        title: "주간",
-                        window: limit.weekly,
-                        resetSummary: resetSummary(at: 1, in: summary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("현재 사용량")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    CodexUsageSummaryInline(
+                        summary: summary,
+                        phase: state.codexPhase,
+                        selectedBasisLabel: state.selectedWindowStatus?.label
                     )
                 }
 
@@ -47,7 +34,7 @@ struct CodexUsagePanel: View {
                     currentReport: state.report,
                     currentTimestamp: state.cacheSnapshot?.cachedAt ?? state.report?.generatedAt,
                     graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(
-                        fiveHourIsAvailable: limit.fiveHour != nil
+                        fiveHourIsAvailable: false
                     )
                 )
 
@@ -75,11 +62,6 @@ struct CodexUsagePanel: View {
             }
         }
         .padding(.bottom, 0)
-    }
-
-    private func resetSummary(at index: Int, in summary: CodexUsagePanelSummary) -> String? {
-        guard summary.resetCountdowns.indices.contains(index) else { return nil }
-        return summary.resetCountdowns[index].value
     }
 
     private var resetSummaryNow: Date {

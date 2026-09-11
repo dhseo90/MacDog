@@ -15,7 +15,6 @@ struct GrokUsagePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             statusHeader
-            windowCards
             if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
                 paceSummary(for: weekly)
                 Divider()
@@ -49,56 +48,6 @@ struct GrokUsagePanel: View {
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(statusColor)
                 .lineLimit(1)
-        }
-    }
-
-    private var windowCards: some View {
-        windowCard(
-            title: "주간",
-            value: weeklySummary,
-            detail: UsageWindowStatus.resetSummary(
-                resetsAt: preview.cacheSnapshot?.freshWeekly(now: now)?.resetsAt,
-                now: now
-            )
-        )
-    }
-
-    private func windowCard(title: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.weight(.semibold))
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-        }
-        .padding(7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.045)))
-    }
-
-    private var weeklySummary: String {
-        guard let weekly = preview.cacheSnapshot?.freshWeekly(now: now) else {
-            return unavailableWeeklyText
-        }
-        return "\(UsageMonitorState.percent(weekly.usedPercent))% 사용 · \(UsageMonitorState.percent(weekly.remainingPercent))% 남음"
-    }
-
-    private var unavailableWeeklyText: String {
-        if let text = preview.weeklyCardUnavailableText() {
-            return text
-        }
-        switch preview.status(now: now) {
-        case .stale:
-            return "오래된 cache · 갱신 대기"
-        case .error:
-            return "cache 확인 필요"
-        case .waiting, .available:
-            return "주간 cache 없음"
         }
     }
 
