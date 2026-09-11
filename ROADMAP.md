@@ -57,7 +57,7 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
-| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1~2번 완료, 3~7 미착수 | 메인 기준 routing, 단일 화면 보조 주간 게이지, GUI 검수 |
+| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1~3번 완료, 4~7 미착수 | 단일 화면 보조 주간 게이지, GUI 검수 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -662,7 +662,7 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
 구현 순서, preference migration, 두 cache writer 동시 운영, no-fallback, UI와 검증 경계는
 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)에 둡니다.
 
-현재 상태: 1~2번 완료, 3~7 미착수.
+현재 상태: 1~3번 완료, 4~7 미착수.
 
 구현 순서:
 
@@ -674,6 +674,8 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
    `SelectedUsageSourcePolicy`와 LaunchAgent action focused test를 통과했습니다.
    실제 LaunchAgent 등록은 하지 않았습니다.
 3. 러너, tooltip, 다음 초기화, 알림, 펫·sleep 문구는 main provider만 평가합니다.
+   보조 provider의 더 높은 사용률이나 stale 상태가 메인 반응을 바꾸지 않는 focused test를
+   통과했습니다.
 4. 1번 탭 상단에 main 전체 게이지와 보조 provider 주간 게이지를 함께 표시합니다.
 5. 상세 그래프 표시를 끄면 main 그래프 control과 plot만 숨기고 모든 게이지는 유지합니다.
 6. controller task 전환, screenshot renderer, focused test, 전체 test와 Xcode build를

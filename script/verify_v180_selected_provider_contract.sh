@@ -148,7 +148,7 @@ verify_contract() {
     "provider change cache agent synchronization"
   require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
     "canonical provider mode"
-  require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
+  require_match 'switch (usageProviderMode|runtimeProviderMode)' "$STATE_SOURCE" "selected runner source"
   require_match 'if weekly == nil' "$CODEX_REPORT_SOURCE" "weekly-required Codex validation"
   reject_match 'missing\.append\(\.fiveHour\)' "$CODEX_REPORT_SOURCE" \
     "five-hour required validation"
