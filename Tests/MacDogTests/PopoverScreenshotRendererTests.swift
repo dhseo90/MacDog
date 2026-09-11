@@ -24,6 +24,59 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
     }
 
+    func testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates() {
+        let now = MacDogDemoData.readmeScreenshotTimestamp
+        let cases: [(String, UsageProviderSelection, Int)] = [
+            (
+                "single-codex",
+                UsageProviderSelection(enabled: .codex, main: .codex, detailGraphVisible: true),
+                2
+            ),
+            (
+                "codex-main-dual",
+                UsageProviderSelection(enabled: [.codex, .grok], main: .codex, detailGraphVisible: true),
+                3
+            ),
+            (
+                "grok-main-dual",
+                UsageProviderSelection(enabled: [.codex, .grok], main: .grok, detailGraphVisible: true),
+                2
+            ),
+            (
+                "graph-hidden",
+                UsageProviderSelection(enabled: [.codex, .grok], main: .codex, detailGraphVisible: false),
+                3
+            )
+        ]
+
+        for (name, selection, gaugeCount) in cases {
+            let state = MacDogDemoData.state(selection: selection, now: now)
+            let gauges = CombinedUsageGauges.make(
+                state: state,
+                now: Date(timeIntervalSince1970: TimeInterval(now))
+            )
+            XCTAssertEqual(gauges.items.count, gaugeCount, name)
+            XCTAssertEqual(
+                UsageTabSectionVisibility.make(mode: state.usageProviderMode, selection: selection)
+                    .showsMainWeeklyGraph,
+                selection.detailGraphVisible,
+                name
+            )
+
+            let image = renderUsagePopover(state)
+            XCTAssertGreaterThan(image.tiffRepresentation?.count ?? 0, 100, name)
+            XCTAssertGreaterThan(
+                screenshotColorDistance(
+                    in: image,
+                    from: CGPoint(x: 0.02, y: 0.02),
+                    to: CGPoint(x: 0.89, y: 0.12)
+                ),
+                0.12,
+                name
+            )
+        }
+    }
+
     func testClaudeUsageWaitingPartialReadyStaleAndErrorStatesRender() throws {
         let now = Date(timeIntervalSince1970: 1_900_000_000)
         let previews = [
@@ -309,6 +362,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(grokPanelSource.contains("초기화권"))
         XCTAssertFalse(grokPanelSource.contains("reset credit"))
         XCTAssertTrue(controllerSource.contains("grokUsageNotificationDispatcher.dispatch"))
+        XCTAssertTrue(controllerSource.contains("UsageProviderWorkDiff.make"))
+        XCTAssertFalse(controllerSource.contains("cancelProviderBoundWork(for:"))
     }
 
     func testCodexUsagePanelKeepsSixResetCreditsVisibleWithoutDisclosure() throws {
@@ -1008,6 +1063,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             availableCount: count,
             credits: credits
         )
+    }
+
+    private func renderUsagePopover(_ state: UsageMonitorState) -> NSImage {
+        let view = UsagePopoverView(
+            state: state,
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+        )
+        return render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
     }
 
     private func render<V: View>(view: V, size: NSSize, scale: CGFloat) -> NSImage {
