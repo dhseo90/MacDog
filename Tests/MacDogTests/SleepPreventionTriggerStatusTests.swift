@@ -127,6 +127,24 @@ final class SleepPreventionTriggerStatusTests: XCTestCase {
         XCTAssertFalse(status.summary.contains("Codex"))
     }
 
+    func testConfiguredAppTriggerSummaryUsesMainProviderWhenBothAreEnabled() {
+        RunnerPreferences.setUsageProviderSelection(
+            UsageProviderSelection(enabled: [.codex, .grok], main: .grok, detailGraphVisible: true),
+            defaults: defaults
+        )
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+
+        let status = SleepPreventionTriggerStatus.evaluate(
+            preferences: RunnerPreferences(defaults: defaults),
+            systemMetrics: makeMetrics(),
+            codexAppRunning: true,
+            externalVolumeCount: 0
+        )
+
+        XCTAssertEqual(status.summary, "활성 · Grok 실행")
+        XCTAssertFalse(status.summary.contains("Codex"))
+    }
+
     func testCaptureDoesNotReadRunningAppsWhenConfiguredAppTriggerIsDisabled() {
         RunnerPreferences.setSleepPreventionPowerAdapterTrigger(true, defaults: defaults)
         RunnerPreferences.setSleepPreventionCodexAppTrigger(false, defaults: defaults)

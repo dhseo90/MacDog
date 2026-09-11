@@ -10,6 +10,13 @@ final class UsageNotificationDeliveryTests: XCTestCase {
         XCTAssertEqual(UsageNotificationRoute(mode: .claude), .claude)
         XCTAssertNotEqual(UsageNotificationRoute(mode: .grok), .claude)
         XCTAssertNotEqual(UsageNotificationRoute(mode: .grok), .codex)
+        let dualGrokMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        XCTAssertEqual(UsageNotificationRoute(mode: .codex, selection: dualGrokMain), .grok)
+        XCTAssertEqual(UsageNotificationRoute(mode: .claude, selection: dualGrokMain), .claude)
     }
 
     func testCancelledProviderDispatchStopsAfterAuthorizationWithoutDelivery() async {

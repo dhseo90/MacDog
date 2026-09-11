@@ -286,6 +286,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)"))
         XCTAssertFalse(claudePanelSource.contains("live 구독 검수 미수행"))
         XCTAssertTrue(controllerSource.contains("switch UsageNotificationRoute(mode: loadedState.usageProviderMode)"))
+        XCTAssertTrue(controllerSource.contains("usageProviderSelection: preferences.usageProviderSelection"))
         XCTAssertTrue(popoverSource.contains("GrokUsagePanel(preview: state.grokUsage, now: now)"))
         XCTAssertFalse(grokPanelSource.contains("5시간"))
         XCTAssertTrue(grokPanelSource.contains("주간"))

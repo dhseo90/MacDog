@@ -55,6 +55,17 @@ struct RunnerPreferences: Equatable {
     static let defaultSleepPreventionMemoryThresholdPercent = 20
     static let defaultSleepPreventionNetworkThresholdKBPerSecond = 100
     static let defaultSleepPreventionAppMatchText = "codex"
+
+    static func defaultSleepPreventionAppMatchText(for mode: UsageProviderMode) -> String {
+        switch mode {
+        case .codex:
+            "codex"
+        case .grok:
+            "grok"
+        case .claude:
+            "claude"
+        }
+    }
     static let defaultSleepPreventionPreventDisplaySleep = true
     static let defaultSleepPreventionPreventClosedLidSleep = true
     static let defaultSleepPreventionDisableScreenLock = true
@@ -634,7 +645,10 @@ struct RunnerPreferences: Equatable {
     static func setSleepPreventionCodexAppTrigger(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         setConditionControlMode(defaults: defaults)
         if isEnabled {
-            defaults.set(defaultSleepPreventionAppMatchText, forKey: sleepPreventionAppMatchTextKey)
+            defaults.set(
+                defaultSleepPreventionAppMatchText(for: usageProviderMode(defaults: defaults)),
+                forKey: sleepPreventionAppMatchTextKey
+            )
         }
         defaults.set(isEnabled, forKey: sleepPreventionCodexAppTriggerKey)
     }
