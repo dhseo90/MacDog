@@ -271,30 +271,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         from previous: RunnerPreferences,
         to current: RunnerPreferences
     ) {
-        if previous.usageProviderMode != current.usageProviderMode {
+        let diff = UsageProviderWorkDiff.make(from: previous, to: current)
+        if diff.cancelNotifications {
             usageNotificationTask?.cancel()
             usageNotificationTask = nil
         }
-        if previous.usageProviderMode == .claude || current.usageProviderMode == .claude {
-            if previous.usageProviderMode != current.usageProviderMode {
-                cancelProviderBoundWork(for: current.usageProviderMode)
-            }
-            return
-        }
-        if previous.usageProviderSelection.includesCodex, !current.usageProviderSelection.includesCodex {
+        if diff.cancelCodexRefresh {
             cancelCodexUsageCacheRefresh()
         }
-        if previous.usageProviderSelection.includesGrok, !current.usageProviderSelection.includesGrok {
+        if diff.cancelGrokRefresh {
             cancelGrokUsageCacheRefresh()
         }
-    }
-
-    private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
-        usageNotificationTask?.cancel()
-        usageNotificationTask = nil
-        cancelCodexUsageCacheRefresh()
-        cancelGrokUsageCacheRefresh()
-        _ = currentMode
     }
 
     private func cancelCodexUsageCacheRefresh() {
@@ -393,9 +380,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         from previous: RunnerPreferences,
         to current: RunnerPreferences
     ) {
-        let selectionChanged = previous.usageProviderSelection != current.usageProviderSelection
-            || previous.usageProviderMode != current.usageProviderMode
-        guard selectionChanged, UserComponentInstaller.shouldManage() else { return }
+        let diff = UsageProviderWorkDiff.make(from: previous, to: current)
+        guard diff.synchronizeCacheAgents, UserComponentInstaller.shouldManage() else { return }
         do {
             try userComponentInstaller.synchronizeUsageCacheAgent(
                 for: current.usageProviderSelection,
