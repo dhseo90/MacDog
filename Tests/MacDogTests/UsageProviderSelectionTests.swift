@@ -100,6 +100,19 @@ final class UsageProviderSelectionTests: XCTestCase {
         }
     }
 
+    func testOnlyEnabledProviderCannotBeTurnedOffAndMainPickerShowsForDual() {
+        let codexOnly = UsageProviderSelection(enabled: .codex, main: .codex, detailGraphVisible: true)
+        let dual = UsageProviderSelection(enabled: [.codex, .grok], main: .grok, detailGraphVisible: false)
+
+        XCTAssertTrue(codexOnly.isOnlyEnabled(.codex))
+        XCTAssertFalse(codexOnly.isOnlyEnabled(.grok))
+        XCTAssertFalse(codexOnly.showsMainPicker)
+        XCTAssertFalse(dual.isOnlyEnabled(.codex))
+        XCTAssertFalse(dual.isOnlyEnabled(.grok))
+        XCTAssertTrue(dual.showsMainPicker)
+        XCTAssertEqual(codexOnly.disabling(.codex), codexOnly)
+    }
+
     func testDisablingLastVisibleProviderIsRejected() {
         let codexOnly = UsageProviderSelection.normalized(
             enabledRaw: UsageProviderMask.codex.rawValue,

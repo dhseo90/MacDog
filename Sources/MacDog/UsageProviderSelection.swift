@@ -34,6 +34,12 @@ struct UsageProviderSelection: Equatable, Sendable {
 
     var includesCodex: Bool { enabled.contains(.codex) }
     var includesGrok: Bool { enabled.contains(.grok) }
+    var showsMainPicker: Bool { includesCodex && includesGrok }
+
+    func isOnlyEnabled(_ mode: UsageProviderMode) -> Bool {
+        let bit = Self.mask(for: mode)
+        return !bit.isEmpty && enabled.visibleMask == bit
+    }
 
     static func mask(for mode: UsageProviderMode) -> UsageProviderMask {
         switch mode {

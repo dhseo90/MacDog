@@ -168,7 +168,7 @@ verify_contract() {
     "selected notification route"
   require_match 'shouldRunLiveRefresh\(for mode: UsageProviderMode\)' "$REFRESH_SOURCE" \
     "selected refresh policy"
-  require_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "single settings mode picker"
+  require_match 'UsageProviderMode.visibleCases' "$SETTINGS_SOURCE" "visible provider settings"
   require_match 'state\.usageProviderMode == \.claude' "$POPOVER_SOURCE" "selected usage tab"
 
   require_match 'testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys' \

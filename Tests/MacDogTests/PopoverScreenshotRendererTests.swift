@@ -77,6 +77,17 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         }
     }
 
+    func testSettingsPanelRendersVisibleProviderCheckboxesWithoutSubTabs() {
+        let view = SettingsPanel(
+            privilegedHelperInstallSnapshot: .missing,
+            onAction: { _ in },
+            onPreferencesChanged: {},
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+        )
+        let image = render(view: view, size: NSSize(width: 292, height: 360), scale: 2)
+        XCTAssertGreaterThan(image.tiffRepresentation?.count ?? 0, 100)
+    }
+
     func testClaudeUsageWaitingPartialReadyStaleAndErrorStatesRender() throws {
         let now = Date(timeIntervalSince1970: 1_900_000_000)
         let previews = [
@@ -317,7 +328,12 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
         let grokPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/GrokUsagePanel.swift")
 
-        XCTAssertTrue(settingsSource.contains("Picker(\"사용량 mode\""))
+        XCTAssertFalse(settingsSource.contains("Picker(\"사용량 mode\""))
+        XCTAssertTrue(settingsSource.contains("UsageProviderMode.visibleCases"))
+        XCTAssertTrue(settingsSource.contains("활성 provider"))
+        XCTAssertTrue(settingsSource.contains("Picker(\"메인 provider\""))
+        XCTAssertTrue(settingsSource.contains("상세 그래프 표시"))
+        XCTAssertTrue(settingsSource.contains("isOnlyEnabled"))
         XCTAssertTrue(settingsSource.contains("Picker(\"날짜 기준\""))
         XCTAssertTrue(settingsSource.contains("UsageGraphDateBaseline.allCases"))
         let dateBaselineSource = try String(contentsOfFile: "Sources/MacDog/UsageGraphDateBaseline.swift")

@@ -18,6 +18,7 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw = RunnerPreferences.defaultUsageProviderMode.rawValue
     @AppStorage(RunnerPreferences.usageGraphDateBaselineKey) private var usageGraphDateBaselineRaw =
         RunnerPreferences.defaultUsageGraphDateBaseline.rawValue
+    @State private var usageSelection = RunnerPreferences.usageProviderSelection()
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
     @State private var notificationAuthorizationStatus = UsageNotificationAuthorizationStatus.unknown
@@ -66,13 +67,7 @@ struct SettingsPanel: View {
             Divider()
 
             PopoverFormSection(title: "사용량", systemImage: "gauge.with.dots.needle.33percent") {
-                Picker("사용량 mode", selection: $usageProviderModeRaw) {
-                    ForEach(UsageProviderMode.visibleCases) { mode in
-                        Text(mode.label).tag(mode.rawValue)
-                    }
-                }
-                .pickerStyle(.menu)
-                .controlSize(.small)
+                usageProviderSettings
 
                 Picker("날짜 기준", selection: $usageGraphDateBaselineRaw) {
                     ForEach(UsageGraphDateBaseline.allCases) { baseline in
@@ -117,6 +112,9 @@ struct SettingsPanel: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            usageSelection = RunnerPreferences.usageProviderSelection()
         }
         .task {
             await refreshNotificationAuthorizationStatus()
@@ -169,18 +167,80 @@ struct SettingsPanel: View {
             RunnerPreferences.setUsageResetSoonNotificationsEnabled(enabled)
             deferredPreferencesChanged()
         }
-        .onChange(of: usageProviderModeRaw) { _, rawValue in
-            RunnerPreferences.setUsageProviderMode(
-                UsageProviderMode(rawValue: rawValue) ?? .codex
-            )
-            deferredPreferencesChanged()
-        }
         .onChange(of: usageGraphDateBaselineRaw) { _, rawValue in
             RunnerPreferences.setUsageGraphDateBaseline(
                 UsageGraphDateBaseline(rawValue: rawValue) ?? .calendarMidnight
             )
             deferredPreferencesChanged()
         }
+    }
+
+    private var isClaudeDebug: Bool {
+        (UsageProviderMode(rawValue: usageProviderModeRaw) ?? .codex) == .claude
+    }
+
+    @ViewBuilder
+    private var usageProviderSettings: some View {
+        if isClaudeDebug {
+            Text("Claude debug 사용 중")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        } else {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("활성 provider")
+                    .font(.caption2.weight(.medium))
+                HStack(spacing: 14) {
+                    ForEach(UsageProviderMode.visibleCases) { mode in
+                        settingsToggle(mode.label, isOn: enabledBinding(for: mode))
+                            .disabled(usageSelection.isOnlyEnabled(mode))
+                    }
+                }
+                if usageSelection.showsMainPicker {
+                    Picker("메인 provider", selection: mainBinding) {
+                        ForEach(UsageProviderMode.visibleCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("usage-main-provider")
+                }
+                settingsToggle("상세 그래프 표시", isOn: graphVisibleBinding)
+            }
+        }
+    }
+
+    private var mainBinding: Binding<UsageProviderMode> {
+        Binding(
+            get: { usageSelection.main },
+            set: { persistUsageSelection(usageSelection.settingMain($0)) }
+        )
+    }
+
+    private var graphVisibleBinding: Binding<Bool> {
+        Binding(
+            get: { usageSelection.detailGraphVisible },
+            set: { persistUsageSelection(usageSelection.settingDetailGraphVisible($0)) }
+        )
+    }
+
+    private func enabledBinding(for mode: UsageProviderMode) -> Binding<Bool> {
+        Binding(
+            get: { usageSelection.enabled.contains(UsageProviderSelection.mask(for: mode)) },
+            set: { isOn in
+                persistUsageSelection(
+                    isOn ? usageSelection.enabling(mode) : usageSelection.disabling(mode)
+                )
+            }
+        )
+    }
+
+    private func persistUsageSelection(_ selection: UsageProviderSelection) {
+        guard !isClaudeDebug else { return }
+        RunnerPreferences.setUsageProviderSelection(selection)
+        usageSelection = RunnerPreferences.usageProviderSelection()
+        usageProviderModeRaw = usageSelection.main.rawValue
+        deferredPreferencesChanged()
     }
 
     private var notificationSettingsSnapshot: UsageNotificationSettingsSnapshot {

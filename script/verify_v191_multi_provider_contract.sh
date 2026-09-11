@@ -133,6 +133,13 @@ verify_contract() {
   require_match 'showsWeeklyGraph' "$GROK_PANEL_SOURCE" "Grok graph gate"
   require_match 'selection: UsageProviderSelection' "$DEMO_SOURCE" \
     "demo state from selection"
+  require_match '활성 provider' "$SETTINGS_SOURCE" "settings enabled provider checkboxes"
+  require_match 'Picker\("메인 provider"' "$SETTINGS_SOURCE" "settings main picker"
+  require_match '상세 그래프 표시' "$SETTINGS_SOURCE" "settings graph checkbox"
+  require_match 'isOnlyEnabled' "$SETTINGS_SOURCE" "last provider stays enabled"
+  require_match 'setUsageProviderSelection' "$SETTINGS_SOURCE" "settings persist selection"
+  require_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "Claude stays off visible checkboxes"
+  reject_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "legacy exclusive mode picker"
 
   reject_match 'Picker\("사용량 provider"' "$POPOVER_SOURCE" "usage provider sub-tab picker"
   reject_match '\.pickerStyle\(\.segmented\)' "$POPOVER_SOURCE" "segmented provider tabs"
@@ -167,6 +174,10 @@ verify_contract() {
   require_match 'testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates' \
     "$POPOVER_TEST" "screenshot renderer states"
   require_match 'UsageProviderWorkDiff.make' "$POPOVER_TEST" "screenshot controller guard"
+  require_match 'testSettingsPanelRendersVisibleProviderCheckboxesWithoutSubTabs' \
+    "$POPOVER_TEST" "settings checkbox renderer"
+  require_match 'testOnlyEnabledProviderCannotBeTurnedOffAndMainPickerShowsForDual' \
+    "$SELECTION_TEST" "last checkbox disable rejected"
 }
 
 run_focused_tests() {
