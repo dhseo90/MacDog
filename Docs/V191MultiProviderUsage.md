@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~6, 8~10 자동 검증 완료 / Step 7 설정 UI와 Step 11 GUI 미착수
+상태: Step 2~10 완료 / Step 11 GUI renderer 확인, 설치·LaunchAgent·release smoke 미수행
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`

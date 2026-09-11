@@ -57,7 +57,7 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
-| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1~6번 완료, 7 미착수 | 설정 UI와 실제 GUI/설치/LaunchAgent 검수 |
+| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1~7번 코드 완료, GUI renderer 확인 | Finder 설치·LaunchAgent 실등록·릴리즈 smoke 미수행 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -662,8 +662,8 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
 구현 순서, preference migration, 두 cache writer 동시 운영, no-fallback, UI와 검증 경계는
 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)에 둡니다.
 
-현재 상태: 1~6번 완료, 7 미착수. 설정 checkbox UI는 V191 Step 7이며 실제 GUI 검수와
-함께 7번에서 다룹니다. UI 확인 미수행입니다.
+현재 상태: 1~7번 코드 완료. 설정 checkbox UI와 SwiftUI renderer 확인을 수행했습니다.
+live screencapture와 Finder 설치, LaunchAgent 실등록, 릴리즈 smoke는 미수행입니다.
 
 구현 순서:
 
@@ -687,7 +687,14 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
    `verify_v191_multi_provider_contract.sh --self-test`를 통과했습니다. Grok fetch 401
    fixture의 `expires_at`을 `2027-12-31`로 갱신해 전체 `swift test`가 통과했습니다.
 7. 실제 GUI, 설치, LaunchAgent 실등록과 릴리즈 smoke는 별도 명시 요청 뒤 수행하고,
-   실행하지 않은 항목은 `미수행`으로 기록합니다.
+   실행하지 않은 항목은 `미수행`으로 기록합니다. 설정 탭에 Codex/Grok checkbox,
+   둘 다일 때 메인 picker, 상세 그래프 checkbox를 넣었습니다. 개발 번들
+   `dist/MacDog.app` 1.9.1을 실행하고 `macdog://open`을 호출했습니다.
+   SwiftUI renderer로 설정·Codex·Grok 탭을 확인했습니다. `screencapture`는
+   display 권한 부족으로 실패했습니다. published `v1.9.1` DMG가 없고
+   `/Applications/MacDog.app`은 `1.9.0`이므로 Finder 설치, LaunchAgent 실등록,
+   릴리즈 smoke는 미수행입니다. 검수 후 실행 중 앱은 `/Applications/MacDog.app`
+   1.9.0으로 되돌렸습니다.
 
 보존 대상:
 
