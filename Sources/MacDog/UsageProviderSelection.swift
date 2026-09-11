@@ -24,6 +24,14 @@ struct UsageProviderSelection: Equatable, Sendable {
         detailGraphVisible: true
     )
 
+    static func exclusive(for mode: UsageProviderMode) -> UsageProviderSelection {
+        normalized(
+            enabledRaw: mask(for: mode).rawValue,
+            main: mode == .claude ? nil : mode,
+            detailGraphVisible: true
+        )
+    }
+
     var includesCodex: Bool { enabled.contains(.codex) }
     var includesGrok: Bool { enabled.contains(.grok) }
 

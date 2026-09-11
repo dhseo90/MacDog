@@ -28,6 +28,7 @@ struct UsageMonitorState: Equatable {
     let claudeUsagePreview: ClaudeUsagePreviewState
     let grokUsage: GrokUsagePreviewState
     let usageProviderMode: UsageProviderMode
+    let usageProviderSelection: UsageProviderSelection
     let runnerEvaluationDate: Date
 
     init(
@@ -49,6 +50,7 @@ struct UsageMonitorState: Equatable {
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
         grokUsage: GrokUsagePreviewState = .disabled,
         usageProviderMode: UsageProviderMode = .codex,
+        usageProviderSelection: UsageProviderSelection? = nil,
         runnerEvaluationDate: Date = Date()
     ) {
         self.report = report
@@ -69,7 +71,12 @@ struct UsageMonitorState: Equatable {
         self.claudeUsagePreview = claudeUsagePreview
         self.grokUsage = grokUsage
         self.usageProviderMode = usageProviderMode
+        self.usageProviderSelection = usageProviderSelection ?? .exclusive(for: usageProviderMode)
         self.runnerEvaluationDate = runnerEvaluationDate
+    }
+
+    var runtimeProviderMode: UsageProviderMode {
+        usageProviderMode == .claude ? .claude : usageProviderSelection.main
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -92,6 +99,7 @@ struct UsageMonitorState: Equatable {
             claudeUsagePreview: claudeUsagePreview,
             grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
+            usageProviderSelection: usageProviderSelection,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -122,6 +130,7 @@ struct UsageMonitorState: Equatable {
             claudeUsagePreview: claudeUsagePreview,
             grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
+            usageProviderSelection: usageProviderSelection,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -157,7 +166,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var phase: UsagePressurePhase {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexPhase
         case .grok:
@@ -247,7 +256,7 @@ struct UsageMonitorState: Equatable {
     }
 
     func nextResetGlance(now: Date = Date()) -> String? {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexNextResetGlance(now: now)
         case .grok:
@@ -392,7 +401,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var toolTip: String {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexToolTip
         case .grok:

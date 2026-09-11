@@ -40,7 +40,8 @@ enum MacDogDemoData {
             grokUsage: preferences.usageProviderMode == .grok
                 ? grokUsagePreview(now: now)
                 : .disabled,
-            usageProviderMode: preferences.usageProviderMode
+            usageProviderMode: preferences.usageProviderMode,
+            usageProviderSelection: preferences.usageProviderSelection
         )
     }
 

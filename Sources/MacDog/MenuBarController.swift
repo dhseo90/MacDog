@@ -503,7 +503,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
                 grokUsage: grokUsage,
-                usageProviderMode: preferences.usageProviderMode
+                usageProviderMode: preferences.usageProviderMode,
+                usageProviderSelection: preferences.usageProviderSelection
             )
         }
 
@@ -531,7 +532,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                         claudeUsagePreview: claudeUsagePreview,
                         grokUsage: grokUsage,
-                        usageProviderMode: preferences.usageProviderMode
+                        usageProviderMode: preferences.usageProviderMode,
+                        usageProviderSelection: preferences.usageProviderSelection
                     )
                 }
                 return UsageMonitorState(
@@ -551,7 +553,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                     claudeUsagePreview: claudeUsagePreview,
                     grokUsage: grokUsage,
-                    usageProviderMode: preferences.usageProviderMode
+                    usageProviderMode: preferences.usageProviderMode,
+                    usageProviderSelection: preferences.usageProviderSelection
                 )
             }
 
@@ -572,7 +575,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
                 grokUsage: grokUsage,
-                usageProviderMode: preferences.usageProviderMode
+                usageProviderMode: preferences.usageProviderMode,
+                usageProviderSelection: preferences.usageProviderSelection
             )
         }
 
@@ -593,7 +597,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
             claudeUsagePreview: claudeUsagePreview,
             grokUsage: grokUsage,
-            usageProviderMode: preferences.usageProviderMode
+            usageProviderMode: preferences.usageProviderMode,
+            usageProviderSelection: preferences.usageProviderSelection
         )
     }
 
