@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~6 게이지·그래프 숨김 TDD 완료 / Step 7~11 미착수
+상태: Step 2~6, 8~10 자동 검증 완료 / Step 7 설정 UI와 Step 11 GUI 미착수
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
@@ -146,6 +146,9 @@ swift test --filter UsageMonitorStateTests
 swift test --filter UserComponentInstallerTests
 swift test --filter UsageNotificationDeliveryTests
 swift test --filter PopoverScreenshotRendererTests
+swift test --filter UsageProviderWorkDiffTests
+swift test --filter CombinedUsageGaugesTests
+swift test --filter UsageProviderSelectionTests
 swift test
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build \
   -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
@@ -207,6 +210,7 @@ push는 사용자 명시 요청 전에는 실행하지 않는다.
 
 - selection migration, writer action, main routing, 통합 게이지 model이 focused test로 보호된다.
 - screenshot renderer가 single, Codex-main dual, Grok-main dual, graph-hidden 상태를 렌더링한다.
+  `testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates`가 이 네 상태를 그린다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build, v1.9.1 verifier가 통과한다.
 - 실제 UI를 열지 않았다면 `UI 확인 미수행`으로 보고한다.
 

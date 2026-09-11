@@ -51,6 +51,13 @@ cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다
 릴리즈 체크리스트는 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)를
 기준으로 합니다.
 
+## v1.9.1 개발 라인
+
+브랜치 `v1.9.1`은 Codex/Grok 복수 활성화와 메인 provider UI를 개발 중입니다. published
+GitHub Release와 설치본은 위 [현재 릴리즈](#현재-릴리즈)의 `v1.9.0`입니다. 합산·비교·자동
+fallback은 하지 않습니다. 구현 계약은
+[Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)를 따릅니다.
+
 이전 published release는 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
 v1.8.0 release head는 `14d716a88ea10a77344a4f9aa3651c23b1160f8c`이고 published asset는
 `MacDog-1.8.0.dmg`입니다.

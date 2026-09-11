@@ -89,6 +89,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | 용어 | 이 저장소에서의 의미 |
 | --- | --- |
 | selected provider | 설정에서 선택한 `Codex` 또는 `Grok` 하나. Claude는 hidden re-enable만. 동시 사용·합산·비교는 지원하지 않음 |
+| v1.9.1 selection | 개발 라인에서 Codex/Grok를 하나 또는 둘 다 활성화하고 메인을 지정함. 합산·비교·fallback은 없음 |
 | usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함. Grok는 주간만 있음 |
 | weekly-only | Codex가 일시적으로 5시간 window를 제공하지 않고 주간 window만 제공하는 정상 partial success |
 | remaining | `100 - usedPercent`로 계산한 공식 잔여율 |
