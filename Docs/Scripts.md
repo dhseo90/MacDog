@@ -86,6 +86,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_v180_release_readiness.sh --self-test` | v1.8.0 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 PR·CI·release head, signed/Verified tag, artifact/draft/publish, live Claude privacy, published DMG Finder 설치·GUI smoke와 증거 기록 순서를 확인합니다. |
 | `script/verify_v190_selected_provider_contract.sh --self-test` | v1.9.0 Grok weekly-only와 Claude hide 계약 자체검증 | `~/.grok/auth.json`, live billing, GUI, 설치, push 없이 hide, migration, 3분기 routing, Grok cache/UI, privacy, no-fallback과 문서 용어를 확인합니다. |
 | `script/verify_v190_release_readiness.sh --self-test` | v1.9.0 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, published `v1.8.0` 유지, GUI/live/DMG 미수행 분리와 증거 기록 경계를 확인합니다. |
+| `script/verify_v191_multi_provider_contract.sh --self-test` | v1.9.1 복수 provider와 메인 provider 계약 자체검증 | `~/.grok/auth.json`, live billing, GUI, 설치, push 없이 selection, writer 생명주기, work-diff, 통합 게이지, graph-hidden screenshot, 하위 탭/합산/fallback/auth 거부와 문서 용어를 확인합니다. published `v1.9.1`을 주장하지 않습니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |
