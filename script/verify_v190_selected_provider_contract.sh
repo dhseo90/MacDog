@@ -111,11 +111,11 @@ verify_contract() {
   require_match 'x\.ai/billing' "$SPIKE" "selected unofficial billing path"
   require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
     "$README" "README visible Codex/Grok product"
-  require_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" \
-    "README published v1.9.0"
-  require_match 'MacDog-1\.9\.0\.dmg' "$README" "README current installer"
+  require_match 'published GitHub Release는 \[v1\.9\.0\]' "$READINESS" \
+    "readiness published v1.9.0"
+  require_match 'MacDog-1\.9\.0\.dmg' "$READINESS" "readiness published installer"
   require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
-    "README published release head"
+    "README v1.9.0 release head"
   require_match '선택형 Codex/Grok 사용량 mode와 Claude hide' "$ROADMAP" \
     "ROADMAP v1.9.0 section"
   require_match 'GUI·live Grok billing·Finder drag 관찰 미수행' "$ROADMAP" \

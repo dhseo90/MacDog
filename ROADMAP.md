@@ -57,7 +57,7 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 | v1.7.0 | Codex 주간 잔여량 페이스메이커 | 릴리즈 완료, 기존 전환 scenario는 과도 구현으로 재분류 | v1.8.0에서 scenario/epoch UI·기능을 제거하고 weekly window day pace와 알림으로 단순화 |
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
-| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | 1~10번 코드 완료, README renderer 갱신 | Finder 설치·LaunchAgent 실등록·릴리즈 smoke·UI 확인 미수행 |
+| v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -664,9 +664,9 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)에 둡니다.
 릴리즈 준비는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md)에 둡니다.
 
-현재 상태: 1~10번 코드 완료. 게이지 카드·사용/남음 열·메뉴바 주간 잔여율 `%`(설정 기본
-켜짐)를 넣었습니다. README demo snapshot을 현재 UI로 갱신했습니다. Finder 설치,
-LaunchAgent 실등록, 릴리즈 smoke, 설치본 GUI 확인은 미수행입니다.
+현재 상태: GitHub Release publish 완료. Finder 설치·LaunchAgent 실등록·live Grok·
+final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습니다. 클린 삭제로 현재
+주간 history sample은 1개입니다. Mac/Sleep/Battery/Settings 탭 직접 조작은 미수행입니다.
 
 구현 순서:
 
@@ -694,8 +694,8 @@ LaunchAgent 실등록, 릴리즈 smoke, 설치본 GUI 확인은 미수행입니�
    실행하지 않은 항목은 `미수행`으로 기록합니다. 설정 탭에 Codex/Grok checkbox,
    둘 다일 때 메인 picker, 상세 그래프와 메뉴바 주간 잔여율 checkbox를 넣었습니다.
    SwiftUI renderer로 설정·Codex·Grok 탭 snapshot을 현재 UI로 갱신했습니다.
-   `screencapture`와 Finder 설치, LaunchAgent 실등록, 릴리즈 smoke는
-   `UI 확인 미수행`입니다. published `v1.9.1` DMG는 아직 없습니다.
+   published `v1.9.1` DMG를 Finder drag-and-drop으로 설치했습니다. 사용량 탭 GUI는
+   사용자가 확인했습니다. Mac/Sleep/Battery/Settings 탭 직접 조작은 미수행입니다.
 
 보존 대상:
 
@@ -724,7 +724,7 @@ LaunchAgent 실등록, 릴리즈 smoke, 설치본 GUI 확인은 미수행입니�
 - 상세 그래프를 숨겨도 게이지는 유지됩니다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build와
   `verify_v191_multi_provider_contract.sh --self-test`가 통과합니다.
-- 실제 UI를 열지 않았다면 `UI 확인 미수행`으로 보고합니다.
+- 실제 UI를 열지 않은 탭은 `미수행`으로 보고합니다. 사용량 탭 GUI는 확인했습니다.
 
 추천 모델: `grok-4.6`
 추론 수준: 높음 (high)

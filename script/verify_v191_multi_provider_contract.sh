@@ -93,21 +93,21 @@ verify_contract() {
 
   require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
     "$README" "README published 1.9.0 visible modes"
-  require_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" \
-    "README published v1.9.0"
-  require_match 'MacDog-1\.9\.0\.dmg' "$README" "README current installer"
-  require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
+  require_match '현재 GitHub Release는 \[v1\.9\.1\]' "$README" \
+    "README published v1.9.1"
+  require_match 'MacDog-1\.9\.1\.dmg' "$README" "README current installer"
+  require_match 'a9cdfebf82ec822a4cda77dd2a55afb6e703458b' "$README" \
     "README published release head"
-  require_match 'v1\.9\.1 개발' "$README" "README development line"
-  reject_match '현재 GitHub Release는 \[v1\.9\.1\]' "$README" \
-    "unpublished 1.9.1 claimed as current GitHub Release"
-  reject_match 'MacDog-1\.9\.1\.dmg' "$README" "unpublished 1.9.1 installer"
+  require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
+    "README previous v1.9.0 release head"
+  reject_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" \
+    "stale unpublished current-release claim"
 
   require_match 'Codex/Grok 복수 활성화와 메인 provider UI' "$ROADMAP" \
     "ROADMAP v1.9.1 section"
   require_match 'verify_v191_multi_provider_contract\.sh --self-test' "$ROADMAP" \
     "ROADMAP v1.9.1 verifier"
-  require_match 'UI 확인 미수행' "$ROADMAP" "honest UI status"
+  require_match '사용량 탭 GUI' "$ROADMAP" "usage-tab GUI status"
 
   require_match 'macdog-grok-usage' "$AGENTS" "AGENTS Grok writer"
   require_match 'usageEnabledProviderMask' "$DOC" "mask preference key"

@@ -3,14 +3,16 @@
 메뉴바에서 Codex/Grok 사용량과 Mac 상태를 보는 macOS 앱입니다. 캐릭터는 `Codex Pup`
 한 세트입니다.
 
+`1.9.1`은 설정에서 `Codex`와 `Grok`을 하나 또는 둘 다 켜고 메인을 지정합니다.
+합산·비교·자동 fallback은 하지 않습니다.
+
 `1.9.0` 제품의 설정 visible mode는 `Codex`와 `Grok`만 보여 주고 Claude source는 숨깁니다.
-published `v1.9.0`은 provider를 하나만 고릅니다. 이 브랜치의 v1.9.1 개발은 둘 다 켤 수
-있고, 합산·비교·자동 fallback은 하지 않습니다.
+published `v1.9.0`은 provider를 하나만 고릅니다.
 
 ## 설치
 
-현재 GitHub Release는 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)입니다.
-[MacDog-1.9.0.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)를 받아 Finder에서
+현재 GitHub Release는 [v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)입니다.
+[MacDog-1.9.1.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)를 받아 Finder에서
 `MacDog.app`을 `Applications`로 드래그한 뒤 실행합니다.
 
 첫 실행이 `~/bin/codex-usage`, 활성 provider LaunchAgent, 로그인 항목을 맞춥니다. 둘 다
@@ -96,16 +98,17 @@ MACDOG_APP_VERSION=1.9.1 ./script/build_and_run.sh
 명령 전체는 [Docs/Scripts.md](Docs/Scripts.md), 로컬 설치는
 [Docs/Onboarding/DevelopmentEnvironment.md](Docs/Onboarding/DevelopmentEnvironment.md)입니다.
 
-## 현재 릴리즈와 v1.9.1 개발
+## 현재 릴리즈
 
-GitHub Releases Latest: `v1.9.0`. signed tag target
-`b7072003830798bb1603768c4efb0b41409100f6`. 이전 공개본은
+GitHub Releases Latest: `v1.9.1`. signed tag target
+`a9cdfebf82ec822a4cda77dd2a55afb6e703458b`. 이전 공개본은
+[v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)
+(`b7072003830798bb1603768c4efb0b41409100f6`)과
 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)
 (`14d716a88ea10a77344a4f9aa3651c23b1160f8c`)입니다.
 
-증거와 미수행 항목은 [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md)에
-있습니다. v1.9.1 계약은 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md),
-릴리즈 준비는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md)입니다.
+증거는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md)에 있습니다.
+v1.9.1 계약은 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)입니다.
 
 ## 알림 경계
 

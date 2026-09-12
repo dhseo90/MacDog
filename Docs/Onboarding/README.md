@@ -3,10 +3,9 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: published release는 `v1.9.0`. `v1.9.0` 제품의 설정 visible mode는
-> `Codex` 또는 `Grok`입니다. published 설치본은 하나를 고릅니다. 이 저장소의 v1.9.1
-> 개발 라인은 둘 다 활성화하고 메인을 지정합니다. Claude source는 남아 있지만 기본
-> UI에서는 숨깁니다. 합산·비교·자동 fallback은 없습니다.
+> 기준 상태: published release는 `v1.9.1`. 설정 visible mode는
+> `Codex` 또는 `Grok`입니다. 하나 또는 둘 다 켜고 메인을 지정합니다. Claude source는
+> 남아 있지만 기본 UI에서는 숨깁니다. 합산·비교·자동 fallback은 없습니다.
 
 ## 읽는 순서
 

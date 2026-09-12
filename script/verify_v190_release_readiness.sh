@@ -104,14 +104,14 @@ verify_contract() {
 
   require_match 'V190ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V190ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match '현재 GitHub Release는 \[v1\.9\.0\]' "$README" "README current release"
-  require_match 'MacDog-1\.9\.0\.dmg' "$README" "README current installer"
+  require_match 'published GitHub Release는 \[v1\.9\.0\]' "$DOC" "doc published release"
+  require_match 'MacDog-1\.9\.0\.dmg' "$DOC" "doc published installer"
   require_match 'b7072003830798bb1603768c4efb0b41409100f6' "$README" \
-    "README published release head"
+    "README v1.9.0 release head"
   require_match 'v1\.9\.0.*미수행' "$ROADMAP" "ROADMAP unfinished smoke"
   require_match 'GUI·live·Finder drag 관찰 미수행' "$PRODUCT_DOC" \
     "product honest smoke status"
-  require_match 'GitHub Releases Latest: `v1\.9\.0`' "$README" "README github latest"
+  require_match 'GitHub Latest `v1\.9\.0`' "$DOC" "doc github latest"
   require_match 'verify_v190_release_readiness\.sh --self-test' "$SCRIPTS_DOC" \
     "Scripts gate entry"
   require_match 'verify_v190_release_readiness\.sh --self-test' "$CHECK_SCRIPT" \
