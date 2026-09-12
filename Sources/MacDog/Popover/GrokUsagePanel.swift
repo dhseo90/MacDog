@@ -5,34 +5,40 @@ import SwiftUI
 struct GrokUsagePanel: View {
     let preview: GrokUsagePreviewState
     let now: Date
+    let showsWeeklyGraph: Bool
     private let loginGuide = GrokLoginGuide()
 
-    init(preview: GrokUsagePreviewState, now: Date = Date()) {
+    init(
+        preview: GrokUsagePreviewState,
+        now: Date = Date(),
+        showsWeeklyGraph: Bool = true
+    ) {
         self.preview = preview
         self.now = now
+        self.showsWeeklyGraph = showsWeeklyGraph
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 12) {
             statusHeader
-            windowCards
             if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
+                if showsWeeklyGraph {
+                    WeeklyRemainingHistoryBlock(
+                        history: GrokWeeklyRemainingHistoryAdapter.history(
+                            preview.history,
+                            currentWeekly: weekly,
+                            currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
+                                ?? Int(now.timeIntervalSince1970)
+                        ),
+                        resetWindowHistory: .empty,
+                        weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
+                        currentReport: nil, // Grok has no CodexUsageReport; currentSample comes from history + timestamp
+                        currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
+                            ?? Int(now.timeIntervalSince1970),
+                        graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
+                    )
+                }
                 paceSummary(for: weekly)
-                Divider()
-                WeeklyRemainingHistoryBlock(
-                    history: GrokWeeklyRemainingHistoryAdapter.history(
-                        preview.history,
-                        currentWeekly: weekly,
-                        currentRecordedAt: preview.cacheSnapshot?.lastUsageObservedAt
-                            ?? Int(now.timeIntervalSince1970)
-                    ),
-                    resetWindowHistory: .empty,
-                    weeklyWindow: GrokWeeklyRemainingHistoryAdapter.weeklyWindow(weekly),
-                    currentReport: nil, // Grok has no CodexUsageReport; currentSample comes from history + timestamp
-                    currentTimestamp: preview.cacheSnapshot?.lastUsageObservedAt
-                        ?? Int(now.timeIntervalSince1970),
-                    graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
-                )
             } else {
                 waitingContent
             }
@@ -41,65 +47,17 @@ struct GrokUsagePanel: View {
     }
 
     private var statusHeader: some View {
-        HStack(spacing: 6) {
-            Text("Grok 사용량")
-                .font(.caption.weight(.semibold))
-            Spacer(minLength: 0)
-            Label(preview.statusTitle(now: now), systemImage: statusSystemImage)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(statusColor)
-                .lineLimit(1)
-        }
-    }
-
-    private var windowCards: some View {
-        windowCard(
-            title: "주간",
-            value: weeklySummary,
-            detail: UsageWindowStatus.resetSummary(
-                resetsAt: preview.cacheSnapshot?.freshWeekly(now: now)?.resetsAt,
-                now: now
-            )
-        )
-    }
-
-    private func windowCard(title: String, value: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: statusSystemImage)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.weight(.semibold))
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
+                .frame(width: 12)
+            Text(preview.statusTitle(now: now))
+                .font(.caption2.weight(.semibold))
+            Spacer(minLength: 0)
         }
-        .padding(7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.045)))
-    }
-
-    private var weeklySummary: String {
-        guard let weekly = preview.cacheSnapshot?.freshWeekly(now: now) else {
-            return unavailableWeeklyText
-        }
-        return "\(UsageMonitorState.percent(weekly.usedPercent))% 사용 · \(UsageMonitorState.percent(weekly.remainingPercent))% 남음"
-    }
-
-    private var unavailableWeeklyText: String {
-        if let text = preview.weeklyCardUnavailableText() {
-            return text
-        }
-        switch preview.status(now: now) {
-        case .stale:
-            return "오래된 cache · 갱신 대기"
-        case .error:
-            return "cache 확인 필요"
-        case .waiting, .available:
-            return "주간 cache 없음"
-        }
+        .foregroundStyle(statusColor)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(preview.statusTitle(now: now))
     }
 
     private func paceSummary(for weekly: GrokUsageWeeklyWindow) -> some View {
@@ -180,7 +138,7 @@ struct GrokUsagePanel: View {
 
     private var statusColor: Color {
         switch preview.status(now: now) {
-        case .available: .secondary
+        case .available: .green
         case .waiting: .secondary
         case .stale: .orange
         case .error: .orange

@@ -74,9 +74,36 @@ final class UsageMonitorStateTests: XCTestCase {
         )
         XCTAssertEqual(state.nextResetGlance(now: now), "다음 초기화: 주간 96시간 후")
         XCTAssertTrue(state.toolTip.contains("5시간 현재 제공되지 않음"))
-        XCTAssertEqual(state.codexDataStatus.title, "5시간 현재 미제공")
-        XCTAssertEqual(state.codexDataStatus.tone, .warning)
+        XCTAssertNotEqual(state.codexDataStatus.title, "5시간 현재 미제공")
+        XCTAssertNotEqual(state.codexDataStatus.tone, .warning)
         XCTAssertNil(state.codexFiveHourPaceProjection)
+    }
+
+    func testWeeklyOnlyReadyCacheAndHistoryIsHealthyWithoutFiveHourWarning() {
+        let weeklyReset = 1_800_604_800
+        let report = Self.report(
+            fiveHourUsedPercent: nil,
+            weeklyUsedPercent: 22,
+            weeklyResetsAt: weeklyReset
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(cachedAt: Int(Date().timeIntervalSince1970), report: report),
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [
+                Self.weeklySample(recordedAt: 1_800_000_000, remainingPercent: 78, resetsAt: weeklyReset)
+            ]),
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: weeklyReset, finalUsedPercent: 22)
+            ]),
+            errorMessage: nil
+        )
+
+        XCTAssertNil(state.codexLimit?.fiveHour)
+        XCTAssertEqual(state.codexDataStatus.tone, .ok)
+        XCTAssertEqual(state.codexDataStatus.title, "데이터 정상")
+        XCTAssertEqual(state.codexDataStatus.detail, "cache 최신 · weekly 1 · reset 1")
+        XCTAssertFalse(state.codexDataStatus.detail.contains("sample"))
+        XCTAssertFalse(state.codexDataStatus.detail.contains("record"))
     }
 
     func testRestoredFiveHourWindowResumesFiveHourBasis() {
@@ -138,6 +165,36 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex))
     }
 
+    func testSelectedUsageSourcePolicyLoadsBothVisibleCachesWithoutFallback() {
+        let dualCodexMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let dualGrokMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let grokOnly = UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: dualCodexMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: dualCodexMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: dualGrokMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: dualGrokMain))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: dualCodexMain))
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: grokOnly))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: grokOnly))
+        XCTAssertFalse(
+            SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .claude, selection: dualCodexMain)
+        )
+        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .claude, selection: dualCodexMain))
+        XCTAssertTrue(
+            SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .grok, selection: dualGrokMain)
+        )
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex, selection: dualCodexMain))
+    }
+
     func testVisibleSettingsModesHideClaudeAndKeepGrok() {
         XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
         XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))
@@ -195,6 +252,112 @@ final class UsageMonitorStateTests: XCTestCase {
             state.nextResetGlance(now: Date(timeIntervalSince1970: TimeInterval(now))),
             "다음 초기화: 주간 1시간 후"
         )
+    }
+
+    func testMainProviderRuntimeIgnoresAuxiliaryHighUsageAndStale() throws {
+        let now = 1_900_000_000
+        let dualCodexMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let dualGrokMain = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        let grokSprint = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 96, resetsAt: now + 3_600))
+        let grokActive = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 55, resetsAt: now + 3_600))
+        let grokStale = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 60,
+                weekly: grokSprint,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let grokFreshSprint = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 900,
+                weekly: grokSprint,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let grokFreshActive = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: now,
+                lastUsageObservedAt: now,
+                staleAfterSeconds: 900,
+                weekly: grokActive,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let evaluationDate = Date(timeIntervalSince1970: TimeInterval(now))
+        let staleDate = Date(timeIntervalSince1970: TimeInterval(now + 120))
+        let codexMain = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: grokFreshSprint,
+            usageProviderMode: .codex,
+            usageProviderSelection: dualCodexMain,
+            runnerEvaluationDate: evaluationDate
+        )
+        let grokMain = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: grokFreshActive,
+            usageProviderMode: .grok,
+            usageProviderSelection: dualGrokMain,
+            runnerEvaluationDate: evaluationDate
+        )
+        let grokMainStale = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 99, weeklyUsedPercent: 99),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: grokStale,
+            usageProviderMode: .grok,
+            usageProviderSelection: dualGrokMain,
+            runnerEvaluationDate: staleDate
+        )
+
+        XCTAssertEqual(codexMain.runtimeProviderMode, .codex)
+        XCTAssertEqual(codexMain.phase, .calm)
+        XCTAssertEqual(codexMain.codexPhase, .calm)
+        XCTAssertTrue(codexMain.toolTip.hasPrefix("코덱스 사용량:"))
+        XCTAssertFalse(codexMain.toolTip.contains("Grok"))
+        XCTAssertEqual(grokMain.runtimeProviderMode, .grok)
+        XCTAssertEqual(grokMain.phase, .active)
+        XCTAssertEqual(grokMain.codexPhase, .sprint)
+        XCTAssertEqual(grokMain.toolTip, "Grok 사용량: 55% 주간")
+        XCTAssertEqual(grokMainStale.phase, .calm)
+        XCTAssertEqual(grokMainStale.codexPhase, .sprint)
+        XCTAssertEqual(codexMain.withRefreshing(true).usageProviderSelection, dualCodexMain)
+        XCTAssertEqual(
+            grokMain.withSystemMetrics(
+                .unavailable,
+                sleepPreventionStatus: .disabled,
+                sleepPreventionTriggerStatus: .disabled,
+                privilegedHelperInstallSnapshot: .missing
+            ).usageProviderSelection,
+            dualGrokMain
+        )
+        XCTAssertEqual(codexMain.nextResetGlance(now: evaluationDate), nil)
+        XCTAssertEqual(grokMain.nextResetGlance(now: evaluationDate), "다음 초기화: 주간 1시간 후")
+        XCTAssertNil(grokMainStale.nextResetGlance(now: staleDate))
     }
 
     func testGrokEmptyStateAsksForLoginInsteadOfBareMissingCache() throws {
@@ -834,7 +997,7 @@ final class UsageMonitorStateTests: XCTestCase {
                 tone: .ok,
                 systemImage: "checkmark.circle.fill",
                 title: "데이터 정상",
-                detail: "cache 최신 · weekly 1 sample · reset 1 record"
+                detail: "cache 최신 · weekly 1 · reset 1"
             )
         )
     }
@@ -1921,10 +2084,14 @@ final class UsageMonitorStateTests: XCTestCase {
     func testDemoDataProvidesResetCreditExpiriesForCodexTab() throws {
         let state = MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp)
         let resetCredits = try XCTUnwrap(state.report?.resetCredits)
+        let fiveHour = try XCTUnwrap(state.codexLimit?.fiveHour)
 
         XCTAssertEqual(resetCredits.availableCount, 3)
         XCTAssertEqual(resetCredits.credits.count, 3)
         XCTAssertEqual(resetCredits.credits.first?.expiresAt, "2026-07-18T00:34:01Z")
+        XCTAssertEqual(fiveHour.usedPercent, 42)
+        XCTAssertEqual(fiveHour.remainingPercent, 58)
+        XCTAssertEqual(fiveHour.windowDurationMins, 300)
     }
 
     func testPetReactionPrioritizesSystemLoad() {

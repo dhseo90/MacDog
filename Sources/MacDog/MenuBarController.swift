@@ -5,7 +5,7 @@ import SwiftUI
 
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
@@ -35,8 +35,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var popoverMetricsTimer: Timer?
     private var usageCacheRefreshTask: Task<Void, Never>?
     private var usageCacheRefreshGeneration = 0
+    private var grokUsageCacheRefreshTask: Task<Void, Never>?
+    private var grokUsageCacheRefreshGeneration = 0
     private var usageNotificationTask: Task<Void, Never>?
     private var lastUsageCacheRefreshAttempt: Date?
+    private var lastGrokUsageCacheRefreshAttempt: Date?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
     private var floatingPetController: FloatingPetController?
@@ -61,10 +64,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
+        button.imageHugsTitle = true
         button.target = self
         button.action = #selector(statusItemActivated)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.toolTip = "MacDog"
+        applyMenuBarWeeklyRemainingLabel()
     }
 
     private func configurePopover() {
@@ -166,6 +171,22 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             reducedMotion: state.reducedMotion
         )
         statusItem.button?.image = image
+        applyMenuBarWeeklyRemainingLabel()
+    }
+
+    private func applyMenuBarWeeklyRemainingLabel() {
+        guard let button = statusItem.button else { return }
+        if let text = MenuBarWeeklyRemainingLabel.make(
+            state: state,
+            visible: preferences.usageMenuBarWeeklyRemainingVisible,
+            now: state.runnerEvaluationDate
+        ).text {
+            button.imagePosition = .imageTrailing
+            button.title = text
+        } else {
+            button.imagePosition = .imageOnly
+            button.title = ""
+        }
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {
@@ -173,12 +194,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let previousPreferences = preferences
         RunnerPreferences.expireSleepPreventionIfNeeded()
         preferences = RunnerPreferences()
-        if previousPreferences.usageProviderMode != preferences.usageProviderMode {
-            cancelProviderBoundWork(for: preferences.usageProviderMode)
-        }
+        cancelProviderBoundWorkIfNeeded(from: previousPreferences, to: preferences)
         synchronizeInstalledUsageCacheAgentIfNeeded(
-            from: previousPreferences.usageProviderMode,
-            to: preferences.usageProviderMode
+            from: previousPreferences,
+            to: preferences
         )
 
         if MacDogDemoData.isEnabled {
@@ -194,14 +213,21 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         let systemMetrics = systemMetricsSnapshotForUsageRefresh()
         syncSleepPrevention(systemMetrics: systemMetrics)
         let loadedState = loadCachedState(systemMetrics: systemMetrics)
-        if CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: preferences.usageProviderMode),
-           allowLiveRefresh || loadedState.report == nil {
+        if CodexUsageCacheRefreshPolicy.shouldRunLiveRefresh(
+            for: preferences.usageProviderMode,
+            selection: preferences.usageProviderSelection
+        ), allowLiveRefresh || loadedState.report == nil {
             requestUsageCacheRefresh(force: allowLiveRefresh)
-        } else if GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(for: preferences.usageProviderMode),
-                  allowLiveRefresh || loadedState.grokUsage.cacheSnapshot == nil {
+        }
+        if GrokUsageCacheRefreshPolicy.shouldRunLiveRefresh(
+            for: preferences.usageProviderMode,
+            selection: preferences.usageProviderSelection
+        ), allowLiveRefresh || loadedState.grokUsage.cacheSnapshot == nil {
             requestGrokUsageCacheRefresh(force: allowLiveRefresh)
         }
-        applyState(loadedState.withRefreshing(usageCacheRefreshTask != nil))
+        applyState(
+            loadedState.withRefreshing(usageCacheRefreshTask != nil || grokUsageCacheRefreshTask != nil)
+        )
         scheduleUsageNotificationsIfNeeded(for: loadedState)
 
         if previousPhase != state.phase || previousPreferences != preferences {
@@ -213,25 +239,25 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func requestGrokUsageCacheRefresh(force: Bool) {
-        guard usageCacheRefreshTask == nil else { return }
-        guard shouldAttemptUsageCacheRefresh(force: force) else { return }
+        guard grokUsageCacheRefreshTask == nil else { return }
+        guard shouldAttemptGrokUsageCacheRefresh(force: force) else { return }
         guard let grokUsageURL = UsageCacheRefreshBundleLocator.bundledGrokUsageURL() else { return }
 
-        lastUsageCacheRefreshAttempt = Date()
+        lastGrokUsageCacheRefreshAttempt = Date()
         let command = UsageCacheRefreshCommand.grokWriteCache(
             grokUsageURL: grokUsageURL,
             requestTimeout: GrokUsageCacheRefreshPolicy.requestTimeout
         )
-        usageCacheRefreshGeneration &+= 1
-        let generation = usageCacheRefreshGeneration
-        usageCacheRefreshTask = Task { [weak self] in
+        grokUsageCacheRefreshGeneration &+= 1
+        let generation = grokUsageCacheRefreshGeneration
+        grokUsageCacheRefreshTask = Task { [weak self] in
             await UsageCacheRefreshRunner.run(
                 command: command,
                 processTimeout: GrokUsageCacheRefreshPolicy.processTimeout
             )
             await MainActor.run {
-                guard let self, self.usageCacheRefreshGeneration == generation else { return }
-                self.usageCacheRefreshTask = nil
+                guard let self, self.grokUsageCacheRefreshGeneration == generation else { return }
+                self.grokUsageCacheRefreshTask = nil
                 self.refreshUsage(allowLiveRefresh: false)
             }
         }
@@ -259,18 +285,46 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
-    private func cancelProviderBoundWork(for currentMode: UsageProviderMode) {
-        usageNotificationTask?.cancel()
-        usageNotificationTask = nil
+    private func cancelProviderBoundWorkIfNeeded(
+        from previous: RunnerPreferences,
+        to current: RunnerPreferences
+    ) {
+        let diff = UsageProviderWorkDiff.make(from: previous, to: current)
+        if diff.cancelNotifications {
+            usageNotificationTask?.cancel()
+            usageNotificationTask = nil
+        }
+        if diff.cancelCodexRefresh {
+            cancelCodexUsageCacheRefresh()
+        }
+        if diff.cancelGrokRefresh {
+            cancelGrokUsageCacheRefresh()
+        }
+    }
+
+    private func cancelCodexUsageCacheRefresh() {
         usageCacheRefreshGeneration &+= 1
         usageCacheRefreshTask?.cancel()
         usageCacheRefreshTask = nil
-        _ = currentMode
+    }
+
+    private func cancelGrokUsageCacheRefresh() {
+        grokUsageCacheRefreshGeneration &+= 1
+        grokUsageCacheRefreshTask?.cancel()
+        grokUsageCacheRefreshTask = nil
     }
 
     private func shouldAttemptUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
         UsageCacheRefreshThrottle.shouldAttempt(
             lastAttempt: lastUsageCacheRefreshAttempt,
+            now: now,
+            force: force
+        )
+    }
+
+    private func shouldAttemptGrokUsageCacheRefresh(now: Date = Date(), force: Bool) -> Bool {
+        UsageCacheRefreshThrottle.shouldAttempt(
+            lastAttempt: lastGrokUsageCacheRefreshAttempt,
             now: now,
             force: force
         )
@@ -325,7 +379,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         do {
             try userComponentInstaller.installOrRepair(
                 loginLaunchEnabled: preferences.loginLaunchEnabled,
-                usageProviderMode: preferences.usageProviderMode
+                usageProviderMode: preferences.usageProviderMode,
+                usageProviderSelection: preferences.usageProviderSelection
             )
         } catch {
             showPrivilegedHelperAlert(
@@ -340,12 +395,16 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func synchronizeInstalledUsageCacheAgentIfNeeded(
-        from previousMode: UsageProviderMode,
-        to currentMode: UsageProviderMode
+        from previous: RunnerPreferences,
+        to current: RunnerPreferences
     ) {
-        guard previousMode != currentMode, UserComponentInstaller.shouldManage() else { return }
+        let diff = UsageProviderWorkDiff.make(from: previous, to: current)
+        guard diff.synchronizeCacheAgents, UserComponentInstaller.shouldManage() else { return }
         do {
-            try userComponentInstaller.synchronizeUsageCacheAgent(for: currentMode)
+            try userComponentInstaller.synchronizeUsageCacheAgent(
+                for: current.usageProviderSelection,
+                mode: current.usageProviderMode
+            )
         } catch {
             showPrivilegedHelperAlert(
                 title: "사용량 source 전환 일부 실패",
@@ -428,7 +487,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func loadCachedState(errorMessage: String? = nil, systemMetrics: SystemMetricsSnapshot = .unavailable) -> UsageMonitorState {
         let claudeUsagePreview = loadClaudeUsagePreview()
         let grokUsage = loadGrokUsage()
-        guard SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: preferences.usageProviderMode) else {
+        guard SelectedUsageSourcePolicy.shouldEvaluateCodexCache(
+            for: preferences.usageProviderMode,
+            selection: preferences.usageProviderSelection
+        ) else {
             return UsageMonitorState(
                 report: nil,
                 cacheSnapshot: nil,
@@ -445,7 +507,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
                 grokUsage: grokUsage,
-                usageProviderMode: preferences.usageProviderMode
+                usageProviderMode: preferences.usageProviderMode,
+                usageProviderSelection: preferences.usageProviderSelection
             )
         }
 
@@ -472,7 +535,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                         sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                         privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                         claudeUsagePreview: claudeUsagePreview,
-                        usageProviderMode: preferences.usageProviderMode
+                        grokUsage: grokUsage,
+                        usageProviderMode: preferences.usageProviderMode,
+                        usageProviderSelection: preferences.usageProviderSelection
                     )
                 }
                 return UsageMonitorState(
@@ -491,7 +556,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                     sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                     privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                     claudeUsagePreview: claudeUsagePreview,
-                    usageProviderMode: preferences.usageProviderMode
+                    grokUsage: grokUsage,
+                    usageProviderMode: preferences.usageProviderMode,
+                    usageProviderSelection: preferences.usageProviderSelection
                 )
             }
 
@@ -511,7 +578,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
                 privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
                 claudeUsagePreview: claudeUsagePreview,
-                usageProviderMode: preferences.usageProviderMode
+                grokUsage: grokUsage,
+                usageProviderMode: preferences.usageProviderMode,
+                usageProviderSelection: preferences.usageProviderSelection
             )
         }
 
@@ -531,7 +600,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             sleepPreventionTriggerStatus: sleepPreventionTriggerStatus,
             privilegedHelperInstallSnapshot: privilegedHelperInstallSnapshot(),
             claudeUsagePreview: claudeUsagePreview,
-            usageProviderMode: preferences.usageProviderMode
+            grokUsage: grokUsage,
+            usageProviderMode: preferences.usageProviderMode,
+            usageProviderSelection: preferences.usageProviderSelection
         )
     }
 
@@ -558,7 +629,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadGrokUsage() -> GrokUsagePreviewState {
-        guard SelectedUsageSourcePolicy.shouldLoadGrokCache(for: preferences.usageProviderMode) else {
+        guard SelectedUsageSourcePolicy.shouldLoadGrokCache(
+            for: preferences.usageProviderMode,
+            selection: preferences.usageProviderSelection
+        ) else {
             return .disabled
         }
         do {

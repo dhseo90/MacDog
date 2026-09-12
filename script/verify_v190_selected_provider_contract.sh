@@ -229,7 +229,7 @@ verify_contract() {
     "Grok LaunchAgent regression"
   require_match 'testGrokRefreshCommandWritesCacheWithoutMirror' "$REFRESH_TEST" \
     "Grok polling command regression"
-  require_match 'GrokUsagePanel\(preview: state.grokUsage' "$POPOVER_TEST" \
+  require_match 'preview: state.grokUsage' "$POPOVER_TEST" \
     "Grok panel wiring regression"
 
   for file in "$GROK_CACHE_SOURCE" "$GROK_HISTORY_SOURCE" "$GROK_CLI_SOURCE" \

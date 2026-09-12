@@ -4,8 +4,9 @@
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
 > 기준 상태: published release는 `v1.9.0`. `v1.9.0` 제품의 설정 visible mode는
-> `Codex` 또는 `Grok` 중 사용자가 선택한 **하나의 provider만** 사용량 화면, 러너 속도,
-> 알림, refresh 대상으로 사용합니다. Claude source는 남아 있지만 기본 UI에서는 숨깁니다.
+> `Codex` 또는 `Grok`입니다. published 설치본은 하나를 고릅니다. 이 저장소의 v1.9.1
+> 개발 라인은 둘 다 활성화하고 메인을 지정합니다. Claude source는 남아 있지만 기본
+> UI에서는 숨깁니다. 합산·비교·자동 fallback은 없습니다.
 
 ## 읽는 순서
 
@@ -25,8 +26,8 @@ MacDog는 macOS 14 이상에서 동작하는 메뉴바 유틸리티입니다. AI
 
 | 질문 | 답 |
 | --- | --- |
-| 주 사용자는 누구인가? | Codex 또는 Grok 중 하나를 주로 사용하는 macOS 개발자 |
-| 핵심 화면은 무엇인가? | 선택 provider 사용량을 보여주는 첫 번째 탭 |
+| 주 사용자는 누구인가? | Codex와 Grok 사용량을 메뉴바에서 보는 macOS 개발자 |
+| 핵심 화면은 무엇인가? | 활성 provider 게이지와 메인 provider 상세를 보여주는 첫 번째 탭 |
 | 기본 사용량 데이터 소스는? | Codex app-server `account/rateLimits/read` |
 | Grok 데이터는 어떻게 들어오는가? | bundled `macdog-grok-usage`가 unofficial CLI-proxy `x.ai/billing` 주간 pool을 sanitize한 별도 cache |
 | Claude 데이터는 어떻게 들어오는가? | 사용자가 연결한 Claude statusLine event를 bundled bridge가 sanitize한 별도 cache. 기본 UI에서는 숨김 |
@@ -88,7 +89,8 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 
 | 용어 | 이 저장소에서의 의미 |
 | --- | --- |
-| selected provider | 설정에서 선택한 `Codex` 또는 `Grok` 하나. Claude는 hidden re-enable만. 동시 사용·합산·비교는 지원하지 않음 |
+| selected provider | 설정에서 켠 `Codex`/`Grok`. 하나 또는 둘 다 가능하고 메인을 지정함. Claude는 hidden re-enable만. 합산·비교·fallback은 없음 |
+| v1.9.1 selection | 활성 bit mask와 메인 provider. 1번 탭은 카드 게이지를 함께 두고 상세는 메인만 봄 |
 | usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함. Grok는 주간만 있음 |
 | weekly-only | Codex가 일시적으로 5시간 window를 제공하지 않고 주간 window만 제공하는 정상 partial success |
 | remaining | `100 - usedPercent`로 계산한 공식 잔여율 |

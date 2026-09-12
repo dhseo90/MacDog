@@ -28,6 +28,7 @@ struct UsageMonitorState: Equatable {
     let claudeUsagePreview: ClaudeUsagePreviewState
     let grokUsage: GrokUsagePreviewState
     let usageProviderMode: UsageProviderMode
+    let usageProviderSelection: UsageProviderSelection
     let runnerEvaluationDate: Date
 
     init(
@@ -49,6 +50,7 @@ struct UsageMonitorState: Equatable {
         claudeUsagePreview: ClaudeUsagePreviewState = .disabled,
         grokUsage: GrokUsagePreviewState = .disabled,
         usageProviderMode: UsageProviderMode = .codex,
+        usageProviderSelection: UsageProviderSelection? = nil,
         runnerEvaluationDate: Date = Date()
     ) {
         self.report = report
@@ -69,7 +71,12 @@ struct UsageMonitorState: Equatable {
         self.claudeUsagePreview = claudeUsagePreview
         self.grokUsage = grokUsage
         self.usageProviderMode = usageProviderMode
+        self.usageProviderSelection = usageProviderSelection ?? .exclusive(for: usageProviderMode)
         self.runnerEvaluationDate = runnerEvaluationDate
+    }
+
+    var runtimeProviderMode: UsageProviderMode {
+        usageProviderMode == .claude ? .claude : usageProviderSelection.main
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -92,6 +99,7 @@ struct UsageMonitorState: Equatable {
             claudeUsagePreview: claudeUsagePreview,
             grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
+            usageProviderSelection: usageProviderSelection,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -122,6 +130,7 @@ struct UsageMonitorState: Equatable {
             claudeUsagePreview: claudeUsagePreview,
             grokUsage: grokUsage,
             usageProviderMode: usageProviderMode,
+            usageProviderSelection: usageProviderSelection,
             runnerEvaluationDate: runnerEvaluationDate
         )
     }
@@ -157,7 +166,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var phase: UsagePressurePhase {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexPhase
         case .grok:
@@ -247,7 +256,7 @@ struct UsageMonitorState: Equatable {
     }
 
     func nextResetGlance(now: Date = Date()) -> String? {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexNextResetGlance(now: now)
         case .grok:
@@ -342,14 +351,6 @@ struct UsageMonitorState: Equatable {
                 detail: "cache snapshot 또는 live report 필요"
             )
         }
-        if codexLimit?.fiveHour == nil {
-            return CodexUsageDataStatus(
-                tone: .warning,
-                systemImage: "minus.circle.fill",
-                title: "5시간 현재 미제공",
-                detail: "주간 cache와 history는 정상 갱신"
-            )
-        }
         if weeklyUsageHistory.samples.isEmpty || resetWindowHistory.records.isEmpty {
             return CodexUsageDataStatus(
                 tone: .waiting,
@@ -363,7 +364,7 @@ struct UsageMonitorState: Equatable {
             tone: .ok,
             systemImage: "checkmark.circle.fill",
             title: "데이터 정상",
-            detail: "cache 최신 · weekly \(weeklyUsageHistory.samples.count) \(Self.unit("sample", count: weeklyUsageHistory.samples.count)) · reset \(resetWindowHistory.records.count) \(Self.unit("record", count: resetWindowHistory.records.count))"
+            detail: "cache 최신 · weekly \(weeklyUsageHistory.samples.count) · reset \(resetWindowHistory.records.count)"
         )
     }
 
@@ -392,7 +393,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var toolTip: String {
-        switch usageProviderMode {
+        switch runtimeProviderMode {
         case .codex:
             return codexToolTip
         case .grok:
@@ -497,9 +498,6 @@ struct UsageMonitorState: Equatable {
         return "\(max(minutes, 1))분 후"
     }
 
-    private static func unit(_ singular: String, count: Int) -> String {
-        count == 1 ? singular : "\(singular)s"
-    }
 }
 
 struct CodexUsagePanelSummary: Equatable {
@@ -579,6 +577,16 @@ struct UsageWindowStatus: Equatable {
             return "\(remaining) · \(time)"
         }
         return "초기화까지 \(remaining) · \(time)"
+    }
+
+    static func resetDateLabel(
+        resetsAt: Int?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        guard let resetsAt else { return "리셋 미정" }
+        let resetDate = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        return compactResetTime(resetDate, now: now, calendar: calendar)
     }
 
     static func resetRemainingSummary(until resetDate: Date, now: Date = Date()) -> String {

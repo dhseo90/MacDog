@@ -233,7 +233,7 @@ final class GrokUsageFetchServiceTests: XCTestCase {
               "https://auth.x.ai::00000000-0000-4000-8000-000000000001": {
                 "key": "fixture-token",
                 "refresh_token": "fixture-refresh",
-                "expires_at": "2026-09-01T00:00:00.000Z",
+                "expires_at": "2027-12-31T00:00:00.000Z",
                 "oidc_issuer": "https://auth.x.ai",
                 "oidc_client_id": "00000000-0000-4000-8000-000000000001"
               }

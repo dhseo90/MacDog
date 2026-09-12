@@ -27,8 +27,12 @@ enum UsageNotificationRoute: Equatable, Sendable {
     case grok
     case claude
 
-    init(mode: UsageProviderMode) {
-        switch mode {
+    init(mode: UsageProviderMode, selection: UsageProviderSelection? = nil) {
+        if mode == .claude {
+            self = .claude
+            return
+        }
+        switch selection?.main ?? mode {
         case .codex:
             self = .codex
         case .grok:

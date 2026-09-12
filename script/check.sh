@@ -51,7 +51,9 @@ Checks:
   37. GitHub release candidate workflow contains the expected unsigned artifact gates.
   38. Public stable release remains gated behind signing/notarization/Gatekeeper checks.
   39. Privileged helper reinstall test plan is safe to stage before actual approval.
-  40. Unless --no-run is passed, the app launches and its process is detected.
+  40. v1.9.1 multi-provider selection, work-diff, combined gauges, and screenshot contract is self-tested offline.
+  41. v1.9.1 release readiness keeps published v1.9.0 and unfinished smoke separate.
+  42. Unless --no-run is passed, the app launches and its process is detected.
 
 Options:
   --no-run   Build the app bundle without launching it.
@@ -185,6 +187,12 @@ echo "==> Verifying v1.9.0 selected-provider product contract"
 
 echo "==> Verifying v1.9.0 release readiness"
 ./script/verify_v190_release_readiness.sh --self-test
+
+echo "==> Verifying v1.9.1 multi-provider contract"
+./script/verify_v191_multi_provider_contract.sh --self-test
+
+echo "==> Verifying v1.9.1 release readiness"
+./script/verify_v191_release_readiness.sh --self-test
 
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test

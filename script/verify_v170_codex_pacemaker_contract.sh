@@ -93,7 +93,8 @@ verify_contract() {
   require_match 'dailyTargetUsedPercent = 100\.0 /' "$PACEMAKER_SOURCE" "one-seventh daily target"
   require_match 'dayStartSampleToleranceSeconds' "$PACEMAKER_SOURCE" "day baseline guard"
   require_match 'CodexFiveHourPaceProjectionBuilder' "$STATE_SOURCE" "five-hour pace consumer"
-  require_match 'CodexWeeklyPacemakerBlock' "$PANEL_SOURCE" "pacemaker UI"
+  require_match 'struct CodexWeeklyPacemakerBlock' \
+    "$ROOT_DIR/Sources/MacDog/Popover/CodexWeeklyPacemakerBlock.swift" "pacemaker view type preserved"
   require_match 'dailyTargetApproaching' "$NOTIFICATION_SOURCE" "daily pace notification"
   require_match 'dayIndex: pacemaker\.dayIndex' "$NOTIFICATION_SOURCE" "day-scoped notification dedupe"
   require_match 'testWriteSuccessIgnoresAndPreservesCorruptLegacyPlanConfiguration' \

@@ -38,10 +38,11 @@ struct UsagePopoverView: View {
             RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
                 .fill(MacDogPopoverLayout.shellBackgroundColor)
         )
-        .overlay(
+        .clipShape(RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius))
+        .overlay {
             RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
     }
 
     private var selectedModule: MacDogPopoverModule {
@@ -65,10 +66,11 @@ struct UsagePopoverView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
         )
-        .overlay(
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
     }
 
     private var tabRail: some View {
@@ -95,7 +97,26 @@ struct UsagePopoverView: View {
 
     @ViewBuilder
     private var tabContentContainer: some View {
-        if usesScrollableSelectedContent {
+        if pinsCombinedUsageGauges {
+            VStack(alignment: .leading, spacing: 14) {
+                CombinedUsageGaugesView(
+                    gauges: CombinedUsageGauges.make(state: state, now: now),
+                    now: now
+                )
+                .fixedSize(horizontal: false, vertical: true)
+                if usesScrollableSelectedContent {
+                    ScrollView {
+                        remainingUsageDetail
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .scrollIndicators(.automatic)
+                } else {
+                    remainingUsageDetail
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else if usesScrollableSelectedContent {
             ScrollView {
                 tabContent
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -107,9 +128,12 @@ struct UsagePopoverView: View {
         }
     }
 
+    private var pinsCombinedUsageGauges: Bool {
+        selectedModule == .codex && state.usageProviderMode != .claude
+    }
+
     private var usesScrollableSelectedContent: Bool {
-        selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && (state.usageProviderMode == .claude || state.usageProviderMode == .grok))
+        selectedModule.usesScrollableContent || selectedModule == .codex
     }
 
     @ViewBuilder
@@ -167,13 +191,13 @@ struct UsagePopoverView: View {
     private var selectedModuleSubtitle: String {
         switch selectedModule {
         case .codex:
-            if state.usageProviderMode == .claude {
+            if state.runtimeProviderMode == .claude {
                 return state.claudeUsagePreview.statusTitle(now: now)
             }
-            if state.usageProviderMode == .grok {
+            if state.runtimeProviderMode == .grok {
                 return state.grokUsage.statusTitle(now: now)
             }
-            return state.codexPhase.statusLabel
+            return state.lastUpdatedSummary
         case .mac:
             return state.systemMetrics.cpuSummary
         case .sleep:
@@ -186,10 +210,10 @@ struct UsagePopoverView: View {
     }
 
     private var selectedModuleTitle: String {
-        if selectedModule == .codex, state.usageProviderMode == .claude {
+        if selectedModule == .codex, state.runtimeProviderMode == .claude {
             return "Claude 사용량"
         }
-        if selectedModule == .codex, state.usageProviderMode == .grok {
+        if selectedModule == .codex, state.runtimeProviderMode == .grok {
             return "Grok 사용량"
         }
         return selectedModule.title
@@ -197,10 +221,22 @@ struct UsagePopoverView: View {
 
     @ViewBuilder
     private var usageProviderContent: some View {
+        remainingUsageDetail
+    }
+
+    @ViewBuilder
+    private var remainingUsageDetail: some View {
         if state.usageProviderMode == .claude {
             ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
-        } else if state.usageProviderMode == .grok {
-            GrokUsagePanel(preview: state.grokUsage, now: now)
+        } else if state.runtimeProviderMode == .grok {
+            GrokUsagePanel(
+                preview: state.grokUsage,
+                now: now,
+                showsWeeklyGraph: UsageTabSectionVisibility.make(
+                    mode: state.usageProviderMode,
+                    selection: state.usageProviderSelection
+                ).showsMainWeeklyGraph
+            )
         } else {
             CodexUsagePanel(state: state)
         }

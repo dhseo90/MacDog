@@ -156,8 +156,9 @@ struct SleepPreventionPanel: View {
         }
         .onChange(of: codexAppTriggerEnabled) { _, enabled in
             if enabled {
-                RunnerPreferences.setSleepPreventionAppMatchText(RunnerPreferences.defaultSleepPreventionAppMatchText)
-                appMatchText = RunnerPreferences.defaultSleepPreventionAppMatchText
+                let match = RunnerPreferences.defaultSleepPreventionAppMatchText(for: usageProviderMode)
+                RunnerPreferences.setSleepPreventionAppMatchText(match)
+                appMatchText = match
             }
             RunnerPreferences.setSleepPreventionCodexAppTrigger(enabled)
             deferredPreferencesChanged()

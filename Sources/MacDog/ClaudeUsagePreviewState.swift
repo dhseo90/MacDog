@@ -41,12 +41,38 @@ enum SelectedUsageSourcePolicy {
         mode == .codex
     }
 
+    static func shouldEvaluateCodexCache(for selection: UsageProviderSelection) -> Bool {
+        selection.includesCodex
+    }
+
+    static func shouldEvaluateCodexCache(
+        for mode: UsageProviderMode,
+        selection: UsageProviderSelection
+    ) -> Bool {
+        mode != .claude && shouldEvaluateCodexCache(for: selection)
+    }
+
     static func shouldLoadClaudePreview(for mode: UsageProviderMode) -> Bool {
         mode == .claude
     }
 
+    static func shouldLoadClaudePreview(for selection: UsageProviderSelection) -> Bool {
+        false
+    }
+
     static func shouldLoadGrokCache(for mode: UsageProviderMode) -> Bool {
         mode == .grok
+    }
+
+    static func shouldLoadGrokCache(for selection: UsageProviderSelection) -> Bool {
+        selection.includesGrok
+    }
+
+    static func shouldLoadGrokCache(
+        for mode: UsageProviderMode,
+        selection: UsageProviderSelection
+    ) -> Bool {
+        mode != .claude && shouldLoadGrokCache(for: selection)
     }
 }
 

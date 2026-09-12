@@ -227,6 +227,22 @@ final class SleepPreventionModeTests: XCTestCase {
         XCTAssertEqual(preferences.sleepPreventionAppMatchText, "codex")
     }
 
+    func testEnablingAppTriggerUsesMainProviderDefaultMatchText() {
+        RunnerPreferences.setUsageProviderMode(.grok, defaults: defaults)
+        RunnerPreferences.setSleepPreventionCodexAppTrigger(true, defaults: defaults)
+
+        let preferences = RunnerPreferences(defaults: defaults)
+        XCTAssertEqual(preferences.sleepPreventionAppMatchText, "grok")
+        XCTAssertEqual(
+            RunnerPreferences.defaultSleepPreventionAppMatchText(for: .grok),
+            "grok"
+        )
+        XCTAssertEqual(
+            RunnerPreferences.defaultSleepPreventionAppMatchText(for: .codex),
+            "codex"
+        )
+    }
+
     func testTimeAndConditionModesAreMutuallyExclusive() {
         RunnerPreferences.setSleepPreventionMode(.timed, defaults: defaults)
         RunnerPreferences.setSleepPreventionCPUThresholdTrigger(true, defaults: defaults)

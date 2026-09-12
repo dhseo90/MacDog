@@ -148,13 +148,14 @@ verify_contract() {
     "provider change cache agent synchronization"
   require_match 'enum UsageProviderMode' "$ROOT_DIR/Sources/MacDog/ClaudeUsagePreviewState.swift" \
     "canonical provider mode"
-  require_match 'switch usageProviderMode' "$STATE_SOURCE" "selected runner source"
+  require_match 'switch (usageProviderMode|runtimeProviderMode)' "$STATE_SOURCE" "selected runner source"
   require_match 'if weekly == nil' "$CODEX_REPORT_SOURCE" "weekly-required Codex validation"
   reject_match 'missing\.append\(\.fiveHour\)' "$CODEX_REPORT_SOURCE" \
     "five-hour required validation"
   require_match 'fiveHour \?\? limit\.weekly' "$STATE_SOURCE" \
     "weekly fallback for five-hour display basis"
-  require_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only data status"
+  reject_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only is not a warning footer"
+  require_match '5시간 현재 제공되지 않음' "$STATE_SOURCE" "weekly-only tooltip"
   require_match '현재 제공되지 않음' "$CODEX_ROW_SOURCE" "weekly-only five-hour row copy"
   require_match 'usageCacheRefreshTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
     "provider switch Codex refresh cancellation"
@@ -168,7 +169,7 @@ verify_contract() {
     "selected notification route"
   require_match 'shouldRunLiveRefresh\(for mode: UsageProviderMode\)' "$REFRESH_SOURCE" \
     "selected refresh policy"
-  require_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "single settings mode picker"
+  require_match 'UsageProviderMode.visibleCases' "$SETTINGS_SOURCE" "visible provider settings"
   require_match 'state\.usageProviderMode == \.claude' "$POPOVER_SOURCE" "selected usage tab"
 
   require_match 'testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys' \

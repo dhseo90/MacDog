@@ -224,11 +224,11 @@ release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)
 
 | 항목 | 기준 |
 | --- | --- |
-| published release | `v1.8.0` |
-| current development | `v1.9.0` |
-| release tag | published `v1.8.0`만 signed annotated, GitHub `Verified`. `v1.9.0` tag 없음 |
+| published release | `v1.9.0` |
+| current development | `v1.9.1` |
+| release tag | published `v1.9.0`만 signed annotated, GitHub `Verified`. `v1.9.1` tag 없음 |
 | default provider | `Codex` |
-| visible provider selection | Codex 또는 Grok 하나만 선택 |
+| visible provider selection | Codex/Grok 하나 또는 둘, 메인 지정. 합산 없음 |
 | Claude | source 보존, 기본 UI 숨김. hidden re-enable만 |
 | Codex 5시간 window | 일시 미제공 가능. 주간-only success 유지 |
 | Grok window | 주간만. 5시간은 `현재 제공되지 않음` |

@@ -15,7 +15,34 @@ enum MacDogDemoData {
         preferences: RunnerPreferences = RunnerPreferences(),
         now: Int = Int(Date().timeIntervalSince1970)
     ) -> UsageMonitorState {
-        let usesCodexDemo = preferences.usageProviderMode != .grok
+        state(
+            selection: preferences.usageProviderSelection,
+            mode: preferences.usageProviderMode,
+            preferences: preferences,
+            now: now
+        )
+    }
+
+    static func state(
+        selection: UsageProviderSelection,
+        now: Int = Int(Date().timeIntervalSince1970)
+    ) -> UsageMonitorState {
+        state(
+            selection: selection,
+            mode: selection.main,
+            preferences: RunnerPreferences(),
+            now: now
+        )
+    }
+
+    private static func state(
+        selection: UsageProviderSelection,
+        mode: UsageProviderMode,
+        preferences: RunnerPreferences,
+        now: Int
+    ) -> UsageMonitorState {
+        let usesCodexDemo = mode != .grok || selection.includesCodex
+        let usesGrokDemo = mode == .grok || selection.includesGrok
         return UsageMonitorState(
             report: usesCodexDemo ? report(now: now) : nil,
             cacheSnapshot: nil,
@@ -34,13 +61,14 @@ enum MacDogDemoData {
                 helperToolExists: false,
                 launchDaemonExists: false
             ),
-            claudeUsagePreview: preferences.usageProviderMode == .claude
+            claudeUsagePreview: mode == .claude
                 ? claudeUsagePreview(now: now)
                 : .disabled,
-            grokUsage: preferences.usageProviderMode == .grok
+            grokUsage: usesGrokDemo
                 ? grokUsagePreview(now: now)
                 : .disabled,
-            usageProviderMode: preferences.usageProviderMode
+            usageProviderMode: mode,
+            usageProviderSelection: selection
         )
     }
 

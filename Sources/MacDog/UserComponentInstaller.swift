@@ -36,7 +36,8 @@ struct UserComponentInstaller {
 
     func installOrRepair(
         loginLaunchEnabled: Bool,
-        usageProviderMode: UsageProviderMode
+        usageProviderMode: UsageProviderMode,
+        usageProviderSelection: UsageProviderSelection? = nil
     ) throws {
         guard Self.shouldManage(appBundleURL: appBundleURL, homeDirectory: homeDirectory) else { return }
         guard fileManager.isExecutableFile(atPath: bundledCLIURL.path) else {
@@ -48,7 +49,11 @@ struct UserComponentInstaller {
         try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
 
         try installCLISymlink()
-        try synchronizeUsageCacheAgent(for: usageProviderMode)
+        if let usageProviderSelection {
+            try synchronizeUsageCacheAgent(for: usageProviderSelection, mode: usageProviderMode)
+        } else {
+            try synchronizeUsageCacheAgent(for: usageProviderMode)
+        }
         try installLoginLaunchIfNeeded(isEnabled: loginLaunchEnabled)
     }
 
@@ -60,9 +65,31 @@ struct UserComponentInstaller {
         mode == .grok ? .install : .remove
     }
 
+    static func cacheAgentAction(for selection: UsageProviderSelection) -> UsageCacheAgentAction {
+        selection.includesCodex ? .install : .remove
+    }
+
+    static func grokCacheAgentAction(for selection: UsageProviderSelection) -> UsageCacheAgentAction {
+        selection.includesGrok ? .install : .remove
+    }
+
     func synchronizeUsageCacheAgent(for mode: UsageProviderMode) throws {
+        try synchronizeUsageCacheAgent(for: Self.exclusiveVisibleSelection(for: mode), mode: mode)
+    }
+
+    func synchronizeUsageCacheAgent(
+        for selection: UsageProviderSelection,
+        mode: UsageProviderMode? = nil
+    ) throws {
         guard Self.shouldManage(appBundleURL: appBundleURL, homeDirectory: homeDirectory) else { return }
-        switch Self.cacheAgentAction(for: mode) {
+        let hideVisibleWriters = mode == .claude
+        let cacheAction: UsageCacheAgentAction = hideVisibleWriters
+            ? .remove
+            : Self.cacheAgentAction(for: selection)
+        let grokAction: UsageCacheAgentAction = hideVisibleWriters
+            ? .remove
+            : Self.grokCacheAgentAction(for: selection)
+        switch cacheAction {
         case .install:
             try fileManager.createDirectory(at: launchAgentDirectoryURL, withIntermediateDirectories: true)
             try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
@@ -70,13 +97,26 @@ struct UserComponentInstaller {
         case .remove:
             try removeCacheLaunchAgentIfPresent()
         }
-        switch Self.grokCacheAgentAction(for: mode) {
+        switch grokAction {
         case .install:
             try fileManager.createDirectory(at: launchAgentDirectoryURL, withIntermediateDirectories: true)
             try fileManager.createDirectory(at: logDirectoryURL, withIntermediateDirectories: true)
             try installGrokCacheLaunchAgentIfNeeded()
         case .remove:
             try removeGrokCacheLaunchAgentIfPresent()
+        }
+    }
+
+    private static func exclusiveVisibleSelection(for mode: UsageProviderMode) -> UsageProviderSelection {
+        switch mode {
+        case .codex, .grok:
+            UsageProviderSelection.normalized(
+                enabledRaw: UsageProviderSelection.mask(for: mode).rawValue,
+                main: mode,
+                detailGraphVisible: true
+            )
+        case .claude:
+            .default
         }
     }
 
