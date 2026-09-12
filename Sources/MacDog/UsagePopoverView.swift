@@ -101,12 +101,13 @@ struct UsagePopoverView: View {
                     gauges: CombinedUsageGauges.make(state: state, now: now),
                     now: now
                 )
+                .fixedSize(horizontal: false, vertical: true)
                 if usesScrollableSelectedContent {
                     ScrollView {
                         remainingUsageDetail
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .scrollIndicators(.hidden)
+                    .scrollIndicators(.automatic)
                 } else {
                     remainingUsageDetail
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -130,8 +131,7 @@ struct UsagePopoverView: View {
     }
 
     private var usesScrollableSelectedContent: Bool {
-        selectedModule.usesScrollableContent ||
-            (selectedModule == .codex && (state.runtimeProviderMode == .claude || state.runtimeProviderMode == .grok))
+        selectedModule.usesScrollableContent || selectedModule == .codex
     }
 
     @ViewBuilder

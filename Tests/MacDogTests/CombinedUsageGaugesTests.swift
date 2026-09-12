@@ -12,6 +12,7 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
+        XCTAssertEqual(gauges.groups.map(\.provider), [.codex])
         XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간"])
         XCTAssertEqual(gauges.items.map(\.isAuxiliary), [false, false])
         XCTAssertEqual(gauges.items.map(\.provider), [.codex, .codex])
@@ -35,6 +36,7 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
+        XCTAssertEqual(gauges.groups.map(\.provider), [.grok])
         XCTAssertEqual(gauges.items.map(\.title), ["주간"])
         XCTAssertEqual(gauges.items.first?.provider, .grok)
         XCTAssertEqual(gauges.items.first?.isAuxiliary, false)
@@ -60,8 +62,10 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
-        XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간", "Grok 주간"])
-        XCTAssertEqual(gauges.items.map(\.isAuxiliary), [false, false, true])
+        XCTAssertEqual(gauges.groups.map(\.provider), [.codex, .grok])
+        XCTAssertEqual(gauges.groups.map(\.isAuxiliary), [false, true])
+        XCTAssertEqual(gauges.groups[0].items.map(\.title), ["5시간", "주간"])
+        XCTAssertEqual(gauges.groups[1].items.map(\.title), ["주간"])
         XCTAssertEqual(gauges.items.map(\.kind), [.fiveHour, .weekly, .weekly])
         XCTAssertEqual(
             gauges.items[2].value,
@@ -86,7 +90,10 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
-        XCTAssertEqual(gauges.items.map(\.title), ["주간", "Codex 주간"])
+        XCTAssertEqual(gauges.groups.map(\.provider), [.grok, .codex])
+        XCTAssertEqual(gauges.groups.map(\.isAuxiliary), [false, true])
+        XCTAssertEqual(gauges.groups[0].items.map(\.title), ["주간"])
+        XCTAssertEqual(gauges.groups[1].items.map(\.title), ["주간"])
         XCTAssertEqual(gauges.items.map(\.provider), [.grok, .codex])
         XCTAssertEqual(gauges.items.map(\.kind), [.weekly, .weekly])
         XCTAssertEqual(gauges.items.map(\.isAuxiliary), [false, true])
@@ -122,7 +129,7 @@ final class CombinedUsageGaugesTests: XCTestCase {
             now: Date(timeIntervalSince1970: 1_900_000_120)
         )
 
-        XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간", "Grok 주간"])
+        XCTAssertEqual(gauges.groups.map(\.provider), [.codex, .grok])
         XCTAssertEqual(gauges.items[2].value, .unavailable("오래된 cache · 갱신 대기"))
         XCTAssertNotEqual(
             gauges.items[2].value,
@@ -130,7 +137,7 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
     }
 
-    func testMissingCodexFiveHourStaysUnavailableWithoutSynthesis() {
+    func testMissingCodexFiveHourIsOmittedWithoutSynthesis() {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: nil, weeklyUsedPercent: 40),
             cacheSnapshot: nil,
@@ -139,9 +146,10 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
-        XCTAssertEqual(gauges.items[0].value, .unavailable("현재 제공되지 않음"))
+        XCTAssertEqual(gauges.items.map(\.kind), [.weekly])
+        XCTAssertFalse(gauges.items.contains { $0.kind == .fiveHour })
         XCTAssertEqual(
-            gauges.items[1].value,
+            gauges.items[0].value,
             .ready(usedPercent: 40, remainingPercent: 60, resetsAt: nil)
         )
     }
@@ -192,7 +200,8 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
-        XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간", "Grok 주간"])
+        XCTAssertEqual(gauges.groups.map(\.provider), [.codex, .grok])
+        XCTAssertEqual(gauges.items.map(\.kind), [.fiveHour, .weekly, .weekly])
         XCTAssertFalse(
             UsageTabSectionVisibility.make(
                 mode: state.usageProviderMode,

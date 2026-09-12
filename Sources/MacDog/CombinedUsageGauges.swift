@@ -22,6 +22,14 @@ struct UsageProviderGaugeItem: Equatable, Identifiable {
     var id: String { "\(provider.rawValue)-\(kind.rawValue)-\(isAuxiliary)" }
 }
 
+struct CombinedUsageGaugeGroup: Equatable, Identifiable {
+    let provider: UsageProviderMode
+    let isAuxiliary: Bool
+    let items: [UsageProviderGaugeItem]
+
+    var id: String { "\(provider.rawValue)-\(isAuxiliary)" }
+}
+
 struct UsageTabSectionVisibility: Equatable {
     let showsCombinedGauges: Bool
     let showsPaceAndCredits: Bool
@@ -50,45 +58,65 @@ struct UsageTabSectionVisibility: Equatable {
 }
 
 struct CombinedUsageGauges: Equatable {
-    let items: [UsageProviderGaugeItem]
+    let groups: [CombinedUsageGaugeGroup]
+
+    var items: [UsageProviderGaugeItem] {
+        groups.flatMap(\.items)
+    }
 
     static func make(state: UsageMonitorState, now: Date = Date()) -> CombinedUsageGauges {
         guard state.usageProviderMode != .claude else {
-            return CombinedUsageGauges(items: [])
+            return CombinedUsageGauges(groups: [])
         }
 
         let selection = state.usageProviderSelection
         switch state.runtimeProviderMode {
         case .codex:
-            var items = [
-                codexFiveHour(state: state, isAuxiliary: false),
-                codexWeekly(state: state, isAuxiliary: false)
-            ]
+            var groups = [codexGroup(state: state, isAuxiliary: false)]
             if selection.includesGrok {
-                items.append(grokWeekly(state: state, now: now, isAuxiliary: true))
+                groups.append(grokGroup(state: state, now: now, isAuxiliary: true))
             }
-            return CombinedUsageGauges(items: items)
+            return CombinedUsageGauges(groups: groups)
         case .grok:
-            var items = [grokWeekly(state: state, now: now, isAuxiliary: false)]
+            var groups = [grokGroup(state: state, now: now, isAuxiliary: false)]
             if selection.includesCodex {
-                items.append(codexWeekly(state: state, isAuxiliary: true))
+                groups.append(codexGroup(state: state, isAuxiliary: true))
             }
-            return CombinedUsageGauges(items: items)
+            return CombinedUsageGauges(groups: groups)
         case .claude:
-            return CombinedUsageGauges(items: [])
+            return CombinedUsageGauges(groups: [])
         }
     }
 
-    private static func codexFiveHour(
+    private static func codexGroup(
         state: UsageMonitorState,
         isAuxiliary: Bool
-    ) -> UsageProviderGaugeItem {
-        UsageProviderGaugeItem(
-            provider: .codex,
-            kind: .fiveHour,
-            title: isAuxiliary ? "Codex 5시간" : "5시간",
-            value: readyValue(from: state.codexLimit?.fiveHour) ?? .unavailable("현재 제공되지 않음"),
-            isAuxiliary: isAuxiliary
+    ) -> CombinedUsageGaugeGroup {
+        var items: [UsageProviderGaugeItem] = []
+        if !isAuxiliary, let fiveHour = readyValue(from: state.codexLimit?.fiveHour) {
+            items.append(
+                UsageProviderGaugeItem(
+                    provider: .codex,
+                    kind: .fiveHour,
+                    title: "5시간",
+                    value: fiveHour,
+                    isAuxiliary: false
+                )
+            )
+        }
+        items.append(codexWeekly(state: state, isAuxiliary: isAuxiliary))
+        return CombinedUsageGaugeGroup(provider: .codex, isAuxiliary: isAuxiliary, items: items)
+    }
+
+    private static func grokGroup(
+        state: UsageMonitorState,
+        now: Date,
+        isAuxiliary: Bool
+    ) -> CombinedUsageGaugeGroup {
+        CombinedUsageGaugeGroup(
+            provider: .grok,
+            isAuxiliary: isAuxiliary,
+            items: [grokWeekly(state: state, now: now, isAuxiliary: isAuxiliary)]
         )
     }
 
@@ -99,7 +127,7 @@ struct CombinedUsageGauges: Equatable {
         UsageProviderGaugeItem(
             provider: .codex,
             kind: .weekly,
-            title: isAuxiliary ? "Codex 주간" : "주간",
+            title: "주간",
             value: readyValue(from: state.codexLimit?.weekly) ?? .unavailable("주간 확인 불가"),
             isAuxiliary: isAuxiliary
         )
@@ -124,7 +152,7 @@ struct CombinedUsageGauges: Equatable {
         return UsageProviderGaugeItem(
             provider: .grok,
             kind: .weekly,
-            title: isAuxiliary ? "Grok 주간" : "주간",
+            title: "주간",
             value: value,
             isAuxiliary: isAuxiliary
         )
@@ -164,36 +192,80 @@ struct CombinedUsageGaugesView: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            ForEach(gauges.items) { item in
-                gaugeCard(item)
+        HStack(alignment: .top, spacing: 8) {
+            ForEach(gauges.groups) { group in
+                providerColumn(group)
             }
         }
         .accessibilityIdentifier("combined-usage-gauges")
     }
 
-    private func gaugeCard(_ item: UsageProviderGaugeItem) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(item.title)
+    private func providerColumn(_ group: CombinedUsageGaugeGroup) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(group.provider.label)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(valueText(item.value))
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
-                .minimumScaleFactor(0.76)
-            if let detail = detailText(item.value) {
-                Text(detail)
-                    .font(.caption2)
+                .foregroundStyle(group.isAuxiliary ? .secondary : .primary)
+            ForEach(group.items) { item in
+                gaugeRow(item)
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.primary.opacity(group.isAuxiliary ? 0.03 : 0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(group.isAuxiliary ? 0.10 : 0.16), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(group.provider.label)
+    }
+
+    private func gaugeRow(_ item: UsageProviderGaugeItem) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(valueText(item.value))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
             }
+            if case let .ready(_, remainingPercent, _) = item.value {
+                RemainingUsageBar(
+                    value: min(max(remainingPercent / 100, 0), 1),
+                    tint: barTint(remainingPercent: remainingPercent)
+                )
+                .accessibilityLabel("\(item.title) 남은 사용량")
+                .accessibilityValue(valueText(item.value))
+            }
+            if let detail = detailText(item.value) {
+                Text(detail)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
         }
-        .padding(7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.045)))
         .accessibilityLabel(item.title)
         .accessibilityValue(valueText(item.value))
+    }
+
+    private func barTint(remainingPercent: Double) -> Color {
+        switch remainingPercent {
+        case ..<10:
+            .red
+        case 10..<30:
+            .orange
+        case 30..<60:
+            .yellow
+        default:
+            .green
+        }
     }
 
     private func valueText(_ value: UsageProviderGaugeItem.Value) -> String {

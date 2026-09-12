@@ -25,8 +25,6 @@ struct CodexUsagePanel: View {
                     fiveHourPace: state.codexFiveHourPaceProjection
                 )
 
-                CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
-
                 if UsageTabSectionVisibility.make(
                     mode: state.usageProviderMode,
                     selection: state.usageProviderSelection
@@ -42,6 +40,8 @@ struct CodexUsagePanel: View {
                         )
                     )
                 }
+
+                CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)
             } else if state.isRefreshing {

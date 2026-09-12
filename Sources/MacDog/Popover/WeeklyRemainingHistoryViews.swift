@@ -1721,7 +1721,7 @@ struct UsageRow: View {
     }
 }
 
-private struct RemainingUsageBar: View {
+struct RemainingUsageBar: View {
     let value: Double
     let tint: Color
 

@@ -112,8 +112,9 @@ sequenceDiagram
 | 추가 bucket | advanced/debug 정보. 기본 화면과 분리 |
 
 주간 window만 있으면 partial success로 저장하고 주간 history·runner·알림을 계속 갱신합니다.
-없는 5시간 값은 합성하지 않고 “현재 제공되지 않음”으로 표시합니다. 5시간 window가 돌아오면
-기존 5시간 history를 보존한 채 sampling과 pace를 재개합니다.
+없는 5시간 값은 합성하지 않습니다. 1번 탭 통합 게이지에서는 해당 항목을 숨기고, tooltip 등에서는
+“현재 제공되지 않음”으로 둡니다. 5시간 window가 돌아오면 기존 5시간 history를 보존한 채
+sampling과 pace를 재개합니다.
 
 초기화권 상세 조회만 제한된 예외 경계에서 access token을 메모리로 받아 backend 요청에 즉시
 사용할 수 있습니다. token은 출력·cache·log·fixture에 남기지 않습니다. 이 경계를 수정하려면

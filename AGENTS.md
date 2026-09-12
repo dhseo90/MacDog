@@ -164,7 +164,8 @@ sanitizer, cache와 hidden/debug 경로는 보존한다. 버전별 UI 동작은 
 - slot 이름과 무관하게 `windowDurationMins = 300`은 5시간, `10080`은 주간이다.
 - 성공 cache에는 주간이 필수다. weekly-only 응답은 partial success로 저장하고
   주간 history·runner·알림을 계속 갱신한다.
-- 없는 5시간 값을 0%나 마지막 성공 값으로 합성하지 않고 `현재 제공되지 않음`으로 표시한다.
+- 없는 5시간 값을 0%나 마지막 성공 값으로 합성하지 않는다. 통합 게이지에서는 해당 항목을
+  숨기고, tooltip 등 다른 표시에서는 `현재 제공되지 않음`으로 둔다.
   복구 시 기존 history를 유지한 채 sample과 pace를 재개한다.
 - 잔여율은 `100 - usedPercent`, `resetsAt`은 Unix epoch seconds이며 로컬 시간으로 표시한다.
 - 실패 시 마지막 성공 cache와 stale/error를 함께 표시한다. 공식 한도와 로컬 SQLite 추정을 섞지 않는다.

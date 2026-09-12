@@ -7,9 +7,18 @@ import XCTest
 @MainActor
 final class PopoverScreenshotRendererTests: XCTestCase {
     func testUsagePopoverFirstFrameFillsScreenshotCanvas() {
+        let now = MacDogDemoData.readmeScreenshotTimestamp
         let view = UsagePopoverView(
-            state: MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp),
-            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined)
+            state: MacDogDemoData.state(
+                selection: UsageProviderSelection(
+                    enabled: .codex,
+                    main: .codex,
+                    detailGraphVisible: true
+                ),
+                now: now
+            ),
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
         )
 
         let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
@@ -19,7 +28,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             0.12
         )
         XCTAssertGreaterThan(
-            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.16, y: 0.87)),
+            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.16, y: 0.30)),
             0.12
         )
     }
@@ -362,6 +371,17 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("showsWeeklyGraph:"))
         XCTAssertTrue(popoverSource.contains("CombinedUsageGaugesView("))
         XCTAssertTrue(popoverSource.contains("pinsCombinedUsageGauges"))
+        XCTAssertTrue(popoverSource.contains("selectedModule == .codex"))
+        XCTAssertTrue(popoverSource.contains("fixedSize(horizontal: false, vertical: true)"))
+        let gaugesSource = try String(contentsOfFile: "Sources/MacDog/CombinedUsageGauges.swift")
+        XCTAssertTrue(gaugesSource.contains("gauges.groups"))
+        XCTAssertTrue(gaugesSource.contains("RemainingUsageBar("))
+        XCTAssertTrue(gaugesSource.contains("group.provider.label"))
+        let codexPanelSourceForOrder = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
+        let graphRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "WeeklyRemainingHistoryBlock("))
+        let creditsRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "CodexResetCreditsBlock("))
+        XCTAssertLessThan(graphRange.lowerBound, creditsRange.lowerBound)
+        XCTAssertTrue(codexPanelSourceForOrder.contains("fiveHourIsAvailable: false"))
         let codexPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         XCTAssertTrue(codexPanelSource.contains("showsMainWeeklyGraph"))
         XCTAssertTrue(codexPanelSource.contains("CodexWeeklyPacemakerBlock("))

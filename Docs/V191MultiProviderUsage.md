@@ -23,8 +23,8 @@
 메인 provider     Codex
 상세 그래프 표시  [x]
 
-1번 탭 상단       Codex 5시간 + Codex 주간 + Grok 주간
-상세 영역          Codex pace + 초기화권 + Codex 주간 그래프 + Codex 상태
+1번 탭 상단       Codex | Grok 가로 컬럼. Codex 5시간은 있을 때만, 없으면 숨김
+상세 영역          Codex pace + Codex 주간 그래프 + 초기화권 + Codex 상태
 ```
 
 `Grok`이 메인이면 상단은 Grok 주간과 Codex 주간을 함께 보여 주고, 상세 영역은 Grok pace와
@@ -104,11 +104,13 @@ provider 전환용 하위 탭, segmented control, disclosure navigation은 추�
 
 1. 메인 provider 상태 header
 2. 활성 provider 게이지 묶음
-   - Codex 메인: Codex 5시간, Codex 주간, 필요하면 Grok 주간
-   - Grok 메인: Grok 주간, 필요하면 Codex 주간
-3. 메인 provider pace와 provider 전용 정보
+   - Codex 메인: 있으면 Codex 5시간, Codex 주간, 필요하면 Grok 주간. 없는 5시간은 숨긴다.
+   - Grok 메인: Grok 주간, 필요하면 Codex 주간. 보조 Codex 5시간은 표시하지 않는다.
+   - provider 영역은 가로로 나란히 두고 기존 잔여 막대를 쓴다.
+3. 메인 provider pace
 4. `상세 그래프 표시`가 켜진 경우 메인 provider 주간 그래프
-5. 메인 provider 데이터 상태
+5. 메인 provider 전용 정보(초기화권)
+6. 메인 provider 데이터 상태
 
 게이지 묶음은 스크롤 전 상단에서 함께 읽히게 배치한다. 보조 provider 게이지는 provider명,
 사용률, 잔여율, reset 또는 stale/error를 포함한다. Grok 5시간 값을 합성하지 않고, 보조
