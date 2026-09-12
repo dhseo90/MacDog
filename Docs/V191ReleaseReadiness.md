@@ -45,9 +45,10 @@ MACDOG_APP_VERSION=1.9.1 ./script/check.sh --no-run
 
 ## PR, CI, review와 release head
 
-아직 `v1.9.1` → `main` PR, CI 통과, merge SHA를 기록하지 않았습니다.
-`origin/main`은 published `v1.9.0` merge `63d7fec6a0ca7714bbbf8a985bbb3bda362491ad`를
-포함합니다. `v1.9.1` 브랜치는 `main`에 포함되지 않았습니다.
+`v1.9.1` → `main` PR은 [#41](https://github.com/dhseo90/MacDog/pull/41)입니다.
+CI 통과와 merge SHA는 아직 기록하지 않았습니다. `origin/main`은 published `v1.9.0`
+merge `63d7fec6a0ca7714bbbf8a985bbb3bda362491ad`를 포함합니다. `v1.9.1` 브랜치는
+`main`에 포함되지 않았습니다.
 
 ## Signed tag, artifact, draft와 publish
 
@@ -111,7 +112,7 @@ Finder drag-and-drop 또는 설치본 popover를 직접 확인하지 않았다�
 | README screenshot freshness | renderer 산출물을 `Docs/Images/README/PopoverTabs/`에 반영 |
 | 실제 Grok live smoke | 미수행 |
 | `~/.grok/auth.json` 조회 | 미수행 |
-| PR, CI, review | 미수행 |
+| PR, CI, review | PR [#41](https://github.com/dhseo90/MacDog/pull/41) 생성. CI/merge 미기록 |
 | signed annotated `v1.9.1` tag / GitHub `Verified` | 없음 |
 | Published `v1.9.1` DMG | 없음 |
 | Finder drag-and-drop와 GUI smoke | 미수행 |
