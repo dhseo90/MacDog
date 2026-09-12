@@ -662,8 +662,9 @@ tooltip, 알림, 펫·잠들지 않기 문구는 메인 provider만 기준으로
 구현 순서, preference migration, 두 cache writer 동시 운영, no-fallback, UI와 검증 경계는
 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)에 둡니다.
 
-현재 상태: 1~7번 코드 완료. 설정 checkbox UI와 SwiftUI renderer 확인을 수행했습니다.
-live screencapture와 Finder 설치, LaunchAgent 실등록, 릴리즈 smoke는 미수행입니다.
+현재 상태: 1~7번 코드 완료. 게이지 묶음 개편과 메뉴바 주간 잔여율 `%`(설정 기본 켜짐)를
+추가했습니다. live screencapture와 Finder 설치, LaunchAgent 실등록, 릴리즈 smoke는
+미수행입니다.
 
 구현 순서:
 

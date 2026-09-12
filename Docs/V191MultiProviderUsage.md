@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~10 완료 / Step 11 GUI renderer 확인, 설치·LaunchAgent·release smoke 미수행
+상태: Step 2~10 완료, 게이지 묶음·메뉴바 주간 잔여율 `%` 추가 / Step 11 GUI renderer 확인, 설치·LaunchAgent·release smoke 미수행
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
@@ -205,6 +205,7 @@ push는 사용자 명시 요청 전에는 실행하지 않는다.
 - 두 provider writer/cache는 활성 집합 기준으로 독립 운영된다.
 - 1번 탭 상단에서 활성 provider 주간 게이지를 탭 전환 없이 함께 본다.
 - 메뉴바 아이콘 옆에는 메인 provider 주간 잔여율 `%`만 표시하고, 없으면 숨긴다.
+  설정 `메뉴바에 주간 잔여율 표시`로 끄며 기본값은 켜짐이다.
 - 나머지 UI와 runtime 반응은 main provider만 기준으로 한다.
 - 상세 그래프를 숨겨도 활성 provider 게이지는 유지된다.
 - stale/error/missing에서 합성이나 provider 간 fallback이 없다.

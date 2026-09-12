@@ -178,6 +178,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         if let text = MenuBarWeeklyRemainingLabel.make(
             state: state,
+            visible: preferences.usageMenuBarWeeklyRemainingVisible,
             now: state.runnerEvaluationDate
         ).text {
             button.imagePosition = .imageLeading

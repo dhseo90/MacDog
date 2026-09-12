@@ -18,6 +18,8 @@ struct SettingsPanel: View {
     @AppStorage(RunnerPreferences.usageProviderModeKey) private var usageProviderModeRaw = RunnerPreferences.defaultUsageProviderMode.rawValue
     @AppStorage(RunnerPreferences.usageGraphDateBaselineKey) private var usageGraphDateBaselineRaw =
         RunnerPreferences.defaultUsageGraphDateBaseline.rawValue
+    @AppStorage(RunnerPreferences.usageMenuBarWeeklyRemainingVisibleKey) private var menuBarWeeklyRemainingVisible =
+        RunnerPreferences.defaultUsageMenuBarWeeklyRemainingVisible
     @State private var usageSelection = RunnerPreferences.usageProviderSelection()
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
@@ -173,6 +175,10 @@ struct SettingsPanel: View {
             )
             deferredPreferencesChanged()
         }
+        .onChange(of: menuBarWeeklyRemainingVisible) { _, isVisible in
+            RunnerPreferences.setUsageMenuBarWeeklyRemainingVisible(isVisible)
+            deferredPreferencesChanged()
+        }
     }
 
     private var isClaudeDebug: Bool {
@@ -206,6 +212,7 @@ struct SettingsPanel: View {
                     .accessibilityIdentifier("usage-main-provider")
                 }
                 settingsToggle("상세 그래프 표시", isOn: graphVisibleBinding)
+                settingsToggle("메뉴바에 주간 잔여율 표시", isOn: $menuBarWeeklyRemainingVisible)
             }
         }
     }

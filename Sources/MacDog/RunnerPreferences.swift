@@ -33,6 +33,7 @@ struct RunnerPreferences: Equatable {
     static let usageProviderModeKey = "usageProviderMode"
     static let usageEnabledProviderMaskKey = "usageEnabledProviderMask"
     static let usageDetailGraphVisibleKey = "usageDetailGraphVisible"
+    static let usageMenuBarWeeklyRemainingVisibleKey = "usageMenuBarWeeklyRemainingVisible"
     static let usageGraphDateBaselineKey = "usageGraphDateBaseline"
     static let claudeUsageProviderReenabledKey = "claudeUsageProviderReenabled"
     private static let legacyUsageProviderKeys = [
@@ -74,6 +75,7 @@ struct RunnerPreferences: Equatable {
     static let defaultUsageResetSoonNotificationsEnabled = true
     static let defaultUsageProviderMode = UsageProviderMode.codex
     static let defaultUsageDetailGraphVisible = true
+    static let defaultUsageMenuBarWeeklyRemainingVisible = true
     static let defaultUsageGraphDateBaseline = UsageGraphDateBaseline.defaultBaseline
     static let minimumSleepPreventionBatteryThresholdPercent = 10
     static let maximumSleepPreventionBatteryThresholdPercent = 95
@@ -114,6 +116,7 @@ struct RunnerPreferences: Equatable {
             usageNotificationsEnabledKey: defaultUsageNotificationsEnabled,
             usageResetSoonNotificationsEnabledKey: defaultUsageResetSoonNotificationsEnabled,
             usageProviderModeKey: defaultUsageProviderMode.rawValue,
+            usageMenuBarWeeklyRemainingVisibleKey: defaultUsageMenuBarWeeklyRemainingVisible,
             usageGraphDateBaselineKey: defaultUsageGraphDateBaseline.rawValue
         ])
     }
@@ -170,6 +173,7 @@ struct RunnerPreferences: Equatable {
     let usageResetSoonNotificationsEnabled: Bool
     let usageProviderMode: UsageProviderMode
     let usageProviderSelection: UsageProviderSelection
+    let usageMenuBarWeeklyRemainingVisible: Bool
     let usageGraphDateBaseline: UsageGraphDateBaseline
 
     var sleepPreventionMode: SleepPreventionMode {
@@ -248,6 +252,7 @@ struct RunnerPreferences: Equatable {
         self.usageResetSoonNotificationsEnabled = Self.usageResetSoonNotificationsEnabled(defaults: defaults)
         self.usageProviderMode = Self.usageProviderMode(defaults: defaults)
         self.usageProviderSelection = Self.usageProviderSelection(defaults: defaults)
+        self.usageMenuBarWeeklyRemainingVisible = Self.usageMenuBarWeeklyRemainingVisible(defaults: defaults)
         self.usageGraphDateBaseline = UsageGraphDateBaseline.preferred(defaults: defaults)
 
         let storedMode = SleepPreventionControlMode(rawValue: defaults.string(forKey: Self.sleepPreventionControlModeKey) ?? "")
@@ -431,6 +436,17 @@ struct RunnerPreferences: Equatable {
 
     static func setLoginLaunchEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) {
         defaults.set(isEnabled, forKey: loginLaunchEnabledKey)
+    }
+
+    static func usageMenuBarWeeklyRemainingVisible(defaults: UserDefaults = .standard) -> Bool {
+        guard defaults.object(forKey: usageMenuBarWeeklyRemainingVisibleKey) != nil else {
+            return defaultUsageMenuBarWeeklyRemainingVisible
+        }
+        return defaults.bool(forKey: usageMenuBarWeeklyRemainingVisibleKey)
+    }
+
+    static func setUsageMenuBarWeeklyRemainingVisible(_ isVisible: Bool, defaults: UserDefaults = .standard) {
+        defaults.set(isVisible, forKey: usageMenuBarWeeklyRemainingVisibleKey)
     }
 
     static func usageNotificationsEnabled(defaults: UserDefaults = .standard) -> Bool {

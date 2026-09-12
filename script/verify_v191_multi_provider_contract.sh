@@ -142,6 +142,8 @@ verify_contract() {
   require_match '활성 provider' "$SETTINGS_SOURCE" "settings enabled provider checkboxes"
   require_match 'Picker\("메인 provider"' "$SETTINGS_SOURCE" "settings main picker"
   require_match '상세 그래프 표시' "$SETTINGS_SOURCE" "settings graph checkbox"
+  require_match '메뉴바에 주간 잔여율 표시' "$SETTINGS_SOURCE" "settings menu bar remaining toggle"
+  require_match 'usageMenuBarWeeklyRemainingVisible' "$PREFERENCES_SOURCE" "menu bar remaining preference"
   require_match 'isOnlyEnabled' "$SETTINGS_SOURCE" "last provider stays enabled"
   require_match 'setUsageProviderSelection' "$SETTINGS_SOURCE" "settings persist selection"
   require_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "Claude stays off visible checkboxes"
@@ -179,6 +181,10 @@ verify_contract() {
     "$LABEL_TEST" "menu bar ignores auxiliary weekly"
   require_match 'testMissingWeeklyHidesLabelWithoutSynthesis' \
     "$LABEL_TEST" "menu bar hides missing weekly"
+  require_match 'testHiddenPreferenceHidesLabelWhenWeeklyIsReady' \
+    "$LABEL_TEST" "menu bar remaining toggle hides label"
+  require_match 'testMenuBarWeeklyRemainingPreferenceDefaultsOnAndCanBeTurnedOff' \
+    "$LABEL_TEST" "menu bar remaining defaults on"
   require_match 'testEnabledProviderSetInstallsMatchingCacheAgentsIndependently' \
     "$USER_COMPONENT_TEST" "independent writer install"
   require_match 'testSelectedUsageSourcePolicyLoadsBothVisibleCachesWithoutFallback' \

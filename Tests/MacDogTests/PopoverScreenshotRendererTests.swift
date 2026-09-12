@@ -342,6 +342,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(settingsSource.contains("활성 provider"))
         XCTAssertTrue(settingsSource.contains("Picker(\"메인 provider\""))
         XCTAssertTrue(settingsSource.contains("상세 그래프 표시"))
+        XCTAssertTrue(settingsSource.contains("메뉴바에 주간 잔여율 표시"))
         XCTAssertTrue(settingsSource.contains("isOnlyEnabled"))
         XCTAssertTrue(settingsSource.contains("Picker(\"날짜 기준\""))
         XCTAssertTrue(settingsSource.contains("UsageGraphDateBaseline.allCases"))
@@ -906,6 +907,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.setLoginLaunchEnabled(true, defaults: defaults)
             RunnerPreferences.setUsageNotificationsEnabled(false, defaults: defaults)
             RunnerPreferences.setUsageResetSoonNotificationsEnabled(true, defaults: defaults)
+            RunnerPreferences.setUsageMenuBarWeeklyRemainingVisible(true, defaults: defaults)
         }
 
         if module == .battery {

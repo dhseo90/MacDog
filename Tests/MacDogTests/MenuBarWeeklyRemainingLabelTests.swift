@@ -104,6 +104,36 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertNil(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text)
     }
 
+    func testHiddenPreferenceHidesLabelWhenWeeklyIsReady() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            usageProviderMode: .codex
+        )
+
+        XCTAssertNil(
+            MenuBarWeeklyRemainingLabel.make(state: state, visible: false, now: Self.now).text
+        )
+        XCTAssertEqual(
+            MenuBarWeeklyRemainingLabel.make(state: state, visible: true, now: Self.now).text,
+            "70%"
+        )
+    }
+
+    func testMenuBarWeeklyRemainingPreferenceDefaultsOnAndCanBeTurnedOff() throws {
+        let suiteName = "MenuBarWeeklyRemainingVisible.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertTrue(RunnerPreferences.usageMenuBarWeeklyRemainingVisible(defaults: defaults))
+        XCTAssertTrue(RunnerPreferences(defaults: defaults).usageMenuBarWeeklyRemainingVisible)
+
+        RunnerPreferences.setUsageMenuBarWeeklyRemainingVisible(false, defaults: defaults)
+        XCTAssertFalse(RunnerPreferences.usageMenuBarWeeklyRemainingVisible(defaults: defaults))
+        XCTAssertFalse(RunnerPreferences(defaults: defaults).usageMenuBarWeeklyRemainingVisible)
+    }
+
     func testRemainingPercentRoundsToInteger() {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 0, weeklyUsedPercent: 40.4),

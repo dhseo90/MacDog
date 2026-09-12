@@ -4,8 +4,12 @@ import Foundation
 struct MenuBarWeeklyRemainingLabel: Equatable {
     let text: String?
 
-    static func make(state: UsageMonitorState, now: Date = Date()) -> MenuBarWeeklyRemainingLabel {
-        guard state.usageProviderMode != .claude else {
+    static func make(
+        state: UsageMonitorState,
+        visible: Bool = true,
+        now: Date = Date()
+    ) -> MenuBarWeeklyRemainingLabel {
+        guard visible, state.usageProviderMode != .claude else {
             return MenuBarWeeklyRemainingLabel(text: nil)
         }
 
