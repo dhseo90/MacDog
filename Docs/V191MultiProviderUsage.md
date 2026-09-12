@@ -23,12 +23,15 @@
 메인 provider     Codex
 상세 그래프 표시  [x]
 
-1번 탭 상단       Codex | Grok 가로 컬럼. Codex 5시간은 있을 때만, 없으면 숨김
-상세 영역          Codex pace + Codex 주간 그래프 + 초기화권 + Codex 상태
+1번 탭 상단       메인 provider가 맨 위. 체크한 provider만 세로로 쌓음
+                  한 줄: 이름 · 주간/5시간 · 사용량 · 리셋일
+                  5시간이 있으면 그 provider 주간 아래에 같은 형태로 붙임
+상세 영역          메인 공용 주간 그래프 껍데기 + 메인 pace/전용 정보
 ```
 
-`Grok`이 메인이면 상단은 Grok 주간과 Codex 주간을 함께 보여 주고, 상세 영역은 Grok pace와
-Grok 주간 그래프를 사용한다. 보조 provider의 5시간 window나 상세 그래프는 표시하지 않는다.
+`Grok`이 메인이면 상단 첫 줄은 Grok 주간이고, 체크된 Codex는 그 아래 주간 행이다. 상세 그래프는
+메인 공용 `WeeklyRemainingHistoryBlock`이며 조회만 provider query가 채운다. 보조 provider의
+5시간 window나 상세 그래프는 표시하지 않는다. 체크하지 않은 provider 자리는 비우지 않고 생략한다.
 
 ## 용어와 상태 불변조건
 
@@ -103,15 +106,16 @@ migration 규칙:
 provider 전환용 하위 탭, segmented control, disclosure navigation은 추가하지 않는다. 기존 1번
 탭의 같은 content surface 안에서 다음 순서로 표시한다.
 
-1. 메인 provider 상태 header
-2. 활성 provider 게이지 묶음
-   - Codex 메인: 있으면 Codex 5시간, Codex 주간, 필요하면 Grok 주간. 없는 5시간은 숨긴다.
-   - Grok 메인: Grok 주간, 필요하면 Codex 주간. 보조 Codex 5시간은 표시하지 않는다.
-   - provider 영역은 가로로 나란히 두고 기존 잔여 막대를 쓴다.
-3. 메인 provider pace
-4. `상세 그래프 표시`가 켜진 경우 메인 provider 주간 그래프
-5. 메인 provider 전용 정보(초기화권)
-6. 메인 provider 데이터 상태
+1. 활성 provider 게이지 묶음
+   - 체크한 provider만 그린다. 개발 등록 순서는 Codex, Grok, 그다음 추가분이다.
+   - 메인은 항상 최상단이고, 나머지는 등록 순서를 유지한다.
+   - provider 이름은 카드당 첫 줄에만 두고, 사용 `%`와 남음 `%`는 고정 폭으로 맞춘다.
+   - 한 행은 `주간/5시간 · 사용 · 남음 · 리셋일`이다.
+   - 주간이 먼저고, 5시간이 있으면 같은 provider 주간 아래에 붙인다. 없는 5시간은 숨긴다.
+   - 껍데기는 `UsageGaugeQuerying`이고 조회만 provider별로 구현한다.
+2. `상세 그래프 표시`가 켜진 경우 메인 provider 주간 그래프
+3. 메인 provider 전용 정보(초기화권). Grok 메인은 pace 요약만 두고 내부 `Grok 사용량` 제목은 두지 않는다.
+4. 메인 provider 데이터 상태. weekly-only 성공은 경고가 아니라 `데이터 정상`이다.
 
 게이지 묶음은 스크롤 전 상단에서 함께 읽히게 배치한다. 보조 provider 게이지는 provider명,
 사용률, 잔여율, reset 또는 stale/error를 포함한다. Grok 5시간 값을 합성하지 않고, 보조

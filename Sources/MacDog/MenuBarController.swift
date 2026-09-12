@@ -181,7 +181,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             visible: preferences.usageMenuBarWeeklyRemainingVisible,
             now: state.runnerEvaluationDate
         ).text {
-            button.imagePosition = .imageLeading
+            button.imagePosition = .imageTrailing
             button.title = text
         } else {
             button.imagePosition = .imageOnly

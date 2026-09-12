@@ -28,12 +28,12 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             0.12
         )
         XCTAssertGreaterThan(
-            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.16, y: 0.30)),
+            screenshotColorDistance(in: image, from: CGPoint(x: 0.02, y: 0.02), to: CGPoint(x: 0.10, y: 0.30)),
             0.12
         )
     }
 
-    func testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates() {
+    func testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates() throws {
         let now = MacDogDemoData.readmeScreenshotTimestamp
         let cases: [(String, UsageProviderSelection, Int)] = [
             (
@@ -73,6 +73,13 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             )
 
             let image = renderUsagePopover(state)
+            if name == "codex-main-dual",
+               ProcessInfo.processInfo.environment["MACDOG_WRITE_FIVEHOUR_PREVIEW"] == "1" {
+                try write(
+                    image: image,
+                    to: URL(fileURLWithPath: "/tmp/macdog-fivehour-preview.png")
+                )
+            }
             XCTAssertGreaterThan(image.tiffRepresentation?.count ?? 0, 100, name)
             XCTAssertGreaterThan(
                 screenshotColorDistance(
@@ -184,6 +191,10 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         XCTAssertEqual(CodexResetCreditTextFormatter.countText(for: resetCredits), "3장")
         XCTAssertEqual(
+            CodexResetCreditTextFormatter.firstExpiryText(for: resetCredits, timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!),
+            "먼저 1/16 18:30까지"
+        )
+        XCTAssertEqual(
             CodexResetCreditTextFormatter.expirySummary(for: resetCredits, timeZone: TimeZone(secondsFromGMT: 9 * 60 * 60)!),
             "먼저 1/16 18:30까지 · 1/17 20:00까지 · 1/18 21:30까지"
         )
@@ -262,19 +273,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertLessThanOrEqual(hostingView.fittingSize.height, contentHeight)
 
         let source = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
-        XCTAssertTrue(
+        XCTAssertFalse(
             source.contains("CodexUsageSummaryInline("),
-            "Codex tab should keep the existing current risk summary visible"
+            "Codex tab should not show the compact risk and basis summary beside 현재 사용량"
         )
         XCTAssertTrue(
-            source.contains("summary.notificationThresholdSummary"),
-            "Codex tab should keep the existing notification threshold visible"
+            source.contains("spacing: 12"),
+            "Codex tab should separate graph, reset credits, and data status as major sections"
         )
-        XCTAssertTrue(
-            source.contains("spacing: CodexUsagePanelLayout.sectionSpacing"),
-            "Codex tab should separate current usage, reset credits, history, and data status as major sections"
-        )
-        XCTAssertTrue(source.contains("CodexWeeklyPacemakerBlock("))
+        XCTAssertFalse(source.contains("CodexWeeklyPacemakerBlock("))
     }
 
     func testCodexUsagePanelKeepsWeeklyContentVisibleWhenFiveHourIsUnavailable() throws {
@@ -323,7 +330,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let graphSource = try String(
             contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift"
         )
-        XCTAssertTrue(panelSource.contains("CodexWeeklyPacemakerBlock("))
+        XCTAssertFalse(panelSource.contains("CodexWeeklyPacemakerBlock("))
         XCTAssertFalse(panelSource.contains("CodexPlanTransition"))
         XCTAssertFalse(settingsSource.contains("플랜 전환"))
         XCTAssertFalse(graphSource.contains("epochBoundary"))
@@ -369,7 +376,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(controllerSource.contains("usageProviderSelection: preferences.usageProviderSelection"))
         XCTAssertTrue(controllerSource.contains("NSStatusItem.variableLength"))
         XCTAssertTrue(controllerSource.contains("MenuBarWeeklyRemainingLabel.make("))
-        XCTAssertTrue(controllerSource.contains("button.imagePosition = .imageLeading"))
+        XCTAssertTrue(controllerSource.contains("button.imagePosition = .imageTrailing"))
         XCTAssertTrue(popoverSource.contains("GrokUsagePanel("))
         XCTAssertTrue(popoverSource.contains("preview: state.grokUsage"))
         XCTAssertTrue(popoverSource.contains("showsWeeklyGraph:"))
@@ -378,23 +385,49 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("selectedModule == .codex"))
         XCTAssertTrue(popoverSource.contains("fixedSize(horizontal: false, vertical: true)"))
         let gaugesSource = try String(contentsOfFile: "Sources/MacDog/CombinedUsageGauges.swift")
+        XCTAssertTrue(gaugesSource.contains("protocol UsageGaugeQuerying"))
+        XCTAssertTrue(gaugesSource.contains("UsageGaugeQueryCatalog"))
         XCTAssertTrue(gaugesSource.contains("gauges.groups"))
-        XCTAssertTrue(gaugesSource.contains("RemainingUsageBar("))
-        XCTAssertTrue(gaugesSource.contains("group.provider.label"))
+        XCTAssertFalse(gaugesSource.contains("RemainingUsageBar("))
+        XCTAssertTrue(gaugesSource.contains("compactRow("))
+        XCTAssertTrue(gaugesSource.contains("providerCard("))
+        XCTAssertTrue(gaugesSource.contains("resetDateLabel("))
+        XCTAssertTrue(gaugesSource.contains("providerAccent("))
+        XCTAssertTrue(gaugesSource.contains("item.provider.label"))
+        XCTAssertTrue(gaugesSource.contains("enum CombinedUsageGaugeCopy"))
+        XCTAssertTrue(gaugesSource.contains("enum CombinedUsageGaugeMetrics"))
+        XCTAssertTrue(gaugesSource.contains("usedText(usedPercent:"))
+        XCTAssertTrue(gaugesSource.contains("remainingText(remainingPercent:"))
+        XCTAssertTrue(gaugesSource.contains("rowDigitFont"))
+        XCTAssertTrue(gaugesSource.contains("remainingColor"))
+        XCTAssertTrue(gaugesSource.contains("Text(group.provider.label)"))
+        XCTAssertTrue(gaugesSource.contains("percentWidth"))
+        XCTAssertFalse(gaugesSource.contains("showsProviderLabel"))
+        XCTAssertFalse(gaugesSource.contains("minimumScaleFactor"))
+        XCTAssertFalse(gaugesSource.contains("Gemini"))
         let codexPanelSourceForOrder = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         let graphRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "WeeklyRemainingHistoryBlock("))
         let creditsRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "CodexResetCreditsBlock("))
+        let statusRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "CodexUsageDataStatusBlock("))
         XCTAssertLessThan(graphRange.lowerBound, creditsRange.lowerBound)
-        XCTAssertTrue(codexPanelSourceForOrder.contains("fiveHourIsAvailable: false"))
+        XCTAssertLessThan(creditsRange.lowerBound, statusRange.lowerBound)
+        XCTAssertFalse(codexPanelSourceForOrder.contains("Text(\"현재 사용량\")"))
+        XCTAssertFalse(codexPanelSourceForOrder.contains("CodexWeeklyPacemakerBlock("))
+        XCTAssertTrue(codexPanelSourceForOrder.contains("fiveHourIsAvailable: limit.fiveHour != nil"))
+        let graphSource = try String(contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift")
+        let creditsSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexResetCreditsViews.swift")
+        XCTAssertTrue(graphSource.contains(".strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)"))
+        XCTAssertTrue(creditsSource.contains(".strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)"))
+        XCTAssertTrue(gaugesSource.contains(".strokeBorder(accent.opacity(group.isAuxiliary ? 0.20 : 0.34), lineWidth: 1)"))
         let codexPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         XCTAssertTrue(codexPanelSource.contains("showsMainWeeklyGraph"))
-        XCTAssertTrue(codexPanelSource.contains("CodexWeeklyPacemakerBlock("))
         XCTAssertTrue(codexPanelSource.contains("CodexResetCreditsBlock("))
         XCTAssertFalse(popoverSource.contains("Picker(\"사용량 provider\""))
         XCTAssertFalse(popoverSource.contains(".pickerStyle(.segmented)"))
         XCTAssertFalse(grokPanelSource.contains("5시간"))
         XCTAssertTrue(grokPanelSource.contains("주간"))
         XCTAssertTrue(grokPanelSource.contains("WeeklyRemainingHistoryBlock("))
+        XCTAssertFalse(grokPanelSource.contains("Text(\"Grok 사용량\")"))
         XCTAssertFalse(grokPanelSource.contains("GrokUsageGraphSnapshotView"))
         XCTAssertTrue(grokPanelSource.contains("grok login"))
         XCTAssertTrue(grokPanelSource.contains("터미널에서 로그인"))
@@ -506,7 +539,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertEqual(modeTabs.map(\.title), ["현재", "지난", "비교"])
         XCTAssertLessThanOrEqual(modeTabFrame.width, 86)
         XCTAssertGreaterThanOrEqual(windowPickerFrame.minX - modeTabFrame.maxX, 24)
-        XCTAssertEqual(windowPickerFrame.maxX, hostingView.bounds.maxX, accuracy: 1)
+        XCTAssertEqual(windowPickerFrame.maxX, hostingView.bounds.maxX - 8, accuracy: 1)
     }
 
     func testWeeklyHistoryWindowPickerUsesActualEndDatesForInterruptedWindows() throws {

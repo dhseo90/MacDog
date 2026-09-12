@@ -27,6 +27,7 @@ GAUGES_TEST="$ROOT_DIR/Tests/MacDogTests/CombinedUsageGaugesTests.swift"
 LABEL_TEST="$ROOT_DIR/Tests/MacDogTests/MenuBarWeeklyRemainingLabelTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
 USER_COMPONENT_TEST="$ROOT_DIR/Tests/MacDogTests/UserComponentInstallerTests.swift"
+STATE_SOURCE="$ROOT_DIR/Sources/MacDog/UsageMonitorState.swift"
 STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
 RUN_TESTS=1
 
@@ -74,7 +75,7 @@ verify_contract() {
     "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" \
     "$CODEX_PANEL_SOURCE" "$GROK_PANEL_SOURCE" "$DEMO_SOURCE" \
     "$SELECTION_TEST" "$WORK_DIFF_TEST" "$GAUGES_TEST" "$LABEL_TEST" \
-    "$POPOVER_TEST" "$USER_COMPONENT_TEST" "$STATE_TEST"; do
+    "$POPOVER_TEST" "$USER_COMPONENT_TEST" "$STATE_SOURCE" "$STATE_TEST"; do
     require_file "$file"
   done
   [[ -x "$V190_VERIFIER" ]] || die "v1.9.0 selected-provider verifier is not executable"
@@ -132,9 +133,12 @@ verify_contract() {
   require_match 'UsageProviderWorkDiff.make' "$CONTROLLER_SOURCE" "controller uses work diff"
   require_match 'CombinedUsageGaugesView' "$POPOVER_SOURCE" "pinned combined gauges"
   require_match 'pinsCombinedUsageGauges' "$POPOVER_SOURCE" "gauges stay above scroll"
+  require_match 'protocol UsageGaugeQuerying' "$GAUGES_SOURCE" "gauge query shell"
+  require_match 'UsageGaugeQueryCatalog' "$GAUGES_SOURCE" "gauge query catalog"
   require_match 'struct MenuBarWeeklyRemainingLabel' "$LABEL_SOURCE" "menu bar weekly remaining label"
   require_match 'NSStatusItem.variableLength' "$CONTROLLER_SOURCE" "variable status item length"
   require_match 'MenuBarWeeklyRemainingLabel.make' "$CONTROLLER_SOURCE" "status item uses weekly remaining"
+  require_match 'button.imagePosition = .imageTrailing' "$CONTROLLER_SOURCE" "percent then runner like battery"
   require_match 'showsMainWeeklyGraph' "$CODEX_PANEL_SOURCE" "Codex graph gate"
   require_match 'showsWeeklyGraph' "$GROK_PANEL_SOURCE" "Grok graph gate"
   require_match 'selection: UsageProviderSelection' "$DEMO_SOURCE" \
@@ -173,8 +177,23 @@ verify_contract() {
     "$GAUGES_TEST" "Codex-main dual gauges"
   require_match 'testDualGrokMainShowsGrokWeeklyThenCodexWeeklyWithoutFiveHour' \
     "$GAUGES_TEST" "Grok-main dual gauges"
+  require_match 'testDisplayOrderPutsMainFirstThenCatalogOrder' \
+    "$GAUGES_TEST" "main first then catalog order"
+  require_match 'testSingleCodexShowsWeeklyThenFiveHourWithoutGrok' \
+    "$GAUGES_TEST" "weekly then five-hour"
+  require_match 'testVisibleQueriesFollowDevelopmentOrderWithoutEmptySlots' \
+    "$GAUGES_TEST" "no empty future-provider slots"
   require_match 'testCombinedGaugesStayWhenDetailGraphIsHidden' \
     "$GAUGES_TEST" "hidden graph keeps gauges"
+  require_match 'testGaugeRowsReserveFixedPercentColumnsAndShowProviderNameOnFirstRowOnly' \
+    "$GAUGES_TEST" "aligned percents and one provider name"
+  require_match 'Text\(group\.provider\.label\)' "$GAUGES_SOURCE" "provider name once per gauge card"
+  require_match 'percentWidth' "$GAUGES_SOURCE" "fixed used and remaining percent columns"
+  reject_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only is not a warning footer"
+  require_match 'cache 최신 · weekly' "$STATE_SOURCE" "short data status detail"
+  require_match 'testWeeklyOnlyReadyCacheAndHistoryIsHealthyWithoutFiveHourWarning' \
+    "$STATE_TEST" "weekly-only healthy status"
+  reject_match 'Text\(\"Grok 사용량\"\)' "$GROK_PANEL_SOURCE" "no inner Grok usage title"
   require_match 'testCodexMainShowsWeeklyRemainingIgnoringFiveHour' \
     "$LABEL_TEST" "menu bar uses weekly remaining not five-hour"
   require_match 'testDualGrokMainIgnoresAuxiliaryCodexWeekly' \
