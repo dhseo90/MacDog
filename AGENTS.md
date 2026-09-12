@@ -1,585 +1,358 @@
 # AGENTS.md
 
-이 문서는 MacDog 프로젝트에서 자동화 개발 에이전트가 반드시 따라야 하는 작업 규칙입니다.
-제품 로드맵과 구현 계획은 `README.md`, `ROADMAP.md`, `Docs/`에 두고, 이 파일은 에이전트 실행 규칙만 다룹니다.
-
-MacDog는 Codex 사용량 CLI, Grok weekly-only writer(`macdog-grok-usage`), macOS menu bar 앱, optional WidgetKit 코드, shared cache, 권한 도우미, 설치/배포 스크립트를 포함합니다. 설정 visible mode는 `Codex`와 `Grok`입니다. Claude source는 보존하지만 기본 UI에서는 숨깁니다.
-
----
-
-## 1. 최우선 원칙
-
-1. 사용자가 지정한 작업 범위를 넘지 않습니다.
-2. 로드맵 milestone, 번호, 카테고리가 지정되면 그 범위 안에서만 작업합니다.
-3. 다음 로드맵 카테고리는 사용자가 명시하기 전까지 자동 착수하지 않습니다.
-4. Codex 사용량 조회 계약, `--json` schema, cache schema, app-server JSON-RPC 해석, 앱/위젯 데이터 경계는 요청 없이 breaking change를 만들지 않습니다.
-5. `~/.codex/auth.json`은 직접 읽거나 출력하지 않습니다.
-6. token, access token, refresh token, cookie, session material, auth header는 읽기/출력/cache/log/fixture/문서 저장 모두 금지합니다.
-   단, Codex 사용량 초기화권 만료일 조회를 위해 `codex-usage`가 다음 순서로 access token을
-   메모리에서만 받아 ChatGPT backend 요청의 `Authorization` header에 즉시 사용하는 것은
-   예외로 허용합니다.
-   1. Codex app-server `account/chatgptAuthTokens/refresh`
-   2. app-server가 해당 method를 지원하지 않는 경우 Codex auth store
-      (`$CODEX_HOME/auth.json`, `~/.config/codex/auth.json`, `~/.codex/auth.json`, macOS Keychain `Codex Auth`)
-   이 예외는 token 출력, token cache 저장, raw response 저장, fixture/문서 token 저장을 허용하지 않습니다.
-   auth store 직접 읽기는 초기화권 만료일 backend 요청 직전의 메모리 사용으로만 제한합니다.
-   같은 종류의 예외로, Grok SuperGrok/Grok Build 공유 주간 pool 조회를 위해
-   `macdog-grok-usage`가 grok.com session을 `~/.grok/auth.json`에서 쓰는 것은 허용합니다.
-   허용 순서:
-   - 조회 직전에 access token을 메모리로 읽어 unofficial CLI-proxy `x.ai/billing`
-     요청의 `Authorization` header에 즉시 사용한다.
-   - access token이 유효하면 refresh 하지 않고 파일을 고치지 않는다.
-   - access token이 만료되었거나 billing이 401이면 `auth.json.lock`을 잡고,
-     디스크에 이미 새 값이 있으면 채택한다. 없으면 OIDC `refresh_token`으로
-     갱신하고 새 access/refresh를 같은 파일에 atomic merge write한다.
-   이 예외는 token 출력, token cache 저장, raw billing 응답 저장, fixture/문서 token 저장,
-   에이전트가 사용자 승인 없이 `~/.grok/auth.json` 원문을 열거나 출력하는 행위,
-   `XAI_API_KEY`로 주간 pool을 조회하는 행위, 메뉴바 앱의 auth store 읽기/쓰기,
-   MacDog 전용 토큰 파일, 메모리 단독 세션을 허용하지 않습니다.
-   로그인/로그아웃은 `grok login` / `grok logout`만 사용합니다.
-7. 장시간 테스트, GUI 앱 실행, 설치 스크립트 실행, LaunchAgent 등록, helper 설치/삭제, codesign/notarization, push는 사용자 명시 요청 없이 실행하지 않습니다.
-8. Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning, App Store Connect 권한이 필요한 항목은 현재 구현 계획, 완료 조건, 후속 이슈에 넣지 않습니다. 사용자가 해당 권한 사용 가능 상태와 별도 milestone을 승인한 경우만 예외입니다.
-9. WidgetKit 코드는 보존/opt-in build 대상입니다. 기본 앱/DMG 완료 조건에 넣지 않고, source/test/fixture/opt-in build 수준까지만 확인한 경우 실제 위젯 UI 검수 완료로 보고하지 않습니다.
-10. 모든 사용자 응답, 진행 보고, 최종 보고는 한국어로 작성합니다. 명령어, 파일 경로, 코드 식별자, 외부 원문 제목처럼 원문 유지가 필요한 항목만 예외입니다.
-11. 개발 작업에는 사용 가능한 경우 Superpowers(supers) 워크플로를 적용해 요구사항 파악, 계획, 테스트, 검증을 진행합니다.
-12. 독립적인 조사/구현/검토가 사용자 범위 안에서 병렬 가능하면 서브 에이전트를 사용할 수 있습니다. 서브 에이전트도 이 문서의 보안, 승인, 검증, 보고 규칙을 따릅니다.
-
----
-
-## 2. 보고 정직성
-
-아래를 완료처럼 보고하지 않습니다.
-
-- 실행하지 않은 명령, 실패한 테스트, 일부만 통과한 검증
-- 열어보지 않은 menu bar popover, macOS 앱 UI, Widget UI, DMG Finder 창
-- 커밋/푸시하지 않은 변경
-- 생성하지 않은 파일, summary, report 경로
-- 문서만 수정했는데 CLI/macOS 앱까지 구현했다는 식의 과장
-- 코드만 수정했는데 README/ROADMAP/AGENTS 반영까지 끝났다는 식의 과장
-- sandbox, macOS 권한, Xcode signing, network, Codex auth 문제를 근거 없이 제품 회귀로 단정
-- 제품 회귀를 근거 없이 환경 문제로 축소
-- raw JSON만 보고 UI 검수를 완료했다고 보고
-- Apple Developer 권한이 필요한 항목을 현재 완료 가능하다고 보고
-- WidgetKit source/test 또는 opt-in build만 보고 실제 위젯 shared cache 표시, stale/error 반영, deep link까지 확인했다고 보고
-- GitHub에서 `Verified`로 확인하지 않은 release tag를 서명 검증 완료로 보고
-
-보고할 때는 확인된 사실과 미확인/추정을 분리합니다.
-
-```text
-확인됨:
-- 실제 실행한 명령
-- 실제 통과/실패 결과
-- 실제 생성/수정/삭제한 파일
-- 실제 커밋 여부
-- 실제 푸시 여부
-
-미확인:
-- 실행하지 않은 테스트
-- 열어보지 않은 앱/위젯/설치 화면
-- 추정 원인
-- 후속 확인 필요 항목
-```
-
-### 2.1 로드맵과 후속 이슈의 분석 모델 추천
-
-이슈 로드맵 또는 후속 이슈를 제시할 때는 해당 작업의 복잡도와 위험도에 맞는
-권장 분석 모델명, 추론 수준, 선정 근거를 함께 제시합니다.
-
-모델과 추론 수준은 Grok Build에서 실제로 선택 가능한 모델과
-[xAI Models](https://docs.x.ai/developers/models), Grok `/effort` 계약을 기준으로
-표기합니다. OpenAI `5.6 Sol`/`Terra`/`Luna` 명칭은 사용하지 않습니다.
-
-현재 선택 가능 모델은 `grok models`에 나온 이름만 씁니다. 2026-08-15 기준:
-
-- `grok-4.6`: 기본 모델. 코딩·에이전트·flagship 작업
-- `grok-4.5`: 이전 세대. 반복·고효율·판단 변화가 적은 작업
-
-확인할 수 없는 모델명, `Sol`/`Terra`/`Luna` 별칭, 로컬 `grok models`에 없는 ID는
-만들지 않습니다. 사용 가능 목록이 바뀌면 이 절의 모델명만 갱신합니다.
-
-추론 수준은 Grok `/effort`와 `--reasoning-effort`가 받는 값만 사용합니다.
-
-- TUI `/effort`: `low`, `medium`, `high`, `xhigh`
-- headless `--reasoning-effort`: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`
-- 보고에는 `없음 (none)`, `최소 (minimal)`, `낮음 (low)`, `중간 (medium)`,
-  `높음 (high)`, `매우 높음 (xhigh)`, `최대 (max)` 형식으로 표기합니다.
-- 기본 출발점은 `medium`입니다.
-- `high`와 `xhigh`는 추가 추론으로 품질 향상이 필요한 경우 사용합니다.
-- `max`는 가장 어려운 품질 우선 작업에만 사용합니다.
-- 선택한 모델이 해당 수준을 받지 않으면 그 모델이 받는 가장 가까운 상위 수준을
-  쓰고, 없는 수준을 지어내지 않습니다.
+MacDog 자동화 에이전트의 작업 규칙이다. 대상은 Swift 사용량 CLI, macOS 메뉴바 앱과
+데스크톱 펫, provider별 cache/history, optional WidgetKit, 권한 도우미, 설치·배포 스크립트다.
+제품 범위와 진행 상태는 `README.md`, `ROADMAP.md`, 버전별 `Docs/` 문서에서 확인한다.
 
-#### 모델 선정 점수
+## 1. 요청과 문맥
 
-영향도, 불확실성, 검증 난이도, 변경 범위를 각각 `0~2점`으로 평가하고 합산합니다.
+| 요청 | 수행 범위 | 별도 지시가 필요한 일 |
+| --- | --- | --- |
+| 조사·리뷰·상태 확인 | 관련 파일과 상태 조회, 안전한 읽기 전용 진단, 근거 보고 | 제품 수정, 커밋·푸시 |
+| 개발·수정 | 지정 기능 구현, 관련 단기 검증, 같은 범위의 결함 수정과 재검증 | 다음 milestone, 계약 확대 |
+| 문서 개편 | 지정 문서와 직접 연결된 참조 정리, 문서 검증 | 무관한 제품 구현 |
+| 특정 테스트 | 지정 묶음 실행과 결과 보고 | 범위 확대, 임의 제품 수정 |
+| 릴리즈 준비 | 실제 상태 대조, 잔여 이슈와 검증 필요성 판단 | 미승인 외부 변경 |
+| 커밋·푸시·릴리즈 실행 | 명시된 대상과 동작 | 승인받지 않은 merge·tag·publish·삭제 |
 
-| 평가 항목 | 0점 | 1점 | 2점 |
-| --- | --- | --- | --- |
-| 영향도 | 문구·형식 또는 동작 영향 없음 | 국소 기능·내부 동작 영향 | 사용자 데이터·공용 계약·릴리즈 영향 |
-| 불확실성 | 절차와 원인이 명확함 | 일부 조사·선택 필요 | 원인 불명·복수 가설·외부 계약 확인 필요 |
-| 검증 난이도 | 정적 검사·단일 확인 | focused test·단일 build | 통합·GUI·live data·배포 검증 |
-| 변경 범위 | 반복 처리·단일 파일 | 여러 파일 또는 단일 모듈 | 모듈 경계·schema·배포 경계 변경 |
+사용자 범위와 순서를 지킨다. 최신 명시 지시가 기존 규칙을 변경하면 그 범위에 적용하며,
+이미 주어진 승인을 상태 질문이나 담당자 변경 때문에 다시 받지 않는다. 조회·리뷰만 요청한
+경우 수정 권한으로 확대하지 않는다. 상위 실행 환경의 보안·권한 제한을 우회하지 않는다.
 
-합계에 따른 기본 모델은 다음과 같습니다.
+`AGENTS.md`는 저장소 실행 정책의 기준이다. README, roadmap, verifier, 과거 evidence가
+더 넓은 실행 권한을 주지 않는다. 미해소 충돌은 관련 부분을 특정해 보고하고, 영향 없는
+허용 작업은 계속한다. 완료 여부는 문서의 체크 표시와 실제 구현·검증 근거를 대조한다.
 
-- `0~2점`: `grok-4.5`
-- `3~8점`: `grok-4.6`
+구조 변경에는 관련 설계, 저장 변경에는 cache 계약, 배포에는 릴리즈 문서를 읽는다.
+작은 수정에 전체 저장소 지도나 모든 과거 기록을 요구하지 않는다. 같은 지침을 매 수정마다
+다시 읽거나 승인된 설계를 다시 작성하지 않는다.
 
-`3~5점`과 `6~8점`은 같은 `grok-4.6`을 쓰고 추론 수준으로 구분합니다.
-선택 가능 모델이 두 개뿐이라 OpenAI 시대의 3단 별칭을 유지하지 않습니다.
+Superpowers는 설계·TDD·원인 분석·검토·검증에 필요한 절차를 선택해 활용한다. 스킬은
+명시 요청 또는 실제 적용 범위에 맞춰 사용하고 필요한 참조만 읽는다. 도구와 구현 방법은
+목표·불변조건·합격 기준 안에서 선택한다. 문서 변경을 모델 설정이나 설치 스킬 변경으로
+보고하지 않는다.
 
-작업 유형 기본값도 함께 적용합니다.
+## 2. 단계 개발과 실패 처리
 
-- 반복적이고 판단 변화가 적은 작업은 `grok-4.5`를 우선합니다.
-- 간단한 개발을 포함한 일반 개발 작업은 `grok-4.6`을 우선합니다.
-- 위 유형으로 명확히 낮출 수 없는 작업은 `grok-4.6`을 기본값으로 합니다.
-- 점수표와 작업 유형 기본값이 충돌하면 더 높은 모델을 선택하고 이유를 기록합니다.
+시작 전에 요청 범위, 비범위, 불변 계약, 정상·오류·경계 동작, 필요한 검증을 파악한다.
+단순 수정은 짧은 설명으로 충분하고, 여러 모듈에 걸친 변경은 기존 버전 문서에 계획을 둔다.
+사용자가 지정한 milestone·번호·카테고리 밖 작업을 자동 착수하지 않는다.
 
-#### 위험 상향 규칙
+각 단계는 구현 → 관련 검증·수정 → 결과 기록 → 승인된 커밋 순서로 닫는다.
+첫 초안만 만들고 멈추지 않으며, 이미 승인된 범위의 완료 조건까지 진행한다.
 
-정확도, 동등성, 보안, 데이터 손상 위험은 합산 점수와 별도로 평가합니다.
+### 2.1 TDD와 재검증
 
-- 정확도 또는 동등성 계약을 변경·검증하면 기본 점수보다 한 단계 상향할 수 있습니다.
-  모델이 이미 `grok-4.6`이면 추론 수준만 올립니다.
-- 인증, 권한, 비밀정보, 취약점 등 보안 경계를 다루면 최소 `grok-4.6`, `high`를 사용합니다.
-- 사용자 데이터 손상·유실·복구 또는 비가역 변경 위험이 있으면 최소 `grok-4.6`,
-  `xhigh`를 사용합니다.
-- 여러 고위험 경계가 겹치고 실패 비용이 매우 큰 경우에만 `max`를 사용합니다.
-- 상향 규칙을 적용하면 어떤 위험 때문에 상향했는지 선정 근거에 명시합니다.
+동작 변경과 버그 수정은 실제 결함을 잡는 focused test로 보호한다. TDD의 예상 RED는
+실행 전에 특정한 미구현 동작의 assertion 실패여야 한다. 컴파일·의존성·명령·환경 오류나
+기존 회귀 실패를 사후에 RED로 이름 바꾸지 않는다. 문구·형식 수정에 의미 없는 테스트를
+만들거나 source 문자열 검사만으로 실제 동작을 검증했다고 하지 않는다.
 
-추론 수준은 모델 점수와 독립적으로 다음 기준을 적용합니다.
+개발 요청은 같은 단계의 안전한 수정·관련 단기 재검증을 포함한다. `/goal` 유무에 관계없이
+최초 실패의 명령·원인·영향을 기록하고 다음 조건에서 계속한다.
 
-- `none`: 추론이 필요 없는 결정적 변환·단순 실행
-- `minimal`: 아주 짧은 판단만 있는 단순 변환. TUI `/effort`가 받지 않으면 `low`를 쓴다
-- `low`: 판단이 거의 없는 반복 작업
-- `medium`: 기본 출발점, 일반적인 구현·문서·검증
-- `high`: 복수 파일·통합 경계·회귀 가능성을 함께 검토
-- `xhigh`: 복잡한 상태 전이, 정합성, 보안, 데이터 복구처럼 높은 신뢰가 필요
-- `max`: 가장 어려운 품질 우선 작업이며 다른 수준으로 충분하지 않을 때만 사용
+- 원인이 요청 변경 또는 검증 준비에 있고 기존 계약을 유지하며 고칠 수 있다.
+- 테스트가 작업 소유 fixture·임시 저장소를 사용하며 실제 계정·사용자 설정을 변경하지 않는다.
+- 추가 외부 권한이나 새 제품 결정이 필요하지 않다.
 
-```text
-추천 모델: grok-4.6
-추론 수준: 높음 (high)
-선정 근거: 여러 스크립트와 Docker 빌드 경계를 검증하지만 모델 정확도 계약을 변경하지 않는 통합 작업
-```
+GREEN과 영향 회귀가 통과하기 전 다음 단계나 커밋으로 넘어가지 않는다. 실패 이력을
+최종 성공으로 덮어쓰지 않는다. 같은 원인을 새 근거 없이 반복 수정하지 말고 원인을 재검토한다.
 
-- 선정 근거에는 가능하면 `영향도 + 불확실성 + 검증 난이도 + 변경 범위 = 합계`를 포함합니다.
-- 실제로 선택 가능한 Grok 모델명만 사용하고 확인할 수 없는 모델명은 임의로 만들지 않습니다.
-- 완료된 v1.8.0 이전 문서의 `5.6 Sol`/`Terra`/`Luna` 표기는 Codex 개발 당시 기록이므로
-  소급 수정하지 않습니다. 새 로드맵과 후속 이슈부터 Grok 모델명을 씁니다.
-- 단순 문서 오탈자처럼 범위와 위험이 작은 작업에는 과도한 모델이나 추론 수준을 추천하지 않습니다.
-- 여러 이슈의 난이도가 크게 다르면 이슈별로 각각 추천합니다.
-- 남은 이슈가 없어 `후속 이슈: 없음`으로 보고할 때는 모델 추천을 생략할 수 있습니다.
+### 2.2 중단 경계
 
----
+다음 경우 영향받는 작업을 멈추고 실패 명령, 확인/추정 원인, 변경 파일, 남은 상태와
+재개 조건을 보고한다. 진행할 수 없는 뒤 단계는 `건너뜀`으로 기록한다.
 
-## 3. 단계 진행 규칙
+- 비밀정보 노출, 허용 writer 밖 auth store 접근, 사용자 데이터·권한 경계 침해
+- 요청 밖 CLI/JSON/cache/app-server 계약 변경이 필요한 경우
+- 삭제 대상·소유권 불명확, 실제 설치·권한 변경에 대한 승인 부재
+- 과도한 CPU/RAM 사용이 측정되거나 명백한 정황이 있는 경우
+- 원인·안전성을 확인할 수 없거나 같은 실패·교차 회귀가 해소되지 않는 경우
+- 필수 도구 부재로 승인되지 않은 대체 검증이나 합격 기준 완화가 필요한 경우
 
-여러 단계 요청은 요청된 순서대로만 진행합니다.
+테스트 삭제, 임의 timeout 연장, stale/오류 은폐로 성공을 만들지 않는다.
 
-1. 각 단계는 개발, 관련 테스트, 결과 보고, 필요 시 커밋 순서로 닫습니다.
-2. 한 단계가 실패하면 즉시 중단하고 뒤 단계는 `건너뜀`으로 보고합니다.
-3. 실패 단계는 커밋하지 않습니다.
-4. 실패 전 이미 통과 후 커밋된 단계는 유지합니다.
-5. 전체 단계가 끝나면 현재 요청 범위 안에서 실제로 남은 후속 이슈만 추천합니다.
-6. 마지막 보고에는 푸시 가능 여부와 푸시 수행 여부를 반드시 씁니다.
+## 3. 검증과 증거
 
-### 3.1 `/goal` 예외
+개발 중에는 변경 기능과 영향 회귀를 검증하고, 범위가 끝난 시점에 아래 최소 검증을 닫는다.
+매 수정마다 전체 묶음을 반복하지 않는다. 같은 코드·환경·검증 범위의 결과는 재사용하며,
+변경·실패·누락 또는 환경 변화가 근거를 무효화한 부분만 다시 확인한다.
 
-사용자가 `/goal` 또는 goal option으로 end-to-end 목표 달성을 지시한 경우, 수정 가능한 실패를 즉시 최종 중단으로 확정하지 않습니다.
-
-1. 실패 지점에서 원인, 실패 명령, 영향 범위, 변경 파일을 먼저 기록합니다.
-2. 같은 목표와 같은 로드맵 범위 안에서 고칠 수 있으면 수정 후 실패 단계의 테스트부터 다시 시작합니다.
-3. 실패 단계가 통과하기 전에는 뒤 단계를 진행하지 않습니다.
-4. 같은 실패가 해결 불가능하거나 사용자 결정이 필요할 때만 중단하고 뒤 단계는 `건너뜀`으로 보고합니다.
-5. 최종 보고에는 최초 실패, 수정 내용, 재검증 결과를 함께 적습니다.
-
-### 3.2 로드맵 범위 이탈 금지
-
-사용자가 `ROADMAP.md`의 특정 milestone, 번호, 카테고리를 지정하면 해당 범위 내부의 코드 수정, 문서 수정, 테스트, 안정화, 커밋만 허용됩니다.
-
-금지:
-
-- 지정 milestone 완료를 이유로 다음 milestone 자동 착수
-- 완료 여부 확인 없이 다음 milestone 구현 시작
-- 다른 milestone의 코드/문서/테스트/커밋을 함께 처리
-- 다른 milestone을 함께 완료했다고 보고
-
-사용자가 `다음 스텝 진행`, `Milestone 2 진행`, `1번 완료 후 2번까지 진행`처럼 명시한 경우에만 다음 범위로 넘어갑니다.
-
----
-
-## 4. 커밋과 푸시
-
-커밋은 사용자가 요청했거나 단계 규칙에서 명시한 경우에만 수행합니다.
-
-- 각 단계가 통과한 뒤 해당 단계 변경만 커밋합니다.
-- 여러 단계의 변경을 하나의 커밋에 섞지 않습니다.
-- 실패한 단계는 커밋하지 않습니다.
-- 커밋 메시지는 `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:` 같은 명확한 형식을 사용합니다.
-- `git status --short`가 비어 있지 않은 worktree에서는 그 worktree의 현재 브랜치에 대한 PR 생성, PR merge, 로컬/원격 브랜치 삭제를 진행하지 않습니다.
-- 미커밋 변경은 금지하지 않습니다. 다만 해당 브랜치를 PR/merge/delete 대상으로 삼으려면 먼저 변경 범위를 검토하고, 필요한 변경은 검증 후 커밋하거나 사용자 승인 아래 보류 상태를 명확히 기록해 worktree를 clean 상태로 만든 뒤 진행합니다.
-
-푸시는 사용자가 명시적으로 요청하기 전까지 금지합니다.
-
-### 4.1 PR 리뷰 우회
-
-릴리즈 PR이 작성자 본인 review 금지 때문에 `REVIEW_REQUIRED`로 막힌 경우,
-사용자가 `admin bypass`, `관리자 우회 merge`, `2번으로 진행`처럼 명시 승인하면
-branch protection의 review requirement를 관리자 권한으로 우회해 merge할 수 있습니다.
-
-허용 조건:
-
-- worktree가 clean 상태입니다.
-- PR CI와 필수 status check가 모두 통과했습니다.
-- PR이 `MERGEABLE`이고 대화 해결 요구가 남아 있지 않습니다.
-- blocker가 self-approval 불가에 따른 review requirement뿐임을 확인했습니다.
-- 사용자가 현재 PR에 대해 admin bypass를 명시 승인했습니다.
-
-금지:
-
-- CI 실패, 충돌, unresolved conversation, requested changes 상태에서 admin bypass merge
-- 사용자 명시 승인 없는 admin bypass merge
-- admin bypass를 대신해 branch protection 설정을 임시 완화하는 행위
-
-보고 시 admin bypass를 사용한 사실, 실행 명령, merge SHA, CI 상태, 우회 사유를 분리해서 기록합니다.
-
-마지막 보고 형식:
-
-```text
-커밋:
-- 수행함/수행하지 않음
-- 메시지:
-- 해시:
-- 이유:
-
-푸시 가능: 예/아니오
-이유:
-푸시 수행 여부: 수행하지 않음
-```
-
-`푸시 가능: 예`는 모든 단계가 통과하고, 필요한 커밋이 끝났고, 미커밋 변경이 없을 때만 씁니다.
-
----
-
-## 5. 검증 정책
-
-사용자가 별도 테스트를 지정하면 사용자 지시를 우선합니다.
-
-| 변경 범위 | 최소 검증 |
+| 변경 범위 | 완료 시 최소 검증 |
 | --- | --- |
-| 문서 전용 | `git diff --check`; 가능하면 `npx --yes markdownlint-cli2@0.22.1` |
-| CLI/parser/JSON schema | `git diff --check`, `swift test` 또는 해당 런타임 공식 테스트 |
-| shared cache/polling | `git diff --check`, `swift test`, cache schema/atomic write/stale-error/token 미저장 확인 |
-| macOS menu bar app | `git diff --check`, `swift test`, `xcodebuild build` |
-| WidgetKit | `git diff --check`, `swift test`, `xcodebuild build`; 실제 UI는 App Group provisioning 전 완료로 보고하지 않음 |
-| 설치/배포 | `git diff --check`; 설치/LaunchAgent/codesign/notarization/`spctl`은 명시 요청 전 실행 금지 |
+| 문서 | `git diff --check`, 가능하면 `npx --yes markdownlint-cli2@0.22.1` |
+| CLI/parser/JSON | 관련 focused test, `swift test`, diff 검사 |
+| cache/history/polling | Swift 테스트, atomic write·schema·stale/error·비밀 미저장 검증 |
+| 메뉴바 앱 | focused test, `swift test`, Xcode Debug build, diff 검사 |
+| WidgetKit | 관련 Swift 테스트와 opt-in build, diff 검사; 실제 UI 증거와 구분 |
+| 설치·배포 스크립트 | diff 검사, 관련 정적 검사·격리 fixture/dry-run; 실제 설치와 구분 |
+| 캐릭터 | profile verifier, character/screenshot focused tests, diff 검사 |
 
-문서만 수정한 단계도 최소한 `git diff --check`를 실행합니다.
-Node.js/npm 또는 `markdownlint-cli2` 실행 경로가 없으면 `명령 없음`으로 보고하고 통과 처리하지 않습니다.
-
-장시간 테스트는 명시 요청이 있을 때만 실행합니다.
+서명 없는 앱 빌드 기준:
 
 ```bash
-codex-usage status --watch 60
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build \
+  -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
 ```
 
-실행하지 않았다면 다음처럼 보고합니다.
+명령이 없거나 실행 실패하면 그 상태를 보고한다. 일부 통과·미실행을 전체 PASS로 바꾸지 않는다.
+verifier 호출 전 실제 옵션과 부수 효과를 확인한다. wrapper·fixture·정적 검사는 실제 live/UI/
+설치를 대체하지 않는다. 고정된 30분·120분 테스트를 다른 프로젝트에서 가져오지 않는다.
 
-```text
-장시간 테스트: 실행하지 않음
-이유: 사용자 명시 요청 없음
-```
+일반 단기 fixture 검증은 개발 범위에 포함한다. 장시간 테스트, live 사용량 조회, GUI 앱 실행,
+설치 스크립트 실실행, LaunchAgent 등록/제거, helper 설치/삭제, codesign/notarization/`spctl`은
+해당 동작의 명시 승인 후 수행한다. `codex-usage status --watch 60`도 장시간 동작이다.
 
----
+버전 개발·릴리즈 기록에는 검증 명령, exit/result, 대상 코드·환경, 최초 실패와 재검증,
+실제 생성한 증거 경로, 미실행 사유를 남긴다. 단순 문서 수정에는 검증 결과 보고로 충분하다.
+실제 GUI 검수는 화면·조작·관측 상태와 시각 증거를 기록한다. screenshot renderer 성공은
+렌더링 검증이며 설치본 popover 조작 성공이 아니다. 열지 않은 화면은 `UI 확인 미수행`이다.
 
-## 6. 중단 조건
+임시 산출물은 작업 소유 경로에서 만들고, 성공·실패·중단 시 필요한 비민감 증거를 보존한 뒤
+소유가 확인된 잔여물을 정리한다. 사용자 파일이나 다른 작업 프로세스를 임의 삭제·종료하지
+않는다. 임시 경로를 영구 증거 링크로 제시하지 않는다.
 
-아래 상황이 발생하면 중단하고 보고합니다. `/goal` 요청은 3.1 예외를 따릅니다.
+## 4. 비밀정보와 인증 예외
 
-1. build 실패
-2. 핵심 fixture test 실패
-3. `git diff --check` 실패
-4. CLI JSON schema 변경이 README/AGENTS/ROADMAP과 불일치
-5. cache schema 변경이 앱/위젯 문서와 불일치
-6. Codex auth token 또는 session material 노출 징후
-7. Codex/Grok auth.json 원문 출력, 또는 허용된 writer 경로 밖의 auth store 읽기/쓰기 징후.
-   `macdog-grok-usage`의 billing 직전 읽기, 만료/401 시 `auth.json.lock` 아래 refresh와
-   atomic merge write는 예외입니다. 메뉴바 앱의 Grok auth store 접근은 중단 조건입니다.
-8. app-server 또는 Grok billing response 전체 원문을 민감정보 검토 없이 로그/cache에 저장
-9. WidgetKit extension이 shared cache 대신 app-server를 직접 호출
-10. menu bar runner의 과도한 CPU/RAM 사용 측정 또는 명백한 정황
-11. 설치/삭제 스크립트가 사용자 홈 또는 시스템 파일을 과도하게 수정할 위험
-12. codesign/notarization/LaunchAgent/helper 단계에 사용자 승인이 필요한 경우
+token, access/refresh token, cookie, session material, auth header를 대화·로그·cache·fixture·
+문서에 출력하거나 저장하지 않는다. 에이전트는 `~/.codex/auth.json`을 직접 읽지 않는다.
+에이전트가 승인 없이 `~/.grok/auth.json` 원문을 열거나 출력하는 것도 금지한다.
+raw app-server/billing 응답을 민감정보 검토 없이 저장하지 않는다.
 
-중단 보고에는 단계, 구간, 실패 명령, 확인된 원인, 추정 원인, 변경 파일, 커밋 여부, 뒤 단계 `건너뜀`, 후속 조치를 포함합니다.
+아래 예외는 제품 writer의 제한된 runtime 동작만 허용한다. 에이전트의 원문 조사,
+메뉴바 앱의 auth store 접근, 비밀 출력·영구 저장 권한으로 확대하지 않는다.
 
----
+### 4.1 Codex 초기화권 만료일
 
-## 7. Codex 사용량 데이터 규칙
+`codex-usage`만 다음 순서로 access token을 메모리에서 받아 ChatGPT backend 만료일
+요청의 `Authorization` header에 즉시 사용한다.
 
-1. 1순위 데이터 소스는 Codex app-server `account/rateLimits/read`입니다.
-2. slot 이름과 관계없이 `windowDurationMins = 300`은 5시간 창으로 해석합니다.
-3. slot 이름과 관계없이 `windowDurationMins = 10080`은 주간 창으로 해석합니다.
-4. Codex 주간 window는 성공 cache에 필수이며 5시간 window는 일시 미제공될 수 있습니다.
-5. weekly-only 응답은 partial success로 저장하고 주간 history·runner·알림을 계속 갱신합니다.
-6. 없는 5시간 window를 0% 또는 마지막 성공 값으로 합성하지 않고 UI에 `현재 제공되지 않음`으로 표시합니다.
-7. 5시간 window가 복구되면 기존 5시간 history를 보존한 상태에서 새 sample과 pace를 자동 재개합니다.
-8. 잔여량은 `100 - usedPercent`로 계산합니다.
-9. `resetsAt`은 Unix epoch seconds이며 표시 시 로컬 시간대로 변환합니다.
-10. 기본 limit bucket은 `rateLimitsByLimitId.codex`입니다.
-11. `codex_bengalfox` 같은 추가 bucket은 advanced/debug 출력으로 분리합니다.
-12. 사용량 조회 실패 시 마지막 성공 cache가 있어도 stale/error 상태를 함께 표시합니다.
-13. 공식 잔여 한도와 로컬 SQLite 추정치를 섞어 표현하지 않습니다.
-14. 주간 잔여량 그래프는 같은 `resetsAt` window 안에서 표시 잔여율이 증가하지 않도록 그립니다.
-15. OpenAI가 주간 한도를 실제 리셋해 `resetsAt`이 바뀐 경우에만 이전 history와 분리하고 새 타임라인을 왼쪽 100%에서 시작합니다.
+1. app-server `account/chatgptAuthTokens/refresh`
+2. 해당 method 미지원 시 Codex auth store: `$CODEX_HOME/auth.json`,
+   `~/.config/codex/auth.json`, `~/.codex/auth.json`, macOS Keychain `Codex Auth`
 
-### 7.1 Grok 사용량 데이터 규칙
+직접 auth store 읽기는 이 backend 요청 직전 메모리 사용으로 제한한다.
+token cache, raw response 저장, fixture/문서 token 저장은 허용하지 않는다.
 
-1. 기본 UI 입력은 unofficial CLI-proxy `x.ai/billing`의 SuperGrok / Grok Build 공유 주간
-   pool만 사용합니다. 공개 REST 문서의 공식 구독 잔여율 API는 아닙니다.
-2. `usedPercent`는 `creditUsagePercent`를 그대로 쓰고 잔여율은 `100 - usedPercent`입니다.
-3. Grok 5시간 window는 없습니다. 없으면 `현재 제공되지 않음`으로 두고 합성하지 않습니다.
-4. Extra Usage Credits, Auto Top Up, console prepaid, RPS/TPM, OTEL, TUI parser,
-   `XAI_API_KEY`는 기본 UI 입력이 아닙니다.
-5. `MONTHLY`, prepaid, on-demand cycle은 거부합니다.
-6. `resetsAt`을 모르면 field를 생략합니다. `billingPeriodStart + 7일`로 합성하지 않습니다.
-7. Grok cache는 `grok-usage.json`, `grok-usage-history.json`, `grok-usage.lock`이며
-   Codex/Claude 파일과 분리합니다. directory `0700`, file `0600`, atomic write를 유지합니다.
-8. 선택 provider가 stale/error여도 Codex 또는 Claude cache로 fallback하지 않습니다.
-9. Grok Extra Usage Credits를 Codex 초기화권처럼 표시하지 않습니다.
-10. grok.com session은 `~/.grok/auth.json` 하나입니다. `macdog-grok-usage`는 Grok CLI
-    sibling입니다. 유효한 access token은 읽기만 하고, 만료/401일 때만 `auth.json.lock`
-    아래에서 refresh 한 뒤 같은 파일에 atomic merge write합니다. 메뉴바는 auth store를
-    읽지 않습니다. 로그인 UI는 `grok login`입니다.
+### 4.2 Grok CLI sibling
 
----
+`macdog-grok-usage`는 Grok CLI와 같은 `~/.grok/auth.json` 세션을 사용한다.
 
-## 8. macOS UI와 캐릭터 경계
+- billing 직전에 access token을 메모리로 읽어 unofficial `x.ai/billing` 요청에 사용한다.
+- 유효한 token이면 refresh하거나 파일을 변경하지 않는다.
+- 만료 또는 billing 401일 때만 `auth.json.lock`을 잡고, 디스크의 새 값을 우선 채택한다.
+  새 값이 없으면 OIDC refresh 후 같은 파일에 atomic merge write한다.
 
-- RunCat은 "작은 menu bar runner가 상태에 따라 속도를 바꾸는 경험"만 참고합니다.
-- RunCat의 고양이 캐릭터, asset, 브랜드 표현은 복제하지 않습니다.
-- runner 속도는 현재 제공되는 5시간/주간 window 사용률 중 최댓값을 기준으로 하며, weekly-only이면 주간 값만 사용합니다.
-- WidgetKit은 실시간 애니메이션 채널이 아니라 glance용 상태 표시로 다룹니다.
-- menu bar app이 지속 애니메이션을 담당합니다.
-- popover는 장난스럽기보다 명확한 개발 도구처럼 보여야 합니다.
-- `Reduce Motion` 또는 저전력 환경을 고려해 애니메이션 완화 옵션을 둡니다.
-- high usage 경고는 눈에 띄되 과하게 산만하지 않아야 합니다.
-- UI 확인을 하지 않았다면 `UI 확인 미수행`으로 보고합니다.
+로그인/로그아웃은 `grok login` / `grok logout`만 사용한다. MacDog 전용 token 파일,
+메모리 단독 세션, `XAI_API_KEY`로 주간 pool 조회, 메뉴바 앱의 auth store 읽기/쓰기는 금지한다.
 
-### 8.1 캐릭터 이미지 생성/교체
+## 5. 사용량과 앱 경계
 
-캐릭터 컨셉 변경 요청이 있으면 menu bar runner, desktop pet, popover tab button, 설정 탭 미리보기를 하나의 캐릭터 세트로 다룹니다.
+CLI JSON schema, cache schema, app-server JSON-RPC 해석, 앱/위젯 데이터 경계는 요청 없이
+breaking change를 만들지 않는다. 기본 visible provider는 Codex/Grok이며 Claude source,
+sanitizer, cache와 hidden/debug 경로는 보존한다. 버전별 UI 동작은 해당 roadmap을 따른다.
 
-필수 원칙:
+복수 provider 기능에서는 활성 집합이 cache/writer와 게이지를 정하고 메인 provider가
+상세 그래프·러너·알림·tooltip을 정한다. provider 사용률을 합산하거나 실패한 provider를
+다른 provider cache로 대체하지 않는다. 알림은 UserNotifications 기반 로컬 알림이며
+기본 꺼짐, 설정 opt-in과 macOS 권한 승인, 기존 dedupe를 유지한다.
 
-- 기준 이미지는 desktop pet이며, menu bar 이미지는 같은 desktop pet 현재 프레임에서만 파생합니다.
-- 모든 이미지는 같은 캐릭터, 같은 그림체, 투명 배경 PNG, 충분한 여백, 작은 크기에서 읽히는 실루엣을 유지합니다.
-- 임시 생성 이미지는 저장소에 넣지 않고, 최종 선택 후 임시 리소스를 삭제합니다.
-- 캐릭터 이미지는 현재 캐릭터 프로필이 지정한 리소스만 사용합니다.
-- 새 캐릭터 UI/manifest를 바꾸면 `MacDogCharacterProfile`, manifest, 검증 스크립트, screenshot test를 함께 갱신합니다.
+### 5.1 Codex 데이터
 
-현재 기본 리소스 계약:
+- 1순위 원천은 app-server `account/rateLimits/read`, 기본 bucket은
+  `rateLimitsByLimitId.codex`다. `codex_bengalfox` 등 추가 bucket은 advanced/debug로 분리한다.
+- slot 이름과 무관하게 `windowDurationMins = 300`은 5시간, `10080`은 주간이다.
+- 성공 cache에는 주간이 필수다. weekly-only 응답은 partial success로 저장하고
+  주간 history·runner·알림을 계속 갱신한다.
+- 없는 5시간 값을 0%나 마지막 성공 값으로 합성하지 않고 `현재 제공되지 않음`으로 표시한다.
+  복구 시 기존 history를 유지한 채 sample과 pace를 재개한다.
+- 잔여율은 `100 - usedPercent`, `resetsAt`은 Unix epoch seconds이며 로컬 시간으로 표시한다.
+- 실패 시 마지막 성공 cache와 stale/error를 함께 표시한다. 공식 한도와 로컬 SQLite 추정을 섞지 않는다.
+- 같은 `resetsAt` 창의 표시 잔여율은 증가하지 않는다. 공식 reset으로 `resetsAt`이 바뀔 때만
+  이전 history와 분리하고 새 timeline을 왼쪽 100%에서 시작한다.
 
-- menu bar: 별도 전용 PNG 없음. `Sources/MacDog/Resources/DesktopPet/pup-run-right-0.png` ~ `pup-run-right-7.png`에서 파생
-- desktop pet: `Sources/MacDog/Resources/DesktopPet/` 아래 right/up/down 8프레임, idle/rest/alert 4프레임 세트
-- tab button: `Sources/MacDog/Resources/PopoverTabs/{codex,mac,sleep,battery,settings}-tab.png`
-- manifest: `Sources/MacDog/Resources/CharacterProfiles/codex-pup-tab-art.json`
+### 5.2 Grok 데이터
 
-캐릭터 세트 변경 후 최소 검증:
+- 원천은 unofficial CLI-proxy `x.ai/billing`의 SuperGrok/Grok Build 공유 주간 pool이다.
+  공개 REST 공식 구독 잔여율 API로 표현하지 않는다.
+- `usedPercent = creditUsagePercent`, 잔여율은 `100 - usedPercent`다.
+- Grok 5시간 window는 없으며 합성하지 않는다. 해당 항목을 표시할 때는 `현재 제공되지 않음`이다.
+- Extra Usage Credits, Auto Top Up, console prepaid, RPS/TPM, OTEL, TUI parser,
+  `XAI_API_KEY`는 기본 UI 입력이 아니다. `MONTHLY`, prepaid, on-demand cycle은 거부한다.
+- reset을 모르면 field를 생략한다. `billingPeriodStart + 7일`로 만들지 않는다.
+- `grok-usage.json`, `grok-usage-history.json`, `grok-usage.lock`은 Codex/Claude와 분리하며
+  directory `0700`, file `0600`, atomic write를 유지한다.
+- Grok Extra Usage Credits를 Codex 초기화권처럼 표시하지 않는다.
 
-```bash
-git diff --check
-./script/verify_character_profile.sh
-swift test --filter MacDogCharacterProfileTests
-swift test --filter PopoverScreenshotRendererTests
-```
+### 5.3 네이티브 UI와 캐릭터
 
-가능하면 최신 앱을 열어 runner, desktop pet, tab button, 설정 탭 미리보기를 직접 확인합니다. 직접 확인하지 않았다면 `UI 확인 미수행`으로 보고합니다.
+러너는 메인 provider의 현재 제공되는 5시간/주간 사용률 중 최댓값을 사용하고 weekly-only이면
+주간만 사용한다. Reduce Motion과 저전력 환경을 고려한다. popover는 읽기 쉬운 개발 도구로
+유지하고 high usage 경고가 과도하게 산만하지 않게 한다.
 
----
+RunCat에서는 작은 러너가 상태에 따라 속도를 바꾸는 경험만 참고한다. 캐릭터·asset·브랜드는
+복제하지 않는다. 캐릭터 교체는 runner, desktop pet, popover tab, 설정 미리보기를 한 세트로
+취급한다. desktop pet 프레임이 기준이며 메뉴바 이미지는 같은 현재 프레임에서만 파생한다.
 
-## 9. 설치, 배포, 릴리즈
+모든 이미지에 같은 캐릭터·그림체, 투명 PNG, 여백, 작은 크기에서 읽히는 실루엣을 유지한다.
+현재 profile 지정 리소스만 사용하고 profile/manifest/verifier/screenshot test를 함께 갱신한다.
+현재 경로는 `Sources/MacDog/Resources/`의 `DesktopPet/`(right/up/down 8프레임,
+idle/rest/alert 4프레임), `PopoverTabs/{codex,mac,sleep,battery,settings}-tab.png`,
+`CharacterProfiles/codex-pup-tab-art.json`이다. 메뉴바는 `pup-run-right-0.png`~`7.png`에서
+파생한다. 임시 생성 이미지는 저장소에 넣지 않고 최종 선택 뒤 작업 소유 임시 리소스를 정리한다.
 
-설치/배포 세부 절차는 `Docs/ReleasePackaging.md`, `Docs/GitHubReleaseChecklist.md`, `Docs/Scripts.md`를 기준으로 합니다.
+검증은 `./script/verify_character_profile.sh`,
+`swift test --filter MacDogCharacterProfileTests`,
+`swift test --filter PopoverScreenshotRendererTests`를 사용한다.
+실제 앱 확인은 3장의 GUI 승인 경계를 따른다.
 
-사용자 설치 검수 원칙:
+WidgetKit은 glance용 shared cache 소비자다. app-server를 직접 호출하거나 실시간 애니메이션
+채널로 사용하지 않는다. source/test/opt-in build를 보존하되 기본 앱/DMG 완료 조건에서 제외한다.
+실제 Widget UI, shared cache 표시, stale/error, deep link 검증을 source/build만으로 주장하지 않는다.
 
-- 최종 사용자가 받는 DMG를 실제로 열고 Finder에서 보이는 `MacDog.app`을 `Applications`로 드래그앤드롭한 경우만 설치 검수로 인정합니다.
-- `install.sh`, `cp`, `ditto`, `rsync`, Finder 숨김 조작, 화면 밖 Finder 창, hdiutil mount 후 직접 복사, 앱 번들 직접 교체는 사용자 설치 검수의 대체 수단으로 금지합니다.
-- 실제 drag-and-drop을 수행하거나 관찰할 수 없으면 즉시 `미수행`으로 보고합니다.
+## 6. Git과 승인
 
-### 9.1 설치원, Finder, 중복 앱 경계
+시작 시 branch, upstream, staged/unstaged/untracked 상태를 확인한다. 기존 변경은 소유자를
+확인할 수 없으면 사용자 작업으로 보존한다. 커밋은 명시 승인된 범위만 검증 후 수행하고,
+`feat:`, `fix:`, `docs:`, `test:` 등 성격이 드러나는 메시지를 쓴다.
+승인은 철회·대체·범위 변경이 없으면 유지된다. 푸시 권한은 커밋 권한과 별도로 확인한다.
 
-- 설치원은 새로 다운로드해 checksum과 `hdiutil verify`를 통과한 최종 `.dmg`만 허용합니다.
-- `package_release.sh`가 Finder AppleEvent timeout, retry 실패, mountpoint 잔류로 종료된 경우
-  마운트된 read-write 볼륨이나 stage directory를 설치원으로 사용하지 않습니다.
-- 설치 DMG는 Finder에서 실제 `.dmg` 파일을 열어 자동으로 표시된 창을 사용합니다.
-  `hdiutil attach -noautoopen` 뒤 sidebar의 volume을 여는 흐름은 저장된 Finder window
-  metadata가 적용되지 않을 수 있으므로 설치 검수의 대체 경로로 사용하지 않습니다.
-- 설치 전 source volume이 read-only인지, DMG payload version과 executable checksum이
-  승인된 release head와 일치하는지 확인합니다. payload가 현재 release head보다 오래되면
-  화면 검토에만 사용하고 `/Applications`에 설치하지 않습니다.
-- Finder 자동화 좌표는 축소된 app screenshot 픽셀을 실제 macOS logical screen 좌표로
-  간주하지 않습니다. 창 밖 또는 다른 Finder 창으로 드래그할 때는 source와 destination의
-  실제 경로를 확인하고, 좌표 추정만으로 성공을 판정하지 않습니다.
-- drag-and-drop 뒤 `/Applications/MacDog.app`의 version, executable checksum, 수정 시각,
-  codesign 검증, 실행 중 app path가 설치 source와 일치해야만 설치 성공으로 보고합니다.
-  Finder `대치` dialog가 닫힌 사실만으로 성공으로 보고하지 않습니다.
-- 개발용 `dist/MacDog.app`, 다른 git worktree의 `dist/MacDog.app`, Desktop 복사본,
-  `/private/tmp/macdog-*` app bundle을 실행하거나 Finder 설치원으로 사용하지 않습니다.
-  이런 번들은 LaunchServices 또는 Finder 검색에 중복 앱으로 노출될 수 있습니다.
-- 설치 종료 시 실제 앱은 `/Applications/MacDog.app` 하나만 남아야 합니다.
-  `~/Applications`, Desktop, 모든 git worktree의 `dist`, `/private/tmp/macdog-*`,
-  mounted volume에 남은 `MacDog.app`은 cleanup 대상입니다.
-- cleanup 전에 `/Applications/MacDog.app`을 제외한 app bundle을 LaunchServices에서
-  unregister하고, quarantine할 때는 `.app.quarantined`처럼 `.app`으로 끝나지 않는
-  이름과 `.noindex` directory를 사용합니다.
-- Finder 검색은 Applications folder에서 시작해도 기본 범위가 `Mac`일 수 있습니다.
-  `cleanup_release_smoke_state.sh --apply` 뒤 `verify_release_final_state.sh`를 실행하고,
-  `응용 프로그램` 범위를 명시적으로 선택한 `MacDog` 검색 결과 URL이
-  `/Applications/MacDog.app` 하나인지 직접 확인합니다.
+미커밋 변경은 금지하지 않습니다. 기존 다른 작업은 자동 stage·stash·revert하지 않는다.
+`git status --short`가 비어 있지 않으면 해당 worktree의 PR 생성, PR merge, 로컬/원격 브랜치 삭제를 진행하지 않습니다.
+승인된 커밋·푸시는 대상 파일과 전송할 commit을 검토해 무관 변경을 제외한다.
+전체 worktree가 dirty이면 이를 명시하며, 해당 범위의 전송 성공을 전체 브랜치 완료로 표현하지 않는다.
 
-릴리즈 준비/종료 요청이 있을 때는 버전별 세부 문서와 별개로 아래 공용 순서를 따릅니다.
-아래 조건을 모두 완료해야 릴리즈 완료로 봅니다.
+푸시 전 remote와 ahead/behind를 확인하고 승인되지 않은 선행 commit이 함께 전송되지 않게 한다.
+푸시 후 remote branch SHA를 확인한다. force push, tag 교체, release 삭제, rollback은
+각 동작의 명시 승인 없이 하지 않는다.
 
-1. 커밋 준비
-   - `git status --short --branch`와 `git diff --stat`로 현재 변경 범위와 브랜치를 확인합니다.
-   - `git status --short`가 비어 있지 않으면 현재 브랜치의 PR 생성, merge, 브랜치 삭제를 진행하지 않습니다.
-   - 새 파일은 `??` 또는 staged `A` 항목까지 확인하고, 버전별 로드맵/릴리즈 문서가 요구하는 핵심 source, test, docs가 누락되지 않았는지 확인합니다.
-   - PR 생성 전 `git diff --check`, 범위별 focused test, 전체 `swift test`를 통과시킵니다.
-   - macOS 앱 변경이 있으면 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO` 또는 현재 repo의 공식 Xcode build 명령을 통과시킵니다.
-   - 검증 실패 시 즉시 중단하고 커밋하지 않습니다.
-   - 검증 통과 후에만 릴리즈 범위 변경을 커밋합니다.
-2. 릴리즈 브랜치와 PR
-   - 현재 변경이 `main`에 직접 있으면 릴리즈용 브랜치로 분리합니다.
-   - release branch worktree가 clean 상태가 아니면 `<release-branch>` PR 생성, PR merge, branch cleanup을 진행하지 않습니다.
-   - `<release-branch>`를 push하고 `<release-branch> -> main` PR을 생성합니다.
-   - PR CI와 리뷰를 확인합니다.
-   - 리뷰 또는 CI 실패 시 같은 브랜치에서 수정, 테스트, 커밋, push를 반복합니다.
-   - merge 후 `origin/main` 최신 SHA를 `<version>` release head로 기록합니다.
-3. 패키징과 GitHub Release
-   - GitHub Release 업데이트와 패키징은 릴리즈 준비의 필수 단계입니다.
-   - 원격 tag `v<version>`이 없는지 확인합니다. 기존 tag를 재발행하는 경우에는 기존 release/tag/asset 상태와 재발행 사유를 먼저 기록합니다.
-   - GitHub에서 `Verified`로 표시될 signed annotated tag를 만들 수 있는 signing key와 git 설정이 준비됐는지 확인합니다.
-   - signing key가 없거나 GitHub가 tag signature를 `Verified`로 확인하지 못하면 release publish, asset 교체, tag 이동을 중단합니다.
-   - `Release Candidate` workflow 또는 로컬 packaging script를 최신 release head 기준으로 실행합니다.
-   - 생성된 `.dmg`와 `.dmg.sha256` artifact를 확인하고, 다운로드 후 checksum과 `hdiutil verify`를 확인합니다.
-   - release tag `v<version>`은 최신 release head에 대해 로컬에서 signed annotated tag로 만든 뒤 원격에 push합니다.
-   - `Draft Release` workflow는 승인된 unsigned/stable 입력값으로 실행하되, 원격에 이미 존재하는 signed tag만 사용해야 합니다. workflow나 `gh release create`가 unsigned/lightweight tag를 자동 생성하게 두지 않습니다.
-   - draft release의 `isDraft`, `isPrerelease`, `targetCommitish`, asset 목록을 확인합니다.
-   - draft asset에는 `MacDog-<version>.dmg`와 `MacDog-<version>.dmg.sha256`가 포함되어야 합니다.
-   - stale draft가 아니고 `targetCommitish`가 최신 release head이며 GitHub tag verification이 `Verified`일 때만 publish합니다.
-   - publish 후 `isDraft=false`, tag `v<version>` 생성, published asset download URL을 확인합니다.
-   - published asset을 다시 다운로드해 checksum과 `hdiutil verify`를 재확인합니다.
-4. 릴리즈 tag 기준
-   - release tag `v<version>`은 반드시 최종 release head, 즉 릴리즈에 포함될 마지막 커밋을 가리켜야 합니다.
-   - 마지막 커밋 이후 tag가 생성됐는지 확인합니다.
-   - release tag는 lightweight tag가 아니라 signed annotated tag여야 하며, GitHub에서 `Verified`로 확인되어야 합니다.
-   - tag가 최신 release head가 아닌 다른 SHA를 가리키거나 GitHub에서 `Verified`가 아니면 publish하지 않고 중단합니다.
-5. 실제 설치와 GUI smoke
-   - 설치 검수는 published DMG를 Finder에서 열고, Finder 창에 보이는 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 인정합니다.
-   - `install.sh`, `cp`, `ditto`, `rsync`, `hdiutil mount` 후 직접 복사는 설치 검수 대체 수단으로 인정하지 않습니다.
-   - published DMG payload checksum이 최신 release head와 일치하는지 확인하고, 불일치하면 설치하지 않습니다.
-   - drag-and-drop 뒤 설치 source와 `/Applications/MacDog.app` executable checksum이 일치하는지 확인합니다.
-   - `/Applications/MacDog.app` 기준으로 앱 실행, menu bar runner, popover, 주요 tab 전환, popover placement, 첫 실행 user component 상태를 확인합니다.
-   - `~/bin/codex-usage`, usage cache LaunchAgent, 실행 중 app path가 `/Applications/MacDog.app` 기준인지 확인합니다.
-   - `./script/verify_usage_fetch_cache_contract.sh --cli <codex-usage-path>`로 cache 계약을 확인합니다.
-   - live fetch 성공 시 weekly history append diagnostic과 history sample을 확인합니다. 5시간 window가
-     없고 주간만 있는 partial success도 정상으로 분리 확인합니다.
-   - live fetch 실패 시 stale/error snapshot인지 분리해서 보고합니다.
-6. Release smoke 종료
-   - `./script/cleanup_release_smoke_state.sh --apply`로 smoke 잔여물을 정리합니다.
-   - `./script/verify_release_final_state.sh --version <version>`을 실행합니다.
-   - `/Applications/MacDog.app` 외 Desktop, 모든 git worktree `dist`, `/private/tmp/macdog-*`, mounted volume의 중복 app bundle이 0개인지 확인합니다.
-   - Finder `응용 프로그램` 범위의 `MacDog` 검색 결과가 `/Applications/MacDog.app` 하나인지 직접 확인합니다.
-   - branch cleanup 전 `git status --short --branch`로 현재 worktree가 clean 상태인지 확인합니다.
-   - release branch가 `main`과 `origin/main`에 포함됐는지 확인한 뒤에만 브랜치 정리를 진행합니다.
-   - 로컬/원격 release branch 삭제는 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 수행합니다.
-   - 정리 후 `git branch -a`로 release branch 잔여 여부를 확인합니다.
+버전 minor는 0~9만 사용한다. 현재 개발 버전과 기능 범위는 `ROADMAP.md`에서 확인한다.
+다음 버전·브랜치는 사용자가 지정하거나 승인할 때 정하며 자동 생성하지 않는다.
 
-브랜치 삭제 전 필수 확인:
+## 7. 릴리즈와 실제 설치
+
+적용 시 `Docs/ReleasePackaging.md`, `Docs/GitHubReleaseChecklist.md`, `Docs/Scripts.md`,
+해당 버전 release readiness를 읽는다. “준비”는 공개·설치 승인이 아니다.
+push/PR/merge/tag/publish/설치/cleanup은 사용자 요청에 명시된 동작과 대상만 수행한다.
+포괄 릴리즈 요청도 별도 보호된 admin bypass, force update, 계정 권한 사용을 자동 승인하지 않는다.
+
+Apple Developer Program, Developer ID 인증서, notarization credential, App Group provisioning,
+App Store Connect 권한이 필요한 항목은 현재 구현 계획·완료 조건·후속 이슈에 넣지 않는다.
+사용자가 권한 보유와 별도 milestone을 승인한 경우만 예외다. `Stable Release` workflow도
+이 조건이 갖춰지기 전 실행하지 않는다.
+
+### 7.1 공개 gate
+
+1. branch/version/build metadata, clean 상태, roadmap, 관련 focused/전체 Swift 테스트와
+   앱 변경 시 Xcode build를 확인한다. 문서/CI/미수행 상태를 실제 결과로 기록한다.
+2. 승인된 release branch push/PR 이후 필수 check와 review를 확인한다. 실패·충돌·미해결
+   review가 있으면 다음 외부 단계를 진행하지 않는다. merge 후 최신 main SHA를 기록한다.
+3. 모든 릴리즈 수정이 포함된 최종 release head에 signed annotated tag만 만든다.
+   local 서명과 GitHub `Verified`(또는 API `verified=true`, `reason=valid`)를 확인한다.
+   key가 없거나 검증되지 않으면 publish·asset 교체·tag 이동을 중단한다.
+4. 승인된 Release Candidate 또는 packaging으로 DMG와 sha256을 만들고 checksum 및
+   `hdiutil verify`를 확인한다. 실패한 packaging의 stage/잔류 mount를 설치원으로 쓰지 않는다.
+5. Draft Release는 기존 signed tag만 사용한다. workflow나 `gh release create`가
+   unsigned/lightweight tag를 자동 생성하지 않게 한다. draft 상태, prerelease 여부,
+   targetCommitish, 최신 head, `MacDog-<version>.dmg`와 `.dmg.sha256` asset을 대조한다.
+6. 승인된 publish 뒤 실제 tag/URL/`isDraft=false`와 공개 asset을 확인하고 다시 다운로드해
+   checksum·`hdiutil verify`를 확인한다. 공개와 실제 설치·GUI 완료를 구분한다.
+
+admin bypass는 현재 PR에 대한 명시 승인, clean worktree, CI/필수 check 통과,
+`MERGEABLE`, 미해결 conversation/requested changes 없음, self-approval 불가에 의한
+`REVIEW_REQUIRED`만 남았음을 모두 확인한 경우에만 허용한다. branch protection을 임시
+완화하지 않는다. 우회 사유, 명령, merge SHA, CI 상태를 보고한다.
+
+### 7.2 Finder 설치와 정리
+
+최종 published DMG를 새로 다운로드해 검증한 뒤 Finder에서 그 파일을 직접 연다.
+자동 표시된 창의 `MacDog.app`을 `Applications`로 실제 drag-and-drop한 경우만 설치 검수다.
+`install.sh`, `cp`, `ditto`, `rsync`, mount 후 복사, 숨김/화면 밖 Finder 조작,
+`hdiutil attach -noautoopen` 후 sidebar 접근은 대체 증거가 아니다.
+
+설치 전 read-only source volume, payload version과 executable checksum이 승인된 release
+head의 artifact와 일치하는지 확인한다. 오래된 payload는 설치하지 않는다.
+축소 screenshot 픽셀을 macOS logical 좌표로 간주하지 말고 source/destination 경로를
+확인한다. dialog가 닫힌 것만으로 성공을 판정하지 않는다.
+
+설치 후 `/Applications/MacDog.app`의 version, executable checksum, 수정 시각,
+서명 검증, 실행 경로를 source와 대조한다. 이 설치본의 runner/popover/tab/placement,
+첫 실행 user component, `~/bin/codex-usage`, 활성 provider LaunchAgent를 확인한다.
+승인된 live cache smoke에서는 weekly-only 성공, history append, stale/error를 구분한다.
+
+개발용 `dist/MacDog.app`, 다른 worktree의 dist, Desktop, `/private/tmp/macdog-*` 앱은
+실행하거나 설치원으로 쓰지 않는다. 설치 종료 시 실제 앱은 `/Applications/MacDog.app`
+하나만 남긴다. 중복 앱은 소유·경로 확인 뒤 LaunchServices unregister하고, 보존 필요 시
+`.noindex` 안에 `.app.quarantined`처럼 `.app`으로 끝나지 않는 이름으로 격리한다.
+
+승인된 cleanup은 `cleanup_release_smoke_state.sh --apply` 뒤
+`verify_release_final_state.sh --version <version>`으로 확인한다.
+`~/Applications`, Desktop, 모든 worktree dist, 작업 임시 경로, mounted volume의
+중복 앱과 Finder의 명시적 `응용 프로그램` 검색 결과를 확인한다.
+관찰하지 못한 drag/GUI/검색은 미수행으로 남긴다.
+
+브랜치 정리는 clean 상태와 main/origin/main 포함 여부를 확인하고 별도 승인 뒤 수행한다.
 
 ```bash
 git merge-base --is-ancestor <release-branch> main
 git merge-base --is-ancestor origin/<release-branch> origin/main
 ```
 
-둘 중 하나라도 실패하면 브랜치를 삭제하지 않고 중단합니다. 원격 브랜치 삭제는 사용자가 릴리즈 종료 또는 브랜치 정리를 명시적으로 승인한 경우에만 수행합니다.
+하나라도 실패하면 삭제하지 않는다. 삭제 후 local/remote ref 부재를 확인한다.
 
-`Stable Release` workflow는 Apple Developer Program, Developer ID signing, notarization, App Group provisioning 조건이 별도 승인되기 전까지 실행하지 않습니다.
+## 8. 문서·리뷰·보고
 
----
+README, ROADMAP, AGENTS 용어와 CLI 이름, window 해석, 실제 UI, 현재 release를 대조한다.
+README는 제품·설치·핵심 링크에 집중하고 정책은 이 파일, 계획은 버전 문서, 증거는 해당
+검증 기록에 둔다. 동일 목록을 여러 파일에 복제하지 않는다. 새 문서는 독자·목적·유지 주기가
+기존 문서와 다를 때 만든다. 과거 release 증거는 현재 정책과 구분해 보존한다.
 
-## 10. 문서 관리
+문서를 삭제·병합·개편하기 전에 링크와 verifier 의존성을 검색한다. 전면 리뷰는 대상 전문을
+읽고 권한·완료 기준 충돌, 반복 규칙, 오래된 경로·모델·버전, 정책/계획/로그 혼합을 확인한다.
+다른 프로젝트의 명령·기술·시간 기준을 그대로 가져오지 않는다. 발견한 문제와 해결·잔여
+항목을 보고하며 목록만 읽고 전수 리뷰라고 하지 않는다.
 
-문서 변경 시 확인합니다.
+릴리즈 잔여 이슈 조사에서는 버전/branch → roadmap → 구현 → 검증 증거를 대조해
+이슈·우선순위·근거·예상 검증·승인 필요 여부를 제시한다. 직접 규칙, 실제 관측, 제안을
+구분하고 필수 미실행을 선택 항목으로 낮추지 않는다.
 
-1. README, ROADMAP, AGENTS의 용어가 일치하는지
-2. CLI 명령 이름이 일치하는지
-3. 사용량 창 해석이 일치하는지
-4. RunCat 참고 범위가 과장되거나 asset 복제로 오해되지 않는지
-5. Apple Developer Program이 필요한 항목이 현재 구현 계획, 완료 조건, 후속 이슈에 들어가지 않았는지
-6. `구현 완료`, `MVP 완료`, `1차 구현`, `후속 예정`, `실험 기능`, `검증 미수행`이 구분되는지
-7. 알림 문서가 `UserNotifications` 로컬 알림, 기본 꺼짐, 설정 탭 opt-in, macOS 알림 권한 승인, JSON/cache/app-server 계약 유지와 일치하는지
-8. 실행하지 않은 검증을 완료처럼 쓰지 않았는지
+완료 보고는 변경 내용, 검증과 한계, 미해결 항목, 커밋 hash/메시지와 push 대상/결과를
+포함한다. 범위가 작으면 간결히 쓴다. 실패·미실행·미확인·부분 완료를 PASS로 바꾸지 않으며
+환경 문제와 제품 회귀를 근거 없이 서로 바꾸지 않는다. 오보고를 발견하면 원래 주장,
+실제 결과, 영향과 정정을 즉시 알린다.
 
-문서가 스크립트의 검증 대상이면 삭제/병합 전에 참조를 확인하고, 필요한 경우 검증 스크립트 또는 상위 문서를 함께 갱신합니다.
+`푸시 가능: 예/아니오`, 이유, `푸시 수행 여부`를 구분한다. 전체 worktree의 미커밋
+변경이 남으면 전체 기준 푸시 가능은 아니오이며, 승인된 특정 commit의 푸시 성공 여부를
+별도로 적는다. 장시간/GUI 미실행은 해당 검증이 필요한 작업에서 사유와 함께 적는다.
+후속 이슈는 요청 범위의 실제 잔여 항목만 제시하며 없으면 `후속 이슈: 없음`이다.
 
----
+## 9. 담당자·모델 운용
 
-## 11. 최종 보고 형식
+메인이 범위·구조·cache/인증/시간 불변 계약·합격 기준과 최종 판정을 맡는다.
+위임이 허용된 환경에서는 인계 효과가 있는 확정된 기능 단위에만 단일 서브에이전트를
+사용할 수 있다. 메인 외 최대 한 개를 순차 재사용하며 하위 생성·재위임을 금지한다.
+소유 파일, 입출력, 금지 경계, 검증과 승인 범위를 전달하고 같은 파일 동시 수정을 피한다.
+메인은 실제 diff와 근거를 직접 검토한다. 단순 작업에 위임을 강제하지 않는다.
 
-작업 성공 시:
+사용자 모델·추론 설정을 우선한다. 문서나 점수만으로 실행 모델을 변경하거나 변경했다고
+보고하지 않는다. Codex와 Grok 패밀리를 구분하고 현재 도구/CLI에서 지원하는 정확한
+모델명·추론 수준만 추천한다. Codex 후보는 도구 목록, Grok은 `grok models`와 실제
+effort 도움말로 확인한다. 확인할 수 없으면 미확인으로 표시한다.
 
-```text
-작업:
-- ...
+Codex는 사용자 지정이 없고 실제 지원되는 경우 `gpt-6-astra`/`medium`을 복합 작업 후보로 둔다.
+Grok 개발은 확인된 `grok-4.6`, 결정적 반복 작업은 확인된 `grok-4.5`를 후보로 둔다.
+이는 프로젝트 선택 기준이며 비용·성능 우위를 보장하지 않는다. Grok에 Codex 별칭을 쓰지 않는다.
+기존 v1.8.0 이전 문서의 모델명은 역사적 기록으로 보존한다.
 
-변경 파일:
-- ...
+이슈·로드맵에서는 해야 할 일과 합격 기준을 먼저 적고 공통 모델 추천은 한 번만 제시한다.
+영향도·불확실성·검증 난이도·변경 범위를 근거로 판단하고, 상세 비교 요청 시 각 0~2점과
+합계를 제시한다. 점수를 자동 상향 규칙으로 쓰지 않는다. 일반 출발점은 medium이며
+추가 추론이 필요하면 미해소 문제와 시도를 설명한다. 보안·데이터 복구·공용 계약은
+반복 작업이라는 이유로 검토 강도를 낮추지 않는다. 실제 지원과 승인 범위는 항상 유지한다.
 
-검증:
-- git diff --check: 통과
-- ...
+## 참고
 
-미실행:
-- GUI 실행: 실행하지 않음
-- 장시간 테스트: 실행하지 않음
+- [MediaServer v4.1.0 개발 방법론](https://github.com/dhseo90/MediaServer/blob/v4.1.0/AGENTS.md)
+- [OpenAI: Rethinking skills and prompts for GPT-6 Astra](https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra)
 
-커밋:
-- 수행함/수행하지 않음
-- 이유:
-
-푸시 가능: 예/아니오
-이유:
-푸시 수행 여부: 수행하지 않음
-```
-
-작업 실패 시:
-
-```text
-중단 위치:
-- 단계:
-- 구간:
-- 실패 명령:
-
-결과:
-- 상태: 실패
-- 뒤 단계: 건너뜀
-
-원인:
-- 확인된 원인:
-- 추정 원인:
-
-변경 파일:
-- ...
-
-커밋:
-- 수행하지 않음
-
-푸시 가능: 아니오
-푸시 수행 여부: 수행하지 않음
-```
-
-후속 이슈는 현재 요청 범위 안에서 실제로 처리 가능한 항목만 제시합니다. 남은 항목이 없으면 `후속 이슈: 없음`으로 보고합니다.
+참조 문서는 개편 근거이며 MacDog 실행 시 추가 정책으로 중복 적용하지 않는다.
