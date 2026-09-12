@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~10 완료, 게이지 카드·메뉴바 주간 잔여율 `%` 추가 / Step 11 README renderer 갱신, Finder 설치·LaunchAgent 실등록·release smoke 미수행
+상태: GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료 / 사용량 탭 GUI 확인 / Mac/Sleep/Battery/Settings 탭 직접 조작 미수행
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
@@ -223,7 +223,7 @@ push는 사용자 명시 요청 전에는 실행하지 않는다.
 - screenshot renderer가 single, Codex-main dual, Grok-main dual, graph-hidden 상태를 렌더링한다.
   `testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates`가 이 네 상태를 그린다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build, v1.9.1 verifier가 통과한다.
-- 실제 UI를 열지 않았다면 `UI 확인 미수행`으로 보고한다.
+- 실제 UI를 열지 않은 탭은 `미수행`으로 보고한다. 사용량 탭 GUI는 확인했다.
 
 ## 모델 추천
 
