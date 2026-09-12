@@ -38,10 +38,11 @@ struct UsagePopoverView: View {
             RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
                 .fill(MacDogPopoverLayout.shellBackgroundColor)
         )
-        .overlay(
+        .clipShape(RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius))
+        .overlay {
             RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
     }
 
     private var selectedModule: MacDogPopoverModule {
@@ -65,10 +66,11 @@ struct UsagePopoverView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(nsColor: .controlBackgroundColor).opacity(0.72))
         )
-        .overlay(
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
-        )
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
     }
 
     private var tabRail: some View {

@@ -40,7 +40,7 @@ struct SettingsPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             PopoverStatusSummary(
                 content: SettingsPanelSummaryContent(
                     notificationSettings: notificationSettingsSnapshot,
@@ -192,7 +192,7 @@ struct SettingsPanel: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         } else {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("활성 provider")
                     .font(.caption2.weight(.medium))
                 HStack(spacing: 14) {

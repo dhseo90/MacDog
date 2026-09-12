@@ -384,6 +384,9 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(popoverSource.contains("pinsCombinedUsageGauges"))
         XCTAssertTrue(popoverSource.contains("selectedModule == .codex"))
         XCTAssertTrue(popoverSource.contains("fixedSize(horizontal: false, vertical: true)"))
+        XCTAssertTrue(popoverSource.contains(".strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)"))
+        XCTAssertTrue(popoverSource.contains(".clipShape(RoundedRectangle(cornerRadius: MacDogPopoverLayout.shellCornerRadius))"))
+        XCTAssertFalse(popoverSource.contains(".stroke(Color.primary.opacity(0.12), lineWidth: 1)"))
         let gaugesSource = try String(contentsOfFile: "Sources/MacDog/CombinedUsageGauges.swift")
         XCTAssertTrue(gaugesSource.contains("protocol UsageGaugeQuerying"))
         XCTAssertTrue(gaugesSource.contains("UsageGaugeQueryCatalog"))
@@ -702,7 +705,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.usageProviderModeKey,
             RunnerPreferences.usageEnabledProviderMaskKey,
             RunnerPreferences.usageDetailGraphVisibleKey,
-            RunnerPreferences.usageGraphDateBaselineKey
+            RunnerPreferences.usageGraphDateBaselineKey,
+            RunnerPreferences.usageMenuBarWeeklyRemainingVisibleKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {
@@ -744,7 +748,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
         if requestedModules.isEmpty || requestedModules.contains("grok") {
             configureDefaults(for: .codex, defaults: defaults)
-            RunnerPreferences.setUsageProviderMode(.grok, defaults: defaults)
+            RunnerPreferences.setUsageProviderSelection(
+                UsageProviderSelection(
+                    enabled: [.codex, .grok],
+                    main: .grok,
+                    detailGraphVisible: true
+                ),
+                defaults: defaults
+            )
             let preferences = RunnerPreferences(defaults: defaults)
             let state = MacDogDemoData.state(
                 preferences: preferences,
@@ -906,7 +917,14 @@ final class PopoverScreenshotRendererTests: XCTestCase {
 
     private func configureDefaults(for module: MacDogPopoverModule, defaults: UserDefaults) {
         RunnerPreferences.setSleepPreventionControlMode(.off, defaults: defaults)
-        RunnerPreferences.setUsageProviderMode(.codex, defaults: defaults)
+        RunnerPreferences.setUsageProviderSelection(
+            UsageProviderSelection(
+                enabled: [.codex, .grok],
+                main: .codex,
+                detailGraphVisible: true
+            ),
+            defaults: defaults
+        )
         RunnerPreferences.setUsageGraphDateBaseline(.calendarMidnight, defaults: defaults)
         defaults.set(module.rawValue, forKey: RunnerPreferences.popoverModuleKey)
 
