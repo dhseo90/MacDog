@@ -3,7 +3,35 @@ import XCTest
 @testable import MacDog
 
 final class CombinedUsageGaugesTests: XCTestCase {
-    func testSingleCodexShowsFiveHourAndWeeklyWithoutGrok() {
+    func testVisibleQueriesFollowDevelopmentOrderWithoutEmptySlots() {
+        XCTAssertEqual(UsageGaugeQueryCatalog.visibleQueries.map(\.provider), [.codex, .grok])
+        XCTAssertFalse(UsageGaugeQueryCatalog.visibleQueries.contains { $0.provider == .claude })
+    }
+
+    func testDisplayOrderPutsMainFirstThenCatalogOrder() {
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .grok,
+            detailGraphVisible: true
+        )
+        XCTAssertEqual(
+            UsageGaugeQueryCatalog.displayOrder(main: .grok, selection: dual).map(\.provider),
+            [.grok, .codex]
+        )
+        XCTAssertEqual(
+            UsageGaugeQueryCatalog.displayOrder(main: .codex, selection: dual).map(\.provider),
+            [.codex, .grok]
+        )
+        XCTAssertEqual(
+            UsageGaugeQueryCatalog.displayOrder(
+                main: .grok,
+                selection: UsageProviderSelection(enabled: .grok, main: .grok, detailGraphVisible: true)
+            ).map(\.provider),
+            [.grok]
+        )
+    }
+
+    func testSingleCodexShowsWeeklyThenFiveHourWithoutGrok() {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 24, weeklyUsedPercent: 41, weeklyResetsAt: 1_900_003_600),
             cacheSnapshot: nil,
@@ -13,16 +41,17 @@ final class CombinedUsageGaugesTests: XCTestCase {
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
         XCTAssertEqual(gauges.groups.map(\.provider), [.codex])
-        XCTAssertEqual(gauges.items.map(\.title), ["5시간", "주간"])
+        XCTAssertEqual(gauges.items.map(\.title), ["주간", "5시간"])
+        XCTAssertEqual(gauges.items.map(\.kind), [.weekly, .fiveHour])
         XCTAssertEqual(gauges.items.map(\.isAuxiliary), [false, false])
         XCTAssertEqual(gauges.items.map(\.provider), [.codex, .codex])
         XCTAssertEqual(
             gauges.items[0].value,
-            .ready(usedPercent: 24, remainingPercent: 76, resetsAt: nil)
+            .ready(usedPercent: 41, remainingPercent: 59, resetsAt: 1_900_003_600)
         )
         XCTAssertEqual(
             gauges.items[1].value,
-            .ready(usedPercent: 41, remainingPercent: 59, resetsAt: 1_900_003_600)
+            .ready(usedPercent: 24, remainingPercent: 76, resetsAt: nil)
         )
     }
 
@@ -64,9 +93,9 @@ final class CombinedUsageGaugesTests: XCTestCase {
 
         XCTAssertEqual(gauges.groups.map(\.provider), [.codex, .grok])
         XCTAssertEqual(gauges.groups.map(\.isAuxiliary), [false, true])
-        XCTAssertEqual(gauges.groups[0].items.map(\.title), ["5시간", "주간"])
+        XCTAssertEqual(gauges.groups[0].items.map(\.title), ["주간", "5시간"])
         XCTAssertEqual(gauges.groups[1].items.map(\.title), ["주간"])
-        XCTAssertEqual(gauges.items.map(\.kind), [.fiveHour, .weekly, .weekly])
+        XCTAssertEqual(gauges.items.map(\.kind), [.weekly, .fiveHour, .weekly])
         XCTAssertEqual(
             gauges.items[2].value,
             .ready(usedPercent: 96, remainingPercent: 4, resetsAt: 1_900_003_600)
@@ -201,12 +230,37 @@ final class CombinedUsageGaugesTests: XCTestCase {
         let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
 
         XCTAssertEqual(gauges.groups.map(\.provider), [.codex, .grok])
-        XCTAssertEqual(gauges.items.map(\.kind), [.fiveHour, .weekly, .weekly])
+        XCTAssertEqual(gauges.items.map(\.kind), [.weekly, .fiveHour, .weekly])
         XCTAssertFalse(
             UsageTabSectionVisibility.make(
                 mode: state.usageProviderMode,
                 selection: state.usageProviderSelection
             ).showsMainWeeklyGraph
+        )
+    }
+
+    func testGaugeRowsReserveFixedPercentColumnsAndShowProviderNameOnFirstRowOnly() throws {
+        let source = try String(contentsOfFile: "Sources/MacDog/CombinedUsageGauges.swift")
+        XCTAssertTrue(source.contains("enum CombinedUsageGaugeMetrics"))
+        XCTAssertTrue(source.contains("percentWidth"))
+        XCTAssertTrue(source.contains("Text(group.provider.label)"))
+        XCTAssertFalse(source.contains("showsProviderLabel"))
+        XCTAssertTrue(source.contains("static let percentWidth: CGFloat = 30"))
+        XCTAssertTrue(source.contains("static let windowTitleWidth: CGFloat = 34"))
+    }
+
+    func testReadyGaugeCopySeparatesUsedAndRemainingWithoutSharedRun() {
+        XCTAssertEqual(CombinedUsageGaugeCopy.usedText(usedPercent: 7), "7% 사용")
+        XCTAssertEqual(CombinedUsageGaugeCopy.remainingText(remainingPercent: 93), "93% 남음")
+        XCTAssertEqual(
+            CombinedUsageGaugeCopy.usageText(
+                .ready(usedPercent: 42, remainingPercent: 58, resetsAt: 1_900_003_600)
+            ),
+            "42% 사용 58% 남음"
+        )
+        XCTAssertEqual(
+            CombinedUsageGaugeCopy.usageText(.unavailable("오래된 cache · 갱신 대기")),
+            "오래된 cache · 갱신 대기"
         )
     }
 
