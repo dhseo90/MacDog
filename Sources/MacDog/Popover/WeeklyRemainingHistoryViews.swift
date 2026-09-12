@@ -62,15 +62,10 @@ struct WeeklyRemainingHistoryBlock: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("주간 잔여량")
+                    Text("주간 그래프")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 8)
-                    Text(summaryText(mode: mode, model: comparisonModel, selectedSeries: selectedSeries))
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
                     graphActionButtons(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
                 }
 
@@ -112,6 +107,11 @@ struct WeeklyRemainingHistoryBlock: View {
                     startLabel: timelineStartLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries),
                     endLabel: timelineEndLabel(mode: mode, model: comparisonModel, selectedSeries: selectedSeries)
                 )
+            }
+            .padding(8)
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("주간 잔여량 그래프")

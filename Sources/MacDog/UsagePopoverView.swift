@@ -96,7 +96,7 @@ struct UsagePopoverView: View {
     @ViewBuilder
     private var tabContentContainer: some View {
         if pinsCombinedUsageGauges {
-            VStack(alignment: .leading, spacing: MacDogPopoverLayout.contentStackSpacing) {
+            VStack(alignment: .leading, spacing: 14) {
                 CombinedUsageGaugesView(
                     gauges: CombinedUsageGauges.make(state: state, now: now),
                     now: now
@@ -195,7 +195,7 @@ struct UsagePopoverView: View {
             if state.runtimeProviderMode == .grok {
                 return state.grokUsage.statusTitle(now: now)
             }
-            return state.codexPhase.statusLabel
+            return state.lastUpdatedSummary
         case .mac:
             return state.systemMetrics.cpuSummary
         case .sleep:

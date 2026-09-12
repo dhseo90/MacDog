@@ -6,143 +6,37 @@ struct CodexResetCreditsBlock: View {
     let resetCredits: RateLimitResetCreditsSummary?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Label("사용자 초기화권", systemImage: "arrow.counterclockwise.circle.fill")
-                    .font(.caption.weight(.semibold))
-                Spacer(minLength: 6)
-                Text(CodexResetCreditTextFormatter.countText(for: resetCredits))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-            }
-
-            if let resetCredits {
-                resetCreditDetails(for: resetCredits)
-            } else {
-                resetCreditPlaceholder("초기화권 정보 미확인")
-            }
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("초기화권")
+                .font(.caption.weight(.semibold))
+            Text(CodexResetCreditTextFormatter.countText(for: resetCredits))
+                .font(.caption.weight(.semibold))
+            Text(detailText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .padding(.horizontal, 8)
-        .background(
+        .overlay {
             RoundedRectangle(cornerRadius: 6)
-                .fill(tint.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(tint.opacity(0.18), lineWidth: 1)
-        )
+                .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
-    @ViewBuilder
-    private func resetCreditDetails(for resetCredits: RateLimitResetCreditsSummary) -> some View {
+    private var detailText: String {
+        guard let resetCredits else { return "정보 미확인" }
         if resetCredits.availableCount <= 0 {
-            resetCreditPlaceholder("사용 가능한 초기화권 없음")
-        } else if resetCredits.credits.isEmpty {
-            resetCreditPlaceholder("만료일 갱신 필요")
-        } else {
-            let items = CodexResetCreditTextFormatter.displayItems(for: resetCredits)
-            VStack(alignment: .leading, spacing: 3) {
-                if resetCredits.credits.count <= 2 {
-                    ForEach(items) { item in
-                        resetCreditItemCell(item)
-                    }
-                } else {
-                    let visibleItems = Array(items.prefix(6))
-                    let columnCount = visibleItems.count > 4 ? 3 : 2
-                    let rows = visibleItems.chunked(into: columnCount)
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            ForEach(row) { item in
-                                compactResetCreditItemCell(item)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            ForEach(0..<(columnCount - row.count), id: \.self) { _ in
-                                Spacer(minLength: 0)
-                                    .frame(maxWidth: .infinity)
-                            }
-                        }
-                    }
-
-                    let hiddenKnownCount = items.count - min(6, items.count)
-                    if hiddenKnownCount > 0 {
-                        Text("외 \(hiddenKnownCount)장")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.76)
-                    }
-                }
-
-                let unknownCount = resetCredits.availableCount - items.count
-                if unknownCount > 0 {
-                    Text("나머지 \(unknownCount)장 만료일 갱신 필요")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                }
-            }
+            return "사용 가능한 초기화권 없음"
         }
-    }
-
-    private func compactResetCreditItemCell(_ item: CodexResetCreditDisplayItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 2) {
-            if item.isFirstExpiring {
-                Image(systemName: "clock.badge.exclamationmark")
-                    .font(.system(size: 8, weight: .semibold))
-            }
-            Text(item.expiryText)
-                .font(.caption2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
+        if resetCredits.credits.isEmpty {
+            return "만료일 갱신 필요"
         }
-        .foregroundStyle(item.urgency.tint)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(item.isFirstExpiring ? "먼저 만료, \(item.expiryText)" : item.expiryText)
-    }
-
-    private func resetCreditItemCell(_ item: CodexResetCreditDisplayItem) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
-            if item.isFirstExpiring {
-                Text("먼저")
-                    .font(.caption2)
-                    .foregroundStyle(item.urgency.tint)
-                    .frame(width: 25, alignment: .leading)
-            } else {
-                Color.clear
-                    .frame(width: 25, height: 1)
-                    .accessibilityHidden(true)
-            }
-            Text(item.expiryText)
-                .font(.caption2)
-                .foregroundStyle(item.urgency.tint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-        }
-    }
-
-    private func resetCreditPlaceholder(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: "info.circle")
-                .font(.caption2.weight(.semibold))
-                .frame(width: 12)
-            Text(text)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-            Spacer(minLength: 0)
-        }
-    }
-
-    private var tint: Color {
-        guard let resetCredits else { return .secondary }
-        return resetCredits.availableCount > 0 ? .accentColor : .secondary
+        return CodexResetCreditTextFormatter.firstExpiryText(for: resetCredits)
     }
 
     private var accessibilityLabel: String {
@@ -200,6 +94,21 @@ struct CodexResetCreditTextFormatter {
             return "만료일 갱신 필요"
         }
         return expiries.joined(separator: " · ")
+    }
+
+    static func firstExpiryText(
+        for summary: RateLimitResetCreditsSummary?,
+        timeZone: TimeZone = .current,
+        locale: Locale = .current
+    ) -> String {
+        guard let summary else { return "정보 미확인" }
+        if summary.availableCount <= 0 {
+            return "사용 가능한 초기화권 없음"
+        }
+        guard let first = displayItems(for: summary, timeZone: timeZone, locale: locale).first else {
+            return "만료일 갱신 필요"
+        }
+        return "먼저 \(first.expiryText)"
     }
 
     static func expiryText(
@@ -269,14 +178,5 @@ struct CodexResetCreditTextFormatter {
         let parser = ISO8601DateFormatter()
         parser.formatOptions = [.withInternetDateTime]
         return parser.date(from: value)
-    }
-}
-
-private extension Array {
-    func chunked(into size: Int) -> [[Element]] {
-        guard size > 0 else { return [] }
-        return stride(from: 0, to: count, by: size).map { start in
-            Array(self[start..<Swift.min(start + size, count)])
-        }
     }
 }
