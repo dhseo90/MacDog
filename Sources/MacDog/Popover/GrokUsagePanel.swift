@@ -19,12 +19,10 @@ struct GrokUsagePanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 12) {
             statusHeader
             if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
-                paceSummary(for: weekly)
                 if showsWeeklyGraph {
-                    Divider()
                     WeeklyRemainingHistoryBlock(
                         history: GrokWeeklyRemainingHistoryAdapter.history(
                             preview.history,
@@ -40,6 +38,7 @@ struct GrokUsagePanel: View {
                         graphHeight: CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false)
                     )
                 }
+                paceSummary(for: weekly)
             } else {
                 waitingContent
             }
@@ -48,15 +47,17 @@ struct GrokUsagePanel: View {
     }
 
     private var statusHeader: some View {
-        HStack(spacing: 6) {
-            Text("Grok 사용량")
-                .font(.caption.weight(.semibold))
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: statusSystemImage)
+                .font(.caption2.weight(.semibold))
+                .frame(width: 12)
+            Text(preview.statusTitle(now: now))
+                .font(.caption2.weight(.semibold))
             Spacer(minLength: 0)
-            Label(preview.statusTitle(now: now), systemImage: statusSystemImage)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(statusColor)
-                .lineLimit(1)
         }
+        .foregroundStyle(statusColor)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(preview.statusTitle(now: now))
     }
 
     private func paceSummary(for weekly: GrokUsageWeeklyWindow) -> some View {
@@ -137,7 +138,7 @@ struct GrokUsagePanel: View {
 
     private var statusColor: Color {
         switch preview.status(now: now) {
-        case .available: .secondary
+        case .available: .green
         case .waiting: .secondary
         case .stale: .orange
         case .error: .orange
