@@ -154,7 +154,8 @@ verify_contract() {
     "five-hour required validation"
   require_match 'fiveHour \?\? limit\.weekly' "$STATE_SOURCE" \
     "weekly fallback for five-hour display basis"
-  require_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only data status"
+  reject_match '5시간 현재 미제공' "$STATE_SOURCE" "weekly-only is not a warning footer"
+  require_match '5시간 현재 제공되지 않음' "$STATE_SOURCE" "weekly-only tooltip"
   require_match '현재 제공되지 않음' "$CODEX_ROW_SOURCE" "weekly-only five-hour row copy"
   require_match 'usageCacheRefreshTask\?\.cancel\(\)' "$CONTROLLER_SOURCE" \
     "provider switch Codex refresh cancellation"

@@ -74,9 +74,36 @@ final class UsageMonitorStateTests: XCTestCase {
         )
         XCTAssertEqual(state.nextResetGlance(now: now), "다음 초기화: 주간 96시간 후")
         XCTAssertTrue(state.toolTip.contains("5시간 현재 제공되지 않음"))
-        XCTAssertEqual(state.codexDataStatus.title, "5시간 현재 미제공")
-        XCTAssertEqual(state.codexDataStatus.tone, .warning)
+        XCTAssertNotEqual(state.codexDataStatus.title, "5시간 현재 미제공")
+        XCTAssertNotEqual(state.codexDataStatus.tone, .warning)
         XCTAssertNil(state.codexFiveHourPaceProjection)
+    }
+
+    func testWeeklyOnlyReadyCacheAndHistoryIsHealthyWithoutFiveHourWarning() {
+        let weeklyReset = 1_800_604_800
+        let report = Self.report(
+            fiveHourUsedPercent: nil,
+            weeklyUsedPercent: 22,
+            weeklyResetsAt: weeklyReset
+        )
+        let state = UsageMonitorState(
+            report: report,
+            cacheSnapshot: Self.cacheSnapshot(cachedAt: Int(Date().timeIntervalSince1970), report: report),
+            weeklyUsageHistory: CodexUsageWeeklyHistory(samples: [
+                Self.weeklySample(recordedAt: 1_800_000_000, remainingPercent: 78, resetsAt: weeklyReset)
+            ]),
+            resetWindowHistory: CodexUsageResetWindowHistory(records: [
+                Self.resetWindowRecord(resetsAt: weeklyReset, finalUsedPercent: 22)
+            ]),
+            errorMessage: nil
+        )
+
+        XCTAssertNil(state.codexLimit?.fiveHour)
+        XCTAssertEqual(state.codexDataStatus.tone, .ok)
+        XCTAssertEqual(state.codexDataStatus.title, "데이터 정상")
+        XCTAssertEqual(state.codexDataStatus.detail, "cache 최신 · weekly 1 · reset 1")
+        XCTAssertFalse(state.codexDataStatus.detail.contains("sample"))
+        XCTAssertFalse(state.codexDataStatus.detail.contains("record"))
     }
 
     func testRestoredFiveHourWindowResumesFiveHourBasis() {
@@ -970,7 +997,7 @@ final class UsageMonitorStateTests: XCTestCase {
                 tone: .ok,
                 systemImage: "checkmark.circle.fill",
                 title: "데이터 정상",
-                detail: "cache 최신 · weekly 1 sample · reset 1 record"
+                detail: "cache 최신 · weekly 1 · reset 1"
             )
         )
     }
@@ -2057,10 +2084,14 @@ final class UsageMonitorStateTests: XCTestCase {
     func testDemoDataProvidesResetCreditExpiriesForCodexTab() throws {
         let state = MacDogDemoData.state(now: MacDogDemoData.readmeScreenshotTimestamp)
         let resetCredits = try XCTUnwrap(state.report?.resetCredits)
+        let fiveHour = try XCTUnwrap(state.codexLimit?.fiveHour)
 
         XCTAssertEqual(resetCredits.availableCount, 3)
         XCTAssertEqual(resetCredits.credits.count, 3)
         XCTAssertEqual(resetCredits.credits.first?.expiresAt, "2026-07-18T00:34:01Z")
+        XCTAssertEqual(fiveHour.usedPercent, 42)
+        XCTAssertEqual(fiveHour.remainingPercent, 58)
+        XCTAssertEqual(fiveHour.windowDurationMins, 300)
     }
 
     func testPetReactionPrioritizesSystemLoad() {

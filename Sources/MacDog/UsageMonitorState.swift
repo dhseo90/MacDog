@@ -351,14 +351,6 @@ struct UsageMonitorState: Equatable {
                 detail: "cache snapshot 또는 live report 필요"
             )
         }
-        if codexLimit?.fiveHour == nil {
-            return CodexUsageDataStatus(
-                tone: .warning,
-                systemImage: "minus.circle.fill",
-                title: "5시간 현재 미제공",
-                detail: "주간 cache와 history는 정상 갱신"
-            )
-        }
         if weeklyUsageHistory.samples.isEmpty || resetWindowHistory.records.isEmpty {
             return CodexUsageDataStatus(
                 tone: .waiting,
@@ -372,7 +364,7 @@ struct UsageMonitorState: Equatable {
             tone: .ok,
             systemImage: "checkmark.circle.fill",
             title: "데이터 정상",
-            detail: "cache 최신 · weekly \(weeklyUsageHistory.samples.count) \(Self.unit("sample", count: weeklyUsageHistory.samples.count)) · reset \(resetWindowHistory.records.count) \(Self.unit("record", count: resetWindowHistory.records.count))"
+            detail: "cache 최신 · weekly \(weeklyUsageHistory.samples.count) · reset \(resetWindowHistory.records.count)"
         )
     }
 
@@ -506,9 +498,6 @@ struct UsageMonitorState: Equatable {
         return "\(max(minutes, 1))분 후"
     }
 
-    private static func unit(_ singular: String, count: Int) -> String {
-        count == 1 ? singular : "\(singular)s"
-    }
 }
 
 struct CodexUsagePanelSummary: Equatable {
@@ -588,6 +577,16 @@ struct UsageWindowStatus: Equatable {
             return "\(remaining) · \(time)"
         }
         return "초기화까지 \(remaining) · \(time)"
+    }
+
+    static func resetDateLabel(
+        resetsAt: Int?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        guard let resetsAt else { return "리셋 미정" }
+        let resetDate = Date(timeIntervalSince1970: TimeInterval(resetsAt))
+        return compactResetTime(resetDate, now: now, calendar: calendar)
     }
 
     static func resetRemainingSummary(until resetDate: Date, now: Date = Date()) -> String {
