@@ -188,8 +188,10 @@ sanitizer, cache와 hidden/debug 경로는 보존한다. 버전별 UI 동작은 
 ### 5.3 네이티브 UI와 캐릭터
 
 러너는 메인 provider의 현재 제공되는 5시간/주간 사용률 중 최댓값을 사용하고 weekly-only이면
-주간만 사용한다. Reduce Motion과 저전력 환경을 고려한다. popover는 읽기 쉬운 개발 도구로
-유지하고 high usage 경고가 과도하게 산만하지 않게 한다.
+주간만 사용한다. 메뉴바 아이콘 옆 `%`는 메인 provider 주간 잔여율만 쓰며, 없는 주간 값은
+합성하지 않고 숨긴다. 러너 속도와 `%`가 달라도 오류가 아니다. Reduce Motion과 저전력
+환경을 고려한다. popover는 읽기 쉬운 개발 도구로 유지하고 high usage 경고가 과도하게
+산만하지 않게 한다.
 
 RunCat에서는 작은 러너가 상태에 따라 속도를 바꾸는 경험만 참고한다. 캐릭터·asset·브랜드는
 복제하지 않는다. 캐릭터 교체는 runner, desktop pet, popover tab, 설정 미리보기를 한 세트로

@@ -14,6 +14,7 @@ SELECTION_SOURCE="$ROOT_DIR/Sources/MacDog/UsageProviderSelection.swift"
 PREFERENCES_SOURCE="$ROOT_DIR/Sources/MacDog/RunnerPreferences.swift"
 WORK_DIFF_SOURCE="$ROOT_DIR/Sources/MacDog/UsageProviderWorkDiff.swift"
 GAUGES_SOURCE="$ROOT_DIR/Sources/MacDog/CombinedUsageGauges.swift"
+LABEL_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarWeeklyRemainingLabel.swift"
 CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 POPOVER_SOURCE="$ROOT_DIR/Sources/MacDog/UsagePopoverView.swift"
 SETTINGS_SOURCE="$ROOT_DIR/Sources/MacDog/Popover/SettingsPanel.swift"
@@ -23,6 +24,7 @@ DEMO_SOURCE="$ROOT_DIR/Sources/MacDog/MacDogDemoData.swift"
 SELECTION_TEST="$ROOT_DIR/Tests/MacDogTests/UsageProviderSelectionTests.swift"
 WORK_DIFF_TEST="$ROOT_DIR/Tests/MacDogTests/UsageProviderWorkDiffTests.swift"
 GAUGES_TEST="$ROOT_DIR/Tests/MacDogTests/CombinedUsageGaugesTests.swift"
+LABEL_TEST="$ROOT_DIR/Tests/MacDogTests/MenuBarWeeklyRemainingLabelTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
 USER_COMPONENT_TEST="$ROOT_DIR/Tests/MacDogTests/UserComponentInstallerTests.swift"
 STATE_TEST="$ROOT_DIR/Tests/MacDogTests/UsageMonitorStateTests.swift"
@@ -68,9 +70,10 @@ verify_contract() {
   for file in "$DOC" "$README" "$ROADMAP" "$AGENTS" "$ONBOARDING" "$SCRIPTS_DOC" \
     "$CHECK_SCRIPT" "$V190_VERIFIER" \
     "$SELECTION_SOURCE" "$PREFERENCES_SOURCE" "$WORK_DIFF_SOURCE" "$GAUGES_SOURCE" \
+    "$LABEL_SOURCE" \
     "$CONTROLLER_SOURCE" "$POPOVER_SOURCE" "$SETTINGS_SOURCE" \
     "$CODEX_PANEL_SOURCE" "$GROK_PANEL_SOURCE" "$DEMO_SOURCE" \
-    "$SELECTION_TEST" "$WORK_DIFF_TEST" "$GAUGES_TEST" \
+    "$SELECTION_TEST" "$WORK_DIFF_TEST" "$GAUGES_TEST" "$LABEL_TEST" \
     "$POPOVER_TEST" "$USER_COMPONENT_TEST" "$STATE_TEST"; do
     require_file "$file"
   done
@@ -129,6 +132,9 @@ verify_contract() {
   require_match 'UsageProviderWorkDiff.make' "$CONTROLLER_SOURCE" "controller uses work diff"
   require_match 'CombinedUsageGaugesView' "$POPOVER_SOURCE" "pinned combined gauges"
   require_match 'pinsCombinedUsageGauges' "$POPOVER_SOURCE" "gauges stay above scroll"
+  require_match 'struct MenuBarWeeklyRemainingLabel' "$LABEL_SOURCE" "menu bar weekly remaining label"
+  require_match 'NSStatusItem.variableLength' "$CONTROLLER_SOURCE" "variable status item length"
+  require_match 'MenuBarWeeklyRemainingLabel.make' "$CONTROLLER_SOURCE" "status item uses weekly remaining"
   require_match 'showsMainWeeklyGraph' "$CODEX_PANEL_SOURCE" "Codex graph gate"
   require_match 'showsWeeklyGraph' "$GROK_PANEL_SOURCE" "Grok graph gate"
   require_match 'selection: UsageProviderSelection' "$DEMO_SOURCE" \
@@ -167,6 +173,12 @@ verify_contract() {
     "$GAUGES_TEST" "Grok-main dual gauges"
   require_match 'testCombinedGaugesStayWhenDetailGraphIsHidden' \
     "$GAUGES_TEST" "hidden graph keeps gauges"
+  require_match 'testCodexMainShowsWeeklyRemainingIgnoringFiveHour' \
+    "$LABEL_TEST" "menu bar uses weekly remaining not five-hour"
+  require_match 'testDualGrokMainIgnoresAuxiliaryCodexWeekly' \
+    "$LABEL_TEST" "menu bar ignores auxiliary weekly"
+  require_match 'testMissingWeeklyHidesLabelWithoutSynthesis' \
+    "$LABEL_TEST" "menu bar hides missing weekly"
   require_match 'testEnabledProviderSetInstallsMatchingCacheAgentsIndependently' \
     "$USER_COMPONENT_TEST" "independent writer install"
   require_match 'testSelectedUsageSourcePolicyLoadsBothVisibleCachesWithoutFallback' \
@@ -187,6 +199,7 @@ run_focused_tests() {
       --filter UsageProviderSelectionTests \
       --filter UsageProviderWorkDiffTests \
       --filter CombinedUsageGaugesTests \
+      --filter MenuBarWeeklyRemainingLabelTests \
       --filter UserComponentInstallerTests \
       --filter UsageMonitorStateTests \
       --filter UsageNotificationDeliveryTests \

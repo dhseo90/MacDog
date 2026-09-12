@@ -5,7 +5,7 @@ import SwiftUI
 
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
-    private let statusItem = NSStatusBar.system.statusItem(withLength: 38)
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
@@ -64,10 +64,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
         button.imageScaling = .scaleProportionallyDown
+        button.imageHugsTitle = true
         button.target = self
         button.action = #selector(statusItemActivated)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.toolTip = "MacDog"
+        applyMenuBarWeeklyRemainingLabel()
     }
 
     private func configurePopover() {
@@ -169,6 +171,21 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             reducedMotion: state.reducedMotion
         )
         statusItem.button?.image = image
+        applyMenuBarWeeklyRemainingLabel()
+    }
+
+    private func applyMenuBarWeeklyRemainingLabel() {
+        guard let button = statusItem.button else { return }
+        if let text = MenuBarWeeklyRemainingLabel.make(
+            state: state,
+            now: state.runnerEvaluationDate
+        ).text {
+            button.imagePosition = .imageLeading
+            button.title = text
+        } else {
+            button.imagePosition = .imageOnly
+            button.title = ""
+        }
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {

@@ -84,6 +84,7 @@ migration 규칙:
 
 - 메뉴바 러너 pressure와 animation phase
 - status item tooltip과 다음 초기화 glance
+- 메뉴바 아이콘 옆 주간 잔여율 `%`
 - 80%/95%/한도/reset 30분 전 로컬 알림과 기존 dedupe
 - 1번 탭 제목, subtitle, pace, 초기화권, 상세 그래프, 데이터 상태
 - 우클릭 펫 제목과 `사용량 종료` 문구
@@ -203,6 +204,7 @@ push는 사용자 명시 요청 전에는 실행하지 않는다.
 - 기존 단일 Codex/Grok 사용자는 같은 provider 하나와 같은 main으로 migration된다.
 - 두 provider writer/cache는 활성 집합 기준으로 독립 운영된다.
 - 1번 탭 상단에서 활성 provider 주간 게이지를 탭 전환 없이 함께 본다.
+- 메뉴바 아이콘 옆에는 메인 provider 주간 잔여율 `%`만 표시하고, 없으면 숨긴다.
 - 나머지 UI와 runtime 반응은 main provider만 기준으로 한다.
 - 상세 그래프를 숨겨도 활성 provider 게이지는 유지된다.
 - stale/error/missing에서 합성이나 provider 간 fallback이 없다.
