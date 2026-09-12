@@ -1,6 +1,6 @@
 # v1.9.1 복수 provider와 메인 provider 사용량 UI
 
-상태: Step 2~10 완료, 게이지 묶음·메뉴바 주간 잔여율 `%` 추가 / Step 11 GUI renderer 확인, 설치·LaunchAgent·release smoke 미수행
+상태: Step 2~10 완료, 게이지 카드·메뉴바 주간 잔여율 `%` 추가 / Step 11 README renderer 갱신, Finder 설치·LaunchAgent 실등록·release smoke 미수행
 작성일: 2026-09-02
 대상 버전: `1.9.1`
 기준 브랜치: `v1.9.1`
@@ -13,8 +13,9 @@
 
 설정에서 `Codex`와 `Grok`을 하나 또는 둘 다 활성화한다. 둘 다 활성화하면 한 provider를
 메인으로 지정한다. 1번 탭은 하위 provider 탭 없이 한 화면을 유지하며, 활성 provider의
-주간 게이지를 상단에서 함께 보여 준다. 상세 그래프, pace, 초기화권, 러너, tooltip, 알림,
-펫과 잠들지 않기 문구는 메인 provider만 기준으로 삼는다.
+주간 게이지를 상단에서 함께 보여 준다. 상세 그래프, 초기화권, 러너, tooltip, 알림, 펫과 잠들지 않기 문구는 메인
+provider만 기준으로 삼는다. Codex 탭에는 페이스메이커 블록을 두지 않고, Grok 메인은
+주간 pace 요약을 둔다.
 
 두 provider를 활성화한 예시는 아래와 같다.
 
@@ -23,10 +24,10 @@
 메인 provider     Codex
 상세 그래프 표시  [x]
 
-1번 탭 상단       메인 provider가 맨 위. 체크한 provider만 세로로 쌓음
-                  한 줄: 이름 · 주간/5시간 · 사용량 · 리셋일
-                  5시간이 있으면 그 provider 주간 아래에 같은 형태로 붙임
-상세 영역          메인 공용 주간 그래프 껍데기 + 메인 pace/전용 정보
+1번 탭 상단       메인 provider 카드가 맨 위. 체크한 provider만 세로로 쌓음
+                  카드에 이름 한 번, 행은 주간/5시간 · 사용 · 남음 · 리셋일
+                  5시간이 있으면 같은 카드의 주간 아래에 붙이고 없으면 숨김
+상세 영역          메인 공용 주간 그래프 + Codex 초기화권 또는 Grok pace + 데이터 상태
 ```
 
 `Grok`이 메인이면 상단 첫 줄은 Grok 주간이고, 체크된 Codex는 그 아래 주간 행이다. 상세 그래프는
@@ -54,7 +55,7 @@
 집합을 위한 별도 integer mask와 상세 그래프 표시 여부 key를 추가한다. 구현 모델은
 `UsageProviderSelection`처럼 활성 집합과 메인을 함께 정규화하는 단일 값 객체로 둔다.
 
-예정 저장 경계:
+저장 경계:
 
 - `usageProviderMode`: 메인 provider raw value. 기존 key를 유지한다.
 - `usageEnabledProviderMask`: visible `Codex`/`Grok` 활성 bit mask.
@@ -89,7 +90,7 @@ migration 규칙:
 - status item tooltip과 다음 초기화 glance
 - 메뉴바 아이콘 옆 주간 잔여율 `%`
 - 80%/95%/한도/reset 30분 전 로컬 알림과 기존 dedupe
-- 1번 탭 제목, subtitle, pace, 초기화권, 상세 그래프, 데이터 상태
+- 1번 탭 제목, subtitle, 상세 그래프, Codex 초기화권 또는 Grok pace, 데이터 상태
 - 우클릭 펫 제목과 `사용량 종료` 문구
 - 잠들지 않기 `실행 중` trigger 문구와 앱 match 기본 의미
 
@@ -121,8 +122,9 @@ provider 전환용 하위 탭, segmented control, disclosure navigation은 추�
 사용률, 잔여율, reset 또는 stale/error를 포함한다. Grok 5시간 값을 합성하지 않고, 보조
 Codex도 주간 게이지만 표시한다.
 
-상세 그래프를 숨기면 graph mode picker, hover plot, copy/export control도 함께 숨긴다. pace와
-초기화권 같은 메인 전용 정보는 그대로 둔다.
+상세 그래프를 숨기면 graph mode picker, hover plot, copy/export control도 함께 숨긴다.
+Codex 초기화권과 Grok pace는 그래프와 별개로 남긴다. Codex 탭 페이스메이커 블록은 두지
+않는다. weekly-only 성공의 데이터 상태는 `데이터 정상`이다.
 
 ## 구현 순서
 

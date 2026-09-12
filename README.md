@@ -1,8 +1,9 @@
 # MacDog
 
-MacDog는 선택한 하나의 AI provider 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS
+MacDog는 설정에서 켠 Codex/Grok 사용량과 Mac 상태를 메뉴바에서 바로 확인하는 macOS
 유틸리티입니다. `1.9.0` 제품의 설정 visible mode는 `Codex`와 `Grok`만 보여 주고 Claude
-source는 남긴 채 숨깁니다. 두 provider 동시 사용, 합산, 비교는 고려하지 않습니다. 현재
+source는 남긴 채 숨깁니다. published `v1.9.0`은 provider를 하나만 고릅니다. 이 브랜치의
+v1.9.1은 둘 다 활성화할 수 있고, 합산·비교·자동 fallback은 하지 않습니다. 현재
 GitHub에 published된 설치본은 아래 [현재 릴리즈](#현재-릴리즈)를 따릅니다.
 
 기본 캐릭터는 `Codex Pup`입니다. 같은 캐릭터 세트가 메뉴바 러너, 데스크톱 펫, 우측 탭 버튼 이미지에 함께 적용되므로 나중에 캐릭터를 바꿀 때도 한 묶음으로 교체할 수 있습니다.
@@ -53,11 +54,13 @@ cache/history/lock과 Grok LaunchAgent를 Codex/Claude와 같이 제거합니다
 
 ## v1.9.1 개발 라인
 
-브랜치 `v1.9.1`은 Codex/Grok 복수 활성화와 메인 provider UI를 개발 중입니다. 설정 탭에서
-Codex/Grok를 하나 또는 둘 다 켜고 메인을 지정할 수 있습니다. published GitHub Release와
-설치본은 위 [현재 릴리즈](#현재-릴리즈)의 `v1.9.0`입니다. 합산·비교·자동 fallback은 하지
-않습니다. 구현 계약은
-[Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)를 따릅니다.
+브랜치 `v1.9.1`은 Codex/Grok 복수 활성화와 메인 provider UI를 개발 중입니다. 설정에서
+Codex/Grok를 하나 또는 둘 다 켜고 메인을 지정합니다. 1번 탭 상단은 provider 카드로
+주간/5시간 게이지를 쌓고, 상세 그래프와 초기화권은 메인만 봅니다. published GitHub
+Release와 설치본은 위 [현재 릴리즈](#현재-릴리즈)의 `v1.9.0`입니다. 합산·비교·자동
+fallback은 하지 않습니다. 구현 계약은
+[Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md), 릴리즈 준비는
+[Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md)를 따릅니다.
 
 이전 published release는 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
 v1.8.0 release head는 `14d716a88ea10a77344a4f9aa3651c23b1160f8c`이고 published asset는
@@ -65,7 +68,8 @@ v1.8.0 release head는 `14d716a88ea10a77344a4f9aa3651c23b1160f8c`이고 publishe
 
 ## 화면
 
-아래 이미지는 현재 SwiftUI popover 구조를 README용 demo snapshot으로 렌더링한 공식 이미지입니다. 실제 사용량 값과 시스템 상태는 사용자 환경에 따라 달라집니다.
+아래 이미지는 v1.9.1 SwiftUI popover 구조를 README용 demo snapshot으로 렌더링한 공식 이미지입니다.
+테두리는 잘리지 않게 안쪽으로 그립니다. 실제 사용량 값과 시스템 상태는 사용자 환경에 따라 달라집니다.
 
 <table>
   <tr>
@@ -108,13 +112,13 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 
 | 영역 | 역할 |
 | --- | --- |
-| 메뉴바 러너 | 선택 provider 하나의 사용량 위험도를 표시합니다. |
-| 사용량 탭 | 선택 provider의 현재 제공되는 단기/장기 window 사용률, 잔여율, reset, history와 pace를 표시합니다. Codex 5시간 window가 없으면 주간 정보는 계속 갱신합니다. Grok는 주간 window만 있고 5시간은 `현재 제공되지 않음`입니다. |
+| 메뉴바 러너 | 메인 provider 사용량 위험도를 표시하고, 설정이 켜져 있으면 주간 잔여율 `%`를 아이콘 앞에 둡니다. |
+| 사용량 탭 | 활성 provider 게이지를 상단에 함께 두고, 메인 provider의 주간 그래프·초기화권 또는 Grok pace·데이터 상태를 표시합니다. Codex 5시간이 있으면 주간 아래 줄에 붙이고 없으면 숨깁니다. Grok 5시간은 합성하지 않습니다. |
 | 활성 자원 탭 | CPU, 메모리, 저장 용량, 네트워크 상태를 1초 단위로 갱신합니다. |
 | 잠들지 않기 탭 | 끔, 시간 제어, 상태 기준 제어와 보호 옵션을 관리합니다. |
 | 배터리 탭 | macOS native Charge Limit 지원 환경에서 80-100% 목표 한도를 읽고 적용합니다. |
-| 설정 탭 | `사용량 mode`(`Codex`/`Grok`)와 주간 그래프 `날짜 기준`(자정/리셋 시각), 알림, 로그인 실행, 데스크톱 펫, 권한 도우미 상태를 관리합니다. |
-| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, 선택 mode 전용 usage cache LaunchAgent(`codex-usage` 또는 `macdog-grok-usage`), macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
+| 설정 탭 | 활성 provider 체크박스, 둘 다일 때 메인 picker, 상세 그래프와 메뉴바 주간 잔여율 표시, `날짜 기준`(자정/리셋 시각), 알림, 로그인 실행, 데스크톱 펫, 권한 도우미를 관리합니다. |
+| 첫 실행 마무리 | `/Applications/MacDog.app` 첫 실행 시 `~/bin/codex-usage`, 활성 provider별 usage cache LaunchAgent(`codex-usage`와/또는 `macdog-grok-usage`), macOS 로그인 항목을 사용자 영역에 맞게 설치/복구합니다. |
 
 ## 설치
 
@@ -125,7 +129,7 @@ MacDog는 기본 DMG에서 메뉴바 앱과 CLI를 함께 제공합니다. Widge
 3. 보이는 `MacDog.app`을 `Applications`로 드래그합니다.
 4. `Applications`에서 MacDog를 실행합니다.
 
-Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, 선택 mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Grok mode에서는 `macdog-grok-usage` LaunchAgent를 쓰고 Codex cache LaunchAgent는 제거합니다.
+Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `~/bin/codex-usage` symlink, 활성 provider별 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Codex와 Grok를 둘 다 켜면 두 writer를 함께 유지하고, 하나만 켜면 해당 writer만 남깁니다.
 
 설치 검수 원칙:
 
@@ -135,13 +139,12 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 ## 주요 기능
 
-- Codex 사용량: 5시간/주간 사용률, 남은 비율, reset까지 남은 시간, 초기화 시각, 마지막 갱신 상태,
-  pace 예측, 현재/지난/비교 그래프를 표시합니다. 5시간 window가 일시 미제공되면 이를 `현재
-  제공되지 않음`으로 표시하고 주간 cache/history, runner, 알림은 계속 갱신합니다.
-- Codex 초기화권: 사용자 보유 초기화권 장수와, 제공 가능한 경우 각 장의 유효기간을 Codex 탭에서 확인합니다.
+- Codex 사용량: 주간 게이지와, 있으면 5시간 게이지, 주간 그래프, 초기화권, 데이터 상태를
+  표시합니다. 5시간 window가 없으면 게이지에서 숨기고 주간 cache/history, runner, 알림은
+  계속 갱신합니다. 툴팁은 `현재 제공되지 않음`을 유지합니다.
 - Codex 그래프 공유: 화면에 보이는 그래프를 PNG로 복사하거나 저장합니다. PNG에는 auth/session material, raw app-server 응답, raw log line, local path metadata를 넣지 않습니다.
-- Codex 페이스메이커: weekly window 시작부터 24시간 day slot을 나누고 일일 목표 약 14.3%,
-  현재 day 사용량과 누적 페이스를 계산합니다. 가격 플랜 적합성을 예측하지 않습니다.
+- Codex 주간 페이스: weekly window를 24시간 day slot으로 나눠 알림에 쓰지만, Codex 탭에는
+  페이스메이커 블록을 표시하지 않습니다. 가격 플랜 적합성을 예측하지 않습니다.
 - Codex 사용량 알림: `UserNotifications` 기반 로컬 알림으로 80%, 95%, 한도 도달, reset 30분 전 이벤트를 알려줍니다.
 - Grok 사용량: SuperGrok / Grok Build 공유 주간 pool의 사용률, 잔여율(`100 - usedPercent`),
   제공되는 경우 reset, stale/error, 현재/지난/비교 그래프와 주간 pace를 표시합니다. 5시간
@@ -150,17 +153,18 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 - Claude backend: 공식 status line JSON의 optional `rate_limits.five_hour`/`seven_day`를 sanitize해
   별도 cache/history에 저장합니다. v1.9.0 기본 UI에서는 숨기고 hidden re-enable이 켜진 경우에만
   선택 mode로 남깁니다. 실제 구독 live 검증은 미수행으로 분리합니다.
-- 선택 provider graph: current/past/compare와 pace를 유지하되 선택한 provider 하나만 평가합니다.
-  Claude·Grok reset credit은 만들지 않습니다.
+- 메인 provider graph: current/past/compare를 메인 provider 하나만 평가합니다.
+  Claude·Grok reset credit은 만들지 않습니다. Grok 메인은 주간 pace 요약을 둡니다.
 - Mac 활성 자원: CPU, 메모리, 저장 용량, 네트워크 상태를 보여주고 현재 자원 탭에서는 1초 단위로 갱신합니다.
 - 잠들지 않기: 끔, 시간 제어, 상태 기준 제어를 제공하고 전원 연결, 선택 provider 실행 중, 배터리/CPU/메모리 기준, 네트워크 전송, 외장/공유 드라이브 조건을 OR 조건으로 평가합니다.
 - 덮개 닫힘 보호: optional 권한 도우미를 설치하면 최초 승인 이후 앱 UI에서 덮개 닫힘 보호 설정을 바꿀 수 있습니다.
 - 배터리 충전 한도: macOS native Charge Limit을 지원하는 Apple silicon Mac에서 80-100% 목표 한도를 읽고 적용합니다.
 - 데스크톱 펫: 강아지를 데스크톱 위에 띄우고, 드래그 위치 저장, 좌클릭 popover, 우클릭 메뉴, 상태 반응을 제공합니다.
 - 설정: 로그인 시 실행, 데스크톱 펫, 움직임 줄이기, 러너 일시 정지, 권한 도우미와 기존
-  사용량 알림 opt-in을 관리합니다. `Codex` 또는 `Grok` 중 하나를 고르는 `사용량 mode`와
-  주간 그래프 `날짜 기준`(기본 자정, 옵션 리셋 시각)을 둡니다. 별도 플랜 전환·Claude Preview
-  설정은 없습니다. Claude는 기본 picker에 보이지 않습니다.
+  사용량 알림 opt-in을 관리합니다. Codex/Grok 활성 체크박스, 둘 다일 때 메인 picker,
+  상세 그래프 표시, 메뉴바 주간 잔여율 표시, 주간 그래프 `날짜 기준`(기본 자정, 옵션
+  리셋 시각)을 둡니다. `사용량 mode` 단독 picker는 없습니다. Claude는 기본 체크박스에
+  보이지 않습니다.
 - Claude 연결 경계: 기존 `~/.claude/settings.json`이나 auth store를 앱이 자동으로 읽거나 수정하지
   않습니다. Claude mode의 cache 없음 empty state에서 수동 연결 command만 제공하고 기존 status
   line을 자동 덮어쓰지 않습니다.
@@ -169,11 +173,11 @@ Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.
 
 - 메뉴바 앱은 app-owned usage cache를 60초마다 다시 읽습니다.
 - 캐시가 비어 있거나 사용자가 수동 갱신을 누르면 번들 내부 `codex-usage`를 짧게 실행해 cache를 채웁니다. 실패 후 자동 재시도는 최소 60초 간격으로 제한합니다.
-- Codex mode에서는 첫 실행 마무리가 usage cache LaunchAgent를 등록해 60초마다
-  `codex-usage status --write-cache --timeout 15`를 실행합니다. Grok mode에서는
-  `macdog-grok-usage status --write-cache` LaunchAgent를 등록하고 Codex LaunchAgent를
-  unload·제거합니다. Codex mode로 돌아오면 Grok LaunchAgent를 제거하고 Codex writer를
-  다시 설치합니다. hidden Claude mode는 Codex/Grok writer를 돌리지 않습니다.
+- 첫 실행 마무리는 활성 provider별로 usage cache LaunchAgent를 등록합니다. Codex가
+  켜져 있으면 60초마다 `codex-usage status --write-cache --timeout 15`를 실행하고,
+  Grok가 켜져 있으면 `macdog-grok-usage status --write-cache`를 실행합니다. 둘 다
+  켜면 두 writer를 함께 유지하고, 하나를 끄면 해당 writer만 제거합니다. hidden Claude
+  debug는 Codex/Grok writer를 돌리지 않습니다.
 - 성공한 주간 잔여량은 `~/Library/Application Support/MacDog/usage-weekly-history.json`에 샘플링되어 Codex 탭 그래프에 쓰입니다.
 - 성공한 5시간 사용률은 별도 `usage-five-hour-history.json`에 13주 보존됩니다. v1.8.0에서
   `planEpochID` 신규 기록·계산 의존을 제거하고 단기 pace에 재사용합니다. 기존 파일의 legacy field는
@@ -455,6 +459,8 @@ Docs/                                   보조 설계/검증 문서
 - [Docs/V190GrokUsageSourceSpike.md](Docs/V190GrokUsageSourceSpike.md): Grok 주간 pool unofficial 원천 조사
 - [Docs/V190GrokWeeklyOnlyContract.md](Docs/V190GrokWeeklyOnlyContract.md): Grok weekly-only 입력과 인증 예외
 - [Docs/V190ReleaseReadiness.md](Docs/V190ReleaseReadiness.md): v1.9.0 릴리즈 체크리스트와 GUI·live·DMG 미수행 경계
+- [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md): v1.9.1 복수 provider와 메인 provider UI 계약
+- [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md): v1.9.1 릴리즈 준비 감사와 unpublished 경계
 - [AGENTS.md](AGENTS.md): 개발 규칙, 보안 원칙, 검증 체크리스트
 - [CONTRIBUTING.md](CONTRIBUTING.md): PR 작성과 검증 기준
 
