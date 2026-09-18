@@ -1,3 +1,4 @@
+import AppKit
 import CodexUsageCore
 import XCTest
 @testable import MacDog
@@ -145,7 +146,138 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertEqual(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text, "60%")
     }
 
+    func testGlanceAttributedTitleUsesElevenPointMonospacedDigits() throws {
+        let label = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 41),
+            now: Self.now
+        )
+        let attributed = try XCTUnwrap(label.attributedTitle)
+        let font = try XCTUnwrap(Self.firstFont(in: attributed))
+
+        XCTAssertEqual(font.pointSize, 11)
+        XCTAssertEqual(font, MenuBarWeeklyRemainingLabel.font)
+        XCTAssertEqual(label.text, "59%")
+    }
+
+    func testNinePercentAndOneHundredPercentShareReservedWidth() {
+        let nine = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 91),
+            now: Self.now
+        )
+        let hundred = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 0),
+            now: Self.now
+        )
+
+        XCTAssertEqual(nine.text, "9%")
+        XCTAssertEqual(hundred.text, "100%")
+        XCTAssertEqual(nine.reservedWidth, hundred.reservedWidth, accuracy: 0.5)
+        XCTAssertGreaterThan(nine.reservedWidth, 0)
+    }
+
+    func testHiddenLabelHasZeroReservedWidthAndNoAttributedTitle() {
+        let missing = MenuBarWeeklyRemainingLabel.make(
+            state: UsageMonitorState(
+                report: nil,
+                cacheSnapshot: nil,
+                errorMessage: nil,
+                usageProviderMode: .codex
+            ),
+            now: Self.now
+        )
+        let hidden = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 30),
+            visible: false,
+            now: Self.now
+        )
+
+        XCTAssertNil(missing.attributedTitle)
+        XCTAssertEqual(missing.reservedWidth, 0)
+        XCTAssertNil(hidden.attributedTitle)
+        XCTAssertEqual(hidden.reservedWidth, 0)
+    }
+
+    func testAttributedTitleReservesTwoPointTrailingGap() throws {
+        let attributed = try XCTUnwrap(
+            MenuBarWeeklyRemainingLabel.make(
+                state: Self.codexState(weeklyUsedPercent: 41),
+                now: Self.now
+            ).attributedTitle
+        )
+        var gap: CGFloat = 0
+        attributed.enumerateAttribute(
+            .attachment,
+            in: NSRange(location: 0, length: attributed.length)
+        ) { value, _, _ in
+            guard let attachment = value as? NSTextAttachment else { return }
+            if attachment.bounds.width == MenuBarWeeklyRemainingLabel.trailingGap {
+                gap = attachment.bounds.width
+            }
+        }
+
+        XCTAssertEqual(gap, 2, accuracy: 0.01)
+    }
+
+    @MainActor
+    func testApplyUsesAttributedGlanceTitleOnStatusItemButton() throws {
+        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        defer { NSStatusBar.system.removeStatusItem(statusItem) }
+        let button = try XCTUnwrap(statusItem.button)
+        let label = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 41),
+            now: Self.now
+        )
+
+        label.apply(to: button)
+
+        XCTAssertEqual(button.font, MenuBarWeeklyRemainingLabel.font)
+        XCTAssertEqual(button.imagePosition, .imageTrailing)
+        let font = try XCTUnwrap(Self.firstFont(in: button.attributedTitle))
+        XCTAssertEqual(font.pointSize, 11)
+        XCTAssertEqual(button.imageHugsTitle, true)
+    }
+
+    @MainActor
+    func testApplyClearsTitleWidthWhenWeeklyIsHidden() throws {
+        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        defer { NSStatusBar.system.removeStatusItem(statusItem) }
+        let button = try XCTUnwrap(statusItem.button)
+        MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 41),
+            now: Self.now
+        ).apply(to: button)
+
+        MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 41),
+            visible: false,
+            now: Self.now
+        ).apply(to: button)
+
+        XCTAssertTrue(button.attributedTitle.string.isEmpty)
+        XCTAssertEqual(button.title, "")
+        XCTAssertEqual(button.imagePosition, .imageOnly)
+    }
+
+    private static func firstFont(in attributed: NSAttributedString) -> NSFont? {
+        var font: NSFont?
+        attributed.enumerateAttribute(.font, in: NSRange(location: 0, length: attributed.length)) { value, _, stop in
+            guard let value = value as? NSFont else { return }
+            font = value
+            stop.pointee = true
+        }
+        return font
+    }
+
     private static let now = Date(timeIntervalSince1970: 1_900_000_000)
+
+    private static func codexState(weeklyUsedPercent: Double) -> UsageMonitorState {
+        UsageMonitorState(
+            report: report(fiveHourUsedPercent: 0, weeklyUsedPercent: weeklyUsedPercent),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            usageProviderMode: .codex
+        )
+    }
 
     private static func grokPreview(
         usedPercent: Double,

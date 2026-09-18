@@ -1,6 +1,6 @@
 # v1.9.2 메뉴바 glance polish와 uninstall history 정리
 
-상태: 범위 고정 / 구현 전
+상태: Step 1~5 코드·자동 검증 완료 / Step 6 실제 메뉴바 GUI·uninstall 실실행 미수행
 작성일: 2026-09-18
 대상 버전: `1.9.2`
 기준 브랜치: `v1.9.2`
@@ -59,12 +59,12 @@
 
 | Step | 제목 | 우선순위 | 할 일 | 완료 조건 |
 | ---: | --- | --- | --- | --- |
-| 1 | 범위 고정 | P0 | ROADMAP과 이 문서에 4개 이슈, 제외 경계, 검증을 기록한다. | 구현 전 메뉴바 합산·used%·로그 삭제가 범위에 들어가지 않는다. |
-| 2 | 라벨 presentation | P0 | `MenuBarWeeklyRemainingLabel`이 작은 11pt tabular 숫자와 `100%` 고정 폭을 만든다. | focused test가 폰트 크기, 고정 폭, 숨김/표시 계약을 통과한다. |
-| 3 | status item 적용 | P0 | `MenuBarController`가 기본 `title` 대신 작은 attributed 라벨과 좁은 간격을 적용한다. | 컨트롤러가 기본 컨트롤 폰트 `title`만 쓰지 않는다. AppKit이 폰트를 무시하면 커스텀 뷰로 같은 계약을 지킨다. |
-| 4 | uninstall history | P0 | dry-run 문구와 `rm` 대상에 5시간/reset-window history를 넣는다. | `uninstall.sh --dry-run`과 `verify_install_dry_run.sh`가 두 파일을 확인한다. 실제 삭제는 승인 전 실행하지 않는다. |
-| 5 | 계약 verifier와 문서 | P1 | v1.9.2 verifier를 추가하고 Scripts/onboarding의 현재 uninstall 잔여 문구를 구현 결과에 맞춘다. | `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build, verifier가 통과한다. |
-| 6 | GUI와 삭제 검수 | P2 | 실제 메뉴바 숫자 크기·간격·폭 고정과, 승인된 경우 uninstall dry-run/실삭제를 확인한다. | 실행한 항목만 증거로 남기고 나머지는 `미수행`이다. |
+| 1 | 범위 고정 | P0 | ROADMAP과 이 문서에 4개 이슈, 제외 경계, 검증을 기록한다. | 완료. 합산·used%·로그 삭제는 범위 밖이다. |
+| 2 | 라벨 presentation | P0 | `MenuBarWeeklyRemainingLabel`이 작은 11pt tabular 숫자와 `100%` 고정 폭을 만든다. | 완료. `MenuBarWeeklyRemainingLabelTests` 16 passed. |
+| 3 | status item 적용 | P0 | `MenuBarController`가 기본 `title` 대신 작은 attributed 라벨과 좁은 간격을 적용한다. | 완료. `apply(to:)`가 11pt attributed title과 `imageHugsTitle`을 쓴다. |
+| 4 | uninstall history | P0 | dry-run 문구와 `rm` 대상에 5시간/reset-window history를 넣는다. | 완료. `verify_install_dry_run.sh` 통과. 실제 삭제는 미수행. |
+| 5 | 계약 verifier와 문서 | P1 | v1.9.2 verifier를 추가하고 Scripts/onboarding의 현재 uninstall 잔여 문구를 구현 결과에 맞춘다. | 완료. `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests` 통과. |
+| 6 | GUI와 삭제 검수 | P2 | 실제 메뉴바 숫자 크기·간격·폭 고정과, 승인된 경우 uninstall dry-run/실삭제를 확인한다. | 미수행. |
 
 ## 테스트와 검증
 
@@ -136,9 +136,20 @@ codesign/notarization은 사용자 명시 요청 전에는 실행하지 않는�
 
 검증 완료:
 
-- 실제 메뉴바 크기·간격·폭 고정은 설치본 또는 개발 앱 GUI로 확인하거나
-  `UI 확인 미수행`으로 남긴다.
-- 실제 uninstall은 승인 뒤에만 실행하고, 실행하지 않으면 `미수행`이다.
+- `git diff --check`, markdownlint 0 error,
+  `verify_install_dry_run.sh`,
+  `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests` 통과.
+- `MenuBarWeeklyRemainingLabelTests` 16 passed.
+- `PopoverScreenshotRendererTests` 가운데 이번 변경 가드와 dual/graph-hidden
+  renderer는 통과.
+- `CodexUsageCoreTests` 197 passed / 1 skipped,
+  `MacDogPrivilegedHelperSupportTests` 29 passed.
+- 이 환경의 Xcode license가 동의되지 않아 `xcrun swift test`와
+  `xcodebuild` Debug build는 실행하지 못했다. XCTest bundle은 Xcode toolchain
+  `xctest`로 실행했다. 주간 history window picker 4개 테스트는 `xctest` 호스트에서
+  `NSPopUpButton`을 찾지 못해 실패했으며, 해당 뷰는 이번 변경 대상이 아니다.
+- 실제 메뉴바 크기·간격·폭 고정은 `UI 확인 미수행`.
+- 실제 uninstall은 `미수행`.
 
 릴리즈 준비 문서는 구현이 끝난 뒤에 `Docs/V192ReleaseReadiness.md`로 추가한다.
 지금 만들지 않는다.

@@ -16,6 +16,8 @@ MONITOR_PLIST="$LAUNCH_AGENT_DIR/$MONITOR_LABEL.plist"
 APP_CACHE_DIR="$HOME/Library/Application Support/MacDog"
 APP_CACHE_FILE="$APP_CACHE_DIR/usage.json"
 APP_HISTORY_FILE="$APP_CACHE_DIR/usage-weekly-history.json"
+APP_FIVE_HOUR_HISTORY_FILE="$APP_CACHE_DIR/usage-five-hour-history.json"
+APP_RESET_WINDOW_HISTORY_FILE="$APP_CACHE_DIR/usage-reset-window-history.json"
 CLAUDE_CACHE_FILE="$APP_CACHE_DIR/claude-usage.json"
 CLAUDE_HISTORY_FILE="$APP_CACHE_DIR/claude-usage-history.json"
 CLAUDE_LOCK_FILE="$APP_CACHE_DIR/claude-usage.lock"
@@ -207,6 +209,8 @@ case "$MODE" in
     echo "Would remove: $SYSTEM_APP_DEST if present"
     echo "Would remove cache file: $APP_CACHE_FILE"
     echo "Would remove usage history file: $APP_HISTORY_FILE"
+    echo "Would remove five-hour history file: $APP_FIVE_HOUR_HISTORY_FILE"
+    echo "Would remove reset-window history file: $APP_RESET_WINDOW_HISTORY_FILE"
     echo "Would remove Claude usage cache file: $CLAUDE_CACHE_FILE"
     echo "Would remove Claude usage history file: $CLAUDE_HISTORY_FILE"
     echo "Would remove Claude usage lock file: $CLAUDE_LOCK_FILE"
@@ -260,6 +264,7 @@ restore_sleep_disabled_if_requested
 stop_running_app_for_update
 
 rm -f "$CACHE_PLIST" "$GROK_CACHE_PLIST" "$MONITOR_PLIST" "$CLI_DEST" "$APP_CACHE_FILE" "$APP_HISTORY_FILE" \
+  "$APP_FIVE_HOUR_HISTORY_FILE" "$APP_RESET_WINDOW_HISTORY_FILE" \
   "$CLAUDE_CACHE_FILE" "$CLAUDE_HISTORY_FILE" "$CLAUDE_LOCK_FILE" \
   "$GROK_CACHE_FILE" "$GROK_HISTORY_FILE" "$GROK_LOCK_FILE"
 if ! run_with_timeout 3 rm -f "$SHARED_CACHE_FILE"; then

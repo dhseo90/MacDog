@@ -138,7 +138,8 @@ verify_contract() {
   require_match 'struct MenuBarWeeklyRemainingLabel' "$LABEL_SOURCE" "menu bar weekly remaining label"
   require_match 'NSStatusItem.variableLength' "$CONTROLLER_SOURCE" "variable status item length"
   require_match 'MenuBarWeeklyRemainingLabel.make' "$CONTROLLER_SOURCE" "status item uses weekly remaining"
-  require_match 'button.imagePosition = .imageTrailing' "$CONTROLLER_SOURCE" "percent then runner like battery"
+  require_match 'button.imagePosition = .imageTrailing' "$LABEL_SOURCE" "percent then runner like battery"
+  require_match 'apply\(to: button\)' "$CONTROLLER_SOURCE" "status item applies weekly remaining label"
   require_match 'showsMainWeeklyGraph' "$CODEX_PANEL_SOURCE" "Codex graph gate"
   require_match 'showsWeeklyGraph' "$GROK_PANEL_SOURCE" "Grok graph gate"
   require_match 'selection: UsageProviderSelection' "$DEMO_SOURCE" \

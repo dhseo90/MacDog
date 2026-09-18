@@ -176,17 +176,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func applyMenuBarWeeklyRemainingLabel() {
         guard let button = statusItem.button else { return }
-        if let text = MenuBarWeeklyRemainingLabel.make(
+        MenuBarWeeklyRemainingLabel.make(
             state: state,
             visible: preferences.usageMenuBarWeeklyRemainingVisible,
             now: state.runnerEvaluationDate
-        ).text {
-            button.imagePosition = .imageTrailing
-            button.title = text
-        } else {
-            button.imagePosition = .imageOnly
-            button.title = ""
-        }
+        ).apply(to: button)
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {

@@ -60,7 +60,7 @@ history까지 지우게 하는 patch입니다.
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
-| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 정리 | 범위 고정, 구현 전 | 메뉴바 글자 축소·폭 고정·간격, uninstall 5시간/reset-window history |
+| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 정리 | Step 1~5 코드·자동 검증 완료 | Step 6 실제 메뉴바 GUI·uninstall 실실행 미수행 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -745,18 +745,22 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)에 둡니다.
 릴리즈 준비 문서는 구현 후 추가합니다.
 
-현재 상태: 범위 고정, 구현 전.
+현재 상태: Step 1~5 코드와 자동 검증 완료. 실제 메뉴바 GUI와 uninstall 실실행은
+미수행입니다.
 
 구현 순서:
 
 1. 메뉴바 잔여율 라벨을 11pt tabular 숫자와 `100%` 고정 폭으로 만듭니다.
    기본 `button.title` 시스템 컨트롤 폰트를 쓰지 않습니다.
+   `MenuBarWeeklyRemainingLabelTests`를 통과했습니다.
 2. 숫자와 강아지 사이 간격을 기본 title 여백보다 좁히고, 붙지 않게 2pt 안팎을
    유지합니다. 표시 순서는 숫자 왼쪽, 강아지 오른쪽입니다.
+   `apply(to:)`가 attributed title과 `imageHugsTitle`을 씁니다.
 3. `uninstall.sh` dry-run과 실제 삭제가 `usage-five-hour-history.json`과
    `usage-reset-window-history.json`을 주간 history와 함께 제거합니다.
-4. focused test, uninstall dry-run verifier, v1.9.2 계약 verifier, 전체 test와
-   Xcode Debug build를 닫습니다.
+   `verify_install_dry_run.sh`를 통과했고 실제 삭제는 하지 않았습니다.
+4. focused test, uninstall dry-run verifier, v1.9.2 계약 verifier를 닫았습니다.
+   `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests`를 통과했습니다.
 5. 실제 메뉴바 GUI와 실제 uninstall은 별도 명시 요청 뒤 수행하고, 실행하지 않은
    항목은 `미수행`으로 기록합니다.
 
@@ -779,8 +783,9 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 - 메뉴바 주간 잔여율 글자가 아이콘보다 작고 `9%`/`100%`에서 강아지 위치가 고정됩니다.
 - 주간이 없거나 설정을 끄면 숫자와 그 폭이 함께 사라집니다.
 - 클린 삭제가 주간/5시간/reset-window history를 함께 제거합니다.
-- `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build와
-  uninstall dry-run/v1.9.2 verifier가 통과합니다.
+- `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build,
+  `verify_install_dry_run.sh`와
+  `verify_v192_menu_bar_glance_contract.sh --self-test`가 통과합니다.
 - 실제 메뉴바·uninstall을 실행하지 않으면 `미수행`으로 보고합니다.
 
 추천 모델: `grok-4.6`
