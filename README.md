@@ -128,7 +128,8 @@ Apple Developer 계정이 필요한 기능명은 나열하지 않습니다.
 | [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md) | DMG와 릴리즈 흐름 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | PR |
 
-버전 기록: [V191](Docs/V191MultiProviderUsage.md) ·
+버전 기록: [V192](Docs/V192MenuBarGlancePolish.md) ·
+[V191](Docs/V191MultiProviderUsage.md) ·
 [V191ReleaseReadiness](Docs/V191ReleaseReadiness.md) ·
 [V190](Docs/V190GrokUsageAndClaudeHide.md) ·
 [V190ReleaseReadiness](Docs/V190ReleaseReadiness.md) ·

@@ -8,11 +8,13 @@ MacDog는 사용자가 선택한 AI provider 사용량을 메뉴바에서 즉시
 Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 다 활성화하고,
 활성 provider 중 하나를 메인으로 정합니다. 작은 강아지 러너와 상세 UI는 메인 provider를
 기준으로 동작하고, 1번 탭 상단에는 활성 provider의 주간 게이지를 함께 보여 줍니다.
+v1.9.2는 메뉴바 주간 잔여율 글자를 아이콘 높이에 맞게 줄이고, 클린 삭제가 5시간/완료 창
+history까지 지우게 하는 patch입니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
-버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.0` 다음 기능 버전은
-`v1.9.1`로 이어 갑니다.
+버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.1` 다음 기능 버전은
+`v1.9.2`입니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -58,6 +60,7 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
+| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 정리 | 범위 고정, 구현 전 | 메뉴바 글자 축소·폭 고정·간격, uninstall 5시간/reset-window history |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -731,6 +734,59 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 선정 근거: 영향도 2 + 불확실성 1 + 검증 난이도 2 + 변경 범위 2 = 7점. 단일 provider
 상태가 preference, writer, runner, 알림, UI에 결합되어 있어 통합 회귀 검토가 필요하지만
 인증 방식과 cache schema는 변경하지 않습니다.
+
+## v1.9.2: 메뉴바 glance polish와 uninstall history 정리
+
+`v1.9.2`는 published `v1.9.1` 위에서 메뉴바 주간 잔여율 글자를 강아지 아이콘 높이에
+맞게 줄이고, 클린 삭제가 주간 history만 지우고 5시간/완료 창 history를 남기는 문제를
+고치는 patch입니다. provider 선택과 cache schema는 유지합니다.
+
+세부 범위와 검증 경계는
+[Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)에 둡니다.
+릴리즈 준비 문서는 구현 후 추가합니다.
+
+현재 상태: 범위 고정, 구현 전.
+
+구현 순서:
+
+1. 메뉴바 잔여율 라벨을 11pt tabular 숫자와 `100%` 고정 폭으로 만듭니다.
+   기본 `button.title` 시스템 컨트롤 폰트를 쓰지 않습니다.
+2. 숫자와 강아지 사이 간격을 기본 title 여백보다 좁히고, 붙지 않게 2pt 안팎을
+   유지합니다. 표시 순서는 숫자 왼쪽, 강아지 오른쪽입니다.
+3. `uninstall.sh` dry-run과 실제 삭제가 `usage-five-hour-history.json`과
+   `usage-reset-window-history.json`을 주간 history와 함께 제거합니다.
+4. focused test, uninstall dry-run verifier, v1.9.2 계약 verifier, 전체 test와
+   Xcode Debug build를 닫습니다.
+5. 실제 메뉴바 GUI와 실제 uninstall은 별도 명시 요청 뒤 수행하고, 실행하지 않은
+   항목은 `미수행`으로 기록합니다.
+
+보존 대상:
+
+- v1.9.1 활성 집합과 메인 provider, 합산·fallback 금지
+- 메뉴바 `%` 설정 토글과 기본값 켜짐
+- Codex/Grok cache/history schema와 writer 경계
+- cache 로그와 privileged helper 기본 보존
+
+제외 경계:
+
+- 메뉴바에 Codex/Grok `%`를 함께 표시하거나 used%로 변경
+- cache schema breaking change와 cache 로그 rotation
+- Mac/Sleep/Battery/Settings 탭 기능 변경. 해당 탭 GUI 미수행은 검수 공백
+- 사용자 명시 요청 없는 GUI, 실제 uninstall, 설치, 릴리즈 publish
+
+완료 기준:
+
+- 메뉴바 주간 잔여율 글자가 아이콘보다 작고 `9%`/`100%`에서 강아지 위치가 고정됩니다.
+- 주간이 없거나 설정을 끄면 숫자와 그 폭이 함께 사라집니다.
+- 클린 삭제가 주간/5시간/reset-window history를 함께 제거합니다.
+- `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build와
+  uninstall dry-run/v1.9.2 verifier가 통과합니다.
+- 실제 메뉴바·uninstall을 실행하지 않으면 `미수행`으로 보고합니다.
+
+추천 모델: `grok-4.6`
+추론 수준: 중간 (medium)
+선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점. 표시와 삭제
+대상만 다루고 cache/인증 계약은 유지합니다.
 
 ## RunCat UI 참고 방향
 
