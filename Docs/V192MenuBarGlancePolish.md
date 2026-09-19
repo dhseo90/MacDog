@@ -16,29 +16,25 @@
 
 ## 현재 결함
 
-1. 메뉴바 `%`는 `NSStatusItem` 기본 `button.title`을 쓴다. 아이콘은 높이 21px인데
-   숫자는 시스템 컨트롤 글자라 옆에 두면 크다.
-2. `9%`와 `100%` 폭이 달라 숫자가 바뀔 때 강아지 위치가 좌우로 움직인다.
-3. 숫자와 강아지 사이 간격은 `imageHugsTitle` 기본값만 있고 조정이 없다.
-4. `script/uninstall.sh`는 `usage-weekly-history.json`을 지우고
+1. 아이콘 위 오버레이는 캐릭터를 가리거나 안 보인다. 강아지를 오른쪽 끝에 두고
+   `%`는 그 바로 왼쪽에 붙인다. 설정 `현재 잔여 사용량`과 `% 표기`로 끈다.
+2. `script/uninstall.sh`는 `usage-weekly-history.json`을 지우고
    `usage-five-hour-history.json`과 `usage-reset-window-history.json`은 남긴다.
    v1.9.1 클린 삭제 뒤 주간 그래프는 sample 1개부터 다시 쌓였고, 완료 창 기록은
    남아 있었다.
 
 ## 범위
 
-1. 메뉴바 주간 잔여율 글자를 아이콘보다 작은 메뉴바용 크기로 바꾼다.
-   - 기본 `button.title` 시스템 컨트롤 폰트를 쓰지 않는다.
-   - 숫자 폰트는 11pt, `monospacedDigit` 계열이다.
-2. 레이아웃 폭은 `100%` 문자열 기준으로 고정한다. `9%`와 `100%`에서 강아지 위치가
-   바뀌지 않는다. 필요하면 figure space로 패딩한다.
-3. 숫자와 강아지 사이 간격은 기본 title 여백보다 좁게 두고, 붙지 않을 만큼 2pt
-   안팎을 유지한다. 표시 순서는 현재와 같이 숫자 왼쪽, 강아지 오른쪽이다.
+1. 강아지를 메뉴바 extra의 오른쪽 끝에 두고, 주간 잔여율 `%`는 그 바로 왼쪽에
+   9pt tabular 숫자와 더 작은 `%`로 붙인다. 아이콘 위 오버레이는 쓰지 않는다.
+2. 숫자와 강아지 사이는 2pt, 바깥은 1pt다. `100%` 고정 폭 패딩은 두지 않는다.
+3. 설정 `현재 잔여 사용량` 오른쪽에 종속 옵션 `% 표기`를 둔다.
+   잔여 사용량을 끄거나 주간이 없으면 강아지만 남긴다.
 4. `uninstall.sh`의 dry-run과 실제 삭제가 5시간 history와 reset-window history를
    주간 history와 같은 수준으로 제거한다.
 
 표시 계약은 v1.9.1과 같다. 메인 provider 주간 잔여율만 정수 `%`로 보이고, 주간이
-없거나 stale이면 숨기며, 설정 `메뉴바에 주간 잔여율 표시`로 끈다.
+없거나 stale이면 숨기며, 설정 `현재 잔여 사용량`과 `% 표기`로 끈다.
 
 ## 불변 계약
 
@@ -60,8 +56,8 @@
 | Step | 제목 | 우선순위 | 할 일 | 완료 조건 |
 | ---: | --- | --- | --- | --- |
 | 1 | 범위 고정 | P0 | ROADMAP과 이 문서에 4개 이슈, 제외 경계, 검증을 기록한다. | 완료. 합산·used%·로그 삭제는 범위 밖이다. |
-| 2 | 라벨 presentation | P0 | `MenuBarWeeklyRemainingLabel`이 작은 11pt tabular 숫자와 `100%` 고정 폭을 만든다. | 완료. `MenuBarWeeklyRemainingLabelTests` 16 passed. |
-| 3 | status item 적용 | P0 | `MenuBarController`가 기본 `title` 대신 작은 attributed 라벨과 좁은 간격을 적용한다. | 완료. `apply(to:)`가 11pt attributed title과 `imageHugsTitle`을 쓴다. |
+| 2 | 라벨 presentation | P0 | 강아지 오른쪽, `%` 바로 왼쪽, 9pt 숫자. | 완료. placement focused test. |
+| 3 | status item 적용 | P0 | glance view가 숫자를 강아지 왼쪽에 붙이고 설정으로 숨긴다. | 완료. |
 | 4 | uninstall history | P0 | dry-run 문구와 `rm` 대상에 5시간/reset-window history를 넣는다. | 완료. `verify_install_dry_run.sh` 통과. 실제 삭제는 미수행. |
 | 5 | 계약 verifier와 문서 | P1 | v1.9.2 verifier를 추가하고 Scripts/onboarding의 현재 uninstall 잔여 문구를 구현 결과에 맞춘다. | 완료. `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests` 통과. |
 | 6 | GUI와 삭제 검수 | P2 | 실제 메뉴바 숫자 크기·간격·폭 고정과, 승인된 경우 uninstall dry-run/실삭제를 확인한다. | 미수행. |
@@ -125,10 +121,8 @@ codesign/notarization은 사용자 명시 요청 전에는 실행하지 않는�
 
 개발 완료:
 
-- 메뉴바 주간 잔여율 글자가 11pt tabular 숫자이고 아이콘보다 작다.
-- `9%`와 `100%`에서 강아지 위치가 바뀌지 않는다.
-- 숫자와 강아지 사이가 기본 title보다 좁고 붙지 않는다.
-- 주간이 없거나 설정을 끄면 숫자와 그 폭이 함께 사라진다.
+- 강아지는 extra 오른쪽, `%`는 바로 왼쪽이다.
+- 설정 `현재 잔여 사용량`과 `% 표기`로 숫자와 `%`를 따로 끈다.
 - `uninstall.sh --dry-run`과 실제 삭제가 주간/5시간/reset-window history를 함께
   제거한다. cache 로그는 남길 수 있다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build,

@@ -8,6 +8,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let menuBarIconRenderer = MenuBarIconRenderer()
+    private let menuBarGlanceView = MenuBarGlanceView()
     private let cacheStore = CodexUsageCacheStore(fileURL: CodexUsageCacheStore.defaultFileURL())
     private let claudeUsageCacheStore = ClaudeUsageCacheStore()
     private let grokUsageCacheStore = GrokUsageCacheStore()
@@ -69,6 +70,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         button.action = #selector(statusItemActivated)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.toolTip = "MacDog"
+        installMenuBarGlanceView(in: button)
         applyMenuBarWeeklyRemainingLabel()
     }
 
@@ -165,22 +167,38 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func renderCurrentFrame() {
+        applyMenuBarWeeklyRemainingLabel()
+    }
+
+    private func installMenuBarGlanceView(in button: NSStatusBarButton) {
+        guard menuBarGlanceView.superview !== button else { return }
+        menuBarGlanceView.autoresizingMask = [.width, .height]
+        button.addSubview(menuBarGlanceView)
+    }
+
+    private func applyMenuBarWeeklyRemainingLabel() {
+        guard let button = statusItem.button else { return }
         let image = menuBarIconRenderer.image(
             frame: frameIndex,
             phase: state.phase,
             reducedMotion: state.reducedMotion
         )
-        statusItem.button?.image = image
-        applyMenuBarWeeklyRemainingLabel()
-    }
-
-    private func applyMenuBarWeeklyRemainingLabel() {
-        guard let button = statusItem.button else { return }
-        MenuBarWeeklyRemainingLabel.make(
+        let label = MenuBarWeeklyRemainingLabel.make(
             state: state,
             visible: preferences.usageMenuBarWeeklyRemainingVisible,
+            showsPercentSign: preferences.usageMenuBarWeeklyRemainingPercentSignVisible,
             now: state.runnerEvaluationDate
-        ).apply(to: button)
+        )
+        button.image = nil
+        button.attributedTitle = NSAttributedString()
+        button.title = ""
+        menuBarGlanceView.update(percentText: label.text, image: image)
+        let length = menuBarGlanceView.intrinsicContentSize.width
+        statusItem.length = length
+        menuBarGlanceView.frame = NSRect(
+            origin: .zero,
+            size: NSSize(width: length, height: max(button.bounds.height, 22))
+        )
     }
 
     private func refreshUsage(allowLiveRefresh: Bool) {

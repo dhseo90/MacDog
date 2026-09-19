@@ -20,6 +20,8 @@ struct SettingsPanel: View {
         RunnerPreferences.defaultUsageGraphDateBaseline.rawValue
     @AppStorage(RunnerPreferences.usageMenuBarWeeklyRemainingVisibleKey) private var menuBarWeeklyRemainingVisible =
         RunnerPreferences.defaultUsageMenuBarWeeklyRemainingVisible
+    @AppStorage(RunnerPreferences.usageMenuBarWeeklyRemainingPercentSignVisibleKey) private var menuBarWeeklyRemainingPercentSignVisible =
+        RunnerPreferences.defaultUsageMenuBarWeeklyRemainingPercentSignVisible
     @State private var usageSelection = RunnerPreferences.usageProviderSelection()
     @State private var loginLaunchErrorMessage: String?
     @State private var isRevertingLoginLaunchEnabled = false
@@ -179,6 +181,10 @@ struct SettingsPanel: View {
             RunnerPreferences.setUsageMenuBarWeeklyRemainingVisible(isVisible)
             deferredPreferencesChanged()
         }
+        .onChange(of: menuBarWeeklyRemainingPercentSignVisible) { _, isVisible in
+            RunnerPreferences.setUsageMenuBarWeeklyRemainingPercentSignVisible(isVisible)
+            deferredPreferencesChanged()
+        }
     }
 
     private var isClaudeDebug: Bool {
@@ -212,7 +218,11 @@ struct SettingsPanel: View {
                     .accessibilityIdentifier("usage-main-provider")
                 }
                 settingsToggle("상세 그래프 표시", isOn: graphVisibleBinding)
-                settingsToggle("메뉴바에 주간 잔여율 표시", isOn: $menuBarWeeklyRemainingVisible)
+                HStack(spacing: 14) {
+                    settingsToggle("현재 잔여 사용량", isOn: $menuBarWeeklyRemainingVisible)
+                    settingsToggle("% 표기", isOn: $menuBarWeeklyRemainingPercentSignVisible)
+                        .disabled(!menuBarWeeklyRemainingVisible)
+                }
             }
         }
     }

@@ -750,12 +750,9 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 
 구현 순서:
 
-1. 메뉴바 잔여율 라벨을 11pt tabular 숫자와 `100%` 고정 폭으로 만듭니다.
-   기본 `button.title` 시스템 컨트롤 폰트를 쓰지 않습니다.
+1. 강아지를 오른쪽 끝에 두고 `%`를 바로 왼쪽에 붙입니다.
    `MenuBarWeeklyRemainingLabelTests`를 통과했습니다.
-2. 숫자와 강아지 사이 간격을 기본 title 여백보다 좁히고, 붙지 않게 2pt 안팎을
-   유지합니다. 표시 순서는 숫자 왼쪽, 강아지 오른쪽입니다.
-   `apply(to:)`가 attributed title과 `imageHugsTitle`을 씁니다.
+2. 설정 `현재 잔여 사용량`과 `% 표기`를 따로 끄고, 잔여 사용량을 끄면 강아지만 남깁니다.
 3. `uninstall.sh` dry-run과 실제 삭제가 `usage-five-hour-history.json`과
    `usage-reset-window-history.json`을 주간 history와 함께 제거합니다.
    `verify_install_dry_run.sh`를 통과했고 실제 삭제는 하지 않았습니다.
@@ -780,8 +777,8 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 
 완료 기준:
 
-- 메뉴바 주간 잔여율 글자가 아이콘보다 작고 `9%`/`100%`에서 강아지 위치가 고정됩니다.
-- 주간이 없거나 설정을 끄면 숫자와 그 폭이 함께 사라집니다.
+- 메뉴바에서 강아지는 오른쪽, `%`는 바로 왼쪽입니다.
+- 설정에서 잔여 사용량과 `%`를 따로 끌 수 있습니다.
 - 클린 삭제가 주간/5시간/reset-window history를 함께 제거합니다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build,
   `verify_install_dry_run.sh`와

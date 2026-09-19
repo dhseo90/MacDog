@@ -5,15 +5,29 @@ import Foundation
 struct MenuBarWeeklyRemainingLabel: Equatable {
     let text: String?
 
-    static let fontSize: CGFloat = 11
+    static let fontSize: CGFloat = 9
+    static let percentSignSize: CGFloat = 7
     static let trailingGap: CGFloat = 2
+    static let outerInset: CGFloat = 1
+    static let percentFieldHorizontalPadding: CGFloat = 4
+    static let percentFieldVerticalPadding: CGFloat = 2
     static var font: NSFont {
-        NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
+        NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
+    }
+    static var percentSignFont: NSFont {
+        NSFont.monospacedDigitSystemFont(ofSize: percentSignSize, weight: .medium)
+    }
+    static var textAttributes: [NSAttributedString.Key: Any] {
+        [
+            .font: font,
+            .foregroundColor: NSColor.labelColor
+        ]
     }
 
     static func make(
         state: UsageMonitorState,
         visible: Bool = true,
+        showsPercentSign: Bool = true,
         now: Date = Date()
     ) -> MenuBarWeeklyRemainingLabel {
         guard visible, state.usageProviderMode != .claude else {
@@ -35,57 +49,68 @@ struct MenuBarWeeklyRemainingLabel: Equatable {
         }
 
         let percent = Int(remainingPercent.rounded(.toNearestOrAwayFromZero))
-        return MenuBarWeeklyRemainingLabel(text: "\(percent)%")
+        return MenuBarWeeklyRemainingLabel(text: showsPercentSign ? "\(percent)%" : "\(percent)")
     }
 
     var attributedTitle: NSAttributedString? {
         guard let text else { return nil }
-        return Self.makeAttributedTitle(visibleText: text)
+        return Self.attributedPercent(text)
     }
 
-    var reservedWidth: CGFloat {
-        attributedTitle?.size().width ?? 0
-    }
-
-    @MainActor
-    func apply(to button: NSStatusBarButton) {
-        button.imageHugsTitle = true
-        button.font = Self.font
-        if let attributedTitle {
-            button.imagePosition = .imageTrailing
-            button.attributedTitle = attributedTitle
+    static func attributedPercent(_ text: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let digitAttributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.labelColor
+        ]
+        if text.hasSuffix("%") {
+            result.append(NSAttributedString(string: String(text.dropLast()), attributes: digitAttributes))
+            result.append(
+                NSAttributedString(
+                    string: "%",
+                    attributes: [
+                        .font: percentSignFont,
+                        .foregroundColor: NSColor.labelColor,
+                        .baselineOffset: 1
+                    ]
+                )
+            )
         } else {
-            button.attributedTitle = NSAttributedString()
-            button.title = ""
-            button.imagePosition = .imageOnly
+            result.append(NSAttributedString(string: text, attributes: digitAttributes))
         }
-    }
-
-    private static func makeAttributedTitle(visibleText: String) -> NSAttributedString {
-        let attributes: [NSAttributedString.Key: Any] = [.font: font]
-        let digits = String(visibleText.dropLast())
-        let padCount = max(0, 3 - digits.count)
-        let padded = String(repeating: "\u{2007}", count: padCount) + visibleText
-        let result = NSMutableAttributedString(string: padded, attributes: attributes)
-        let templateWidth = NSAttributedString(string: "100%", attributes: attributes).size().width
-        let paddedWidth = NSAttributedString(string: padded, attributes: attributes).size().width
-        let leadingPad = max(0, templateWidth - paddedWidth)
-        if leadingPad > 0.01 {
-            result.insert(spacer(width: leadingPad), at: 0)
-        }
-        result.append(spacer(width: trailingGap))
         return result
     }
 
-    private static func spacer(width: CGFloat) -> NSAttributedString {
-        let image = NSImage(size: NSSize(width: max(width, 0.01), height: 1))
-        image.lockFocus()
-        NSColor.clear.setFill()
-        NSRect(origin: .zero, size: image.size).fill()
-        image.unlockFocus()
-        let attachment = NSTextAttachment()
-        attachment.image = image
-        attachment.bounds = CGRect(x: 0, y: 0, width: width, height: 1)
-        return NSAttributedString(attachment: attachment)
+    static func compactLength(titleWidth: CGFloat, imageWidth: CGFloat) -> CGFloat {
+        let textAndGap = titleWidth > 0 ? titleWidth + trailingGap : 0
+        return ceil(textAndGap + imageWidth + outerInset * 2)
+    }
+
+    static func placement(
+        percentText: String?,
+        imageSize: NSSize,
+        height: CGFloat
+    ) -> (percent: NSRect?, image: NSRect, width: CGFloat) {
+        var x = outerInset
+        var percentFrame: NSRect?
+        if let percentText {
+            let textSize = attributedPercent(percentText).size()
+            let width = ceil(textSize.width) + percentFieldHorizontalPadding
+            let textHeight = ceil(textSize.height) + percentFieldVerticalPadding
+            percentFrame = NSRect(
+                x: x,
+                y: ((height - textHeight) / 2).rounded(.toNearestOrAwayFromZero),
+                width: width,
+                height: textHeight
+            )
+            x += width + trailingGap
+        }
+        let imageFrame = NSRect(
+            x: x,
+            y: ((height - imageSize.height) / 2).rounded(.toNearestOrAwayFromZero),
+            width: imageSize.width,
+            height: imageSize.height
+        )
+        return (percentFrame, imageFrame, ceil(imageFrame.maxX + outerInset))
     }
 }

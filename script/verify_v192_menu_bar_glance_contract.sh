@@ -13,6 +13,7 @@ V191_VERIFIER="$ROOT_DIR/script/verify_v191_multi_provider_contract.sh"
 UNINSTALL="$ROOT_DIR/script/uninstall.sh"
 INSTALL_DRY_RUN="$ROOT_DIR/script/verify_install_dry_run.sh"
 LABEL_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarWeeklyRemainingLabel.swift"
+GLANCE_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarGlanceView.swift"
 CONTROLLER_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarController.swift"
 LABEL_TEST="$ROOT_DIR/Tests/MacDogTests/MenuBarWeeklyRemainingLabelTests.swift"
 POPOVER_TEST="$ROOT_DIR/Tests/MacDogTests/PopoverScreenshotRendererTests.swift"
@@ -58,7 +59,7 @@ verify_contract() {
   local file
   for file in "$DOC" "$README" "$ROADMAP" "$ONBOARDING" "$DEV_ENV" "$SCRIPTS_DOC" \
     "$CHECK_SCRIPT" "$V191_VERIFIER" "$UNINSTALL" "$INSTALL_DRY_RUN" \
-    "$LABEL_SOURCE" "$CONTROLLER_SOURCE" "$LABEL_TEST" "$POPOVER_TEST"; do
+    "$LABEL_SOURCE" "$GLANCE_SOURCE" "$CONTROLLER_SOURCE" "$LABEL_TEST" "$POPOVER_TEST"; do
     require_file "$file"
   done
   [[ -x "$ROOT_DIR/script/verify_v192_menu_bar_glance_contract.sh" ]] || \
@@ -68,9 +69,10 @@ verify_contract() {
   reject_match 'v1\.9\.2' "$V191_VERIFIER" "v1.9.1 verifier mentioning v1.9.2"
 
   require_match '메뉴바 glance polish와 uninstall history 정리' "$DOC" "v1.9.2 title"
-  require_match '숫자 폰트는 11pt' "$DOC" "11pt font contract"
-  require_match '레이아웃 폭은 `100%`' "$DOC" "reserved 100% width"
-  require_match '2pt' "$DOC" "two-point trailing gap"
+  require_match '바로 왼쪽' "$DOC" "percent sits immediately left of the dog"
+  require_match '현재 잔여 사용량' "$DOC" "remaining amount remains a settings option"
+  require_match '% 표기' "$DOC" "percent sign remains a settings option"
+  require_match '오른쪽에 종속 옵션' "$DOC" "percent sign sits to the right of remaining"
   require_match 'usage-five-hour-history.json' "$DOC" "five-hour uninstall"
   require_match 'usage-reset-window-history.json' "$DOC" "reset-window uninstall"
   require_match 'cache 로그 rotation' "$DOC" "log rotation stays out of scope"
@@ -83,29 +85,31 @@ verify_contract() {
     "ROADMAP v1.9.2 verifier"
   require_match 'v1\.9\.2 glance' "$ONBOARDING" "onboarding v1.9.2 term"
 
-  require_match 'static let fontSize: CGFloat = 11' "$LABEL_SOURCE" "11pt font size"
-  require_match 'static let trailingGap: CGFloat = 2' "$LABEL_SOURCE" "2pt trailing gap"
+  require_match 'static let fontSize: CGFloat = 9' "$LABEL_SOURCE" "9pt percent digits"
+  require_match 'static let percentSignSize: CGFloat = 7' "$LABEL_SOURCE" "smaller percent sign"
+  require_match 'static let trailingGap: CGFloat = 2' "$LABEL_SOURCE" "2pt gap before dog"
   require_match 'monospacedDigitSystemFont' "$LABEL_SOURCE" "tabular digits"
-  require_match 'NSAttributedString\(string: "100%"' "$LABEL_SOURCE" "100% width template"
-  require_match 'func apply\(to button: NSStatusBarButton\)' "$LABEL_SOURCE" \
-    "status item apply helper"
-  require_match 'button.imagePosition = .imageTrailing' "$LABEL_SOURCE" \
-    "percent then runner"
-  require_match 'imageHugsTitle = true' "$LABEL_SOURCE" "tight title hugging"
-  require_match 'apply\(to: button\)' "$CONTROLLER_SOURCE" "controller uses apply"
+  require_match 'func placement\(' "$LABEL_SOURCE" "percent left of dog placement"
+  require_match 'static let outerInset: CGFloat = 1' "$LABEL_SOURCE" "1pt outer inset"
+  require_match 'func compactLength\(titleWidth' "$LABEL_SOURCE" "compact status item length"
+  require_match 'override func hitTest' "$GLANCE_SOURCE" "glance view lets status item receive clicks"
+  require_match 'menuBarGlanceView.update' "$CONTROLLER_SOURCE" "controller uses compact glance view"
+  require_match 'statusItem.length = length' "$CONTROLLER_SOURCE" "controller sets compact length"
   reject_match 'button\.title = text' "$CONTROLLER_SOURCE" "plain system title"
 
-  require_match 'testGlanceAttributedTitleUsesElevenPointMonospacedDigits' \
-    "$LABEL_TEST" "font focused test"
-  require_match 'testNinePercentAndOneHundredPercentShareReservedWidth' \
-    "$LABEL_TEST" "fixed width focused test"
-  require_match 'testHiddenLabelHasZeroReservedWidthAndNoAttributedTitle' \
-    "$LABEL_TEST" "hidden width focused test"
-  require_match 'testAttributedTitleReservesTwoPointTrailingGap' \
-    "$LABEL_TEST" "trailing gap focused test"
-  require_match 'testApplyUsesAttributedGlanceTitleOnStatusItemButton' \
-    "$LABEL_TEST" "status item apply focused test"
-  require_match '\.apply\(to: button\)' "$POPOVER_TEST" "screenshot controller apply"
+  require_match 'testPercentUsesNinePointDigitsAndSmallerPercentSign' \
+    "$LABEL_TEST" "percent font focused test"
+  require_match 'testPlacementPutsPercentImmediatelyLeftOfDog' \
+    "$LABEL_TEST" "percent left of dog focused test"
+  require_match 'testGlanceViewKeepsDogOnTheRightAndHidesPercentWhenToggledOff' \
+    "$LABEL_TEST" "optional percent focused test"
+  require_match 'testPercentSignPreferenceDefaultsOnAndCanBeTurnedOff' \
+    "$LABEL_TEST" "percent sign preference focused test"
+  require_match 'testMakeOmitsPercentSignWhenDisabled' \
+    "$LABEL_TEST" "percent sign omitted focused test"
+  require_match 'testDigitOnlyPlacementKeepsFullNumberVisible' \
+    "$LABEL_TEST" "digit-only remaining stays unclipped"
+  require_match 'menuBarGlanceView.update' "$POPOVER_TEST" "screenshot controller glance view"
 
   require_match 'APP_FIVE_HOUR_HISTORY_FILE=' "$UNINSTALL" "five-hour history path"
   require_match 'APP_RESET_WINDOW_HISTORY_FILE=' "$UNINSTALL" "reset-window history path"
