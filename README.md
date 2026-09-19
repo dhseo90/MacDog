@@ -64,12 +64,12 @@ v1.9.1 demo snapshot입니다. 값은 환경마다 다릅니다.
 
 | 화면 | 내용 |
 | --- | --- |
-| 메뉴바 | 메인 provider 사용량으로 러너 속도. 설정이 켜져 있으면 주간 잔여율 `%` |
+| 메뉴바 | 메인 provider 사용량으로 러너 속도. `현재 잔여 사용량`이 켜져 있으면 주간 잔여 숫자, `% 표기`로 `%` |
 | 사용량 | 활성 provider 게이지 카드. 메인의 주간 그래프, Codex 초기화권 또는 Grok pace |
 | 활성 자원 | CPU, 메모리, 저장, 네트워크 |
 | 잠들지 않기 | 끔 / 시간 / 상태 기준 |
 | 배터리 | Apple silicon native Charge Limit 80–100% |
-| 설정 | Codex/Grok 체크, 메인, 상세 그래프, 메뉴바 `%`, 날짜 기준, 알림, 로그인, 펫 |
+| 설정 | Codex/Grok 체크, 메인, 상세 그래프, 현재 잔여 사용량, `% 표기`, 날짜 기준, 알림, 로그인, 펫 |
 
 Codex 5시간이 있으면 주간 아래에 붙이고, 없으면 숨깁니다. weekly-only는 정상 partial success입니다.
 Grok는 SuperGrok / Grok Build 주간 pool만 보고 5시간은 만들지 않습니다.
@@ -91,8 +91,8 @@ Codex 원천은 app-server `account/rateLimits/read`입니다. 주간 history는
 ## 개발
 
 ```sh
-MACDOG_APP_VERSION=1.9.1 ./script/check.sh --no-run
-MACDOG_APP_VERSION=1.9.1 ./script/build_and_run.sh
+MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run
+MACDOG_APP_VERSION=1.9.2 ./script/build_and_run.sh
 ```
 
 명령 전체는 [Docs/Scripts.md](Docs/Scripts.md), 로컬 설치는
@@ -100,14 +100,16 @@ MACDOG_APP_VERSION=1.9.1 ./script/build_and_run.sh
 
 ## 현재 릴리즈
 
-GitHub Releases Latest: `v1.9.1`. signed tag target
+GitHub Releases Latest: `v1.9.1`. 공개본 검증 예는
+`MACDOG_APP_VERSION=1.9.1 ./script/check.sh --no-run`입니다. signed tag target
 `a9cdfebf82ec822a4cda77dd2a55afb6e703458b`. 이전 공개본은
 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)
 (`b7072003830798bb1603768c4efb0b41409100f6`)과
 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)
 (`14d716a88ea10a77344a4f9aa3651c23b1160f8c`)입니다.
 
-증거는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md)에 있습니다.
+현재 개발 릴리즈 준비는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에
+있습니다. published 증거는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md),
 v1.9.1 계약은 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)입니다.
 
 ## 알림 경계
@@ -129,6 +131,7 @@ Apple Developer 계정이 필요한 기능명은 나열하지 않습니다.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | PR |
 
 버전 기록: [V192](Docs/V192MenuBarGlancePolish.md) ·
+[V192ReleaseReadiness](Docs/V192ReleaseReadiness.md) ·
 [V191](Docs/V191MultiProviderUsage.md) ·
 [V191ReleaseReadiness](Docs/V191ReleaseReadiness.md) ·
 [V190](Docs/V190GrokUsageAndClaudeHide.md) ·

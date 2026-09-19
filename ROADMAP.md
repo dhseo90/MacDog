@@ -8,8 +8,8 @@ MacDog는 사용자가 선택한 AI provider 사용량을 메뉴바에서 즉시
 Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 다 활성화하고,
 활성 provider 중 하나를 메인으로 정합니다. 작은 강아지 러너와 상세 UI는 메인 provider를
 기준으로 동작하고, 1번 탭 상단에는 활성 provider의 주간 게이지를 함께 보여 줍니다.
-v1.9.2는 메뉴바 주간 잔여율 글자를 아이콘 높이에 맞게 줄이고, 클린 삭제가 5시간/완료 창
-history까지 지우게 하는 patch입니다.
+v1.9.2는 메뉴바 주간 잔여 사용량 글자를 줄이고, 설정에서 숫자와 `%`를 따로 끄며,
+uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되게 하는 patch입니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
@@ -60,7 +60,7 @@ history까지 지우게 하는 patch입니다.
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
-| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 정리 | Step 1~5 코드·자동 검증 완료 | Step 6 실제 메뉴바 GUI·uninstall 실실행 미수행 |
+| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 보존 | 코드 완료, 릴리즈 준비 / PR 전 | PR·tag·DMG·Finder 재설치와 그래프 보존 확인 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -737,16 +737,15 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 
 ## v1.9.2: 메뉴바 glance polish와 uninstall history 정리
 
-`v1.9.2`는 published `v1.9.1` 위에서 메뉴바 주간 잔여율 글자를 강아지 아이콘 높이에
-맞게 줄이고, 클린 삭제가 주간 history만 지우고 5시간/완료 창 history를 남기는 문제를
-고치는 patch입니다. provider 선택과 cache schema는 유지합니다.
+`v1.9.2`는 published `v1.9.1` 위에서 메뉴바 주간 잔여 사용량 글자를 줄이고, 설정에서
+숫자와 `%`를 따로 끄며, uninstall이 그래프 history를 남겨 재설치 후에도 곡선이
+유지되게 하는 patch입니다. provider 선택과 cache schema는 유지합니다.
 
-세부 범위와 검증 경계는
-[Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)에 둡니다.
-릴리즈 준비 문서는 구현 후 추가합니다.
+세부 범위는 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md),
+릴리즈 순서는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에 둡니다.
 
-현재 상태: Step 1~5 코드와 자동 검증 완료. 실제 메뉴바 GUI와 uninstall 실실행은
-미수행입니다.
+현재 상태: 코드 완료, 릴리즈 준비 / PR 전. 별도 uninstall 실실행은 하지 않고
+publish 후 Finder 재설치에서 그래프 보존을 확인합니다.
 
 구현 순서:
 
@@ -757,8 +756,8 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
    유지됩니다. `verify_install_dry_run.sh`를 통과했고 실제 삭제는 하지 않았습니다.
 4. focused test, uninstall dry-run verifier, v1.9.2 계약 verifier를 닫았습니다.
    `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests`를 통과했습니다.
-5. 실제 메뉴바 GUI와 실제 uninstall은 별도 명시 요청 뒤 수행하고, 실행하지 않은
-   항목은 `미수행`으로 기록합니다.
+5. 별도 uninstall 실실행은 하지 않습니다. publish 후 Finder 재설치에서 그래프
+   보존을 확인합니다.
 
 보존 대상:
 

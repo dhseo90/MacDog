@@ -1,6 +1,6 @@
 # v1.9.2 메뉴바 glance polish와 uninstall history 정리
 
-상태: Step 1~5 코드·자동 검증 완료 / Step 6 실제 메뉴바 GUI·uninstall 실실행 미수행
+상태: 코드 완료, 릴리즈 준비는 [V192ReleaseReadiness.md](V192ReleaseReadiness.md)
 작성일: 2026-09-18
 대상 버전: `1.9.2`
 기준 브랜치: `v1.9.2`
@@ -59,7 +59,7 @@
 | 3 | status item 적용 | P0 | glance view가 숫자를 강아지 왼쪽에 붙이고 설정으로 숨긴다. | 완료. |
 | 4 | uninstall history | P0 | dry-run과 `rm`이 그래프 history를 지우지 않는다. | 완료. `verify_install_dry_run.sh` 통과. 실제 삭제는 미수행. |
 | 5 | 계약 verifier와 문서 | P1 | v1.9.2 verifier를 추가하고 Scripts/onboarding의 현재 uninstall 잔여 문구를 구현 결과에 맞춘다. | 완료. `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests` 통과. |
-| 6 | GUI와 삭제 검수 | P2 | 실제 메뉴바 숫자 크기·간격·폭 고정과, 승인된 경우 uninstall dry-run/실삭제를 확인한다. | 미수행. |
+| 6 | GUI와 재설치 검수 | P2 | 메뉴바 숫자와 설정 토글은 개발본에서 확인했다. published DMG Finder 재설치와 그래프 보존은 릴리즈 경로에서 확인한다. | 개발본 GUI 확인. published 설치 미수행. |
 
 ## 테스트와 검증
 
@@ -144,8 +144,7 @@ codesign/notarization은 사용자 명시 요청 전에는 실행하지 않는�
 - 실제 메뉴바 크기·간격·폭 고정은 `UI 확인 미수행`.
 - 실제 uninstall은 `미수행`.
 
-릴리즈 준비 문서는 구현이 끝난 뒤에 `Docs/V192ReleaseReadiness.md`로 추가한다.
-지금 만들지 않는다.
+릴리즈 순서는 [V192ReleaseReadiness.md](V192ReleaseReadiness.md)에 둔다.
 
 ## 모델 추천
 
