@@ -18,10 +18,8 @@
 
 1. 아이콘 위 오버레이는 캐릭터를 가리거나 안 보인다. 강아지를 오른쪽 끝에 두고
    `%`는 그 바로 왼쪽에 붙인다. 설정 `현재 잔여 사용량`과 `% 표기`로 끈다.
-2. `script/uninstall.sh`는 `usage-weekly-history.json`을 지우고
-   `usage-five-hour-history.json`과 `usage-reset-window-history.json`은 남긴다.
-   v1.9.1 클린 삭제 뒤 주간 그래프는 sample 1개부터 다시 쌓였고, 완료 창 기록은
-   남아 있었다.
+2. uninstall이 그래프 history를 지우면 재설치 후 이번 주 곡선이 단순해지고 과거
+   창도 사라진다. 재설치해도 그래프가 유지되어야 한다.
 
 ## 범위
 
@@ -30,8 +28,9 @@
 2. 숫자와 강아지 사이는 2pt, 바깥은 1pt다. `100%` 고정 폭 패딩은 두지 않는다.
 3. 설정 `현재 잔여 사용량` 오른쪽에 종속 옵션 `% 표기`를 둔다.
    잔여 사용량을 끄거나 주간이 없으면 강아지만 남긴다.
-4. `uninstall.sh`의 dry-run과 실제 삭제가 5시간 history와 reset-window history를
-   주간 history와 같은 수준으로 제거한다.
+4. `uninstall.sh`는 앱/CLI/LaunchAgent/snapshot cache만 지우고
+   `usage-weekly-history.json`, `usage-five-hour-history.json`,
+   `usage-reset-window-history.json`과 Claude/Grok 그래프 history는 보존한다.
 
 표시 계약은 v1.9.1과 같다. 메인 provider 주간 잔여율만 정수 `%`로 보이고, 주간이
 없거나 stale이면 숨기며, 설정 `현재 잔여 사용량`과 `% 표기`로 끈다.
@@ -41,8 +40,8 @@
 - 메인 provider 주간 잔여율만 메뉴바에 둔다. 보조 provider `%`를 붙이지 않는다.
 - 없는 주간 값을 합성하지 않는다. used%로 바꾸지 않는다.
 - Codex CLI/JSON/cache schema와 Grok weekly-only/auth sibling을 변경하지 않는다.
-- 5시간/reset-window history **파일 내용·schema**는 바꾸지 않는다. 삭제 대상만
-  주간 history와 맞춘다.
+- 5시간/reset-window/주간 history **파일 내용·schema**는 바꾸지 않는다.
+  uninstall도 이 파일들을 지우지 않는다.
 - cache 로그 rotation과 `~/Library/Logs/MacDog` 삭제는 이번 범위가 아니다.
 - UserDefaults와 privileged helper 기본 보존은 유지한다.
 - 실제 GUI 실행, 실제 uninstall, 설치, LaunchAgent 변경, push는 각 동작의 명시
@@ -58,7 +57,7 @@
 | 1 | 범위 고정 | P0 | ROADMAP과 이 문서에 4개 이슈, 제외 경계, 검증을 기록한다. | 완료. 합산·used%·로그 삭제는 범위 밖이다. |
 | 2 | 라벨 presentation | P0 | 강아지 오른쪽, `%` 바로 왼쪽, 9pt 숫자. | 완료. placement focused test. |
 | 3 | status item 적용 | P0 | glance view가 숫자를 강아지 왼쪽에 붙이고 설정으로 숨긴다. | 완료. |
-| 4 | uninstall history | P0 | dry-run 문구와 `rm` 대상에 5시간/reset-window history를 넣는다. | 완료. `verify_install_dry_run.sh` 통과. 실제 삭제는 미수행. |
+| 4 | uninstall history | P0 | dry-run과 `rm`이 그래프 history를 지우지 않는다. | 완료. `verify_install_dry_run.sh` 통과. 실제 삭제는 미수행. |
 | 5 | 계약 verifier와 문서 | P1 | v1.9.2 verifier를 추가하고 Scripts/onboarding의 현재 uninstall 잔여 문구를 구현 결과에 맞춘다. | 완료. `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests` 통과. |
 | 6 | GUI와 삭제 검수 | P2 | 실제 메뉴바 숫자 크기·간격·폭 고정과, 승인된 경우 uninstall dry-run/실삭제를 확인한다. | 미수행. |
 
@@ -83,7 +82,7 @@ TDD에서 먼저 고정할 mutation:
 - 기본 `button.title` 시스템 폰트를 그대로 쓰는 오류
 - `9%`와 `100%`에서 라벨 폭이 달라 아이콘이 움직이는 오류
 - 주간이 없거나 설정이 꺼졌는데 빈 폭이 남는 오류
-- uninstall dry-run/실삭제 대상에 5시간·reset-window history가 없는 오류
+- uninstall dry-run/실삭제가 주간·5시간·reset-window·Grok/Claude 그래프 history를 지우는 오류
 - 메뉴바에 보조 provider `%`나 used%를 넣는 오류
 
 screenshot renderer는 popover 회귀용이다. 메뉴바 status item 글자 크기와 간격은
@@ -123,8 +122,8 @@ codesign/notarization은 사용자 명시 요청 전에는 실행하지 않는�
 
 - 강아지는 extra 오른쪽, `%`는 바로 왼쪽이다.
 - 설정 `현재 잔여 사용량`과 `% 표기`로 숫자와 `%`를 따로 끈다.
-- `uninstall.sh --dry-run`과 실제 삭제가 주간/5시간/reset-window history를 함께
-  제거한다. cache 로그는 남길 수 있다.
+- `uninstall.sh --dry-run`과 실제 삭제가 주간/5시간/reset-window와 Claude/Grok
+  그래프 history를 보존한다. snapshot cache는 지울 수 있다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build,
   `verify_install_dry_run.sh`, v1.9.2 verifier가 통과한다.
 

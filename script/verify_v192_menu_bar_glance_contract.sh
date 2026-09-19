@@ -73,8 +73,9 @@ verify_contract() {
   require_match '현재 잔여 사용량' "$DOC" "remaining amount remains a settings option"
   require_match '% 표기' "$DOC" "percent sign remains a settings option"
   require_match '오른쪽에 종속 옵션' "$DOC" "percent sign sits to the right of remaining"
-  require_match 'usage-five-hour-history.json' "$DOC" "five-hour uninstall"
-  require_match 'usage-reset-window-history.json' "$DOC" "reset-window uninstall"
+  require_match 'usage-five-hour-history.json' "$DOC" "five-hour history preserved"
+  require_match 'usage-reset-window-history.json' "$DOC" "reset-window history preserved"
+  require_match '재설치해도 그래프가 유지' "$DOC" "graphs survive reinstall"
   require_match 'cache 로그 rotation' "$DOC" "log rotation stays out of scope"
   require_match '보조 provider `%`를 붙이지 않는다' "$DOC" "no auxiliary percent"
 
@@ -113,21 +114,29 @@ verify_contract() {
 
   require_match 'APP_FIVE_HOUR_HISTORY_FILE=' "$UNINSTALL" "five-hour history path"
   require_match 'APP_RESET_WINDOW_HISTORY_FILE=' "$UNINSTALL" "reset-window history path"
-  require_match 'Would remove five-hour history file:' "$UNINSTALL" \
-    "five-hour dry-run"
-  require_match 'Would remove reset-window history file:' "$UNINSTALL" \
-    "reset-window dry-run"
-  require_match '\$APP_FIVE_HOUR_HISTORY_FILE' "$UNINSTALL" "five-hour rm"
-  require_match '\$APP_RESET_WINDOW_HISTORY_FILE' "$UNINSTALL" "reset-window rm"
-  require_match 'Would remove five-hour history file:' "$INSTALL_DRY_RUN" \
-    "install dry-run five-hour"
-  require_match 'Would remove reset-window history file:' "$INSTALL_DRY_RUN" \
-    "install dry-run reset-window"
+  require_match 'Would preserve usage history file:' "$UNINSTALL" \
+    "weekly history preserved"
+  require_match 'Would preserve five-hour history file:' "$UNINSTALL" \
+    "five-hour history preserved"
+  require_match 'Would preserve reset-window history file:' "$UNINSTALL" \
+    "reset-window history preserved"
+  require_match 'Would preserve Grok usage history file:' "$UNINSTALL" \
+    "Grok history preserved"
+  reject_match 'Would remove usage history file:' "$UNINSTALL" "weekly history wipe"
+  reject_match 'Would remove five-hour history file:' "$UNINSTALL" "five-hour history wipe"
+  reject_match 'Would remove reset-window history file:' "$UNINSTALL" "reset-window history wipe"
+  require_match 'Would preserve usage history file:' "$INSTALL_DRY_RUN" \
+    "install dry-run weekly preserve"
+  require_match 'Would preserve five-hour history file:' "$INSTALL_DRY_RUN" \
+    "install dry-run five-hour preserve"
+  require_match 'Would preserve reset-window history file:' "$INSTALL_DRY_RUN" \
+    "install dry-run reset-window preserve"
 
   require_match 'usage-five-hour-history.json' "$SCRIPTS_DOC" \
     "Scripts.md five-hour history"
   require_match 'usage-reset-window-history.json' "$SCRIPTS_DOC" \
     "Scripts.md reset-window history"
+  require_match '그래프 history는 보존' "$SCRIPTS_DOC" "Scripts.md preserves graph history"
   reject_match '현재 5시간/reset history와 cache logs는 남을 수 있습니다' \
     "$SCRIPTS_DOC" "stale uninstall remainder"
   require_match 'usage-five-hour-history.json' "$DEV_ENV" \

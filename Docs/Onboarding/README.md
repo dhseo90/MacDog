@@ -91,7 +91,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | --- | --- |
 | selected provider | 설정에서 켠 `Codex`/`Grok`. 하나 또는 둘 다 가능하고 메인을 지정함. Claude는 hidden re-enable만. 합산·비교·fallback은 없음 |
 | v1.9.1 selection | 활성 bit mask와 메인 provider. 1번 탭은 카드 게이지를 함께 두고 상세는 메인만 봄 |
-| v1.9.2 glance | 메뉴바 주간 잔여율 글자 축소·폭 고정·간격, uninstall이 5시간/reset-window history도 삭제 |
+| v1.9.2 glance | 메뉴바 잔여 사용량 글자 축소, 설정 옵션, uninstall이 그래프 history를 보존 |
 | usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함. Grok는 주간만 있음 |
 | weekly-only | Codex가 일시적으로 5시간 window를 제공하지 않고 주간 window만 제공하는 정상 partial success |
 | remaining | `100 - usedPercent`로 계산한 공식 잔여율 |

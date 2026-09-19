@@ -9,7 +9,7 @@
 | `script/check.sh` | 표준 로컬 검증 전체 실행 | Swift test, build, v1.6.0 Codex Usage & Reset Credits 계약, packaging dry-run, 일부 상태 조회. 기본 모드는 앱을 실행할 수 있고 `--no-run`은 실행하지 않습니다. `MACDOG_APP_VERSION` 또는 `MACDOG_RELEASE_VERSION`이 없으면 실패합니다. |
 | `script/build_and_run.sh` | MacDog 앱 번들 빌드와 실행 | `dist/MacDog.app`을 만들고 옵션에 따라 앱을 실행합니다. `--version`, `MACDOG_APP_VERSION`, `MACDOG_RELEASE_VERSION` 중 하나로 앱 번들 버전을 반드시 명시해야 합니다. |
 | `script/install.sh` | 개발용 로컬 설치 | `~/Applications/MacDog.app`, `~/bin/codex-usage`, user LaunchAgent, 앱 cache 경로를 만듭니다. `MACDOG_APP_VERSION` 또는 `MACDOG_RELEASE_VERSION`이 없으면 실패합니다. helper 설치 옵션은 관리자 권한이 필요합니다. |
-| `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, `usage.json`, 주간/5시간/reset-window history, Claude/Grok cache/history/lock과 widget mirror를 제거합니다. cache logs는 남을 수 있습니다. 기본값은 UserDefaults와 optional helper를 유지합니다. |
+| `script/uninstall.sh` | 개발용 로컬 삭제 | 앱, CLI symlink, user LaunchAgent, `usage.json` snapshot, Claude/Grok cache/lock과 widget mirror를 제거합니다. 주간/5시간/reset-window와 Claude/Grok 그래프 history는 보존합니다. cache logs는 남을 수 있습니다. 기본값은 UserDefaults와 optional helper를 유지합니다. |
 | `script/package_release.sh` | GitHub Release 후보 DMG 생성 | `MACDOG_RELEASE_VERSION` 또는 `--version`이 없으면 실패합니다. `dist/release`에 drag-and-drop 배경이 포함된 DMG 후보와 checksum을 만들고, 앱 번들 버전이 release version과 다르면 실패합니다. staging 폴더는 검증 후 남기지 않습니다. signing/notarization은 별도 workflow gate입니다. |
 | `script/configure_github_public_repo_settings.sh` | GitHub public release 서버 설정 적용 | 기본은 dry-run입니다. `--apply`는 Actions/security 설정을 변경하고, `--make-public`은 추가 확인값이 있을 때만 repo 공개 전환을 수행합니다. |
 | `script/configure_github_branch_protection.sh` | GitHub `main` 보호 규칙 적용 | 기본은 dry-run입니다. `--apply`는 GitHub repo 설정을 변경하며 public repo 또는 private branch protection 가능 plan이 필요합니다. |
@@ -36,7 +36,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `MACDOG_APP_VERSION=<version> script/install.sh --with-helper` | 개발용 앱 설치와 optional 권한 도우미 설치 | user component와 `/Library/PrivilegedHelperTools`, `/Library/LaunchDaemons`를 변경합니다. 터미널 `sudo` 또는 명시 허용이 필요합니다. 사용자 drag-and-drop 설치 검수를 대체하지 않습니다. |
 | `MACDOG_APP_VERSION=<version> script/install.sh --helper-only` | helper만 설치 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 변경합니다. |
 | `script/uninstall.sh --dry-run` | 삭제 전 변경 대상 출력 | 파일/LaunchAgent를 바꾸지 않습니다. |
-| `script/uninstall.sh` | user component 삭제 | `~/Applications`와 `/Applications`의 앱, CLI symlink, user LaunchAgent, Codex snapshot·주간/`usage-five-hour-history.json`/`usage-reset-window-history.json`, Claude/Grok cache/history/lock과 widget mirror를 제거합니다. cache logs는 남을 수 있습니다. Claude statusLine 설정은 읽거나 수정하지 않으므로 수동 연결했다면 기존 command를 직접 복구해야 합니다. helper는 유지합니다. |
+| `script/uninstall.sh` | user component 삭제 | `~/Applications`와 `/Applications`의 앱, CLI symlink, user LaunchAgent, Codex/Claude/Grok snapshot cache와 lock, widget mirror를 제거합니다. `usage-weekly-history.json`, `usage-five-hour-history.json`, `usage-reset-window-history.json`, Claude/Grok 그래프 history는 보존합니다. cache logs는 남을 수 있습니다. Claude statusLine 설정은 읽거나 수정하지 않으므로 수동 연결했다면 기존 command를 직접 복구해야 합니다. helper는 유지합니다. |
 | `script/uninstall.sh --reset-preferences` | user component 삭제와 설정 초기화 | 위 삭제 범위에 MacDog UserDefaults 초기화와 가능한 `SleepDisabled=0` 복구를 더합니다. cache logs는 남을 수 있고 helper는 유지합니다. |
 | `script/uninstall.sh --with-helper` | user component와 optional helper 삭제 | user component와 `/Library` helper를 함께 제거합니다. |
 | `script/uninstall.sh --helper-only` | helper만 삭제 | 실행 중인 앱과 user LaunchAgent는 건드리지 않고 `/Library` helper만 제거합니다. |
@@ -88,7 +88,7 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_v190_release_readiness.sh --self-test` | v1.9.0 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, published `v1.8.0` 유지, GUI/live/DMG 미수행 분리와 증거 기록 경계를 확인합니다. |
 | `script/verify_v191_multi_provider_contract.sh --self-test` | v1.9.1 복수 provider와 메인 provider 계약 자체검증 | `~/.grok/auth.json`, live billing, GUI, 설치, push 없이 selection, writer 생명주기, work-diff, 통합 게이지, graph-hidden screenshot, 하위 탭/합산/fallback/auth 거부와 문서 용어를 확인합니다. |
 | `script/verify_v191_release_readiness.sh --self-test` | v1.9.1 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, published `v1.9.1` 사실, Finder 설치와 사용량 탭 GUI, 남은 탭 미수행 분리와 증거 기록 경계를 확인합니다. |
-| `script/verify_v192_menu_bar_glance_contract.sh --self-test` | v1.9.2 메뉴바 glance와 uninstall history 계약 자체검증 | GUI, 실제 uninstall, 설치, push 없이 강아지 오른쪽·숫자 바로 왼쪽, 설정 `현재 잔여 사용량`/`% 표기`, 5시간/reset-window history 삭제와 문서 용어를 확인합니다. |
+| `script/verify_v192_menu_bar_glance_contract.sh --self-test` | v1.9.2 메뉴바 glance와 uninstall history 계약 자체검증 | GUI, 실제 uninstall, 설치, push 없이 강아지 오른쪽·숫자 바로 왼쪽, 설정 `현재 잔여 사용량`/`% 표기`, 그래프 history 보존과 문서 용어를 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |

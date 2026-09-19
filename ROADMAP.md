@@ -753,9 +753,8 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 1. 강아지를 오른쪽 끝에 두고 `%`를 바로 왼쪽에 붙입니다.
    `MenuBarWeeklyRemainingLabelTests`를 통과했습니다.
 2. 설정 `현재 잔여 사용량`과 `% 표기`를 따로 끄고, 잔여 사용량을 끄면 강아지만 남깁니다.
-3. `uninstall.sh` dry-run과 실제 삭제가 `usage-five-hour-history.json`과
-   `usage-reset-window-history.json`을 주간 history와 함께 제거합니다.
-   `verify_install_dry_run.sh`를 통과했고 실제 삭제는 하지 않았습니다.
+3. `uninstall.sh`는 그래프 history를 보존합니다. 재설치해도 이번 주/과거 그래프가
+   유지됩니다. `verify_install_dry_run.sh`를 통과했고 실제 삭제는 하지 않았습니다.
 4. focused test, uninstall dry-run verifier, v1.9.2 계약 verifier를 닫았습니다.
    `verify_v192_menu_bar_glance_contract.sh --self-test --skip-tests`를 통과했습니다.
 5. 실제 메뉴바 GUI와 실제 uninstall은 별도 명시 요청 뒤 수행하고, 실행하지 않은
@@ -779,7 +778,7 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 
 - 메뉴바에서 강아지는 오른쪽, `%`는 바로 왼쪽입니다.
 - 설정에서 잔여 사용량과 `%`를 따로 끌 수 있습니다.
-- 클린 삭제가 주간/5시간/reset-window history를 함께 제거합니다.
+- uninstall이 주간/5시간/reset-window와 Claude/Grok 그래프 history를 보존합니다.
 - `git diff --check`, focused test, 전체 `swift test`, Xcode Debug build,
   `verify_install_dry_run.sh`와
   `verify_v192_menu_bar_glance_contract.sh --self-test`가 통과합니다.
