@@ -225,7 +225,7 @@ release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)
 | 항목 | 기준 |
 | --- | --- |
 | published release | `v1.9.1` |
-| current development | published `v1.9.1` |
+| current development | `v1.9.2` 릴리즈 준비 / PR 전. published는 `v1.9.1` |
 | release tag | signed annotated `v1.9.1`, GitHub `Verified` |
 | default provider | `Codex` |
 | visible provider selection | Codex/Grok 하나 또는 둘, 메인 지정. 합산 없음 |

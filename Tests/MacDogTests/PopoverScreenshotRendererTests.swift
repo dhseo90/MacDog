@@ -342,6 +342,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         let popoverSource = try String(contentsOfFile: "Sources/MacDog/UsagePopoverView.swift")
         let claudePanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/ClaudeUsagePreviewPanel.swift")
         let controllerSource = try String(contentsOfFile: "Sources/MacDog/MenuBarController.swift")
+        let labelSource = try String(contentsOfFile: "Sources/MacDog/MenuBarWeeklyRemainingLabel.swift")
         let grokPanelSource = try String(contentsOfFile: "Sources/MacDog/Popover/GrokUsagePanel.swift")
 
         XCTAssertFalse(settingsSource.contains("Picker(\"사용량 mode\""))
@@ -349,7 +350,9 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(settingsSource.contains("활성 provider"))
         XCTAssertTrue(settingsSource.contains("Picker(\"메인 provider\""))
         XCTAssertTrue(settingsSource.contains("상세 그래프 표시"))
-        XCTAssertTrue(settingsSource.contains("메뉴바에 주간 잔여율 표시"))
+        XCTAssertTrue(settingsSource.contains("현재 잔여 사용량"))
+        XCTAssertTrue(settingsSource.contains("% 표기"))
+        XCTAssertTrue(settingsSource.contains("settingsToggle(\"% 표기\""))
         XCTAssertTrue(settingsSource.contains("isOnlyEnabled"))
         XCTAssertTrue(settingsSource.contains("Picker(\"날짜 기준\""))
         XCTAssertTrue(settingsSource.contains("UsageGraphDateBaseline.allCases"))
@@ -376,7 +379,13 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertTrue(controllerSource.contains("usageProviderSelection: preferences.usageProviderSelection"))
         XCTAssertTrue(controllerSource.contains("NSStatusItem.variableLength"))
         XCTAssertTrue(controllerSource.contains("MenuBarWeeklyRemainingLabel.make("))
-        XCTAssertTrue(controllerSource.contains("button.imagePosition = .imageTrailing"))
+        XCTAssertTrue(controllerSource.contains("menuBarGlanceView.update("))
+        XCTAssertTrue(controllerSource.contains("statusItem.length = length"))
+        XCTAssertFalse(controllerSource.contains("button.title = text"))
+        XCTAssertTrue(labelSource.contains("trailingGap"))
+        XCTAssertTrue(labelSource.contains("fontSize"))
+        XCTAssertTrue(labelSource.contains("outerInset"))
+        XCTAssertTrue(labelSource.contains("func placement("))
         XCTAssertTrue(popoverSource.contains("GrokUsagePanel("))
         XCTAssertTrue(popoverSource.contains("preview: state.grokUsage"))
         XCTAssertTrue(popoverSource.contains("showsWeeklyGraph:"))
@@ -706,7 +715,8 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             RunnerPreferences.usageEnabledProviderMaskKey,
             RunnerPreferences.usageDetailGraphVisibleKey,
             RunnerPreferences.usageGraphDateBaselineKey,
-            RunnerPreferences.usageMenuBarWeeklyRemainingVisibleKey
+            RunnerPreferences.usageMenuBarWeeklyRemainingVisibleKey,
+            RunnerPreferences.usageMenuBarWeeklyRemainingPercentSignVisibleKey
         ]
         var previousValues: [String: Any] = [:]
         for key in keysToRestore {

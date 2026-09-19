@@ -1,3 +1,4 @@
+import AppKit
 import CodexUsageCore
 import XCTest
 @testable import MacDog
@@ -134,6 +135,40 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertFalse(RunnerPreferences(defaults: defaults).usageMenuBarWeeklyRemainingVisible)
     }
 
+    func testPercentSignPreferenceDefaultsOnAndCanBeTurnedOff() throws {
+        let suiteName = "MenuBarWeeklyRemainingPercentSign.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertTrue(RunnerPreferences.usageMenuBarWeeklyRemainingPercentSignVisible(defaults: defaults))
+        XCTAssertTrue(RunnerPreferences(defaults: defaults).usageMenuBarWeeklyRemainingPercentSignVisible)
+
+        RunnerPreferences.setUsageMenuBarWeeklyRemainingPercentSignVisible(false, defaults: defaults)
+        XCTAssertFalse(RunnerPreferences.usageMenuBarWeeklyRemainingPercentSignVisible(defaults: defaults))
+        XCTAssertFalse(RunnerPreferences(defaults: defaults).usageMenuBarWeeklyRemainingPercentSignVisible)
+    }
+
+    func testMakeOmitsPercentSignWhenDisabled() {
+        let state = Self.codexState(weeklyUsedPercent: 41)
+
+        XCTAssertEqual(
+            MenuBarWeeklyRemainingLabel.make(state: state, showsPercentSign: true, now: Self.now).text,
+            "59%"
+        )
+        XCTAssertEqual(
+            MenuBarWeeklyRemainingLabel.make(state: state, showsPercentSign: false, now: Self.now).text,
+            "59"
+        )
+        XCTAssertNil(
+            MenuBarWeeklyRemainingLabel.make(
+                state: state,
+                visible: false,
+                showsPercentSign: true,
+                now: Self.now
+            ).text
+        )
+    }
+
     func testRemainingPercentRoundsToInteger() {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 0, weeklyUsedPercent: 40.4),
@@ -145,7 +180,119 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertEqual(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text, "60%")
     }
 
+    func testPercentUsesNinePointDigitsAndSmallerPercentSign() throws {
+        let label = MenuBarWeeklyRemainingLabel.make(
+            state: Self.codexState(weeklyUsedPercent: 41),
+            now: Self.now
+        )
+        let attributed = try XCTUnwrap(label.attributedTitle)
+        let digitFont = try XCTUnwrap(attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        let signFont = try XCTUnwrap(
+            attributed.attribute(.font, at: attributed.length - 1, effectiveRange: nil) as? NSFont
+        )
+        let elevenPointWidth = NSAttributedString(
+            string: "100%",
+            attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)]
+        ).size().width
+        let systemWidth = NSAttributedString(
+            string: "100%",
+            attributes: [.font: NSFont.systemFont(ofSize: NSFont.systemFontSize)]
+        ).size().width
+
+        XCTAssertEqual(label.text, "59%")
+        XCTAssertEqual(digitFont.pointSize, 9)
+        XCTAssertEqual(signFont.pointSize, 7)
+        XCTAssertLessThan(attributed.size().width, elevenPointWidth)
+        XCTAssertLessThan(
+            MenuBarWeeklyRemainingLabel.attributedPercent("100%").size().width,
+            elevenPointWidth
+        )
+        XCTAssertLessThan(
+            MenuBarWeeklyRemainingLabel.attributedPercent("100%").size().width,
+            systemWidth
+        )
+    }
+
+    func testDigitOnlyPlacementKeepsFullNumberVisible() {
+        let imageSize = MenuBarIconRenderer.imageSize
+        let digits = MenuBarWeeklyRemainingLabel.placement(
+            percentText: "59",
+            imageSize: imageSize,
+            height: 22
+        )
+        let withSign = MenuBarWeeklyRemainingLabel.placement(
+            percentText: "59%",
+            imageSize: imageSize,
+            height: 22
+        )
+        let digitWidth = MenuBarWeeklyRemainingLabel.attributedPercent("59").size().width
+        let percent = digits.percent!
+
+        XCTAssertEqual(MenuBarWeeklyRemainingLabel.attributedPercent("59").string, "59")
+        XCTAssertGreaterThanOrEqual(percent.width, ceil(digitWidth) + 4)
+        XCTAssertLessThan(percent.maxX, digits.image.minX)
+        XCTAssertEqual(digits.image.minX, percent.maxX + 2, accuracy: 0.01)
+        XCTAssertGreaterThan(percent.width, withSign.percent!.width / 2)
+    }
+
+    func testPlacementPutsPercentImmediatelyLeftOfDog() throws {
+        let imageSize = MenuBarIconRenderer.imageSize
+        let visible = MenuBarWeeklyRemainingLabel.placement(
+            percentText: "59%",
+            imageSize: imageSize,
+            height: 22
+        )
+        let hidden = MenuBarWeeklyRemainingLabel.placement(
+            percentText: nil,
+            imageSize: imageSize,
+            height: 22
+        )
+        let percent = try XCTUnwrap(visible.percent)
+
+        XCTAssertLessThan(percent.maxX, visible.image.minX)
+        XCTAssertEqual(visible.image.minX, percent.maxX + 2, accuracy: 0.01)
+        XCTAssertEqual(visible.image.maxX + 1, visible.width, accuracy: 0.01)
+        XCTAssertNil(hidden.percent)
+        XCTAssertEqual(hidden.image.minX, 1, accuracy: 0.01)
+        XCTAssertEqual(
+            visible.width,
+            MenuBarWeeklyRemainingLabel.compactLength(titleWidth: percent.width, imageWidth: imageSize.width),
+            accuracy: 0.01
+        )
+        XCTAssertEqual(
+            hidden.width,
+            MenuBarWeeklyRemainingLabel.compactLength(titleWidth: 0, imageWidth: imageSize.width),
+            accuracy: 0.01
+        )
+        XCTAssertGreaterThan(visible.width, hidden.width)
+    }
+
+    @MainActor
+    func testGlanceViewKeepsDogOnTheRightAndHidesPercentWhenToggledOff() {
+        let image = NSImage(size: MenuBarIconRenderer.imageSize)
+        let visible = MenuBarGlanceView()
+        visible.update(percentText: "59%", image: image)
+        let hidden = MenuBarGlanceView()
+        hidden.update(percentText: nil, image: image)
+
+        XCTAssertGreaterThan(visible.intrinsicContentSize.width, hidden.intrinsicContentSize.width)
+        XCTAssertEqual(
+            hidden.intrinsicContentSize.width,
+            MenuBarWeeklyRemainingLabel.compactLength(titleWidth: 0, imageWidth: image.size.width),
+            accuracy: 0.01
+        )
+    }
+
     private static let now = Date(timeIntervalSince1970: 1_900_000_000)
+
+    private static func codexState(weeklyUsedPercent: Double) -> UsageMonitorState {
+        UsageMonitorState(
+            report: report(fiveHourUsedPercent: 0, weeklyUsedPercent: weeklyUsedPercent),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            usageProviderMode: .codex
+        )
+    }
 
     private static func grokPreview(
         usedPercent: Double,

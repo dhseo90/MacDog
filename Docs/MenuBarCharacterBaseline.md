@@ -9,7 +9,8 @@
 - 메뉴바 source pose: `MacDogCharacterProfile.codexPup.menuBarImage.sourcePose == .runRight`
 - frame 수: 8
 - source frame 크기: 192x204 px
-- 메뉴바 status item 길이: 38 pt
+- 메뉴바 아이콘 캔버스: 32x21 pt. 강아지는 extra 오른쪽, 현재 잔여 사용량은 바로
+  왼쪽이며 설정 `현재 잔여 사용량`과 `% 표기`로 끈다.
 - popover 크기: 370x408 pt
 - 기본 속도 기준: 주간 사용량
 
