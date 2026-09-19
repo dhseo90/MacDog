@@ -100,7 +100,7 @@ verify_contract() {
 
   require_match 'V191ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V191ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match '현재 GitHub Release는 \[v1\.9\.1\]' "$README" "README current release"
+  require_match 'releases/tag/v1\.9\.1' "$README" "README still links published v1.9.1"
   require_match '활성 provider' "$README" "README current gauges"
   require_absent_match '사용량 mode`\(`Codex`/`Grok`\)' "$README" \
     "README current settings still exclusive mode picker"

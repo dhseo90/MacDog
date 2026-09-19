@@ -1,6 +1,7 @@
 # v1.9.2 릴리즈 준비 감사
 
-상태: 릴리즈 준비 / PR 전. published GitHub Release는 `v1.9.1`
+상태: v1.9.2 GitHub Release publish / published DMG checksum·설치본 executable checksum /
+Finder 재설치 후 그래프 보존 확인 / Mac/Sleep/Battery 탭 직접 조작 미수행
 작성일: 2026-09-19
 대상 버전: `1.9.2`
 기준 브랜치: `v1.9.2`
@@ -23,7 +24,13 @@
   이번 완료 조건에서 제외합니다.
 
 제품 계약은 [V192MenuBarGlancePolish.md](V192MenuBarGlancePolish.md)를 기준으로 합니다.
-published GitHub Release는 아직 [v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)입니다.
+published GitHub Release는 [v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)입니다.
+signed annotated `v1.9.2` tag object는 `ce099bbbe7267058bd1fc7e75b160c976d24f9c7`이고
+GitHub tag verification은 `Verified`입니다. 코드 merge head는 PR
+[#43](https://github.com/dhseo90/MacDog/pull/43) `3756b1abc4306add7ab77aa106b3952e6043f1ab`입니다.
+이 기록 PR merge 후 tag를 마지막 커밋에 맞춥니다. GitHub Releases Latest는 `v1.9.2`입니다.
+published DMG SHA-256은
+`6d65189a71d2dd0266f18bb8a44f101f760d461ac8682e4c84ad6219c5569df7`입니다.
 
 ## 릴리즈 전 자동 gate
 
@@ -49,12 +56,13 @@ MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run
 
 ## PR, CI, review와 release head
 
-1. `v1.9.2` → `main` PR은 이 문서 작성 이후 별도로 진행합니다.
-2. 필수 CI `static-gates`와 `guardrails`가 SUCCESS이고 unresolved conversation이
-   0개여야 다음 외부 단계로 갑니다.
-3. merge 후 최신 `origin/main` SHA를 v1.9.2 최종 release head로 기록합니다.
+1. `v1.9.2` → `main` PR [#43](https://github.com/dhseo90/MacDog/pull/43)을 사용했습니다.
+2. 필수 CI `static-gates`와 `guardrails`는 SUCCESS였고 unresolved conversation은 0개였습니다.
+3. blocker는 작성자 본인 review 불가에 따른 `REVIEW_REQUIRED`뿐이라 사용자 릴리즈 승인 아래
+   admin bypass merge를 했습니다. merge SHA는
+   `3756b1abc4306add7ab77aa106b3952e6043f1ab`입니다.
 
-현재 상태: PR 미수행.
+현재 상태: PR merge 완료.
 
 ## Signed tag, artifact, draft와 publish
 
@@ -71,7 +79,9 @@ MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run
 `Stable Release` workflow는 Developer ID signing, notarization과 App Group
 provisioning이 별도 승인되지 않았으므로 실행하지 않습니다.
 
-현재 상태: tag/DMG/draft/publish 미수행.
+현재 상태: 통과. RC run `35434155238`, Draft run `35434340164`, publish 후
+Latest는 `v1.9.2`, release ID `392011164`입니다. 재다운로드 checksum과
+`hdiutil verify`를 확인했습니다.
 
 ## Published DMG 설치와 그래프 보존
 
@@ -90,8 +100,13 @@ provisioning이 별도 승인되지 않았으므로 실행하지 않습니다.
 Finder drag-and-drop 또는 설치본 그래프를 직접 확인하지 않았다면 설치 smoke는
 `미수행`으로 보고합니다.
 
-현재 상태: published DMG 설치 미수행. 개발본 메뉴바 숫자와 설정 토글은 사용자가
-확인했습니다. 개발본 `/Applications/MacDog.app` 1.9.2는 설치 검수가 아닙니다.
+현재 상태: 사용자가 published DMG를 Finder drag-and-drop으로 설치했습니다.
+`/Applications/MacDog.app` v1.9.2 executable checksum
+`6225175233edcfd82ec3d93f9865b46b7ab47b5a3fdf5db623f1a70212ecb16e`가 published
+payload와 일치합니다. 그래프 history는 유지되었습니다. 주간 sample 2125개,
+reset-window 기록 12건, 5시간 sample 304개, Grok history 4096개입니다. 이번 주
+곡선이 1 sample 직선으로 리셋되지 않았습니다. Codex/Grok LaunchAgent는 둘 다
+`/Applications/MacDog.app/Contents/MacOS/` writer입니다.
 
 ## Release smoke 종료
 
@@ -100,7 +115,8 @@ Finder drag-and-drop 또는 설치본 그래프를 직접 확인하지 않았다
 ./script/verify_release_final_state.sh --version 1.9.2
 ```
 
-현재 상태: 미수행.
+현재 상태: 이 기록 PR에서 문서만 갱신합니다. cleanup `--apply`는 사용자가
+설치본을 쓰는 동안 실행하지 않았습니다.
 
 ## 릴리즈 증거 기록
 
@@ -115,16 +131,19 @@ Finder drag-and-drop 또는 설치본 그래프를 직접 확인하지 않았다
 | Xcode Debug no-sign build | 2026-09-19, Xcode license 미동의로 미실행 |
 | `MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run` | 2026-09-19, `xcrun` license 미동의로 시작 실패 |
 | README screenshot freshness | 2026-09-19, 설정 탭을 `현재 잔여 사용량` / `% 표기`로 renderer 갱신 |
-| PR, CI, review | 미수행 |
-| signed annotated `v1.9.2` tag / GitHub `Verified` | 미수행 |
-| Published `v1.9.2` DMG | 없음. published는 `v1.9.1` |
-| Finder drag-and-drop와 그래프 보존 | 미수행 |
+| PR, CI, review | PR [#43](https://github.com/dhseo90/MacDog/pull/43), `static-gates`/`guardrails` SUCCESS, admin bypass merge `3756b1a` |
+| signed annotated `v1.9.2` tag / GitHub `Verified` | tag object `ce099bbbe7267058bd1fc7e75b160c976d24f9c7`, 코드 head `3756b1a`. 이 기록 merge 후 마지막 커밋에 맞춤 |
+| Published `v1.9.2` DMG | 있음. SHA-256 `6d65189a71d2dd0266f18bb8a44f101f760d461ac8682e4c84ad6219c5569df7`. release ID `392011164`. GitHub Latest `v1.9.2` |
+| 설치본 executable checksum | 통과. `6225175233edcfd82ec3d93f9865b46b7ab47b5a3fdf5db623f1a70212ecb16e` |
+| Codex/Grok LaunchAgent | 통과. 둘 다 `/Applications/MacDog.app/Contents/MacOS/` writer |
+| Finder drag-and-drop와 그래프 보존 | 사용자 설치. 주간 sample 2125, reset-window 12, 5시간 304, Grok 4096 |
 | Mac/Sleep/Battery 탭 직접 조작 | v1.9.1부터 미수행. 이번 완료 조건 아님 |
-| cleanup / final-state | 미수행 |
+| cleanup / final-state | 미수행. 설치본 사용 중 |
 
 검증하지 않은 항목은 완료로 바꾸지 않습니다.
 
 ## 릴리즈 잔여 이슈
 
-코드 기능 잔여는 없습니다. PR부터 publish, Finder 재설치와 그래프 보존 확인이
-남습니다. 별도 uninstall 테스트는 없습니다.
+코드 기능 잔여는 없습니다. publish, Finder 재설치, 그래프 보존은 닫혔습니다.
+이 기록 PR merge 후 `v1.9.2` tag를 마지막 커밋에 맞춥니다. Mac/Sleep/Battery 탭
+직접 조작은 미수행으로 남습니다.
