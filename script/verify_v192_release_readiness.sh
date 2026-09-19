@@ -58,8 +58,8 @@ verify_contract() {
   "$V191_VERIFIER" --self-test
   reject_v192_in_v191
 
-  require_match '^상태: 릴리즈 준비 / PR 전' "$DOC" "pre-PR status"
-  require_match 'published GitHub Release는 `v1\.9\.1`' "$DOC" "published remains v1.9.1"
+  require_match '^상태: v1\.9\.2 GitHub Release publish' "$DOC" "published release status"
+  require_match 'published GitHub Release는 \[v1\.9\.2\]' "$DOC" "published release is v1.9.2"
   require_match 'MACDOG_APP_VERSION=1\.9\.2 \./script/check\.sh --no-run' "$DOC" \
     "versioned check gate"
   require_match 'verify_v192_menu_bar_glance_contract\.sh --self-test' "$DOC" \
@@ -76,14 +76,21 @@ verify_contract() {
   require_match 'Would preserve' "$DOC" "uninstall dry-run preserve"
   require_match '`Stable Release` workflow' "$DOC" "stable workflow scope"
   require_match '승인되지 않았으므로 실행하지 않습니다' "$DOC" "stable workflow exclusion"
-  require_match 'PR 미수행' "$DOC" "honest PR status"
-  require_match 'Published `v1\.9\.2` DMG \| 없음' "$DOC" "honest unpublished DMG"
-  require_match 'Finder drag-and-drop와 그래프 보존 \| 미수행' "$DOC" \
-    "honest install evidence"
-  require_absent_match 'Published `v1\.9\.2` DMG \| 있음' "$DOC" \
-    "false published v1.9.2 DMG"
-  require_absent_match '^상태: v1\.9\.2 GitHub Release publish' "$DOC" \
-    "false published status"
+  require_match 'PR \[#43\]' "$DOC" "merged PR"
+  require_match '3756b1abc4306add7ab77aa106b3952e6043f1ab' "$DOC" "code merge head"
+  require_match 'ce099bbbe7267058bd1fc7e75b160c976d24f9c7' "$DOC" "signed tag object"
+  require_match '6d65189a71d2dd0266f18bb8a44f101f760d461ac8682e4c84ad6219c5569df7' \
+    "$DOC" "published DMG checksum"
+  require_match '6225175233edcfd82ec3d93f9865b46b7ab47b5a3fdf5db623f1a70212ecb16e' \
+    "$DOC" "installed executable checksum"
+  require_match '주간 sample 2125' "$DOC" "weekly history preserved"
+  require_match 'reset-window 기록 12건' "$DOC" "past windows preserved"
+  require_match 'Published `v1\.9\.2` DMG \| 있음' "$DOC" "published DMG evidence"
+  require_match 'Finder drag-and-drop와 그래프 보존 \| 사용자 설치' "$DOC" \
+    "install and graph preserve evidence"
+  require_match '마지막 커밋에 맞춥니다' "$DOC" "tag will follow last commit"
+  require_absent_match 'Published `v1\.9\.2` DMG \| 없음' "$DOC" \
+    "stale unpublished DMG"
 
   require_match 'Would preserve usage history file:' "$UNINSTALL" \
     "uninstall preserves weekly history"
@@ -91,12 +98,13 @@ verify_contract() {
 
   require_match 'V192ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V192ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match 'GitHub Release는 \[v1\.9\.1\]' "$README" "README published remains v1.9.1"
+  require_match 'GitHub Release는 \[v1\.9\.2\]' "$README" "README published is v1.9.2"
   require_match '현재 잔여 사용량' "$README" "README remaining amount copy"
   require_match '% 표기' "$README" "README percent sign copy"
-  require_match '릴리즈 준비 / PR 전' "$ROADMAP" "ROADMAP pre-PR status"
+  require_match 'GitHub Release publish·Finder 재설치·그래프 보존 완료' "$ROADMAP" \
+    "ROADMAP published status"
   require_match '그래프 history를 남겨' "$ROADMAP" "ROADMAP history preserve"
-  require_match '릴리즈 준비 / PR 전' "$QUALITY" "QualityAndRelease pre-PR"
+  require_match 'published `v1\.9\.2`' "$QUALITY" "QualityAndRelease published"
   require_match 'verify_v192_release_readiness\.sh --self-test' "$SCRIPTS_DOC" \
     "Scripts gate entry"
   require_match 'verify_v192_release_readiness\.sh --self-test' "$CHECK_SCRIPT" \

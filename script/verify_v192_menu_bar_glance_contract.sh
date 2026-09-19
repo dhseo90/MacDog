@@ -10,6 +10,7 @@ DEV_ENV="$ROOT_DIR/Docs/Onboarding/DevelopmentEnvironment.md"
 SCRIPTS_DOC="$ROOT_DIR/Docs/Scripts.md"
 CHECK_SCRIPT="$ROOT_DIR/script/check.sh"
 V191_VERIFIER="$ROOT_DIR/script/verify_v191_multi_provider_contract.sh"
+V191_RELEASE_VERIFIER="$ROOT_DIR/script/verify_v191_release_readiness.sh"
 UNINSTALL="$ROOT_DIR/script/uninstall.sh"
 INSTALL_DRY_RUN="$ROOT_DIR/script/verify_install_dry_run.sh"
 LABEL_SOURCE="$ROOT_DIR/Sources/MacDog/MenuBarWeeklyRemainingLabel.swift"
@@ -58,7 +59,7 @@ reject_match() {
 verify_contract() {
   local file
   for file in "$DOC" "$README" "$ROADMAP" "$ONBOARDING" "$DEV_ENV" "$SCRIPTS_DOC" \
-    "$CHECK_SCRIPT" "$V191_VERIFIER" "$UNINSTALL" "$INSTALL_DRY_RUN" \
+    "$CHECK_SCRIPT" "$V191_VERIFIER" "$V191_RELEASE_VERIFIER" "$UNINSTALL" "$INSTALL_DRY_RUN" \
     "$LABEL_SOURCE" "$GLANCE_SOURCE" "$CONTROLLER_SOURCE" "$LABEL_TEST" "$POPOVER_TEST"; do
     require_file "$file"
   done
@@ -66,7 +67,7 @@ verify_contract() {
     die "v1.9.2 glance verifier is not executable"
   [[ -x "$V191_VERIFIER" ]] || die "v1.9.1 verifier is not executable"
   "$V191_VERIFIER" --self-test --skip-tests
-  reject_match 'v1\.9\.2' "$V191_VERIFIER" "v1.9.1 verifier mentioning v1.9.2"
+  reject_match 'v1\.9\.2' "$V191_RELEASE_VERIFIER" "v1.9.1 release verifier mentioning v1.9.2"
 
   require_match '메뉴바 glance polish와 uninstall history 정리' "$DOC" "v1.9.2 title"
   require_match '바로 왼쪽' "$DOC" "percent sits immediately left of the dog"

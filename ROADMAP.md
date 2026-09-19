@@ -60,7 +60,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
-| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 보존 | 코드 완료, 릴리즈 준비 / PR 전 | PR·tag·DMG·Finder 재설치와 그래프 보존 확인 |
+| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 보존 | GitHub Release publish·Finder 재설치·그래프 보존 완료 | Mac/Sleep/Battery 탭 직접 조작 미수행 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -744,8 +744,8 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 세부 범위는 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md),
 릴리즈 순서는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에 둡니다.
 
-현재 상태: 코드 완료, 릴리즈 준비 / PR 전. 별도 uninstall 실실행은 하지 않고
-publish 후 Finder 재설치에서 그래프 보존을 확인합니다.
+현재 상태: GitHub Release publish, Finder 재설치, 그래프 보존 확인. 별도
+uninstall 실실행은 하지 않았습니다.
 
 구현 순서:
 

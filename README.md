@@ -11,8 +11,8 @@ published `v1.9.0`은 provider를 하나만 고릅니다.
 
 ## 설치
 
-현재 GitHub Release는 [v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)입니다.
-[MacDog-1.9.1.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)를 받아 Finder에서
+현재 GitHub Release는 [v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)입니다.
+[MacDog-1.9.2.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)를 받아 Finder에서
 `MacDog.app`을 `Applications`로 드래그한 뒤 실행합니다.
 
 첫 실행이 `~/bin/codex-usage`, 활성 provider LaunchAgent, 로그인 항목을 맞춥니다. 둘 다
@@ -23,7 +23,7 @@ Apple Developer Program이 필요하므로 현재 구현 계획에서 제외합�
 
 ## 화면
 
-v1.9.1 demo snapshot입니다. 값은 환경마다 다릅니다.
+v1.9.2 demo snapshot입니다. 값은 환경마다 다릅니다.
 
 <table>
   <tr>
@@ -100,17 +100,18 @@ MACDOG_APP_VERSION=1.9.2 ./script/build_and_run.sh
 
 ## 현재 릴리즈
 
-GitHub Releases Latest: `v1.9.1`. 공개본 검증 예는
-`MACDOG_APP_VERSION=1.9.1 ./script/check.sh --no-run`입니다. signed tag target
-`a9cdfebf82ec822a4cda77dd2a55afb6e703458b`. 이전 공개본은
+GitHub Releases Latest: `v1.9.2`. 공개본 검증 예는
+`MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run`입니다. 코드 merge head는
+`3756b1abc4306add7ab77aa106b3952e6043f1ab`입니다. 이전 공개본은
+[v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)
+(`750dda20d4f7c62253f8c33201db316d5754e935`),
 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)
 (`b7072003830798bb1603768c4efb0b41409100f6`)과
 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)
 (`14d716a88ea10a77344a4f9aa3651c23b1160f8c`)입니다.
 
-현재 개발 릴리즈 준비는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에
-있습니다. published 증거는 [Docs/V191ReleaseReadiness.md](Docs/V191ReleaseReadiness.md),
-v1.9.1 계약은 [Docs/V191MultiProviderUsage.md](Docs/V191MultiProviderUsage.md)입니다.
+증거는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에 있습니다.
+v1.9.2 계약은 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)입니다.
 
 ## 알림 경계
 

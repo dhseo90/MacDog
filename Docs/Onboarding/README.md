@@ -3,10 +3,9 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: published release는 `v1.9.1`. 현재 개발은 `v1.9.2` 메뉴바 glance
-> polish입니다. 설정 visible mode는 `Codex` 또는 `Grok`입니다. 하나 또는 둘 다 켜고
-> 메인을 지정합니다. Claude source는 남아 있지만 기본 UI에서는 숨깁니다.
-> 합산·비교·자동 fallback은 없습니다.
+> 기준 상태: published release는 `v1.9.2`. 설정 visible mode는 `Codex` 또는 `Grok`입니다.
+> 하나 또는 둘 다 켜고 메인을 지정합니다. Claude source는 남아 있지만 기본 UI에서는
+> 숨깁니다. 합산·비교·자동 fallback은 없습니다.
 
 ## 읽는 순서
 
@@ -132,7 +131,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | 구분 | 상태 |
 | --- | --- |
 | v1.8.0 Codex weekly-only 조회·cache·설치본 UI | published release smoke에서 확인됨 |
-| v1.9.2 메뉴바 glance·uninstall history | 코드 완료, 릴리즈 준비 / PR 전. published 설치·그래프 보존은 Finder 재설치에서 확인 |
+| v1.9.2 메뉴바 glance·uninstall history | GitHub Release publish, Finder 재설치, 그래프 history 보존 확인됨 |
 | v1.9.0 Claude hide·Grok weekly-only source/test | GitHub Release publish, 설치본 checksum, final-state 확인됨. Finder drag 관찰·popover GUI는 미수행 |
 | Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
 | Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |
