@@ -112,7 +112,8 @@ public final class CodexAppServerClient {
             return false
         }
         switch appServerError {
-        case .processLaunchFailed, .stdinClosed, .invalidJSONLine, .responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID):
+        case .processLaunchFailed, .stdinClosed, .invalidJSONLine, .processExitedBeforeInitialize,
+             .responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID):
             return true
         case .rpcError(id: CodexAppServerRequestFactory.chatGPTAuthTokensRefreshRequestID, let message):
             return message.contains("unknown variant") &&
@@ -184,11 +185,17 @@ public final class CodexAppServerClient {
             }
         }
 
-        try sendInitialize(to: stdin.fileHandleForWriting)
-        let initializeData = try reader.waitForResponse(
-            id: CodexAppServerRequestFactory.initializeRequestID,
-            timeout: timeout
-        )
+        do {
+            try sendInitialize(to: stdin.fileHandleForWriting)
+        } catch let error as CodexAppServerError {
+            throw error
+        } catch {
+            if !process.isRunning {
+                throw CodexAppServerError.processExitedBeforeInitialize(exitCode: Int(process.terminationStatus))
+            }
+            throw error
+        }
+        let initializeData = try waitForInitializeResponse(reader: reader, process: process)
         _ = try decodeResponse(
             InitializeResponse.self,
             from: initializeData,
@@ -250,16 +257,45 @@ public final class CodexAppServerClient {
         return process.terminationStatus == 0
     }
 
+    /// `responseTimedOut` for initialize means the process was still running.
+    /// An exit before that response is a different error so path recovery does not treat every timeout as a bad CLI.
+    private func waitForInitializeResponse(reader: JSONRPCLineReader, process: Process) throws -> Data {
+        let requestID = CodexAppServerRequestFactory.initializeRequestID
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining <= 0 {
+                if !process.isRunning {
+                    throw CodexAppServerError.processExitedBeforeInitialize(exitCode: Int(process.terminationStatus))
+                }
+                throw CodexAppServerError.responseTimedOut(id: requestID)
+            }
+            do {
+                return try reader.waitForResponse(id: requestID, timeout: min(remaining, 0.05))
+            } catch let error as CodexAppServerError {
+                guard case .responseTimedOut = error else {
+                    throw error
+                }
+                if !process.isRunning {
+                    if let response = try? reader.waitForResponse(id: requestID, timeout: 0) {
+                        return response
+                    }
+                    throw CodexAppServerError.processExitedBeforeInitialize(exitCode: Int(process.terminationStatus))
+                }
+            }
+        }
+    }
+
     private func sendInitialize(to handle: FileHandle) throws {
-        handle.write(try requestFactory.initializeRequest())
+        try handle.write(contentsOf: try requestFactory.initializeRequest())
     }
 
     private func sendRateLimitRead(to handle: FileHandle) throws {
-        handle.write(try requestFactory.rateLimitReadRequest())
+        try handle.write(contentsOf: try requestFactory.rateLimitReadRequest())
     }
 
     private func sendChatGPTAuthTokensRefresh(to handle: FileHandle, previousAccountId: String?) throws {
-        handle.write(try requestFactory.chatGPTAuthTokensRefreshRequest(previousAccountId: previousAccountId))
+        try handle.write(contentsOf: try requestFactory.chatGPTAuthTokensRefreshRequest(previousAccountId: previousAccountId))
     }
 
     private func decodeResponse<Result: Decodable>(

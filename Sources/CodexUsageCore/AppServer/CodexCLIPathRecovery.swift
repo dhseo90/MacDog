@@ -16,7 +16,7 @@ public struct CodexCLIPathRecovery {
             return false
         }
         switch appServerError {
-        case .processLaunchFailed, .stdinClosed, .invalidJSONLine,
+        case .processLaunchFailed, .processExitedBeforeInitialize, .stdinClosed, .invalidJSONLine,
              .codexBinaryNotExecutable, .codexBinaryNotFound:
             return true
         case .codexCLIAmbiguous, .codexCLIManifestDamaged, .codexCLIEntrypointRejected,
@@ -26,6 +26,7 @@ public struct CodexCLIPathRecovery {
     }
 
     public func read<T>(_ read: (URL) throws -> T) throws -> T {
+        var excluded: [URL] = []
         if let configured = resolver.configuredExecutable() {
             do {
                 return try read(configured)
@@ -33,20 +34,29 @@ public struct CodexCLIPathRecovery {
                 guard Self.isUnusableCLIPath(error) else {
                     throw error
                 }
-                let found = try resolver.discover()
-                guard !samePath(found, configured) else {
-                    throw error
-                }
+                excluded.append(configured)
+            }
+        }
+        return try readNextCandidate(read, excluding: &excluded)
+    }
+
+    private func readNextCandidate<T>(_ read: (URL) throws -> T, excluding excluded: inout [URL]) throws -> T {
+        while true {
+            let found = try resolver.discover(excluding: excluded)
+            if excluded.contains(where: { samePath($0, found) }) {
+                throw CodexAppServerError.codexBinaryNotFound(checked: [found.path], searchedApps: [])
+            }
+            do {
                 let value = try read(found)
                 try? store.save(found.path)
                 return value
+            } catch {
+                guard Self.isUnusableCLIPath(error) else {
+                    throw error
+                }
+                excluded.append(found)
             }
         }
-
-        let found = try resolver.discover()
-        let value = try read(found)
-        try? store.save(found.path)
-        return value
     }
 
     private func samePath(_ lhs: URL, _ rhs: URL) -> Bool {

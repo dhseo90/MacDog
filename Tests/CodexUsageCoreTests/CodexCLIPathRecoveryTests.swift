@@ -128,6 +128,83 @@ final class CodexCLIPathRecoveryTests: XCTestCase {
         XCTAssertNil(store.load())
     }
 
+    func testPreInitializeExitIsABadPathButALiveTimeoutIsNot() {
+        XCTAssertTrue(
+            CodexCLIPathRecovery.isUnusableCLIPath(
+                CodexAppServerError.processExitedBeforeInitialize(exitCode: 1)
+            )
+        )
+        XCTAssertFalse(
+            CodexCLIPathRecovery.isUnusableCLIPath(
+                CodexAppServerError.responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID)
+            )
+        )
+        XCTAssertFalse(
+            CodexCLIPathRecovery.isUnusableCLIPath(
+                CodexAppServerError.responseTimedOut(id: CodexAppServerRequestFactory.rateLimitReadRequestID)
+            )
+        )
+    }
+
+    func testLiveInitializeTimeoutDoesNotSearchForAReplacement() throws {
+        let configured = root.appendingPathComponent("configured/codex")
+        let discovered = root.appendingPathComponent("discovered/codex")
+        try writeExecutable(at: configured)
+        try writeExecutable(at: discovered)
+        let recovery = CodexCLIPathRecovery(
+            resolver: CodexCLIResolver(
+                environment: ["CODEX_CLI_PATH": configured.path],
+                candidates: [discovered.path],
+                applicationRoots: []
+            ),
+            store: makeStore()
+        )
+        var reads: [String] = []
+
+        XCTAssertThrowsError(try recovery.read { url -> String in
+            reads.append(url.path)
+            throw CodexAppServerError.responseTimedOut(id: CodexAppServerRequestFactory.initializeRequestID)
+        }) { error in
+            guard case .responseTimedOut(let id) = error as? CodexAppServerError else {
+                return XCTFail("expected initialize timeout, got \(error)")
+            }
+            XCTAssertEqual(id, CodexAppServerRequestFactory.initializeRequestID)
+        }
+        XCTAssertEqual(reads, [configured.path])
+    }
+
+    func testExitedPathIsNotChosenAgainWhenItIsAlsoTheFixedCandidate() throws {
+        let app = root.appendingPathComponent("ChatGPT.app")
+        let broken = app.appendingPathComponent("Contents/Resources/old/bin/codex")
+        let working = app.appendingPathComponent("Contents/Resources/new/bin/codex")
+        try writeExecutable(at: broken)
+        try writeExecutable(at: working)
+        try writeManifest(at: broken.deletingLastPathComponent().deletingLastPathComponent(), entrypoint: "bin/codex")
+        try writeManifest(at: working.deletingLastPathComponent().deletingLastPathComponent(), entrypoint: "bin/codex")
+        let store = makeStore()
+        let recovery = CodexCLIPathRecovery(
+            resolver: CodexCLIResolver(
+                environment: ["CODEX_CLI_PATH": broken.path],
+                candidates: [broken.path],
+                applicationRoots: [app]
+            ),
+            store: store
+        )
+        var reads: [String] = []
+
+        let used = try recovery.read { url -> String in
+            reads.append(url.path)
+            if real(url) == real(broken) {
+                throw CodexAppServerError.processExitedBeforeInitialize(exitCode: 1)
+            }
+            return url.path
+        }
+
+        XCTAssertEqual(reads.map { real($0) }, [real(broken), real(working)])
+        XCTAssertEqual(real(used), real(working))
+        XCTAssertEqual(real(try XCTUnwrap(store.load())), real(working))
+    }
+
     private func makeStore() -> CodexCLIPathStore {
         CodexCLIPathStore(
             fileURL: root.appendingPathComponent("codex-cli-path"),
@@ -142,6 +219,16 @@ final class CodexCLIPathRecoveryTests: XCTestCase {
     }
 
     private func real(_ path: String) -> String {
-        URL(fileURLWithPath: path).resolvingSymlinksInPath().standardizedFileURL.path
+        real(URL(fileURLWithPath: path))
+    }
+
+    private func real(_ url: URL) -> String {
+        url.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
+    private func writeManifest(at directory: URL, entrypoint: String) throws {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = try JSONSerialization.data(withJSONObject: ["entrypoint": entrypoint])
+        try data.write(to: directory.appendingPathComponent("codex-package.json"))
     }
 }

@@ -108,6 +108,12 @@ public struct CodexUsageFailureGuide: Sendable {
                 "If Codex was just updated, restart Codex and try again.",
                 doctorStep(context)
             ]
+        case .processExitedBeforeInitialize:
+            return [
+                "The Codex CLI process exited before app-server initialization completed.",
+                "A CLI that is still running and only times out is a different failure and does not by itself mean the path should be replaced.",
+                doctorStep(context)
+            ]
         case .responseTimedOut, .stdinClosed:
             return [
                 "Codex app-server did not answer in time; restart Codex and check network/auth state.",

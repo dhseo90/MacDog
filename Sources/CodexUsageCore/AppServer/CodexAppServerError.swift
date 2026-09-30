@@ -8,6 +8,8 @@ public enum CodexAppServerError: Error, LocalizedError, Equatable {
     case codexCLIEntrypointRejected(manifestPath: String, entrypoint: String, reason: String)
     case codexCLISearchLimited(appPath: String, maxEntries: Int, maxDepth: Int)
     case processLaunchFailed(String)
+    /// The CLI process ended before the app-server `initialize` response. A timeout while that process is still running is `responseTimedOut` instead.
+    case processExitedBeforeInitialize(exitCode: Int)
     case responseTimedOut(id: Int)
     case responseMissingResult(id: Int)
     case rpcError(id: Int, message: String)
@@ -34,6 +36,8 @@ public enum CodexAppServerError: Error, LocalizedError, Equatable {
             "Codex CLI search stopped at \(appPath) after \(maxEntries) entries (depth limit \(maxDepth)). Set CODEX_CLI_PATH to the executable path. \(Self.launchAgentOverrideNote)"
         case .processLaunchFailed(let detail):
             "Failed to launch Codex app-server: \(detail)"
+        case .processExitedBeforeInitialize(let exitCode):
+            "Codex CLI exited with status \(exitCode) before app-server initialization completed."
         case .responseTimedOut(let id):
             "Timed out waiting for Codex app-server response id \(id)."
         case .responseMissingResult(let id):

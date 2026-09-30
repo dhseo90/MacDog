@@ -72,9 +72,16 @@ public struct CodexCLIResolver {
     }
 
     /// Fixed candidates, then the four app bundles. Does not accept `CODEX_CLI_PATH`.
-    public func discover() throws -> URL {
+    /// Paths in `excluded` were already tried and could not produce a usage report.
+    public func discover(excluding excluded: [URL] = []) throws -> URL {
+        let excludedRealPaths = Set(excluded.map { realPath(of: $0) ?? $0.standardizedFileURL.path })
         for candidate in candidates where isRunnableFile(at: candidate) {
-            return URL(fileURLWithPath: candidate)
+            let url = URL(fileURLWithPath: candidate)
+            let real = realPath(of: url) ?? url.standardizedFileURL.path
+            if excludedRealPaths.contains(real) {
+                continue
+            }
+            return url
         }
 
         let scans = applicationRoots.map { scan($0) }
@@ -86,7 +93,7 @@ public struct CodexCLIResolver {
                     maxDepth: searchLimits.maxDepth
                 )
             }
-            if let resolved = try resolvedURL(from: scan) {
+            if let resolved = try resolvedURL(from: scan, excludingRealPaths: excludedRealPaths) {
                 return resolved
             }
         }
@@ -112,9 +119,9 @@ public struct CodexCLIResolver {
         return fileManager.isExecutableFile(atPath: path)
     }
 
-    private func resolvedURL(from scan: AppScan) throws -> URL? {
+    private func resolvedURL(from scan: AppScan, excludingRealPaths: Set<String>) throws -> URL? {
         guard scan.exists else { return nil }
-        let validPaths = uniquePaths(scan.validExecutables)
+        let validPaths = uniquePaths(scan.validExecutables).filter { !isExcluded($0, excludedRealPaths: excludingRealPaths) }
         let packageCount = validPaths.count + scan.damaged.count + scan.rejected.count
         if packageCount > 0 {
             if validPaths.count == 1, scan.damaged.isEmpty, scan.rejected.isEmpty {
@@ -136,7 +143,7 @@ public struct CodexCLIResolver {
             }
             throw CodexAppServerError.codexCLIAmbiguous(scan.conflictDescriptions(validPaths: validPaths))
         }
-        let barePaths = uniquePaths(scan.bareExecutables)
+        let barePaths = uniquePaths(scan.bareExecutables).filter { !isExcluded($0, excludedRealPaths: excludingRealPaths) }
         if barePaths.count == 1 {
             return URL(fileURLWithPath: barePaths[0])
         }
@@ -333,6 +340,11 @@ public struct CodexCLIResolver {
             return false
         }
         return type == .typeRegular
+    }
+
+    private func isExcluded(_ path: String, excludedRealPaths: Set<String>) -> Bool {
+        let real = realPath(of: URL(fileURLWithPath: path)) ?? path
+        return excludedRealPaths.contains(real)
     }
 
     private func realPath(of url: URL) -> String? {

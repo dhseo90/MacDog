@@ -15,7 +15,7 @@ published `v1.9.0`은 provider를 하나만 고릅니다.
 [MacDog-1.9.2.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)를 받아 Finder에서
 `MacDog.app`을 `Applications`로 드래그한 뒤 실행합니다.
 
-`v1.9.2`를 다시 릴리즈합니다. `CODEX_CLI_PATH`로 잔여량을 읽고 그 경로가 실패하면 `ChatGPT.app`과 `Codex.app` 안에서 찾아 경로를 저장합니다.
+`v1.9.2`를 다시 릴리즈합니다. `CODEX_CLI_PATH`로 잔여량을 읽고, 그 프로세스가 초기화 전에 끝나면 `ChatGPT.app`과 `Codex.app` 안에서 다른 경로를 찾아 저장합니다.
 
 첫 실행이 `~/bin/codex-usage`, 활성 provider LaunchAgent, 로그인 항목을 맞춥니다. 둘 다
 켜면 Codex/Grok writer를 함께 두고, 하나만 켜면 해당 writer만 남깁니다.
