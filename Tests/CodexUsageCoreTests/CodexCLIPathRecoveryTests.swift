@@ -205,6 +205,61 @@ final class CodexCLIPathRecoveryTests: XCTestCase {
         XCTAssertEqual(real(try XCTUnwrap(store.load())), real(working))
     }
 
+    func testStaleConfiguredPathUsesTheSavedExecutableAndReloadsTheAgent() throws {
+        let configured = root.appendingPathComponent("configured/codex")
+        let saved = root.appendingPathComponent("saved/codex")
+        let other = root.appendingPathComponent("other/codex")
+        try writeExecutable(at: configured)
+        try writeExecutable(at: saved)
+        try writeExecutable(at: other)
+        let plist = root.appendingPathComponent("LaunchAgents/com.dhseo.macdog.usage-cache.plist")
+        try fileManager.createDirectory(at: plist.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let original = ["Label": "com.dhseo.macdog.usage-cache", "StartInterval": 60] as [String: Any]
+        try PropertyListSerialization.data(fromPropertyList: original, format: .xml, options: 0).write(to: plist)
+        var store = CodexCLIPathStore(fileURL: root.appendingPathComponent("codex-cli-path"), launchAgentURL: plist)
+        try store.save(saved.path)
+        var relaunches = 0
+        store.relaunchLoadedAgent = { relaunches += 1 }
+        let recovery = CodexCLIPathRecovery(
+            resolver: CodexCLIResolver(
+                environment: ["CODEX_CLI_PATH": configured.path],
+                candidates: [other.path],
+                applicationRoots: []
+            ),
+            store: store
+        )
+        var reads: [String] = []
+
+        let used = try recovery.read { url -> String in
+            reads.append(url.path)
+            if real(url) == real(configured) {
+                throw CodexAppServerError.processExitedBeforeInitialize(exitCode: 9)
+            }
+            return url.path
+        }
+
+        XCTAssertEqual(reads.map { real($0) }, [real(configured), real(saved)])
+        XCTAssertEqual(real(used), real(saved))
+        XCTAssertEqual(relaunches, 1)
+        XCTAssertFalse(reads.contains(other.path))
+    }
+
+    func testUnchangedPlistDoesNotRelaunchTheAgent() throws {
+        let executable = root.appendingPathComponent("saved/codex")
+        try writeExecutable(at: executable)
+        let plist = root.appendingPathComponent("agent.plist")
+        let original = ["Label": "com.dhseo.macdog.usage-cache"] as [String: Any]
+        try PropertyListSerialization.data(fromPropertyList: original, format: .xml, options: 0).write(to: plist)
+        var store = CodexCLIPathStore(fileURL: root.appendingPathComponent("codex-cli-path"), launchAgentURL: plist)
+        var relaunches = 0
+        store.relaunchLoadedAgent = { relaunches += 1 }
+
+        try store.save(executable.path)
+        try store.save(executable.path)
+
+        XCTAssertEqual(relaunches, 1)
+    }
+
     private func makeStore() -> CodexCLIPathStore {
         CodexCLIPathStore(
             fileURL: root.appendingPathComponent("codex-cli-path"),

@@ -35,9 +35,33 @@ public struct CodexCLIPathRecovery {
                     throw error
                 }
                 excluded.append(configured)
+                if let saved = runnableSavedPath(), !excluded.contains(where: { samePath($0, saved) }) {
+                    do {
+                        let value = try read(saved)
+                        try? store.save(saved.path, reloadEvenIfUnchanged: true)
+                        return value
+                    } catch {
+                        guard Self.isUnusableCLIPath(error) else {
+                            throw error
+                        }
+                        excluded.append(saved)
+                    }
+                }
             }
         }
         return try readNextCandidate(read, excluding: &excluded)
+    }
+
+    private func runnableSavedPath() -> URL? {
+        guard let path = store.load() else { return nil }
+        var isDirectory = ObjCBool(false)
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              !isDirectory.boolValue,
+              FileManager.default.isExecutableFile(atPath: path)
+        else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
     }
 
     private func readNextCandidate<T>(_ read: (URL) throws -> T, excluding excluded: inout [URL]) throws -> T {

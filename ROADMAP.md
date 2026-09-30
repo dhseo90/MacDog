@@ -799,6 +799,8 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 프로세스가 app-server 초기화 응답 전에 종료하면 `/Applications`와 `~/Applications`의
 `ChatGPT.app`, `Codex.app` 안에서 다른 패키지 진입점을 찾습니다. 이미 실패한 파일은
 고정 후보라도 다시 고르지 않습니다. 읽기에 성공한 경로만 `CODEX_CLI_PATH`로 저장합니다.
+이미 설치된 usage cache LaunchAgent plist이 바뀌면 그 잡을 다시 불러옵니다.
+아직 예전 환경 변수를 가진 실행은 저장해 둔 실행 파일을 먼저 사용합니다.
 순회 후에도 없으면 기존 cache 오류를 남깁니다. 프로세스가 살아 있는 시간 초과와
 계정·RPC 오류는 경로 실패로 보지 않습니다. 진입점은 manifest 디렉터리 기준으로
 해석하며, 앱 밖으로 나가는 `..`와 심볼릭 링크는 제외합니다.
@@ -812,7 +814,7 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 
 제외 경계:
 
-- 설치본 교체, LaunchAgent 재등록, live 사용량 조회, GUI 검수, release publish
+- 설치본 교체, live 사용량 조회, GUI 검수, release publish
 - Codex app-server JSON/cache/history schema 변경
 - 계정 오류나 일시적 app-server 실패로 `CODEX_CLI_PATH`를 바꾸는 동작
 
