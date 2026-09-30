@@ -42,44 +42,49 @@ final class CodexCLIResolverTests: XCTestCase {
         XCTAssertEqual(real(resolved), real(fixed))
     }
 
-    func testMissingOverrideFailsWithoutUsingAnotherCandidate() throws {
+    func testRunnableOverrideIsUsedWithoutSearching() throws {
+        let override = root.appendingPathComponent("override/codex")
+        let other = root.appendingPathComponent("other/codex")
+        try writeExecutable(at: override)
+        try writeExecutable(at: other)
+
+        let resolved = try resolver(
+            environment: ["CODEX_CLI_PATH": override.path],
+            candidates: [other.path],
+            roots: []
+        ).resolve()
+
+        XCTAssertEqual(real(resolved), real(override))
+    }
+
+    func testMissingOverrideFallsThroughToDiscovery() throws {
         let fixed = root.appendingPathComponent("fixed/codex")
         try writeExecutable(at: fixed)
         let missing = root.appendingPathComponent("missing-codex").path
-        let resolver = resolver(
+
+        let resolved = try resolver(
             environment: ["CODEX_CLI_PATH": missing],
             candidates: [fixed.path],
             roots: [try makeApp("ChatGPT.app")]
-        )
+        ).resolve()
 
-        XCTAssertThrowsError(try resolver.resolve()) { error in
-            guard case .codexBinaryNotExecutable(let path) = error as? CodexAppServerError else {
-                return XCTFail("expected override failure, got \(error)")
-            }
-            XCTAssertEqual(path, missing)
-            XCTAssertTrue(error.localizedDescription.contains("LaunchAgent"))
-            XCTAssertFalse(error.localizedDescription.contains(fixed.path))
-        }
+        XCTAssertEqual(real(resolved), real(fixed))
     }
 
-    func testNonExecutableOverrideFailsWithoutUsingAnotherCandidate() throws {
+    func testNonExecutableOverrideFallsThroughToDiscovery() throws {
         let override = root.appendingPathComponent("blocked/codex")
         try writeExecutable(at: override)
         try fileManager.setAttributes([.posixPermissions: 0o644], ofItemAtPath: override.path)
         let fixed = root.appendingPathComponent("fixed/codex")
         try writeExecutable(at: fixed)
-        let resolver = resolver(
+
+        let resolved = try resolver(
             environment: ["CODEX_CLI_PATH": override.path],
             candidates: [fixed.path],
             roots: []
-        )
+        ).resolve()
 
-        XCTAssertThrowsError(try resolver.resolve()) { error in
-            guard case .codexBinaryNotExecutable(let path) = error as? CodexAppServerError else {
-                return XCTFail("expected override failure, got \(error)")
-            }
-            XCTAssertEqual(path, override.path)
-        }
+        XCTAssertEqual(real(resolved), real(fixed))
     }
 
     func testMovedPackageUsesManifestEntrypointInsteadOfNestedBinary() throws {

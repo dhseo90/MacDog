@@ -10,8 +10,8 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 기준으로 동작하고, 1번 탭 상단에는 활성 provider의 주간 게이지를 함께 보여 줍니다.
 v1.9.2는 메뉴바 주간 잔여 사용량 글자를 줄이고, 설정에서 숫자와 `%`를 따로 끄며,
 uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되게 하는 patch입니다.
-현재 개발 패치 v1.9.3은 고정 Codex CLI 경로가 없으면 ChatGPT.app과 Codex.app 안에서만
-패키지 진입점을 찾아 사용량 cache 갱신을 복구합니다.
+같은 버전을 다시 릴리즈하면서 `CODEX_CLI_PATH`로 잔여량을 읽고, 그 경로로 파악할 수 없으면
+ChatGPT.app과 Codex.app 안에서만 패키지 진입점을 찾아 저장한 경로로 갱신합니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
@@ -62,8 +62,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
-| v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 보존 | GitHub Release publish·Finder 재설치·그래프 보존 완료 | Mac/Sleep/Battery 탭 직접 조작 미수행 |
-| v1.9.3 | ChatGPT/Codex 앱 내부 Codex CLI 탐색 | resolver 구현. 라이브러리 빌드와 동일 조건의 임시 실행 확인 | Swift 테스트는 Xcode license 미동의로 미실행. 설치본 교체·서명 복구 미완료 |
+| v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | glance/uninstall은 publish됨. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 경로의 Swift 테스트·설치본 교체는 재릴리즈 전 확인 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -791,14 +790,15 @@ uninstall 실실행은 하지 않았습니다.
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점. 표시와 삭제
 대상만 다루고 cache/인증 계약은 유지합니다.
 
-## v1.9.3: ChatGPT/Codex 앱 내부 Codex CLI 탐색
+### Codex CLI 경로 복구
 
-`v1.9.3`은 v1.9.2의 패치 릴리즈입니다. `CODEX_CLI_PATH`가 있으면 그 경로만 사용하고,
-없으면 고정 후보를 본 뒤 `/Applications`와 `~/Applications`의 `ChatGPT.app`, `Codex.app`
-안에서만 패키지 진입점을 찾습니다. 진입점은 manifest 디렉터리 기준으로 해석하며, 앱 밖으로
-나가는 `..`와 심볼릭 링크는 제외합니다. 복수 후보를 우선순위로 고르지 못하면 기존 cache
-오류에 검색한 앱과 이유를 남기고, 터미널 `export`는 LaunchAgent에 전달되지 않는다고 안내합니다.
-JSON/cache/auth 계약과 LaunchAgent plist는 바꾸지 않습니다.
+Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다시 릴리즈하는 범위입니다.
+`CODEX_CLI_PATH`가 실행 가능하면 그 경로로 잔여량을 읽습니다. 경로가 없거나 그 CLI로
+사용량을 읽지 못하면 `/Applications`와 `~/Applications`의 `ChatGPT.app`, `Codex.app`
+안에서 패키지 진입점을 찾고, 읽기에 성공한 경로를 `CODEX_CLI_PATH`로 저장합니다.
+순회 후에도 없으면 기존 cache 오류를 남깁니다. 계정·RPC 오류는 경로 실패로 보지
+않습니다. 진입점은 manifest 디렉터리 기준으로 해석하며, 앱 밖으로 나가는 `..`와
+심볼릭 링크는 제외합니다.
 
 범위:
 
@@ -811,7 +811,7 @@ JSON/cache/auth 계약과 LaunchAgent plist는 바꾸지 않습니다.
 
 - 설치본 교체, LaunchAgent 재등록, live 사용량 조회, GUI 검수, release publish
 - Codex app-server JSON/cache/history schema 변경
-- `CODEX_CLI_PATH`를 LaunchAgent `EnvironmentVariables`에 자동으로 넣는 변경
+- 계정 오류나 일시적 app-server 실패로 `CODEX_CLI_PATH`를 바꾸는 동작
 
 완료 기준:
 

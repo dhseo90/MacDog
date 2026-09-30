@@ -55,11 +55,24 @@ public struct CodexCLIResolver {
         self.searchLimits = searchLimits
     }
 
-    public func resolve() throws -> URL {
-        if let override = environment["CODEX_CLI_PATH"], !override.isEmpty {
-            return try executableURL(at: override)
+    /// The configured `CODEX_CLI_PATH` when that file can be executed.
+    /// A missing or non-executable value is not a hard failure; discovery may replace it.
+    public func configuredExecutable() -> URL? {
+        guard let override = configuredPath, isRunnableFile(at: override) else {
+            return nil
         }
+        return URL(fileURLWithPath: override)
+    }
 
+    public func resolve() throws -> URL {
+        if let configured = configuredExecutable() {
+            return configured
+        }
+        return try discover()
+    }
+
+    /// Fixed candidates, then the four app bundles. Does not accept `CODEX_CLI_PATH`.
+    public func discover() throws -> URL {
         for candidate in candidates where isRunnableFile(at: candidate) {
             return URL(fileURLWithPath: candidate)
         }
@@ -84,11 +97,11 @@ public struct CodexCLIResolver {
         )
     }
 
-    private func executableURL(at path: String) throws -> URL {
-        guard isRunnableFile(at: path) else {
-            throw CodexAppServerError.codexBinaryNotExecutable(path)
+    private var configuredPath: String? {
+        guard let override = environment["CODEX_CLI_PATH"], !override.isEmpty else {
+            return nil
         }
-        return URL(fileURLWithPath: path)
+        return override
     }
 
     private func isRunnableFile(at path: String) -> Bool {

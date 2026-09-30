@@ -225,6 +225,24 @@ final class UserComponentInstallerTests: XCTestCase {
         )
         XCTAssertEqual(plist["StandardOutPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.out.log")
         XCTAssertEqual(plist["StandardErrorPath"] as? String, "/Users/test/Library/Logs/MacDog/cache.err.log")
+        XCTAssertNil(plist["EnvironmentVariables"])
+    }
+
+    func testCacheLaunchAgentPlistKeepsSavedCodexCLIPath() throws {
+        let data = try UserComponentInstaller.cachePlistData(
+            appCLIPath: "/Applications/MacDog.app/Contents/MacOS/codex-usage",
+            logDirectoryPath: "/Users/test/Library/Logs/MacDog",
+            codexCLIPath: "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+        )
+        let plist = try XCTUnwrap(
+            PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+        )
+        let environment = try XCTUnwrap(plist["EnvironmentVariables"] as? [String: String])
+
+        XCTAssertEqual(
+            environment["CODEX_CLI_PATH"],
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+        )
     }
 
     func testGrokCacheLaunchAgentPlistRunsBundledGrokWriter() throws {

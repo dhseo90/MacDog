@@ -14,9 +14,9 @@ public enum CodexAppServerError: Error, LocalizedError, Equatable {
     case stdinClosed
     case invalidJSONLine(String)
 
-    /// Terminal `export` does not reach the cache LaunchAgent. The plist builder does not set this variable.
+    /// A terminal `export` does not change the path the cache LaunchAgent already loaded.
     public static let launchAgentOverrideNote =
-        "Exporting CODEX_CLI_PATH in a terminal does not affect automatic refresh. The usage cache LaunchAgent does not set CODEX_CLI_PATH; add it to that LaunchAgent's EnvironmentVariables so scheduled codex-usage sees it."
+        "Automatic refresh reads CODEX_CLI_PATH from the usage cache LaunchAgent. A terminal export alone does not change that saved path. When a working Codex CLI is found, that path is saved."
 
     public var errorDescription: String? {
         switch self {
