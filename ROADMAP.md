@@ -64,7 +64,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.8.0 | 선택형 Codex/Claude 사용량 mode와 안정화 | 릴리즈 완료, 단일 provider mode·Codex weekly-only·published DMG 설치/final-state 검증 | 실제 Claude 구독 `rate_limits` event live smoke는 미수행으로 분리 |
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
-| v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | glance/uninstall은 publish됨. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 경로의 Swift 테스트·설치본 교체는 재릴리즈 전 확인 |
+| v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -748,8 +748,9 @@ final-state를 닫았습니다. 사용량 탭 GUI는 사용자가 확인했습�
 세부 범위는 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md),
 릴리즈 순서는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에 둡니다.
 
-현재 상태: GitHub Release publish, Finder 재설치, 그래프 보존 확인. 별도
-uninstall 실실행은 하지 않았습니다.
+현재 상태: 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료.
+Codex CLI 경로 복구는 같은 버전 재릴리즈로 진행 중이며, 그 publish와 설치본 교체는 아직입니다.
+별도 uninstall 실실행은 하지 않았습니다.
 
 구현 순서:
 
@@ -828,8 +829,12 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 
 - Command Line Tools `/usr/bin/swift build --target CodexUsageCore`: exit 0.
 - `git diff --check`: exit 0.
-- `swift test`는 실행하지 못했습니다. Xcode toolchain은 license 미동의로 exit 69이고,
+- 로컬 `swift test`와 앱 Debug build는 Xcode license 미동의로 시작하지 못했습니다.
   Command Line Tools 빌드는 XCTest 모듈이 없어 테스트 타깃이 실패합니다.
+- GitHub Actions `static-gates` run `36736879420`(head `639af01`)에서
+  `swift test --no-parallel`는 619개 실행, 4개 skipped, 0 failures였습니다.
+  `build_and_run.sh --no-run` 뒤 앱 번들 검증은 `App bundle verification ok`였습니다.
+  그 실행은 이 문단 앞에서 ROADMAP의 기존 publish 문구를 찾지 못해 끝났습니다.
 - 같은 시나리오를 resolver 소스와 함께 컴파일한 임시 실행 파일은 exit 0이었습니다.
   이 결과는 `CodexCLIResolverTests` 통과가 아닙니다.
 - `/Applications/MacDog.app`은 수정하지 않았습니다.
