@@ -119,6 +119,10 @@ public final class CodexAppServerClient {
                 message.contains("account/chatgptAuthTokens/refresh")
         case .codexBinaryNotFound,
              .codexBinaryNotExecutable,
+             .codexCLIAmbiguous,
+             .codexCLIManifestDamaged,
+             .codexCLIEntrypointRejected,
+             .codexCLISearchLimited,
              .responseTimedOut,
              .responseMissingResult,
              .rpcError:

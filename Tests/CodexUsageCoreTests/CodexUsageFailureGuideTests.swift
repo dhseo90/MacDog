@@ -5,13 +5,18 @@ final class CodexUsageFailureGuideTests: XCTestCase {
     func testMissingCodexCLIGuideIncludesCheckedPathsAndDoctorCommand() {
         let guide = CodexUsageFailureGuide()
         let message = guide.message(
-            for: CodexAppServerError.codexBinaryNotFound(["/Applications/Codex.app/Contents/Resources/codex"]),
+            for: CodexAppServerError.codexBinaryNotFound(
+                checked: ["/Applications/Codex.app/Contents/Resources/codex"],
+                searchedApps: ["/Applications/ChatGPT.app"]
+            ),
             context: .status
         )
 
         XCTAssertTrue(message.contains("codex-usage status failed"))
         XCTAssertTrue(message.contains("CODEX_CLI_PATH"))
+        XCTAssertTrue(message.contains("LaunchAgent"))
         XCTAssertTrue(message.contains("/Applications/Codex.app/Contents/Resources/codex"))
+        XCTAssertTrue(message.contains("/Applications/ChatGPT.app"))
         XCTAssertTrue(message.contains("codex-usage doctor"))
     }
 

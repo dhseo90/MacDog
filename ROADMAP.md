@@ -10,6 +10,8 @@ Claude source는 숨깁니다. v1.9.1은 `Codex`와 `Grok`을 하나 또는 둘 
 기준으로 동작하고, 1번 탭 상단에는 활성 provider의 주간 게이지를 함께 보여 줍니다.
 v1.9.2는 메뉴바 주간 잔여 사용량 글자를 줄이고, 설정에서 숫자와 `%`를 따로 끄며,
 uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되게 하는 patch입니다.
+현재 개발 패치 v1.9.3은 고정 Codex CLI 경로가 없으면 ChatGPT.app과 Codex.app 안에서만
+패키지 진입점을 찾아 사용량 cache 갱신을 복구합니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
@@ -61,6 +63,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish와 uninstall history 보존 | GitHub Release publish·Finder 재설치·그래프 보존 완료 | Mac/Sleep/Battery 탭 직접 조작 미수행 |
+| v1.9.3 | ChatGPT/Codex 앱 내부 Codex CLI 탐색 | resolver 구현. 라이브러리 빌드와 동일 조건의 임시 실행 확인 | Swift 테스트는 Xcode license 미동의로 미실행. 설치본 교체·서명 복구 미완료 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -787,6 +790,61 @@ uninstall 실실행은 하지 않았습니다.
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 0 + 검증 난이도 2 + 변경 범위 1 = 4점. 표시와 삭제
 대상만 다루고 cache/인증 계약은 유지합니다.
+
+## v1.9.3: ChatGPT/Codex 앱 내부 Codex CLI 탐색
+
+`v1.9.3`은 v1.9.2의 패치 릴리즈입니다. `CODEX_CLI_PATH`가 있으면 그 경로만 사용하고,
+없으면 고정 후보를 본 뒤 `/Applications`와 `~/Applications`의 `ChatGPT.app`, `Codex.app`
+안에서만 패키지 진입점을 찾습니다. 진입점은 manifest 디렉터리 기준으로 해석하며, 앱 밖으로
+나가는 `..`와 심볼릭 링크는 제외합니다. 복수 후보를 우선순위로 고르지 못하면 기존 cache
+오류에 검색한 앱과 이유를 남기고, 터미널 `export`는 LaunchAgent에 전달되지 않는다고 안내합니다.
+JSON/cache/auth 계약과 LaunchAgent plist는 바꾸지 않습니다.
+
+범위:
+
+- 고정 후보의 첫 항목은 `Contents/Resources/codex-cli/bin/codex`
+- 그 경로가 없을 때만 네 앱 번들을 깊이 12, 항목 8000개 한도에서 탐색
+- manifest 진입점을 bare `codex`보다 먼저 평가하고, 같은 앱의 복수 후보는 오류
+- 임시 앱 구조로 resolver 동작을 검증
+
+제외 경계:
+
+- 설치본 교체, LaunchAgent 재등록, live 사용량 조회, GUI 검수, release publish
+- Codex app-server JSON/cache/history schema 변경
+- `CODEX_CLI_PATH`를 LaunchAgent `EnvironmentVariables`에 자동으로 넣는 변경
+
+완료 기준:
+
+- `CodexCLIResolverTests`가 패키지 이동, 진입점 우선, 복수 후보, 외부 링크, 잘못된 override, 탐색 실패를 통과합니다.
+- 전체 `swift test`와 `git diff --check`가 통과합니다.
+- Xcode license 제약으로 실행하지 못한 검증은 PASS로 보고하지 않습니다.
+
+2026-09-30 구현 확인:
+
+- Command Line Tools `/usr/bin/swift build --target CodexUsageCore`: exit 0.
+- `git diff --check`: exit 0.
+- `swift test`는 실행하지 못했습니다. Xcode toolchain은 license 미동의로 exit 69이고,
+  Command Line Tools 빌드는 XCTest 모듈이 없어 테스트 타깃이 실패합니다.
+- 같은 시나리오를 resolver 소스와 함께 컴파일한 임시 실행 파일은 exit 0이었습니다.
+  이 결과는 `CodexCLIResolverTests` 통과가 아닙니다.
+- `/Applications/MacDog.app`은 수정하지 않았습니다.
+
+2026-09-29 기록은 안쪽 Mach-O 경로를 넣은 CLI 파일만 설치본에 교체한 이전 확인입니다.
+현재 resolver 동작이 아니며, 앱 서명은 그때 깨진 상태로 남았습니다.
+
+2026-09-29 설치본 CLI 단일 교체 확인:
+
+- `/usr/bin/swift build -c release --product codex-usage`: exit 0. 새 ChatGPT CLI 경로가 포함된
+  release CLI를 만들었습니다.
+- `/Applications/MacDog.app/Contents/MacOS/codex-usage status --write-cache --timeout 15`:
+  exit 0. 주간 사용 75%, 잔여 25%; `usage.json`의 `error`는 null이고 주간 history sample이
+  저장됐습니다. Codex LaunchAgent의 마지막 종료 코드도 0으로 확인했습니다.
+- 설치 앱의 `CFBundleShortVersionString`은 여전히 1.9.2입니다. CLI 파일 한 개만 교체했고
+  `/usr/bin/codesign --verify --deep --strict /Applications/MacDog.app`은
+  `nested code is modified or invalid`로 exit 1입니다. CLI 단독 서명 검증은 exit 0입니다.
+- 첫 focused test 시도는 Xcode license 미동의로 시작되지 않았고, Command Line Tools의
+  `/usr/bin/swift test --filter CodexAppServerClientTests`는 XCTest 모듈 누락으로 빌드에 실패했습니다.
+  전체 `swift test`와 앱 Debug build, 앱 재실행·GUI 확인은 수행하지 않았습니다.
 
 ## RunCat UI 참고 방향
 

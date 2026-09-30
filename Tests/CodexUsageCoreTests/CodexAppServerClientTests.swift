@@ -2,10 +2,20 @@ import XCTest
 @testable import CodexUsageCore
 
 final class CodexAppServerClientTests: XCTestCase {
-    func testResolverPrefersCurrentChatGPTAppBundleCLI() {
+    func testResolverPrefersPackageEntrypointBeforeLegacyPaths() {
         XCTAssertEqual(
             CodexCLIResolver.defaultCandidates.first,
-            "/Applications/ChatGPT.app/Contents/Resources/codex"
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
+        )
+        XCTAssertFalse(
+            CodexCLIResolver.defaultCandidates.contains(
+                "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+            )
+        )
+        XCTAssertTrue(
+            CodexCLIResolver.defaultCandidates.contains(
+                "/Applications/ChatGPT.app/Contents/Resources/codex"
+            )
         )
         XCTAssertTrue(
             CodexCLIResolver.defaultCandidates.contains(
