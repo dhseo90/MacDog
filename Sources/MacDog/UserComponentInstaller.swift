@@ -123,7 +123,8 @@ struct UserComponentInstaller {
     static func cachePlistData(
         appCLIPath: String,
         logDirectoryPath: String,
-        mirrorWidgetCache: Bool = false
+        mirrorWidgetCache: Bool = false,
+        codexCLIPath: String? = nil
     ) throws -> Data {
         var programArguments = [
             appCLIPath,
@@ -138,7 +139,7 @@ struct UserComponentInstaller {
             String(Int(CodexUsageCacheRefreshPolicy.requestTimeout))
         ])
 
-        let plist: [String: Any] = [
+        var plist: [String: Any] = [
             "Label": cacheLabel,
             "ProgramArguments": programArguments,
             "RunAtLoad": true,
@@ -146,6 +147,9 @@ struct UserComponentInstaller {
             "StandardOutPath": "\(logDirectoryPath)/cache.out.log",
             "StandardErrorPath": "\(logDirectoryPath)/cache.err.log"
         ]
+        if let codexCLIPath, !codexCLIPath.isEmpty {
+            plist["EnvironmentVariables"] = ["CODEX_CLI_PATH": codexCLIPath]
+        }
         return try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
     }
 
@@ -263,7 +267,16 @@ struct UserComponentInstaller {
         let plistData = try Self.cachePlistData(
             appCLIPath: bundledCLIURL.path,
             logDirectoryPath: logDirectoryURL.path,
-            mirrorWidgetCache: fileManager.fileExists(atPath: bundledWidgetExtensionURL.path)
+            mirrorWidgetCache: fileManager.fileExists(atPath: bundledWidgetExtensionURL.path),
+            codexCLIPath: CodexCLIPathStore(
+                fileURL: homeDirectory
+                    .appendingPathComponent("Library", isDirectory: true)
+                    .appendingPathComponent("Application Support", isDirectory: true)
+                    .appendingPathComponent("MacDog", isDirectory: true)
+                    .appendingPathComponent(CodexCLIPathStore.fileName),
+                launchAgentURL: cachePlistURL,
+                fileManager: fileManager
+            ).load()
         )
         let existingData = try? Data(contentsOf: cachePlistURL)
         guard existingData != plistData else {

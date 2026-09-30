@@ -103,7 +103,7 @@ struct CLI {
 
         do {
             let formatter = CodexUsageFormatter()
-            let report = try makeService(timeout: timeout).readReport()
+            let report = try readReport(timeout: timeout)
             var cacheWriteResults: [CodexUsageCacheWriteResult] = []
 
             if writeCache {
@@ -136,12 +136,14 @@ struct CLI {
         output("Codex Usage Doctor")
 
         do {
-            let resolver = CodexCLIResolver()
-            let codexURL = try resolver.resolve()
-            output("Codex CLI: \(codexURL.path)")
-
-            let service = CodexUsageService(client: CodexAppServerClient(codexURL: codexURL))
-            let diagnostic = try service.readDiagnosticReport()
+            var codexURL: URL?
+            let diagnostic = try recoveringRead { url in
+                codexURL = url
+                return try CodexUsageService(client: CodexAppServerClient(codexURL: url)).readDiagnosticReport()
+            }
+            if let codexURL {
+                output("Codex CLI: \(codexURL.path)")
+            }
             let report = diagnostic.report
             let codex = report.codexLimit
             output("App-server: ok")
@@ -161,9 +163,24 @@ struct CLI {
         }
     }
 
-    private func makeService(timeout: TimeInterval? = nil) throws -> CodexUsageService {
-        let client = try CodexAppServerClient(timeout: timeout ?? 15)
-        return CodexUsageService(client: client)
+    private func readReport(timeout: TimeInterval?) throws -> CodexUsageReport {
+        try recoveringRead { url in
+            try CodexUsageService(
+                client: CodexAppServerClient(codexURL: url, timeout: timeout ?? 15)
+            ).readReport()
+        }
+    }
+
+    private func recoveringRead<T>(_ read: (URL) throws -> T) throws -> T {
+        let store = CodexCLIPathStore.live()
+        var environment = ProcessInfo.processInfo.environment
+        if environment["CODEX_CLI_PATH"]?.isEmpty != false, let saved = store.load() {
+            environment["CODEX_CLI_PATH"] = saved
+        }
+        return try CodexCLIPathRecovery(
+            resolver: CodexCLIResolver(environment: environment),
+            store: store
+        ).read(read)
     }
 
     private func makeCacheStores(path: String?, mirrorCache: Bool) -> [CodexUsageCacheStore] {

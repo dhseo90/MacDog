@@ -55,22 +55,63 @@ public struct CodexUsageFailureGuide: Sendable {
 
     private func nextSteps(for error: CodexAppServerError, context: CodexUsageFailureContext) -> [String] {
         switch error {
-        case .codexBinaryNotFound(let candidates):
+        case .codexBinaryNotFound(let checked, let searchedApps):
             return [
                 "Install the Codex CLI, or set CODEX_CLI_PATH to the executable path.",
-                "Checked paths: \(candidates.joined(separator: ", ")).",
+                CodexAppServerError.launchAgentOverrideNote,
+                "Checked paths: \(checked.joined(separator: ", ")).",
+                "Searched apps: \(searchedApps.joined(separator: ", ")).",
                 doctorStep(context)
             ]
         case .codexBinaryNotExecutable(let path):
             return [
                 "Make the Codex CLI executable or point CODEX_CLI_PATH at a runnable binary.",
+                CodexAppServerError.launchAgentOverrideNote,
                 "Current path: \(path).",
+                doctorStep(context)
+            ]
+        case .codexCLIAmbiguous(let paths):
+            return [
+                "More than one Codex CLI candidate matched and priority did not choose one.",
+                "Set CODEX_CLI_PATH to the executable path.",
+                CodexAppServerError.launchAgentOverrideNote,
+                "Candidates: \(paths.joined(separator: ", ")).",
+                doctorStep(context)
+            ]
+        case .codexCLIManifestDamaged(let path, let reason):
+            return [
+                "The Codex package manifest is damaged, not merely missing.",
+                "Set CODEX_CLI_PATH to the executable path.",
+                CodexAppServerError.launchAgentOverrideNote,
+                "Manifest: \(path). Reason: \(reason).",
+                doctorStep(context)
+            ]
+        case .codexCLIEntrypointRejected(let manifestPath, let entrypoint, let reason):
+            return [
+                "The Codex package entrypoint was rejected.",
+                "Set CODEX_CLI_PATH to the executable path.",
+                CodexAppServerError.launchAgentOverrideNote,
+                "Manifest: \(manifestPath). Entrypoint: \(entrypoint). Reason: \(reason).",
+                doctorStep(context)
+            ]
+        case .codexCLISearchLimited(let appPath, let maxEntries, let maxDepth):
+            return [
+                "Codex CLI search stopped because the app scan reached its entry limit.",
+                "Set CODEX_CLI_PATH to the executable path.",
+                CodexAppServerError.launchAgentOverrideNote,
+                "App: \(appPath). Entry limit: \(maxEntries). Depth limit: \(maxDepth).",
                 doctorStep(context)
             ]
         case .processLaunchFailed:
             return [
                 "Check that Codex opens normally and `codex app-server` can start.",
                 "If Codex was just updated, restart Codex and try again.",
+                doctorStep(context)
+            ]
+        case .processExitedBeforeInitialize:
+            return [
+                "The Codex CLI process exited before app-server initialization completed.",
+                "A CLI that is still running and only times out is a different failure and does not by itself mean the path should be replaced.",
                 doctorStep(context)
             ]
         case .responseTimedOut, .stdinClosed:
