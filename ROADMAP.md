@@ -66,7 +66,7 @@ v1.9.3은 Codex 1번 탭에 잔여 크레딧을 더합니다. 잔액이 있을 �
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
-| v1.9.3 | Codex 잔여 크레딧 | GitHub Release 공개. 1번 탭은 초기화권과 잔여 크레딧을 나누고, 없는 항목은 숨기며, 빈 높이는 주간 그래프만 늘림 | Finder 설치와 final-state는 미수행 |
+| v1.9.3 | Codex 잔여 크레딧 | GitHub Release 공개. 1번 탭은 초기화권과 잔여 크레딧을 나누고, 없는 항목은 숨기며, 빈 높이는 주간 그래프만 늘림 | Finder 설치본 1.9.3과 final-state 확인 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -881,7 +881,7 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 - `git diff --check`, focused test, `swift test`, Xcode Debug build가 통과합니다.
 - `verify_v193_codex_remaining_credits_contract.sh --self-test`가 통과합니다.
 - README 팝오버 스크린샷은 상하좌우가 잘리지 않습니다.
-- 열지 않은 탭과 Finder 설치는 `미수행`으로 남깁니다.
+- 열지 않은 Mac/Sleep/Battery 탭은 `미수행`으로 남습니다. Finder 설치와 final-state는 확인했습니다.
 
 추천 모델: `grok-4.6`
 추론 수준: 중간 (medium)

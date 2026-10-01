@@ -49,7 +49,7 @@ verify_contract() {
   "$V192_VERIFIER" --self-test
 
   require_match '^상태: v1\.9\.3 GitHub Release 공개' "$DOC" "release status"
-  require_match 'Finder 설치와 final-state는 미수행' "$DOC" "install remains undone"
+  require_match 'Finder 설치와 final-state 확인' "$DOC" "install and final-state recorded"
   require_match 'signed annotated tag' "$DOC" "signed tag"
   require_match 'GitHub `Verified`' "$DOC" "verified tag gate"
   require_match 'UNSIGNED-DRAFT' "$DOC" "unsigned draft acknowledgement"
