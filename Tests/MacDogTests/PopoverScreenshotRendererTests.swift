@@ -252,6 +252,77 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
     }
 
+    func testCodexPageShowsRemainingCreditUnderResetCreditsOnlyWhenPresent() {
+        XCTAssertNil(CodexRemainingCreditTextFormatter.displayText(for: nil))
+        XCTAssertNil(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "12")
+            )
+        )
+        XCTAssertNil(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: false, unlimited: true, balance: nil)
+            )
+        )
+        XCTAssertNil(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: nil)
+            )
+        )
+        XCTAssertNil(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "  \n")
+            )
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: true, balance: "12")
+            ),
+            "무제한"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12.00")
+            ),
+            "12"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "146.0874125000")
+            ),
+            "146.0874125"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "0")
+            ),
+            "0"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: " promo ")
+            ),
+            "promo"
+        )
+
+        let hidden = resetCreditsBlockHeight(remainingCreditText: nil)
+        let shown = resetCreditsBlockHeight(remainingCreditText: "12")
+        XCTAssertGreaterThan(shown, hidden + 8)
+        XCTAssertLessThan(shown - hidden, 28)
+        XCTAssertLessThanOrEqual(shown, 96)
+
+        let absentPanel = codexPanelHeight(credits: nil)
+        let flaggedOffPanel = codexPanelHeight(
+            credits: CreditsSnapshot(hasCredits: false, unlimited: false, balance: "12")
+        )
+        let presentPanel = codexPanelHeight(
+            credits: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12")
+        )
+        XCTAssertEqual(absentPanel, flaggedOffPanel, accuracy: 0.5)
+        XCTAssertGreaterThan(presentPanel, absentPanel + 8)
+        XCTAssertLessThanOrEqual(presentPanel, MacDogPopoverLayout.nonScrollableContentHeight)
+    }
+
     func testCodexUsagePanelKeepsPrimarySectionsVisibleWithoutDisclosure() throws {
         let state = UsageMonitorState(
             report: Self.codexReportWithThreeResetCreditExpiries(),
@@ -1078,12 +1149,15 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
     }
 
-    private static func codexReportWithResetCredits(_ resetCredits: RateLimitResetCreditsSummary) -> CodexUsageReport {
+    private static func codexReportWithResetCredits(
+        _ resetCredits: RateLimitResetCreditsSummary,
+        credits: CreditsSnapshot? = nil
+    ) -> CodexUsageReport {
         CodexUsageReport(
             generatedAt: 1_800_000_000,
             source: "test",
             planType: "pro",
-            credits: nil,
+            credits: credits,
             resetCredits: resetCredits,
             rateLimitReachedType: nil,
             limits: [
@@ -1104,12 +1178,49 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                         windowDurationMins: 10_080,
                         resetsAt: 1_800_056_400
                     ),
-                    credits: nil,
+                    credits: credits,
                     planType: "pro",
                     rateLimitReachedType: nil
                 )
             ]
         )
+    }
+
+    private func resetCreditsBlockHeight(remainingCreditText: String?) -> CGFloat {
+        let view = CodexResetCreditsBlock(
+            resetCredits: Self.resetCredits(count: 3, shuffled: false),
+            remainingCreditText: remainingCreditText
+        )
+        return hostedHeight(of: view)
+    }
+
+    private func codexPanelHeight(credits: CreditsSnapshot?) -> CGFloat {
+        let state = UsageMonitorState(
+            report: Self.codexReportWithResetCredits(
+                Self.resetCredits(count: 3, shuffled: false),
+                credits: credits
+            ),
+            cacheSnapshot: nil,
+            weeklyUsageHistory: .empty,
+            resetWindowHistory: .empty,
+            errorMessage: nil,
+            systemMetrics: .unavailable
+        )
+        return hostedHeight(of: CodexUsagePanel(state: state))
+    }
+
+    private func hostedHeight<V: View>(of view: V) -> CGFloat {
+        let contentWidth = MacDogPopoverLayout.contentSurfaceSize.width -
+            (MacDogPopoverLayout.contentPadding * 2)
+        let hostingView = NSHostingView(rootView: view.frame(width: contentWidth))
+        hostingView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: contentWidth,
+            height: MacDogPopoverLayout.nonScrollableContentHeight
+        )
+        hostingView.layoutSubtreeIfNeeded()
+        return hostingView.fittingSize.height
     }
 
     private static func weeklyOnlyCodexReport() -> CodexUsageReport {

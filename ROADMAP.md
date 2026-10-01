@@ -17,8 +17,8 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
-버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.1` 다음 기능 버전은
-`v1.9.2`입니다.
+버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.2` 다음 기능 버전은
+`v1.9.3`입니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -65,6 +65,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
+| v1.9.3 | Codex 잔여 크레딧 | 1번 탭 초기화권 아래, 같은 글자 크기. 크레딧이 없으면 숨김 | 개발 중 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 

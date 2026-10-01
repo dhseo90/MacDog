@@ -23,7 +23,10 @@ struct CodexUsagePanel: View {
                     )
                 }
 
-                CodexResetCreditsBlock(resetCredits: state.report?.resetCredits)
+                CodexResetCreditsBlock(
+                    resetCredits: state.report?.resetCredits,
+                    remainingCreditText: CodexRemainingCreditTextFormatter.displayText(for: limit.credits)
+                )
 
                 CodexUsageDataStatusBlock(status: state.codexDataStatus)
             } else if state.isRefreshing {

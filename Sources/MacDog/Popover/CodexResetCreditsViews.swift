@@ -4,19 +4,33 @@ import SwiftUI
 
 struct CodexResetCreditsBlock: View {
     let resetCredits: RateLimitResetCreditsSummary?
+    var remainingCreditText: String? = nil
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("초기화권")
-                .font(.caption.weight(.semibold))
-            Text(CodexResetCreditTextFormatter.countText(for: resetCredits))
-                .font(.caption.weight(.semibold))
-            Text(detailText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("초기화권")
+                    .font(.caption.weight(.semibold))
+                Text(CodexResetCreditTextFormatter.countText(for: resetCredits))
+                    .font(.caption.weight(.semibold))
+                Text(detailText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                Spacer(minLength: 0)
+            }
+            if let remainingCreditText {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("잔여 크레딧")
+                        .font(.caption.weight(.semibold))
+                    Text(remainingCreditText)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Spacer(minLength: 0)
+                }
+            }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 8)
@@ -40,8 +54,39 @@ struct CodexResetCreditsBlock: View {
     }
 
     private var accessibilityLabel: String {
-        guard let resetCredits else { return "사용자 초기화권, 정보 미확인" }
-        return "사용자 초기화권, \(CodexResetCreditTextFormatter.countText(for: resetCredits)), \(CodexResetCreditTextFormatter.expirySummary(for: resetCredits))"
+        let resetLabel: String
+        if let resetCredits {
+            resetLabel = "사용자 초기화권, \(CodexResetCreditTextFormatter.countText(for: resetCredits)), \(CodexResetCreditTextFormatter.expirySummary(for: resetCredits))"
+        } else {
+            resetLabel = "사용자 초기화권, 정보 미확인"
+        }
+        guard let remainingCreditText else { return resetLabel }
+        return "\(resetLabel), 잔여 크레딧 \(remainingCreditText)"
+    }
+}
+
+enum CodexRemainingCreditTextFormatter {
+    static func displayText(for credits: CreditsSnapshot?) -> String? {
+        guard let credits, credits.hasCredits else { return nil }
+        if credits.unlimited { return "무제한" }
+        guard let balance = credits.balance?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !balance.isEmpty else {
+            return nil
+        }
+        return normalizedBalance(balance)
+    }
+
+    private static func normalizedBalance(_ raw: String) -> String {
+        guard let decimal = Decimal(string: raw, locale: Locale(identifier: "en_US_POSIX")) else {
+            return raw
+        }
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 10
+        return formatter.string(from: decimal as NSDecimalNumber) ?? raw
     }
 }
 
