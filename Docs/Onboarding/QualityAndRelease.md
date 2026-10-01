@@ -226,7 +226,7 @@ release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)
 | --- | --- |
 | published release | `v1.9.3` |
 | current development | `v1.9.3` Codex 잔여 크레딧 |
-| release tag | signed annotated `v1.9.3`. publish 전에 GitHub `Verified` |
+| release tag | signed annotated `v1.9.3`. GitHub `Verified` 확인 후 공개 |
 | default provider | `Codex` |
 | visible provider selection | Codex/Grok 하나 또는 둘, 메인 지정. 합산 없음 |
 | Claude | source 보존, 기본 UI 숨김. hidden re-enable만 |

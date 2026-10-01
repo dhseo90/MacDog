@@ -107,7 +107,8 @@ MACDOG_APP_VERSION=1.9.3 ./script/build_and_run.sh
 ## 현재 릴리즈
 
 GitHub Releases Latest: `v1.9.3`. 공개본 검증 예는
-`MACDOG_APP_VERSION=1.9.3 ./script/check.sh --no-run`입니다.
+`MACDOG_APP_VERSION=1.9.3 ./script/check.sh --no-run`입니다. 코드 merge head는
+`7207bc96f52505c0f4151cfc077e2fd979671fed`입니다.
 
 이전 공개본은
 [v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)
