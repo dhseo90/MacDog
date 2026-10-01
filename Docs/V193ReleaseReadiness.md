@@ -1,6 +1,6 @@
 # v1.9.3 릴리즈 준비
 
-상태: v1.9.3 GitHub Release 공개. Finder 설치와 final-state는 미수행.
+상태: v1.9.3 GitHub Release 공개. Finder 설치와 final-state 확인.
 작성일: 2026-10-01
 대상 버전: `1.9.3`
 기준 브랜치: `v1.9.3`
@@ -92,8 +92,12 @@ signed tag `e135271f905da1de7dca985898ea7a93589853c0`는 GitHub `Verified`다.
 `257e54c19ea4739456ace7ec2a90ee50e57ad2725389139e7720b3dbf4aece22`이고
 `hdiutil verify`는 VALID다. 이미지 안 앱 버전은 1.9.3이다.
 
-Finder drag-and-drop과 final-state는 하지 않았다. 설치 smoke가 미수행이므로
-`v1.9.3` 브랜치는 지우지 않는다.
+사용자가 공개 DMG에서 설치했다고 확인했다. 드래그 동작은 직접 보지 않았다.
+설치본은 `/Applications/MacDog.app` 1.9.3이고, 실행 파일 SHA-256
+`62dc05de0ab550cb925a1cf4ead984fb7bd4d134d8214c410b17c652325c6f81`은
+공개 DMG와 같다. `cleanup_release_smoke_state.sh --apply` 뒤
+`verify_release_final_state.sh --version 1.9.3`은 통과했다.
+이 기록 merge 뒤 ancestor이면 `v1.9.3` 브랜치를 삭제한다.
 
 로컬에서 제품 변경과 스크린샷도 확인했다.
 
@@ -118,6 +122,6 @@ Finder drag-and-drop과 final-state는 하지 않았다. 설치 smoke가 미수�
 | README 스크린샷 여백 | 렌더가 상하좌우 여백을 두고, 초기화권·잔여 크레딧·데이터 상태가 그 안에 있는지 확인 |
 | signed annotated tag | `e135271f905da1de7dca985898ea7a93589853c0` → `7207bc96f52505c0f4151cfc077e2fd979671fed`, GitHub `Verified` |
 | Published DMG | Latest `v1.9.3`, release ID `400978180`. SHA-256 `257e54c19ea4739456ace7ec2a90ee50e57ad2725389139e7720b3dbf4aece22`. `hdiutil verify` VALID |
-| Finder drag-and-drop | 미수행 |
-| final-state | 미수행 |
+| Finder drag-and-drop | 사용자가 공개 DMG에서 설치했다고 확인. 설치본 1.9.3, 실행 파일 checksum이 DMG와 같음 |
+| final-state | `verify_release_final_state.sh --version 1.9.3` 통과 |
 | Mac/Sleep/Battery 탭 직접 조작 | 미수행. 이번 완료 조건 아님 |
