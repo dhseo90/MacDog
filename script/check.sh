@@ -202,6 +202,12 @@ echo "==> Verifying v1.9.2 menu bar glance contract"
 echo "==> Verifying v1.9.2 release readiness"
 ./script/verify_v192_release_readiness.sh --self-test
 
+echo "==> Verifying v1.9.3 Codex remaining credits contract"
+./script/verify_v193_codex_remaining_credits_contract.sh --self-test
+
+echo "==> Verifying v1.9.3 release readiness"
+./script/verify_v193_release_readiness.sh --self-test
+
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test
 

@@ -14,11 +14,12 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 초기화 응답 전에 종료하는 등 경로가 사용량을 내지 못하면 ChatGPT.app과 Codex.app
 안에서만 다른 패키지 진입점을 찾아 저장합니다. 프로세스가 살아 있는 시간 초과는
 경로 교체 이유가 아닙니다.
+v1.9.3은 Codex 1번 탭에 잔여 크레딧을 더합니다. 잔액이 있을 때만 초기화권 아래
+별도 항목으로 보이고, 없는 항목은 사라집니다. 아래쪽 빈 높이는 주간 그래프만 키웁니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
-버전 번호의 minor 구간은 `0~9`까지만 사용합니다. `v1.9.2` 다음 기능 버전은
-`v1.9.3`입니다.
+버전 번호의 minor 구간은 `0~9`까지만 사용합니다. 현재 기능 버전은 `v1.9.3`입니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -65,7 +66,7 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 | v1.9.0 | 선택형 Codex/Grok 사용량 mode와 Claude hide | GitHub Release publish·설치본 checksum·final-state 완료, GUI·live Grok billing·Finder drag 관찰 미수행 | 후속 1~5 코드 완료(부분 GUI), 남은 6: GUI 직접 확인 |
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
-| v1.9.3 | Codex 잔여 크레딧 | 1번 탭 초기화권 아래, 같은 글자 크기. 크레딧이 없으면 숨김 | 개발 중 |
+| v1.9.3 | Codex 잔여 크레딧 | 코드 완료. 1번 탭은 초기화권과 잔여 크레딧을 나누고, 없는 항목은 숨기며, 빈 높이는 주간 그래프만 늘림. 잔액은 소수점을 버린 정수 | Finder 설치는 사용자가 published DMG를 드래그한 경우만 기록 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -856,6 +857,36 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 - 첫 focused test 시도는 Xcode license 미동의로 시작되지 않았고, Command Line Tools의
   `/usr/bin/swift test --filter CodexAppServerClientTests`는 XCTest 모듈 누락으로 빌드에 실패했습니다.
   전체 `swift test`와 앱 Debug build, 앱 재실행·GUI 확인은 수행하지 않았습니다.
+
+## v1.9.3: Codex 잔여 크레딧
+
+`v1.9.3`은 Codex 1번 탭에서 잔여 크레딧과 초기화권을 서로 다른 항목으로 보여 줍니다.
+잔액은 `account/rateLimits/read`의 `credits`이고, 초기화권 장수는
+`rateLimitResetCredits.availableCount`입니다. 둘을 섞지 않습니다.
+
+세부 계약은 [Docs/V193CodexRemainingCredits.md](Docs/V193CodexRemainingCredits.md),
+릴리즈 순서는 [Docs/V193ReleaseReadiness.md](Docs/V193ReleaseReadiness.md)에 둡니다.
+
+화면:
+
+1. 주간 그래프, 초기화권, 잔여 크레딧, 데이터 상태 순입니다.
+2. 잔여 크레딧이나 초기화권이 없으면 그 항목은 숨깁니다.
+3. 데이터 상태는 바닥에 두고, 그 위는 짧은 간격만 둡니다.
+4. 남는 높이는 주간 그래프만 키웁니다. 스크롤은 생기지 않습니다.
+5. 잔액 소수점은 반올림하지 않고 버립니다. `무제한`은 그대로 둡니다.
+6. Grok 주간 그래프 높이는 바꾸지 않습니다.
+
+완료 기준:
+
+- `git diff --check`, focused test, `swift test`, Xcode Debug build가 통과합니다.
+- `verify_v193_codex_remaining_credits_contract.sh --self-test`가 통과합니다.
+- README 팝오버 스크린샷은 상하좌우가 잘리지 않습니다.
+- 열지 않은 탭과 Finder 설치는 `미수행`으로 남깁니다.
+
+추천 모델: `grok-4.6`
+추론 수준: 중간 (medium)
+선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 1 + 변경 범위 1 = 4점.
+표시만 바꾸고 CLI, cache, 인증 계약은 유지합니다.
 
 ## RunCat UI 참고 방향
 

@@ -81,12 +81,42 @@ enum CodexUsagePanelLayout {
     static let sectionSpacing: CGFloat = 3
     static let weeklyGraphHeight: CGFloat = 56
     static let weeklyOnlyGraphHeight: CGFloat = 89
+    /// Plot height when both the reset-credit row and the remaining-credit row are visible.
+    static let weeklyGraphHeightWithRemainingCredit: CGFloat = 36
+    static let weeklyOnlyGraphHeightWithRemainingCredit: CGFloat = 51
     static let weeklyGraphYAxisWidth: CGFloat = 28
     static let weeklyGraphAxisSpacing: CGFloat = 5
     static let weeklyGraphTimelineHeight: CGFloat = 10
+    /// Gap under the graph card, before the first credit row.
+    static let detailGraphSpacing: CGFloat = 8
+    /// Gap between 초기화권 and 잔여 크레딧.
+    static let detailCardSpacing: CGFloat = 4
+    /// Small gap above the data-status line, which sits on the column bottom.
+    static let detailStatusSpacing: CGFloat = 12
 
-    static func weeklyGraphHeight(fiveHourIsAvailable: Bool) -> CGFloat {
-        fiveHourIsAvailable ? weeklyGraphHeight : weeklyOnlyGraphHeight
+    static func weeklyGraphHeight(
+        fiveHourIsAvailable: Bool,
+        showsResetCredit: Bool = true,
+        showsRemainingCredit: Bool = false
+    ) -> CGFloat {
+        if fiveHourIsAvailable {
+            switch (showsResetCredit, showsRemainingCredit) {
+            case (true, true):
+                return weeklyGraphHeightWithRemainingCredit
+            case (false, false):
+                return 93
+            default:
+                return weeklyGraphHeight
+            }
+        }
+        switch (showsResetCredit, showsRemainingCredit) {
+        case (true, true):
+            return weeklyOnlyGraphHeightWithRemainingCredit
+        case (false, false):
+            return 127
+        default:
+            return weeklyOnlyGraphHeight
+        }
     }
 
     static var weeklyGraphPlotStartX: CGFloat {

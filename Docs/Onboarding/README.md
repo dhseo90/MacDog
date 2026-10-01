@@ -3,7 +3,7 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: published release는 `v1.9.2`. 설정 visible mode는 `Codex` 또는 `Grok`입니다.
+> 기준 상태: 현재 릴리즈는 `v1.9.3`. 설정 visible mode는 `Codex` 또는 `Grok`입니다.
 > 하나 또는 둘 다 켜고 메인을 지정합니다. Claude source는 남아 있지만 기본 UI에서는
 > 숨깁니다. 합산·비교·자동 fallback은 없습니다.
 
@@ -91,6 +91,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | selected provider | 설정에서 켠 `Codex`/`Grok`. 하나 또는 둘 다 가능하고 메인을 지정함. Claude는 hidden re-enable만. 합산·비교·fallback은 없음 |
 | v1.9.1 selection | 활성 bit mask와 메인 provider. 1번 탭은 카드 게이지를 함께 두고 상세는 메인만 봄 |
 | v1.9.2 glance | 메뉴바 잔여 사용량 글자 축소, 설정 옵션, uninstall이 그래프 history를 보존 |
+| v1.9.3 잔여 크레딧 | Codex 1번 탭에서 잔액이 있을 때만 보이는 항목. 초기화권 장수와 별개이며 소수점은 버림 |
 | usage window | provider가 제공하는 사용량 구간. Codex는 5시간과 주간 window를 해석함. Grok는 주간만 있음 |
 | weekly-only | Codex가 일시적으로 5시간 window를 제공하지 않고 주간 window만 제공하는 정상 partial success |
 | remaining | `100 - usedPercent`로 계산한 공식 잔여율 |
@@ -118,7 +119,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 ## 첫날 체크리스트
 
 - [ ] [../../README.md](../../README.md)에서 현재 릴리즈와 사용자 기능을 읽었다.
-- [ ] [../../ROADMAP.md](../../ROADMAP.md)에서 현재 완료 범위와 개발 중인 `v1.9.2` 범위를 확인했다.
+- [ ] [../../ROADMAP.md](../../ROADMAP.md)에서 완료 범위와 `v1.9.3` Codex 잔여 크레딧을 확인했다.
 - [ ] [Architecture.md](Architecture.md)의 두 provider 흐름과 cache 소유권을 설명할 수 있다.
 - [ ] [DevelopmentEnvironment.md](DevelopmentEnvironment.md)에 따라 Xcode·Swift 경로를 확인했다.
 - [ ] `swift test --no-parallel` 또는 현재 작업 범위의 focused test를 통과시켰다.
@@ -132,6 +133,7 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | --- | --- |
 | v1.8.0 Codex weekly-only 조회·cache·설치본 UI | published release smoke에서 확인됨 |
 | v1.9.2 메뉴바 glance·uninstall history | GitHub Release publish, Finder 재설치, 그래프 history 보존 확인됨 |
+| v1.9.3 Codex 잔여 크레딧 | 코드와 README 화면. Finder 설치는 공개 DMG를 드래그한 뒤에만 기록 |
 | v1.9.0 Claude hide·Grok weekly-only source/test | GitHub Release publish, 설치본 checksum, final-state 확인됨. Finder drag 관찰·popover GUI는 미수행 |
 | Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
 | Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |

@@ -33,6 +33,77 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
     }
 
+    func testReadmePopoverScreenshotKeepsMarginOnEverySide() {
+        let now = MacDogDemoData.readmeScreenshotTimestamp
+        let defaults = UserDefaults.standard
+        let previousModule = defaults.object(forKey: RunnerPreferences.popoverModuleKey)
+        defer {
+            if let previousModule {
+                defaults.set(previousModule, forKey: RunnerPreferences.popoverModuleKey)
+            } else {
+                defaults.removeObject(forKey: RunnerPreferences.popoverModuleKey)
+            }
+        }
+        defaults.set(MacDogPopoverModule.codex.rawValue, forKey: RunnerPreferences.popoverModuleKey)
+        let view = UsagePopoverView(
+            state: MacDogDemoData.state(
+                selection: UsageProviderSelection(
+                    enabled: [.codex, .grok],
+                    main: .codex,
+                    detailGraphVisible: true
+                ),
+                now: now
+            ),
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+        let canvas = Self.readmePopoverCanvasSize
+        let margin = Self.readmePopoverMargin
+        let hostingView = readmeHostingView(view)
+        _ = snapshot(hostingView: hostingView, size: canvas, scale: 2)
+        hostingView.needsLayout = true
+        hostingView.layoutSubtreeIfNeeded()
+        hostingView.displayIfNeeded()
+
+        let image = snapshot(hostingView: hostingView, size: canvas, scale: 2)
+        XCTAssertEqual(image.size.width, canvas.width, accuracy: 0.5)
+        XCTAssertEqual(image.size.height, canvas.height, accuracy: 0.5)
+
+        func unitPoint(x: CGFloat, y: CGFloat) -> CGPoint {
+            CGPoint(x: x / canvas.width, y: y / canvas.height)
+        }
+        let left = unitPoint(x: 2, y: canvas.height / 2)
+        let right = unitPoint(x: canvas.width - 3, y: canvas.height / 2)
+        let top = unitPoint(x: canvas.width / 2, y: 2)
+        let bottom = unitPoint(x: canvas.width / 2, y: canvas.height - 3)
+        XCTAssertLessThan(screenshotColorDistance(in: image, from: left, to: right), 0.04)
+        XCTAssertLessThan(screenshotColorDistance(in: image, from: top, to: bottom), 0.04)
+        XCTAssertLessThan(screenshotColorDistance(in: image, from: left, to: top), 0.04)
+        XCTAssertGreaterThan(
+            screenshotColorDistance(
+                in: image,
+                from: left,
+                to: unitPoint(x: canvas.width * 0.85, y: canvas.height * 0.20)
+            ),
+            0.2
+        )
+
+        let names = ["codex-reset-credits", "codex-remaining-credits", "codex-data-status"]
+        let probes = allDescendants(of: hostingView).filter { view in
+            names.contains(view.identifier?.rawValue ?? "")
+        }
+        XCTAssertEqual(Set(probes.compactMap { $0.identifier?.rawValue }), Set(names))
+        for probe in probes {
+            let frame = probe.convert(probe.bounds, to: hostingView)
+            XCTAssertGreaterThanOrEqual(frame.minX, margin - 0.5, probe.identifier?.rawValue ?? "")
+            XCTAssertGreaterThanOrEqual(frame.minY, margin - 0.5, probe.identifier?.rawValue ?? "")
+            XCTAssertLessThanOrEqual(frame.maxX, canvas.width - margin + 0.5, probe.identifier?.rawValue ?? "")
+            XCTAssertLessThanOrEqual(frame.maxY, canvas.height - margin + 0.5, probe.identifier?.rawValue ?? "")
+            XCTAssertGreaterThan(frame.width, 20, probe.identifier?.rawValue ?? "")
+            XCTAssertGreaterThan(frame.height, 8, probe.identifier?.rawValue ?? "")
+        }
+    }
+
     func testUsagePopoverRendersSingleCodexMainDualGrokMainDualAndGraphHiddenStates() throws {
         let now = MacDogDemoData.readmeScreenshotTimestamp
         let cases: [(String, UsageProviderSelection, Int)] = [
@@ -290,7 +361,19 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             CodexRemainingCreditTextFormatter.displayText(
                 for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "146.0874125000")
             ),
-            "146.0874125"
+            "146"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12.9")
+            ),
+            "12"
+        )
+        XCTAssertEqual(
+            CodexRemainingCreditTextFormatter.displayText(
+                for: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "0.9")
+            ),
+            "0"
         )
         XCTAssertEqual(
             CodexRemainingCreditTextFormatter.displayText(
@@ -305,11 +388,12 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             "promo"
         )
 
-        let hidden = resetCreditsBlockHeight(remainingCreditText: nil)
-        let shown = resetCreditsBlockHeight(remainingCreditText: "12")
-        XCTAssertGreaterThan(shown, hidden + 8)
-        XCTAssertLessThan(shown - hidden, 28)
-        XCTAssertLessThanOrEqual(shown, 96)
+        let resetHeight = hostedHeight(
+            of: CodexResetCreditsBlock(resetCredits: Self.resetCredits(count: 3, shuffled: false))
+        )
+        let creditHeight = hostedHeight(of: CodexRemainingCreditsBlock(text: "12"))
+        XCTAssertEqual(resetHeight, creditHeight, accuracy: 4)
+        XCTAssertLessThanOrEqual(resetHeight, 96)
 
         let absentPanel = codexPanelHeight(credits: nil)
         let flaggedOffPanel = codexPanelHeight(
@@ -319,8 +403,126 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             credits: CreditsSnapshot(hasCredits: true, unlimited: false, balance: "12")
         )
         XCTAssertEqual(absentPanel, flaggedOffPanel, accuracy: 0.5)
-        XCTAssertGreaterThan(presentPanel, absentPanel + 8)
+        XCTAssertGreaterThan(presentPanel, absentPanel)
         XCTAssertLessThanOrEqual(presentPanel, MacDogPopoverLayout.nonScrollableContentHeight)
+        XCTAssertFalse(CodexResetCreditTextFormatter.showsRow(nil))
+        XCTAssertFalse(CodexResetCreditTextFormatter.showsRow(RateLimitResetCreditsSummary(availableCount: 0)))
+        XCTAssertTrue(CodexResetCreditTextFormatter.showsRow(RateLimitResetCreditsSummary(availableCount: 1)))
+    }
+
+    func testCodexTabFitsOnOnePageWithoutScrollingWhenCreditsArePresent() {
+        let now = MacDogDemoData.readmeScreenshotTimestamp
+        let dual = UsageProviderSelection(
+            enabled: [.codex, .grok],
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let codexOnly = UsageProviderSelection(
+            enabled: .codex,
+            main: .codex,
+            detailGraphVisible: true
+        )
+        let dualState = MacDogDemoData.state(selection: dual, now: now)
+        let cases: [(String, UsageMonitorState)] = [
+            ("dual-both-five-hour", dualState),
+            ("codex-only-both-five-hour", MacDogDemoData.state(selection: codexOnly, now: now)),
+            ("dual-both-weekly-only", adjustedCodexState(from: dualState, weeklyOnly: true)),
+            (
+                "dual-reset-only-five-hour",
+                adjustedCodexState(from: dualState, credits: .value(nil))
+            ),
+            (
+                "dual-reset-only-weekly-only",
+                adjustedCodexState(from: dualState, weeklyOnly: true, credits: .value(nil))
+            ),
+            (
+                "dual-credit-only-five-hour",
+                adjustedCodexState(
+                    from: dualState,
+                    resetCredits: .value(RateLimitResetCreditsSummary(availableCount: 0))
+                )
+            ),
+            (
+                "dual-credit-only-weekly-only",
+                adjustedCodexState(
+                    from: dualState,
+                    weeklyOnly: true,
+                    resetCredits: .value(RateLimitResetCreditsSummary(availableCount: 0))
+                )
+            ),
+            (
+                "dual-neither-five-hour",
+                adjustedCodexState(
+                    from: dualState,
+                    resetCredits: .value(nil),
+                    credits: .value(nil)
+                )
+            ),
+            (
+                "dual-neither-weekly-only",
+                adjustedCodexState(
+                    from: dualState,
+                    weeklyOnly: true,
+                    resetCredits: .value(nil),
+                    credits: .value(nil)
+                )
+            )
+        ]
+
+        for (label, state) in cases {
+            let metrics = codexScrollMetrics(state: state, now: now)
+            let bottomGap = metrics.visibleHeight - metrics.contentHeight
+            XCTAssertLessThanOrEqual(
+                metrics.contentHeight,
+                metrics.visibleHeight + 0.5,
+                "\(label) slack \(bottomGap); \(metrics.debug)"
+            )
+            XCTAssertGreaterThanOrEqual(
+                metrics.contentHeight,
+                metrics.visibleHeight - 4,
+                "\(label) bottom gap \(bottomGap); \(metrics.debug)"
+            )
+            if label.hasSuffix("both-five-hour") {
+                let layout = codexColumnFrames(state: state, now: now)
+                XCTAssertGreaterThan(
+                    layout.resetMinY,
+                    label.hasPrefix("codex-only") ? 150 : 112,
+                    "\(label) graph should take the spare height; \(layout.debug)"
+                )
+                XCTAssertEqual(
+                    layout.resetToCredit,
+                    CodexUsagePanelLayout.detailCardSpacing,
+                    accuracy: 1,
+                    layout.debug
+                )
+                XCTAssertEqual(
+                    layout.creditToStatus,
+                    CodexUsagePanelLayout.detailStatusSpacing,
+                    accuracy: 1,
+                    layout.debug
+                )
+                XCTAssertLessThan(layout.resetToCredit, layout.creditToStatus, layout.debug)
+                XCTAssertLessThanOrEqual(layout.statusBottomGap, 6, layout.debug)
+            }
+        }
+    }
+
+    func testGrokWeeklyGraphStaysAtTheFixedPlotHeight() {
+        let now = MacDogDemoData.readmeScreenshotTimestamp
+        let state = MacDogDemoData.state(
+            selection: UsageProviderSelection(
+                enabled: [.codex, .grok],
+                main: .grok,
+                detailGraphVisible: true
+            ),
+            now: now
+        )
+        let metrics = codexScrollMetrics(state: state, now: now)
+        XCTAssertLessThan(
+            metrics.contentHeight,
+            metrics.visibleHeight - 4,
+            "Grok plot should stay fixed instead of filling the column; \(metrics.debug)"
+        )
     }
 
     func testCodexUsagePanelKeepsPrimarySectionsVisibleWithoutDisclosure() throws {
@@ -490,13 +692,19 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         XCTAssertFalse(gaugesSource.contains("Gemini"))
         let codexPanelSourceForOrder = try String(contentsOfFile: "Sources/MacDog/Popover/CodexUsagePanel.swift")
         let graphRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "WeeklyRemainingHistoryBlock("))
-        let creditsRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "CodexResetCreditsBlock("))
-        let statusRange = try XCTUnwrap(codexPanelSourceForOrder.range(of: "CodexUsageDataStatusBlock("))
-        XCTAssertLessThan(graphRange.lowerBound, creditsRange.lowerBound)
-        XCTAssertLessThan(creditsRange.lowerBound, statusRange.lowerBound)
+        let afterGraph = graphRange.upperBound..<codexPanelSourceForOrder.endIndex
+        let creditsRange = try XCTUnwrap(
+            codexPanelSourceForOrder.range(of: "CodexResetCreditsBlock(", range: afterGraph)
+        )
+        let afterCredits = creditsRange.upperBound..<codexPanelSourceForOrder.endIndex
+        XCTAssertNotNil(
+            codexPanelSourceForOrder.range(of: "detailStatusSpacing", range: afterCredits)
+        )
         XCTAssertFalse(codexPanelSourceForOrder.contains("Text(\"현재 사용량\")"))
         XCTAssertFalse(codexPanelSourceForOrder.contains("CodexWeeklyPacemakerBlock("))
-        XCTAssertTrue(codexPanelSourceForOrder.contains("fiveHourIsAvailable: limit.fiveHour != nil"))
+        XCTAssertTrue(
+            codexPanelSourceForOrder.contains("fiveHourIsAvailable: state.codexLimit?.fiveHour != nil")
+        )
         let graphSource = try String(contentsOfFile: "Sources/MacDog/Popover/WeeklyRemainingHistoryViews.swift")
         let creditsSource = try String(contentsOfFile: "Sources/MacDog/Popover/CodexResetCreditsViews.swift")
         XCTAssertTrue(graphSource.contains(".strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)"))
@@ -823,7 +1031,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
                 now: screenshotNow
             )
-            let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
+            let image = renderReadmePopover(view)
             try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-\(module.rawValue).png"))
         }
 
@@ -847,7 +1055,7 @@ final class PopoverScreenshotRendererTests: XCTestCase {
                 notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
                 now: screenshotNow
             )
-            let image = render(view: view, size: NSSize(width: 370, height: 408), scale: 2)
+            let image = renderReadmePopover(view)
             try write(image: image, to: outputDirectory.appendingPathComponent("macdog-popover-grok.png"))
         }
 
@@ -1186,12 +1394,172 @@ final class PopoverScreenshotRendererTests: XCTestCase {
         )
     }
 
-    private func resetCreditsBlockHeight(remainingCreditText: String?) -> CGFloat {
-        let view = CodexResetCreditsBlock(
-            resetCredits: Self.resetCredits(count: 3, shuffled: false),
-            remainingCreditText: remainingCreditText
+    private enum RowValue<Value> {
+        case keep
+        case value(Value?)
+    }
+
+    private func adjustedCodexState(
+        from state: UsageMonitorState,
+        weeklyOnly: Bool = false,
+        resetCredits: RowValue<RateLimitResetCreditsSummary> = .keep,
+        credits: RowValue<CreditsSnapshot> = .keep
+    ) -> UsageMonitorState {
+        guard let report = state.report, let limit = report.codexLimit else { return state }
+        let resolvedResetCredits: RateLimitResetCreditsSummary? = switch resetCredits {
+        case .keep:
+            report.resetCredits
+        case .value(let resetCredits):
+            resetCredits
+        }
+        let resolvedCredits: CreditsSnapshot? = switch credits {
+        case .keep:
+            limit.credits
+        case .value(let credits):
+            credits
+        }
+        let weeklyLimit = UsageLimitReport(
+            limitId: limit.limitId,
+            limitName: limit.limitName,
+            primary: weeklyOnly ? nil : limit.primary,
+            secondary: weeklyOnly ? limit.weekly : limit.secondary,
+            credits: resolvedCredits,
+            planType: limit.planType,
+            rateLimitReachedType: limit.rateLimitReachedType
         )
-        return hostedHeight(of: view)
+        var limits = report.limits
+        limits["codex"] = weeklyLimit
+        let weeklyReport = CodexUsageReport(
+            generatedAt: report.generatedAt,
+            source: report.source,
+            planType: report.planType,
+            credits: resolvedCredits,
+            resetCredits: resolvedResetCredits,
+            rateLimitReachedType: report.rateLimitReachedType,
+            limits: limits
+        )
+        return UsageMonitorState(
+            report: weeklyReport,
+            cacheSnapshot: state.cacheSnapshot,
+            fiveHourUsageHistory: state.fiveHourUsageHistory,
+            weeklyUsageHistory: state.weeklyUsageHistory,
+            resetWindowHistory: state.resetWindowHistory,
+            errorMessage: state.errorMessage,
+            displayBasis: state.displayBasis,
+            reducedMotion: state.reducedMotion,
+            animationPaused: state.animationPaused,
+            systemMetrics: state.systemMetrics,
+            systemMetricsHistory: state.systemMetricsHistory,
+            sleepPreventionStatus: state.sleepPreventionStatus,
+            sleepPreventionTriggerStatus: state.sleepPreventionTriggerStatus,
+            privilegedHelperInstallSnapshot: state.privilegedHelperInstallSnapshot,
+            claudeUsagePreview: state.claudeUsagePreview,
+            grokUsage: state.grokUsage,
+            usageProviderMode: state.usageProviderMode,
+            usageProviderSelection: state.usageProviderSelection,
+            runnerEvaluationDate: state.runnerEvaluationDate
+        )
+    }
+
+    private struct CodexScrollMetrics {
+        let contentHeight: CGFloat
+        let visibleHeight: CGFloat
+        let debug: String
+    }
+
+    private struct CodexColumnFrames {
+        let plotHeight: CGFloat
+        let graphMaxY: CGFloat
+        let resetMinY: CGFloat
+        let resetMaxY: CGFloat
+        let creditMinY: CGFloat
+        let creditMaxY: CGFloat
+        let statusMinY: CGFloat
+        let creditToStatus: CGFloat
+        let resetToCredit: CGFloat
+        let statusBottomGap: CGFloat
+        let debug: String
+    }
+
+    private func codexScrollMetrics(state: UsageMonitorState, now: Int) -> CodexScrollMetrics {
+        let view = UsagePopoverView(
+            state: state,
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+        let size = MacDogPopoverLayout.outerSize
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+        hostingView.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        window.layoutIfNeeded()
+
+        let scrollViews = allDescendants(of: hostingView).compactMap { $0 as? NSScrollView }
+        guard let scrollView = scrollViews.max(by: { $0.bounds.height < $1.bounds.height }) else {
+            return CodexScrollMetrics(contentHeight: 0, visibleHeight: 0, debug: "no NSScrollView")
+        }
+        let document = scrollView.documentView
+        let contentHeight = max(document?.frame.height ?? 0, document?.fittingSize.height ?? 0)
+        let visibleHeight = scrollView.contentView.bounds.height
+        let debug = "scrolls=\(scrollViews.count) content=\(contentHeight) visible=\(visibleHeight) document=\(document?.frame ?? .zero)"
+        return CodexScrollMetrics(contentHeight: contentHeight, visibleHeight: visibleHeight, debug: debug)
+    }
+
+    private func codexColumnFrames(state: UsageMonitorState, now: Int) -> CodexColumnFrames {
+        let metricsView = UsagePopoverView(
+            state: state,
+            notificationAuthorizationClient: StaticUsageNotificationAuthorizationClient(status: .notDetermined),
+            now: Date(timeIntervalSince1970: TimeInterval(now))
+        )
+        let size = MacDogPopoverLayout.outerSize
+        let hostingView = NSHostingView(rootView: metricsView)
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+        hostingView.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hostingView
+        hostingView.layoutSubtreeIfNeeded()
+        window.layoutIfNeeded()
+
+        let scrollViews = allDescendants(of: hostingView).compactMap { $0 as? NSScrollView }
+        let document = scrollViews.max(by: { $0.bounds.height < $1.bounds.height })?.documentView
+        let root = document ?? hostingView
+        func frame(_ identifier: String) -> NSRect {
+            let matches = allDescendants(of: root).filter { $0.identifier?.rawValue == identifier }
+            let match = matches.max { $0.bounds.height < $1.bounds.height }
+            return match?.convert(match?.bounds ?? .zero, to: root) ?? .null
+        }
+        let plot = frame("weekly-graph-plot")
+        let graph = plot
+        let reset = frame("codex-reset-credits")
+        let credit = frame("codex-remaining-credits")
+        let status = frame("codex-data-status")
+        let documentHeight = root.bounds.height
+        let debug = "plot=\(plot) reset=\(reset) credit=\(credit) status=\(status) document=\(documentHeight)"
+        return CodexColumnFrames(
+            plotHeight: plot.height,
+            graphMaxY: graph.maxY,
+            resetMinY: reset.minY,
+            resetMaxY: reset.maxY,
+            creditMinY: credit.minY,
+            creditMaxY: credit.maxY,
+            statusMinY: status.minY,
+            creditToStatus: status.minY - credit.maxY,
+            resetToCredit: credit.minY - reset.maxY,
+            statusBottomGap: documentHeight - status.maxY,
+            debug: debug
+        )
     }
 
     private func codexPanelHeight(credits: CreditsSnapshot?) -> CGFloat {
@@ -1276,6 +1644,42 @@ final class PopoverScreenshotRendererTests: XCTestCase {
             availableCount: count,
             credits: credits
         )
+    }
+
+    private static let readmePopoverSize = NSSize(width: 370, height: 408)
+    /// Keeps the rounded popover shell inside the bitmap so the border is not clipped.
+    private static let readmePopoverMargin: CGFloat = 12
+    private static var readmePopoverCanvasSize: NSSize {
+        NSSize(
+            width: readmePopoverSize.width + (readmePopoverMargin * 2),
+            height: readmePopoverSize.height + (readmePopoverMargin * 2)
+        )
+    }
+
+    private func renderReadmePopover<V: View>(_ view: V) -> NSImage {
+        let hostingView = readmeHostingView(view)
+        let canvas = Self.readmePopoverCanvasSize
+        _ = snapshot(hostingView: hostingView, size: canvas, scale: 2)
+        hostingView.needsLayout = true
+        hostingView.layoutSubtreeIfNeeded()
+        hostingView.displayIfNeeded()
+        return snapshot(hostingView: hostingView, size: canvas, scale: 2)
+    }
+
+    private func readmeHostingView<V: View>(_ view: V) -> NSHostingView<AnyView> {
+        let canvas = Self.readmePopoverCanvasSize
+        let root = AnyView(
+            view
+                .padding(Self.readmePopoverMargin)
+                .frame(width: canvas.width, height: canvas.height)
+                .background(Color(nsColor: .windowBackgroundColor))
+        )
+        let hostingView = NSHostingView(rootView: root)
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+        hostingView.frame = NSRect(origin: .zero, size: canvas)
+        hostingView.setFrameSize(canvas)
+        hostingView.layoutSubtreeIfNeeded()
+        return hostingView
     }
 
     private func renderUsagePopover(_ state: UsageMonitorState) -> NSImage {

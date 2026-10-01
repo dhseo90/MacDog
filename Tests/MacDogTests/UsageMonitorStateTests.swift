@@ -2030,6 +2030,38 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertEqual(CodexUsagePanelLayout.weeklyOnlyGraphHeight, 89)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: true), 56)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false), 89)
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: true, showsRemainingCredit: true),
+            36
+        )
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphHeight(fiveHourIsAvailable: false, showsRemainingCredit: true),
+            51
+        )
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphHeight(
+                fiveHourIsAvailable: true,
+                showsResetCredit: false,
+                showsRemainingCredit: true
+            ),
+            56
+        )
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphHeight(
+                fiveHourIsAvailable: true,
+                showsResetCredit: false,
+                showsRemainingCredit: false
+            ),
+            93
+        )
+        XCTAssertEqual(
+            CodexUsagePanelLayout.weeklyGraphHeight(
+                fiveHourIsAvailable: false,
+                showsResetCredit: false,
+                showsRemainingCredit: false
+            ),
+            127
+        )
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphYAxisWidth, 28)
         XCTAssertEqual(CodexUsagePanelLayout.weeklyGraphAxisSpacing, 5)
         XCTAssertEqual(
