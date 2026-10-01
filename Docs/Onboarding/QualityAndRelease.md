@@ -224,9 +224,9 @@ release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)
 
 | 항목 | 기준 |
 | --- | --- |
-| published release | `v1.9.2` |
-| current development | published `v1.9.2` |
-| release tag | signed annotated `v1.9.2`, GitHub `Verified` |
+| published release | `v1.9.3` |
+| current development | `v1.9.3` Codex 잔여 크레딧 |
+| release tag | signed annotated `v1.9.3`. publish 전에 GitHub `Verified` |
 | default provider | `Codex` |
 | visible provider selection | Codex/Grok 하나 또는 둘, 메인 지정. 합산 없음 |
 | Claude | source 보존, 기본 UI 숨김. hidden re-enable만 |
@@ -237,5 +237,6 @@ release 또는 후속 이슈를 남길 때는 [../../AGENTS.md](../../AGENTS.md)
 | 기본 Widget 포함 | 아니오 |
 | Developer ID/notarization stable | 별도 권한·milestone 전 제외 |
 
+직전 published `v1.9.2` 기록은 [../V192ReleaseReadiness.md](../V192ReleaseReadiness.md)에 둡니다.
 이 표의 release-specific 값이 바뀌면 `README.md`, `ROADMAP.md`, version release readiness와
 이 문서를 같은 변경에서 갱신합니다.

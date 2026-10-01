@@ -11,11 +11,15 @@ published `v1.9.0`은 provider를 하나만 고릅니다.
 
 ## 설치
 
-현재 GitHub Release는 [v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)입니다.
-[MacDog-1.9.2.dmg](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)를 받아 Finder에서
+현재 GitHub Release는 [v1.9.3](https://github.com/dhseo90/MacDog/releases/tag/v1.9.3)입니다.
+[MacDog-1.9.3.dmg](https://github.com/dhseo90/MacDog/releases/download/v1.9.3/MacDog-1.9.3.dmg)를 받아 Finder에서
 `MacDog.app`을 `Applications`로 드래그한 뒤 실행합니다.
 
-`v1.9.2`를 다시 릴리즈합니다. `CODEX_CLI_PATH`로 잔여량을 읽고, 그 프로세스가 초기화 전에 끝나면 `ChatGPT.app`과 `Codex.app` 안에서 다른 경로를 찾아 저장합니다.
+Codex 1번 탭은 잔여 크레딧이 있을 때만 초기화권 아래에 그 잔액을 보여 줍니다.
+없는 항목은 숨깁니다. 직전 공개본은
+[v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)입니다.
+`v1.9.2`는 `CODEX_CLI_PATH`로 잔여량을 읽고, 그 프로세스가 초기화 전에 끝나면
+`ChatGPT.app`과 `Codex.app` 안에서 다른 경로를 찾습니다.
 
 첫 실행이 `~/bin/codex-usage`, 활성 provider LaunchAgent, 로그인 항목을 맞춥니다. 둘 다
 켜면 Codex/Grok writer를 함께 두고, 하나만 켜면 해당 writer만 남깁니다.
@@ -25,7 +29,7 @@ Apple Developer Program이 필요하므로 현재 구현 계획에서 제외합�
 
 ## 화면
 
-v1.9.2 demo snapshot입니다. 값은 환경마다 다릅니다.
+v1.9.3 demo snapshot입니다. 값은 환경마다 다릅니다. 팝오버는 테두리가 잘리지 않게 여백을 두고 찍었습니다.
 
 <table>
   <tr>
@@ -67,7 +71,7 @@ v1.9.2 demo snapshot입니다. 값은 환경마다 다릅니다.
 | 화면 | 내용 |
 | --- | --- |
 | 메뉴바 | 메인 provider 사용량으로 러너 속도. `현재 잔여 사용량`이 켜져 있으면 주간 잔여 숫자, `% 표기`로 `%` |
-| 사용량 | 활성 provider 게이지 카드. 메인의 주간 그래프, Codex 초기화권 또는 Grok pace |
+| 사용량 | 활성 provider 게이지 카드. 메인의 주간 그래프, Codex 초기화권·잔여 크레딧 또는 Grok pace |
 | 활성 자원 | CPU, 메모리, 저장, 네트워크 |
 | 잠들지 않기 | 끔 / 시간 / 상태 기준 |
 | 배터리 | Apple silicon native Charge Limit 80–100% |
@@ -93,8 +97,8 @@ Codex 원천은 app-server `account/rateLimits/read`입니다. 주간 history는
 ## 개발
 
 ```sh
-MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run
-MACDOG_APP_VERSION=1.9.2 ./script/build_and_run.sh
+MACDOG_APP_VERSION=1.9.3 ./script/check.sh --no-run
+MACDOG_APP_VERSION=1.9.3 ./script/build_and_run.sh
 ```
 
 명령 전체는 [Docs/Scripts.md](Docs/Scripts.md), 로컬 설치는
@@ -102,18 +106,23 @@ MACDOG_APP_VERSION=1.9.2 ./script/build_and_run.sh
 
 ## 현재 릴리즈
 
-GitHub Releases Latest: `v1.9.2`. 공개본 검증 예는
-`MACDOG_APP_VERSION=1.9.2 ./script/check.sh --no-run`입니다. 코드 merge head는
-`3756b1abc4306add7ab77aa106b3952e6043f1ab`입니다. 이전 공개본은
+GitHub Releases Latest: `v1.9.3`. 공개본 검증 예는
+`MACDOG_APP_VERSION=1.9.3 ./script/check.sh --no-run`입니다.
+
+이전 공개본은
+[v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)
+(`3756b1abc4306add7ab77aa106b3952e6043f1ab`),
 [v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)
 (`750dda20d4f7c62253f8c33201db316d5754e935`),
 [v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)
-(`b7072003830798bb1603768c4efb0b41409100f6`)과
+(`b7072003830798bb1603768c4efb0b41409100f6`),
 [v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)
 (`14d716a88ea10a77344a4f9aa3651c23b1160f8c`)입니다.
 
-증거는 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)에 있습니다.
-v1.9.2 계약은 [Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)입니다.
+이번 증거는 [Docs/V193ReleaseReadiness.md](Docs/V193ReleaseReadiness.md),
+계약은 [Docs/V193CodexRemainingCredits.md](Docs/V193CodexRemainingCredits.md)입니다.
+v1.9.2 기록은 [Docs/V192ReleaseReadiness.md](Docs/V192ReleaseReadiness.md)와
+[Docs/V192MenuBarGlancePolish.md](Docs/V192MenuBarGlancePolish.md)에 있습니다.
 
 ## 알림 경계
 
@@ -133,7 +142,9 @@ Apple Developer 계정이 필요한 기능명은 나열하지 않습니다.
 | [Docs/ReleasePackaging.md](Docs/ReleasePackaging.md) | DMG와 릴리즈 흐름 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | PR |
 
-버전 기록: [V192](Docs/V192MenuBarGlancePolish.md) ·
+버전 기록: [V193](Docs/V193CodexRemainingCredits.md) ·
+[V193ReleaseReadiness](Docs/V193ReleaseReadiness.md) ·
+[V192](Docs/V192MenuBarGlancePolish.md) ·
 [V192ReleaseReadiness](Docs/V192ReleaseReadiness.md) ·
 [V191](Docs/V191MultiProviderUsage.md) ·
 [V191ReleaseReadiness](Docs/V191ReleaseReadiness.md) ·

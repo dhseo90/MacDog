@@ -90,6 +90,8 @@ Node.js/npm이 없는 환경에서는 Node.js/npm 설치가 필요합니다. 전
 | `script/verify_v191_release_readiness.sh --self-test` | v1.9.1 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, published `v1.9.1` 사실, Finder 설치와 사용량 탭 GUI, 남은 탭 미수행 분리와 증거 기록 경계를 확인합니다. |
 | `script/verify_v192_menu_bar_glance_contract.sh --self-test` | v1.9.2 메뉴바 glance와 uninstall history 계약 자체검증 | GUI, 실제 uninstall, 설치, push 없이 강아지 오른쪽·숫자 바로 왼쪽, 설정 `현재 잔여 사용량`/`% 표기`, 그래프 history 보존과 문서 용어를 확인합니다. |
 | `script/verify_v192_release_readiness.sh --self-test` | v1.9.2 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, published `v1.9.1` 유지, PR 전 상태, Finder 재설치에서 그래프 보존을 확인하는 경계를 확인합니다. |
+| `script/verify_v193_codex_remaining_credits_contract.sh --self-test` | v1.9.3 Codex 잔여 크레딧 계약 자체검증 | GUI, 설치, push, auth store 읽기 없이 잔여 크레딧과 초기화권의 분리, 정수 표시, 한 페이지, Grok 그래프 높이, 스크린샷 여백을 확인합니다. |
+| `script/verify_v193_release_readiness.sh --self-test` | v1.9.3 릴리즈 준비 계약 자체검증 | network, GUI, 설치, tag/workflow/publish 없이 체크리스트, signed tag, Finder drag-and-drop, README 스크린샷 여백, `Stable Release` 제외를 확인합니다. |
 | `script/sample_existing_runtime_resources.sh --self-test` | 실행 중 프로세스 sampler 자체검증 | MacDog 실행 여부와 무관하게 sampler 출력/누락 프로세스 처리를 확인합니다. |
 | `script/verify_widget_packaging.sh` | Optional WidgetKit packaging 검증 | Xcode host/extension target을 빌드하고 opt-in `.appex` 산출물을 확인합니다. 기본 설치 검증에는 포함하지 않습니다. |
 | `script/verify_widget_readiness.sh` | WidgetKit opt-in readiness 검증 | shared cache, deep link, empty/stale/error 표시 계약과 기본 번들 제외/opt-in 연결 경계를 확인합니다. |

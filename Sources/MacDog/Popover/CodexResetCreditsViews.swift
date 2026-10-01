@@ -45,6 +45,56 @@ struct CodexResetCreditsBlock: View {
     }
 }
 
+struct CodexRemainingCreditsBlock: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("잔여 크레딧")
+                .font(.caption.weight(.semibold))
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.primary.opacity(0.16), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("잔여 크레딧 \(text)")
+    }
+}
+
+enum CodexRemainingCreditTextFormatter {
+    static func displayText(for credits: CreditsSnapshot?) -> String? {
+        guard let credits, credits.hasCredits else { return nil }
+        if credits.unlimited { return "무제한" }
+        guard let balance = credits.balance?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !balance.isEmpty else {
+            return nil
+        }
+        return normalizedBalance(balance)
+    }
+
+    private static func normalizedBalance(_ raw: String) -> String {
+        guard let decimal = Decimal(string: raw, locale: Locale(identifier: "en_US_POSIX")) else {
+            return raw
+        }
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 0
+        formatter.roundingMode = .down
+        return formatter.string(from: decimal as NSDecimalNumber) ?? raw
+    }
+}
+
 struct CodexResetCreditDisplayItem: Identifiable, Equatable {
     let index: Int
     let expiryText: String
@@ -72,6 +122,11 @@ enum CodexResetCreditUrgency: Equatable {
 }
 
 struct CodexResetCreditTextFormatter {
+    static func showsRow(_ summary: RateLimitResetCreditsSummary?) -> Bool {
+        guard let summary else { return false }
+        return summary.availableCount > 0
+    }
+
     static func countText(for summary: RateLimitResetCreditsSummary?) -> String {
         guard let summary else { return "정보 갱신 필요" }
         if summary.availableCount <= 0 { return "초기화권 없음" }

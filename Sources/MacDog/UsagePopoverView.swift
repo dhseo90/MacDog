@@ -105,13 +105,15 @@ struct UsagePopoverView: View {
                 )
                 .fixedSize(horizontal: false, vertical: true)
                 if usesScrollableSelectedContent {
-                    ScrollView {
-                        remainingUsageDetail
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    GeometryReader { proxy in
+                        ScrollView {
+                            remainingUsageDetail(minimumColumnHeight: proxy.size.height)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .scrollIndicators(.automatic)
                     }
-                    .scrollIndicators(.automatic)
                 } else {
-                    remainingUsageDetail
+                    remainingUsageDetail()
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
             }
@@ -140,7 +142,7 @@ struct UsagePopoverView: View {
     private var tabContent: some View {
         switch selectedModule {
         case .codex:
-            usageProviderContent
+            usageProviderContent()
         case .mac:
             MacResourcesPanel(
                 snapshot: state.systemMetrics,
@@ -220,12 +222,12 @@ struct UsagePopoverView: View {
     }
 
     @ViewBuilder
-    private var usageProviderContent: some View {
-        remainingUsageDetail
+    private func usageProviderContent() -> some View {
+        remainingUsageDetail()
     }
 
     @ViewBuilder
-    private var remainingUsageDetail: some View {
+    private func remainingUsageDetail(minimumColumnHeight: CGFloat? = nil) -> some View {
         if state.usageProviderMode == .claude {
             ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
         } else if state.runtimeProviderMode == .grok {
@@ -238,7 +240,7 @@ struct UsagePopoverView: View {
                 ).showsMainWeeklyGraph
             )
         } else {
-            CodexUsagePanel(state: state)
+            CodexUsagePanel(state: state, minimumColumnHeight: minimumColumnHeight)
         }
     }
 

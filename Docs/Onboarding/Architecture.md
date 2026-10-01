@@ -120,6 +120,10 @@ sampling과 pace를 재개합니다.
 사용할 수 있습니다. token은 출력·cache·log·fixture에 남기지 않습니다. 이 경계를 수정하려면
 `AGENTS.md`의 인증 규칙과 privacy test를 함께 검토해야 합니다.
 
+잔여 크레딧은 같은 사용량 응답의 `credits`입니다. 필드는 `hasCredits`, `unlimited`,
+`balance`뿐이고 만료일은 없습니다. 1번 탭에서는 값이 있을 때만 초기화권과 따로 보여 주며,
+balance를 초기화권 장수로 쓰지 않습니다.
+
 ## Grok 사용량 흐름
 
 ```mermaid

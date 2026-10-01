@@ -98,7 +98,7 @@ verify_contract() {
 
   require_match 'V192ReleaseReadiness\.md' "$README" "README release document link"
   require_match 'V192ReleaseReadiness\.md' "$ROADMAP" "ROADMAP release document link"
-  require_match 'GitHub Release는 \[v1\.9\.2\]' "$README" "README published is v1.9.2"
+  require_match 'releases/tag/v1\.9\.2' "$README" "README still links published v1.9.2"
   require_match '현재 잔여 사용량' "$README" "README remaining amount copy"
   require_match '% 표기' "$README" "README percent sign copy"
   require_match 'GitHub Release publish·Finder 재설치·그래프 보존 완료' "$ROADMAP" \
