@@ -48,7 +48,8 @@ verify_contract() {
   [[ -x "$V193_VERIFIER" ]] || die "v1.9.3 product verifier is not executable"
   "$V192_VERIFIER" --self-test
 
-  require_match '^상태: v1\.9\.3 릴리즈 진행' "$DOC" "release status"
+  require_match '^상태: v1\.9\.3 GitHub Release 공개' "$DOC" "release status"
+  require_match 'Finder 설치와 final-state는 미수행' "$DOC" "install remains undone"
   require_match 'signed annotated tag' "$DOC" "signed tag"
   require_match 'GitHub `Verified`' "$DOC" "verified tag gate"
   require_match 'UNSIGNED-DRAFT' "$DOC" "unsigned draft acknowledgement"

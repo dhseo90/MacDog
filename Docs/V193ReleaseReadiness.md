@@ -1,6 +1,6 @@
 # v1.9.3 릴리즈 준비
 
-상태: v1.9.3 릴리즈 진행. 공개 기준은 signed annotated tag와 GitHub Release asset
+상태: v1.9.3 GitHub Release 공개. Finder 설치와 final-state는 미수행.
 작성일: 2026-10-01
 대상 버전: `1.9.3`
 기준 브랜치: `v1.9.3`
@@ -80,8 +80,22 @@ git merge-base --is-ancestor origin/v1.9.3 origin/main
 
 ## 이 브랜치에서 확인한 것
 
-2026-10-01 로컬에서 제품 변경과 스크린샷을 확인했다. publish, Finder 설치,
-final-state는 아직이다.
+2026-10-01에 `main` `7207bc96f52505c0f4151cfc077e2fd979671fed`를 공개했다.
+첫 PR CI는 README에 이전 release head가 없어 `static-gates`가 실패했고,
+`c118891fd41f53dc468bfb511351a6e84f368a13`에서 고친 뒤 통과했다.
+Release Candidate `36866062558`, Draft Release `36866066802`, main CI
+`36865700339`, guardrails `36865699899`는 그 머지 커밋에서 통과했다.
+태그 이름과 같은 브랜치에서 시작된 workflow는 취소했다. 공개 DMG는 그 실행이 아니다.
+
+signed tag `e135271f905da1de7dca985898ea7a93589853c0`는 GitHub `Verified`다.
+다시 받은 DMG의 SHA-256은
+`257e54c19ea4739456ace7ec2a90ee50e57ad2725389139e7720b3dbf4aece22`이고
+`hdiutil verify`는 VALID다. 이미지 안 앱 버전은 1.9.3이다.
+
+Finder drag-and-drop과 final-state는 하지 않았다. 설치 smoke가 미수행이므로
+`v1.9.3` 브랜치는 지우지 않는다.
+
+로컬에서 제품 변경과 스크린샷도 확인했다.
 
 - `git diff --check` 통과
 - `npx --yes markdownlint-cli2@0.22.1` 45 files, 0 errors
@@ -96,13 +110,14 @@ final-state는 아직이다.
 
 ## 증거
 
-공개 전 항목은 명령 결과로 채운다. 하지 않은 설치와 GUI는 완료로 적지 않는다.
+하지 않은 설치와 GUI는 완료로 적지 않는다.
 
 | 증거 | 상태 |
 | --- | --- |
 | 제품 계약 | [V193CodexRemainingCredits.md](V193CodexRemainingCredits.md) |
 | README 스크린샷 여백 | 렌더가 상하좌우 여백을 두고, 초기화권·잔여 크레딧·데이터 상태가 그 안에 있는지 확인 |
-| signed annotated tag | publish 전에 GitHub `Verified` |
-| Published DMG | GitHub Release asset checksum |
-| Finder drag-and-drop | 사용자가 드래그하기 전에는 미수행 |
+| signed annotated tag | `e135271f905da1de7dca985898ea7a93589853c0` → `7207bc96f52505c0f4151cfc077e2fd979671fed`, GitHub `Verified` |
+| Published DMG | Latest `v1.9.3`, release ID `400978180`. SHA-256 `257e54c19ea4739456ace7ec2a90ee50e57ad2725389139e7720b3dbf4aece22`. `hdiutil verify` VALID |
+| Finder drag-and-drop | 미수행 |
+| final-state | 미수행 |
 | Mac/Sleep/Battery 탭 직접 조작 | 미수행. 이번 완료 조건 아님 |
