@@ -110,10 +110,14 @@ GitHub Releases Latest: `v1.9.3`. 공개본 검증 예는
 `MACDOG_APP_VERSION=1.9.3 ./script/check.sh --no-run`입니다.
 
 이전 공개본은
-[v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2),
-[v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1),
-[v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0),
-[v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)입니다.
+[v1.9.2](https://github.com/dhseo90/MacDog/releases/tag/v1.9.2)
+(`3756b1abc4306add7ab77aa106b3952e6043f1ab`),
+[v1.9.1](https://github.com/dhseo90/MacDog/releases/tag/v1.9.1)
+(`750dda20d4f7c62253f8c33201db316d5754e935`),
+[v1.9.0](https://github.com/dhseo90/MacDog/releases/tag/v1.9.0)
+(`b7072003830798bb1603768c4efb0b41409100f6`),
+[v1.8.0](https://github.com/dhseo90/MacDog/releases/tag/v1.8.0)
+(`14d716a88ea10a77344a4f9aa3651c23b1160f8c`)입니다.
 
 이번 증거는 [Docs/V193ReleaseReadiness.md](Docs/V193ReleaseReadiness.md),
 계약은 [Docs/V193CodexRemainingCredits.md](Docs/V193CodexRemainingCredits.md)입니다.
