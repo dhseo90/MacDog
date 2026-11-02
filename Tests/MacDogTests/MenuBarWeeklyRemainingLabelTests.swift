@@ -74,6 +74,30 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertNil(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text)
     }
 
+    func testGrokIssueHidesMenuBarPercentWhileGaugeCanKeepTheStoredWeekly() throws {
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 2, resetsAt: 1_900_600_000))
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: GrokUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: GrokUsageCacheSnapshot(
+                    fetchedAt: 1_900_000_060,
+                    lastUsageObservedAt: 1_900_000_000,
+                    staleAfterSeconds: 180,
+                    weekly: weekly,
+                    issue: GrokUsageCacheIssue(code: "weekly-window-missing", recordedAt: 1_900_000_060)
+                ),
+                history: .empty,
+                loadIssue: nil
+            ),
+            usageProviderMode: .grok
+        )
+
+        XCTAssertNil(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text)
+    }
+
     func testStaleGrokWeeklyHidesLabel() throws {
         let grok = try Self.grokPreview(usedPercent: 40, staleAfterSeconds: 60)
         let state = UsageMonitorState(

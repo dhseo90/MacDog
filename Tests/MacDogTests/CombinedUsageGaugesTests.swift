@@ -137,6 +137,38 @@ final class CombinedUsageGaugesTests: XCTestCase {
         XCTAssertFalse(gauges.items.contains { $0.kind == .fiveHour })
     }
 
+    func testGrokIssueKeepsStoredWeeklyPercentOnTheGauge() throws {
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 2, resetsAt: 1_900_600_000))
+        let preview = GrokUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: GrokUsageCacheSnapshot(
+                fetchedAt: 1_900_000_060,
+                lastUsageObservedAt: 1_900_000_000,
+                staleAfterSeconds: 180,
+                weekly: weekly,
+                issue: GrokUsageCacheIssue(code: "weekly-window-missing", recordedAt: 1_900_000_060)
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: preview,
+            usageProviderMode: .grok
+        )
+
+        let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
+        XCTAssertEqual(preview.status(now: Self.now), .error)
+        XCTAssertEqual(preview.statusTitle(now: Self.now), "주간 갱신 실패")
+        XCTAssertNil(preview.cacheSnapshot?.freshWeekly(now: Self.now))
+        XCTAssertEqual(
+            gauges.items.map(\.value),
+            [.ready(usedPercent: 2, remainingPercent: 98, resetsAt: 1_900_600_000)]
+        )
+    }
+
     func testAuxiliaryGrokStaleDoesNotUseCodexValues() throws {
         let dual = UsageProviderSelection(
             enabled: [.codex, .grok],

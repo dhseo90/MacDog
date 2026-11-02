@@ -158,7 +158,7 @@ struct GrokUsagePreviewState: Equatable {
         case .lookupFailed:
             return "조회 오류"
         case .weeklyWindowMissing:
-            return "주간 window 없음"
+            return cacheSnapshot?.weekly == nil ? "주간 window 없음" : "주간 갱신 실패"
         case .waiting, .cacheLoadFailed:
             break
         }

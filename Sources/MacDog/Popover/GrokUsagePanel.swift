@@ -21,7 +21,7 @@ struct GrokUsagePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             statusHeader
-            if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
+            if let weekly = preview.cacheSnapshot?.displayedWeekly(now: now) {
                 if showsWeeklyGraph {
                     WeeklyRemainingHistoryBlock(
                         history: GrokWeeklyRemainingHistoryAdapter.history(

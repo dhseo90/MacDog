@@ -107,7 +107,7 @@ struct GrokUsageGaugeQuery: UsageGaugeQuerying {
     ) -> UsageProviderGaugeItem {
         let preview = state.grokUsage
         let value: UsageProviderGaugeItem.Value
-        if let weekly = preview.cacheSnapshot?.freshWeekly(now: now) {
+        if let weekly = preview.cacheSnapshot?.displayedWeekly(now: now) {
             value = .ready(
                 usedPercent: weekly.usedPercent,
                 remainingPercent: weekly.remainingPercent,
