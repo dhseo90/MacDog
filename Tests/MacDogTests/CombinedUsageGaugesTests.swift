@@ -4,8 +4,7 @@ import XCTest
 
 final class CombinedUsageGaugesTests: XCTestCase {
     func testVisibleQueriesFollowDevelopmentOrderWithoutEmptySlots() {
-        XCTAssertEqual(UsageGaugeQueryCatalog.visibleQueries.map(\.provider), [.codex, .grok])
-        XCTAssertFalse(UsageGaugeQueryCatalog.visibleQueries.contains { $0.provider == .claude })
+        XCTAssertEqual(UsageGaugeQueryCatalog.visibleQueries.map(\.provider), [.codex, .grok, .claude])
     }
 
     func testDisplayOrderPutsMainFirstThenCatalogOrder() {
@@ -241,8 +240,8 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
         XCTAssertTrue(shownVisibility.showsMainWeeklyGraph)
         XCTAssertTrue(shownVisibility.showsCombinedGauges)
-        XCTAssertFalse(claudeVisibility.showsCombinedGauges)
-        XCTAssertTrue(claudeVisibility.showsMainWeeklyGraph)
+        XCTAssertTrue(claudeVisibility.showsCombinedGauges)
+        XCTAssertFalse(claudeVisibility.showsMainWeeklyGraph)
     }
 
     func testCombinedGaugesStayWhenDetailGraphIsHidden() throws {
@@ -296,16 +295,107 @@ final class CombinedUsageGaugesTests: XCTestCase {
         )
     }
 
-    func testClaudeDebugDoesNotBuildVisibleCombinedGauges() throws {
+    func testClaudeMainGaugeUsesSevenDayAndOmitsMissingFiveHour() throws {
+        let selection = UsageProviderSelection(
+            enabled: [.codex, .claude],
+            main: .claude,
+            detailGraphVisible: true
+        )
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30, weeklyResetsAt: 1_900_010_000),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: try Self.claudePreview(sevenDayUsedPercent: 64, fiveHourUsedPercent: nil),
+            grokUsage: try Self.grokPreview(usedPercent: 96, resetsAt: 1_900_003_600),
+            usageProviderMode: .claude,
+            usageProviderSelection: selection
+        )
+
+        let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
+        XCTAssertEqual(gauges.groups.map(\.provider), [.claude, .codex])
+        XCTAssertEqual(gauges.items.map(\.kind), [.weekly, .weekly])
+        XCTAssertFalse(gauges.items.contains { $0.kind == .fiveHour })
+        XCTAssertEqual(
+            gauges.items[0].value,
+            .ready(usedPercent: 64, remainingPercent: 36, resetsAt: 1_900_600_000)
+        )
+        XCTAssertEqual(
+            gauges.items[1].value,
+            .ready(usedPercent: 30, remainingPercent: 70, resetsAt: 1_900_010_000)
+        )
+        XCTAssertFalse(gauges.items.contains { $0.provider == .grok })
+    }
+
+    func testClaudeAuxiliaryHidesFiveHourAndDoesNotUseItAsWeekly() throws {
+        let selection = UsageProviderSelection(
+            enabled: [.codex, .claude],
+            main: .codex,
+            detailGraphVisible: true
+        )
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
-            grokUsage: try Self.grokPreview(usedPercent: 96, resetsAt: 1_900_003_600),
+            claudeUsagePreview: try Self.claudePreview(sevenDayUsedPercent: nil, fiveHourUsedPercent: 12),
+            usageProviderMode: .codex,
+            usageProviderSelection: selection
+        )
+
+        let claude = try XCTUnwrap(
+            CombinedUsageGauges.make(state: state, now: Self.now).items.filter { $0.provider == .claude }
+        )
+        XCTAssertEqual(claude.map(\.kind), [.weekly])
+        XCTAssertEqual(claude[0].value, .unavailable("주간 미제공"))
+    }
+
+    func testClaudeWithoutCacheShowsWaitingGauge() {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
             usageProviderMode: .claude
         )
 
-        XCTAssertEqual(CombinedUsageGauges.make(state: state, now: Self.now).items, [])
+        let gauges = CombinedUsageGauges.make(state: state, now: Self.now)
+        XCTAssertEqual(gauges.items.map(\.provider), [.claude])
+        XCTAssertEqual(gauges.items.map(\.value), [.unavailable("연결 대기")])
+    }
+
+    func testEnabledClaudeWithoutUsageShowsTheStatusLineBridge() {
+        let preview = ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: nil,
+            history: .empty,
+            loadIssue: nil
+        )
+        XCTAssertTrue(preview.showsStatusLineBridge)
+        XCTAssertEqual(
+            ClaudeStatusLineConnectionGuide.bundled.standaloneCommand.contains("macdog-claude-statusline"),
+            true
+        )
+    }
+
+    func testClaudeWeeklyHistoryDropsFiveHourSamples() throws {
+        let sevenDay = try XCTUnwrap(ClaudeUsageHistorySample(
+            kind: .sevenDay,
+            recordedAt: 1_900_000_100,
+            usedPercent: 25,
+            resetsAt: 1_900_600_000
+        ))
+        let fiveHour = try XCTUnwrap(ClaudeUsageHistorySample(
+            kind: .fiveHour,
+            recordedAt: 1_900_000_100,
+            usedPercent: 80,
+            resetsAt: 1_900_003_600
+        ))
+        let history = ClaudeWeeklyRemainingHistoryAdapter.history(
+            ClaudeUsageHistory(samples: [sevenDay, fiveHour])
+        )
+
+        XCTAssertEqual(history.samples.map(\.usedPercent), [25])
+        XCTAssertEqual(history.samples.map(\.remainingPercent), [75])
+        XCTAssertEqual(history.samples.map(\.windowDurationMins), [10_080])
+        XCTAssertFalse(history.samples.contains { $0.resetsAt == 1_900_003_600 })
     }
 
     private static let now = Date(timeIntervalSince1970: 1_900_000_000)
@@ -323,6 +413,37 @@ final class CombinedUsageGaugesTests: XCTestCase {
                 lastUsageObservedAt: 1_900_000_000,
                 staleAfterSeconds: staleAfterSeconds,
                 weekly: weekly,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
+        )
+    }
+
+    private static func window(_ usedPercent: Double?, resetsAt: Int) throws -> ClaudeUsageWindowSnapshot? {
+        guard let usedPercent else { return nil }
+        return try ClaudeUsageWindowSnapshot(usedPercent: usedPercent, resetsAt: resetsAt)
+    }
+
+    private static func claudePreview(
+        sevenDayUsedPercent: Double?,
+        fiveHourUsedPercent: Double?
+    ) throws -> ClaudeUsagePreviewState {
+        let observedAt = 1_900_000_000
+        let fiveHour = try Self.window(fiveHourUsedPercent, resetsAt: observedAt + 3_600)
+        let sevenDay = try Self.window(sevenDayUsedPercent, resetsAt: 1_900_600_000)
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            fiveHour: fiveHour,
+            sevenDay: sevenDay
+        )
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
                 issue: nil
             ),
             history: .empty,

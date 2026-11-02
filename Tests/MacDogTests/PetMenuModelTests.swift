@@ -76,9 +76,11 @@ final class PetMenuModelTests: XCTestCase {
         XCTAssertFalse(model.commands.contains { $0.title.contains("코덱스") || $0.title.contains("Codex") })
     }
 
-    func testMenuCopyUsesClaudeOnlyWhenHiddenReenableKeepsClaudeMode() {
-        RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
-        RunnerPreferences.setUsageProviderMode(.claude, defaults: defaults)
+    func testMenuCopyUsesClaudeWhenClaudeIsTheSelectedMainProvider() {
+        RunnerPreferences.setUsageProviderSelection(
+            UsageProviderSelection(enabled: [.codex, .claude], main: .claude, detailGraphVisible: true),
+            defaults: defaults
+        )
         let preferences = RunnerPreferences(defaults: defaults)
         let model = PetMenuModel(preferences: preferences, surface: .menuBar)
 

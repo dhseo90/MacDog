@@ -27,7 +27,7 @@ enum UsageProviderMode: String, CaseIterable, Identifiable {
         case .codex, .grok:
             true
         case .claude:
-            false
+            true
         }
     }
 
@@ -49,7 +49,10 @@ enum SelectedUsageSourcePolicy {
         for mode: UsageProviderMode,
         selection: UsageProviderSelection
     ) -> Bool {
-        mode != .claude && shouldEvaluateCodexCache(for: selection)
+        if mode == .claude {
+            return selection.includesCodex
+        }
+        return shouldEvaluateCodexCache(for: selection)
     }
 
     static func shouldLoadClaudePreview(for mode: UsageProviderMode) -> Bool {
@@ -57,7 +60,7 @@ enum SelectedUsageSourcePolicy {
     }
 
     static func shouldLoadClaudePreview(for selection: UsageProviderSelection) -> Bool {
-        false
+        selection.includesClaude
     }
 
     static func shouldLoadGrokCache(for mode: UsageProviderMode) -> Bool {
@@ -72,7 +75,10 @@ enum SelectedUsageSourcePolicy {
         for mode: UsageProviderMode,
         selection: UsageProviderSelection
     ) -> Bool {
-        mode != .claude && shouldLoadGrokCache(for: selection)
+        if mode == .claude {
+            return selection.includesGrok
+        }
+        return shouldLoadGrokCache(for: selection)
     }
 }
 
@@ -100,6 +106,10 @@ struct ClaudeUsagePreviewState: Equatable {
     func runnerUsedPercent(now: Date = Date()) -> Double? {
         guard isEnabled else { return nil }
         return cacheSnapshot?.freshMaxUsedPercent(now: now)
+    }
+
+    var showsStatusLineBridge: Bool {
+        isEnabled && loadIssue == nil && usage == nil
     }
 
     func currentWindow(

@@ -68,7 +68,8 @@ final class UsageProviderSelectionTests: XCTestCase {
         XCTAssertEqual(selection.enabled, .codex)
         XCTAssertEqual(selection.main, .codex)
         XCTAssertNotEqual(selection.main, .claude)
-        XCTAssertTrue(UsageProviderMask.claude.isEmpty)
+        XCTAssertEqual(UsageProviderMask.claude.rawValue, 1 << 2)
+        XCTAssertFalse(selection.enabled.contains(.claude))
     }
 
     func testNormalizedIsIdempotent() {
@@ -162,7 +163,10 @@ final class UsageProviderSelectionTests: XCTestCase {
             codexOnly.enabling(.grok),
             UsageProviderSelection(enabled: [.codex, .grok], main: .codex, detailGraphVisible: true)
         )
-        XCTAssertEqual(codexOnly.enabling(.claude), codexOnly)
+        XCTAssertEqual(
+            codexOnly.enabling(.claude),
+            UsageProviderSelection(enabled: [.codex, .claude], main: .codex, detailGraphVisible: true)
+        )
     }
 
     func testSettingMainEnablesProviderIfNeeded() {
@@ -176,7 +180,10 @@ final class UsageProviderSelectionTests: XCTestCase {
             codexOnly.settingMain(.grok),
             UsageProviderSelection(enabled: [.codex, .grok], main: .grok, detailGraphVisible: false)
         )
-        XCTAssertEqual(codexOnly.settingMain(.claude), codexOnly)
+        XCTAssertEqual(
+            codexOnly.settingMain(.claude),
+            UsageProviderSelection(enabled: [.codex, .claude], main: .claude, detailGraphVisible: false)
+        )
     }
 
     func testSettingDetailGraphVisibleDoesNotChangeEnabledOrMain() {
@@ -241,28 +248,41 @@ final class UsageProviderSelectionTests: XCTestCase {
         }
     }
 
-    func testClaudeHiddenReenableStaysOnDebugPathAndDoesNotEnterVisibleMask() throws {
+    func testStoredClaudeModeWithoutTheBitMigratesToCodexAndIgnoresHiddenReenable() throws {
         try withDefaults { defaults in
             defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
             RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
             RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
             RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
 
-            XCTAssertEqual(RunnerPreferences.usageProviderMode(defaults: defaults), .claude)
-            XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "claude")
+            XCTAssertEqual(RunnerPreferences.usageProviderMode(defaults: defaults), .codex)
+            XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
             let selection = RunnerPreferences.usageProviderSelection(defaults: defaults)
             XCTAssertEqual(selection.enabled, .codex)
             XCTAssertEqual(selection.main, .codex)
-            XCTAssertNotEqual(selection.main, .claude)
+            XCTAssertFalse(selection.enabled.contains(.claude))
             XCTAssertEqual(
                 defaults.integer(forKey: RunnerPreferences.usageEnabledProviderMaskKey),
                 UsageProviderMask.codex.rawValue
             )
+        }
+    }
 
+    func testClaudeBitInTheMaskSurvivesRepeatedMigration() throws {
+        try withDefaults { defaults in
+            let selection = UsageProviderSelection(
+                enabled: [.codex, .claude],
+                main: .claude,
+                detailGraphVisible: false
+            )
+            RunnerPreferences.setUsageProviderSelection(selection, defaults: defaults)
             RunnerPreferences.setClaudeUsageProviderReenabled(false, defaults: defaults)
             RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-            XCTAssertEqual(RunnerPreferences.usageProviderMode(defaults: defaults), .codex)
-            XCTAssertEqual(RunnerPreferences.usageProviderSelection(defaults: defaults).main, .codex)
+            RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+
+            XCTAssertEqual(RunnerPreferences.usageProviderMode(defaults: defaults), .claude)
+            XCTAssertEqual(RunnerPreferences.usageProviderSelection(defaults: defaults), selection)
+            XCTAssertTrue(selection.enabled.contains(.claude))
         }
     }
 

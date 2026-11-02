@@ -69,7 +69,7 @@ v1.9.4는 Claude 잔여량 조회를 공통 게이지의 세 번째 분기로 �
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
 | v1.9.3 | Codex 잔여 크레딧 | GitHub Release 공개. 1번 탭은 초기화권과 잔여 크레딧을 나누고, 없는 항목은 숨기며, 빈 높이는 주간 그래프만 늘림 | Finder 설치본 1.9.3과 final-state 확인 |
-| v1.9.4 | Claude 조회 분기와 Grok 주간 잔여 복구 | Grok 주간 percent 채택과 게이지 유지 완료. Claude 조회는 미착수 | Claude live event는 계정 없음. 57시간 거절의 billing 원문은 없음. GUI·설치 미수행 |
+| v1.9.4 | Claude 조회 분기와 Grok 주간 잔여 복구 | Grok 주간 percent 채택과 게이지 유지 완료. Claude는 설정 체크 기본 꺼짐으로 공통 게이지와 주간 그래프에 들어감 | Claude live event는 계정 없음. 57시간 거절의 billing 원문은 없음. GUI·설치 미수행 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -898,7 +898,7 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 [Docs/V194ClaudeLookupAndGrokWeekly.md](Docs/V194ClaudeLookupAndGrokWeekly.md)에
 둡니다.
 
-상태: Grok 조회·표시 수정 완료. Claude 조회는 미착수.
+상태: Grok 조회·표시 수정 완료. Claude 게이지 조회는 fixture로 구현했다.
 기준은 `main` `fa2d317`에서 만든 `v1.9.4`입니다.
 
 Grok:
@@ -931,8 +931,8 @@ Claude:
   없으면 `weekly-window-missing`이고, 범위 밖은 `invalid-usage-percent`입니다.
 - 거절 중 마지막 주간 잔여가 게이지와 Grok 패널에 남고 다른 provider로
   대체되지 않습니다. 러너, 메뉴바 `%`, 알림은 fresh 값만 사용합니다.
-- Claude를 켜면 공통 게이지와 공통 주간 그래프에 들어가고, 기본 사용자는 Claude가
-  꺼진 채로 남습니다. 이 항목은 아직 미착수입니다.
+- Claude를 켜면 공통 게이지와 공통 주간 그래프에 들어갑니다. 설정 체크는 기본
+  꺼짐이고, 숨김 재활성화만으로 기존 Codex, Grok 선택이 Claude로 바뀌지 않습니다.
 - focused test, `swift test`, Xcode Debug build를 수행한 뒤 결과를 적습니다.
 - 실행하지 않은 live 조회, GUI, 설치는 미수행입니다.
 

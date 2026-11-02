@@ -156,7 +156,9 @@ verify_contract() {
   require_match 'usageMenuBarWeeklyRemainingVisible' "$PREFERENCES_SOURCE" "menu bar remaining preference"
   require_match 'isOnlyEnabled' "$SETTINGS_SOURCE" "last provider stays enabled"
   require_match 'setUsageProviderSelection' "$SETTINGS_SOURCE" "settings persist selection"
-  require_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "Claude stays off visible checkboxes"
+  require_match 'ForEach\(UsageProviderMode\.visibleCases\)' "$SETTINGS_SOURCE" \
+    "provider checkboxes follow the visible catalog"
+  reject_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "retired Claude debug banner"
   reject_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "legacy exclusive mode picker"
 
   reject_match 'Picker\("사용량 provider"' "$POPOVER_SOURCE" "usage provider sub-tab picker"

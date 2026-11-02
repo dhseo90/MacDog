@@ -619,7 +619,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func loadClaudeUsagePreview() -> ClaudeUsagePreviewState {
-        guard SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: preferences.usageProviderMode) else {
+        guard SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: preferences.usageProviderSelection) else {
             return .disabled
         }
         do {

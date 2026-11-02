@@ -195,10 +195,10 @@ verify_contract() {
   require_match 'runningTriggerTitle' "$SLEEP_PANEL_SOURCE" "sleep tab uses selected provider"
   require_match 'testMenuCopyUsesSelectedGrokProviderWithoutCodexFallback' \
     "$PET_MENU_TEST" "Grok pet menu copy regression"
-  require_match 'testVisibleSettingsModesHideClaudeAndKeepGrok' "$STATE_TEST" \
-    "Claude hide regression"
-  require_match 'testUsageProviderMigrationKeepsClaudeOnlyWhenHiddenReenableIsOn' \
-    "$STATE_TEST" "hidden re-enable migration regression"
+  require_match 'testVisibleSettingsModesIncludeClaudeCheckboxAndKeepGrok' "$STATE_TEST" \
+    "Claude checkbox regression"
+  require_match 'testHiddenReenableDoesNotEnableClaudeOrReplaceCodexAndGrok' \
+    "$STATE_TEST" "hidden re-enable does not replace Codex and Grok"
   require_match 'testSelectedUsageSourcePolicyDoesNotEvaluateCodexCacheOutsideCodexMode' \
     "$STATE_TEST" "no Codex fallback regression"
   require_match 'testGrokWeeklyCacheDrivesRunnerWithoutCodexFallback' "$STATE_TEST" \
@@ -209,8 +209,10 @@ verify_contract() {
     "Grok weekly notification regression"
   require_match 'testEncodedCacheOmitsForbiddenAuthAndBillingKeys' "$GROK_PRIVACY_TEST" \
     "Grok cache privacy regression"
-  require_match 'testRejectsMonthlyCycleAndMissingPercent' "$GROK_SANITIZER_TEST" \
-    "console credit rejection"
+  require_match 'testMissingPercentStaysWeeklyWindowMissing' "$GROK_SANITIZER_TEST" \
+    "missing percent stays weekly-window-missing"
+  require_match 'testAcceptsCreditUsagePercentBesideMonthlyPeriodMarker' "$GROK_SANITIZER_TEST" \
+    "monthly marker keeps a valid weekly percent"
   require_match 'testMissingAuthStoreDoesNotUseXAIAPIKey' "$GROK_AUTH_TEST" \
     "API key rejection"
   require_match 'testReadsAuthXAIIssuerEntryKeyWithoutUsingRefreshToken' "$GROK_AUTH_TEST" \

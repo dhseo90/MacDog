@@ -5,8 +5,8 @@ struct UsageProviderMask: OptionSet, Equatable, Sendable {
 
     static let codex = UsageProviderMask(rawValue: 1 << 0)
     static let grok = UsageProviderMask(rawValue: 1 << 1)
-    static let visible: UsageProviderMask = [.codex, .grok]
-    static let claude = UsageProviderMask()
+    static let claude = UsageProviderMask(rawValue: 1 << 2)
+    static let visible: UsageProviderMask = [.codex, .grok, .claude]
 
     var visibleMask: UsageProviderMask {
         intersection(.visible)
@@ -27,14 +27,18 @@ struct UsageProviderSelection: Equatable, Sendable {
     static func exclusive(for mode: UsageProviderMode) -> UsageProviderSelection {
         normalized(
             enabledRaw: mask(for: mode).rawValue,
-            main: mode == .claude ? nil : mode,
+            main: mode,
             detailGraphVisible: true
         )
     }
 
     var includesCodex: Bool { includes(.codex) }
     var includesGrok: Bool { includes(.grok) }
-    var showsMainPicker: Bool { includesCodex && includesGrok }
+    var includesClaude: Bool { includes(.claude) }
+    var enabledModes: [UsageProviderMode] {
+        UsageProviderMode.allCases.filter(includes)
+    }
+    var showsMainPicker: Bool { enabledModes.count > 1 }
 
     func includes(_ mode: UsageProviderMode) -> Bool {
         let bit = Self.mask(for: mode)
@@ -63,17 +67,13 @@ struct UsageProviderSelection: Equatable, Sendable {
         detailGraphVisible: Bool?
     ) -> UsageProviderSelection {
         let graphVisible = detailGraphVisible ?? true
-        let requestedMain: UsageProviderMode? = {
-            switch main {
-            case .codex, .grok:
-                main
-            case .claude, .none:
-                nil
-            }
-        }()
+        let requestedMain: UsageProviderMode? = main
 
         let enabled: UsageProviderMask = {
             guard let enabledRaw else {
+                if requestedMain == .claude || requestedMain == nil {
+                    return .codex
+                }
                 return mask(for: requestedMain ?? .codex)
             }
             let visible = UsageProviderMask(rawValue: enabledRaw).visibleMask
@@ -89,6 +89,9 @@ struct UsageProviderSelection: Equatable, Sendable {
             }
             if enabled.contains(.grok) {
                 return .grok
+            }
+            if enabled.contains(.claude) {
+                return .claude
             }
             return .codex
         }()

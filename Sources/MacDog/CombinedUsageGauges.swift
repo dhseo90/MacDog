@@ -37,7 +37,7 @@ protocol UsageGaugeQuerying {
 
 enum UsageGaugeQueryCatalog {
     static var visibleQueries: [any UsageGaugeQuerying] {
-        [CodexUsageGaugeQuery(), GrokUsageGaugeQuery()]
+        [CodexUsageGaugeQuery(), GrokUsageGaugeQuery(), ClaudeUsageGaugeQuery()]
     }
 
     static func displayOrder(
@@ -140,6 +140,65 @@ struct GrokUsageGaugeQuery: UsageGaugeQuerying {
     }
 }
 
+struct ClaudeUsageGaugeQuery: UsageGaugeQuerying {
+    let provider = UsageProviderMode.claude
+
+    func windows(from state: UsageMonitorState, now: Date, isAuxiliary: Bool) -> [UsageProviderGaugeItem] {
+        let preview = state.claudeUsagePreview
+        var items = [weekly(preview: preview, now: now, isAuxiliary: isAuxiliary)]
+        if !isAuxiliary, let fiveHour = Self.readyValue(preview.currentWindow(.fiveHour, now: now)) {
+            items.append(
+                UsageProviderGaugeItem(
+                    provider: .claude,
+                    kind: .fiveHour,
+                    title: "5시간",
+                    value: fiveHour,
+                    isAuxiliary: false
+                )
+            )
+        }
+        return items
+    }
+
+    private func weekly(
+        preview: ClaudeUsagePreviewState,
+        now: Date,
+        isAuxiliary: Bool
+    ) -> UsageProviderGaugeItem {
+        let value = Self.readyValue(preview.currentWindow(.sevenDay, now: now))
+            ?? .unavailable(Self.unavailableText(preview, now: now))
+        return UsageProviderGaugeItem(
+            provider: .claude,
+            kind: .weekly,
+            title: "주간",
+            value: value,
+            isAuxiliary: isAuxiliary
+        )
+    }
+
+    private static func readyValue(_ window: ClaudeUsageWindowSnapshot?) -> UsageProviderGaugeItem.Value? {
+        guard let usedPercent = window?.usedPercent else { return nil }
+        return .ready(
+            usedPercent: usedPercent,
+            remainingPercent: 100 - usedPercent,
+            resetsAt: window?.resetsAt
+        )
+    }
+
+    private static func unavailableText(_ preview: ClaudeUsagePreviewState, now: Date) -> String {
+        if preview.loadIssue != nil || preview.status(now: now) == .error {
+            return "cache 확인 필요"
+        }
+        if preview.usage == nil {
+            return "연결 대기"
+        }
+        if preview.status(now: now) == .stale {
+            return "오래된 event"
+        }
+        return "주간 미제공"
+    }
+}
+
 struct UsageTabSectionVisibility: Equatable {
     let showsCombinedGauges: Bool
     let showsPaceAndCredits: Bool
@@ -150,14 +209,6 @@ struct UsageTabSectionVisibility: Equatable {
         mode: UsageProviderMode,
         selection: UsageProviderSelection
     ) -> UsageTabSectionVisibility {
-        if mode == .claude {
-            return UsageTabSectionVisibility(
-                showsCombinedGauges: false,
-                showsPaceAndCredits: true,
-                showsMainWeeklyGraph: true,
-                showsDataStatus: true
-            )
-        }
         return UsageTabSectionVisibility(
             showsCombinedGauges: true,
             showsPaceAndCredits: true,
@@ -199,10 +250,6 @@ struct CombinedUsageGauges: Equatable {
     }
 
     static func make(state: UsageMonitorState, now: Date = Date()) -> CombinedUsageGauges {
-        guard state.usageProviderMode != .claude else {
-            return CombinedUsageGauges(groups: [])
-        }
-
         let main = state.runtimeProviderMode
         let groups = UsageGaugeQueryCatalog.displayOrder(
             main: main,
@@ -325,7 +372,7 @@ struct CombinedUsageGaugesView: View {
         case .grok:
             Color(red: 0.86, green: 0.45, blue: 0.16)
         case .claude:
-            Color.secondary
+            Color(red: 0.45, green: 0.32, blue: 0.72)
         }
     }
 

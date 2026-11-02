@@ -80,17 +80,11 @@ struct WeeklyRemainingHistoryBlock: View {
                         if mode != .current, !comparisonModel.pastWindows.isEmpty {
                             Spacer(minLength: WeeklyRemainingHistoryControlLayout.modeWindowPickerSpacing)
 
-                            Picker("", selection: selectedPastWindowIDBinding(for: comparisonModel)) {
-                                ForEach(comparisonModel.pastWindows) { window in
-                                    Text(CodexUsageHistoryTimelineLabel.windowLabel(
-                                        for: window,
-                                        endingAt: comparisonModel.displayEndAt(for: window)
-                                    ))
-                                        .tag(Optional(window.id))
-                                }
-                            }
-                            .controlSize(.mini)
-                            .labelsHidden()
+                            WeeklyRemainingHistoryWindowPicker(
+                                windows: comparisonModel.pastWindows,
+                                selectedID: selectedPastWindowIDBinding(for: comparisonModel),
+                                endingAt: { comparisonModel.displayEndAt(for: $0) }
+                            )
                             .frame(
                                 width: WeeklyRemainingHistoryControlLayout.windowPickerWidth,
                                 alignment: .trailing
@@ -306,6 +300,72 @@ private enum WeeklyRemainingHistoryControlLayout {
     static let modeTabSpacing: CGFloat = 2
     static let modeWindowPickerSpacing: CGFloat = 24
     static let windowPickerWidth: CGFloat = 94
+}
+
+private struct WeeklyRemainingHistoryWindowPicker: NSViewRepresentable {
+    let windows: [CodexUsageResetWindowOverlayWindow]
+    @Binding var selectedID: String?
+    let endingAt: (CodexUsageResetWindowOverlayWindow) -> Int
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        button.controlSize = .mini
+        button.font = .systemFont(ofSize: NSFont.systemFontSize(for: .mini))
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.selectionChanged(_:))
+        button.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        button.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.parent = self
+        let entries = windows.map { window in
+            (
+                id: window.id,
+                title: CodexUsageHistoryTimelineLabel.windowLabel(
+                    for: window,
+                    endingAt: endingAt(window)
+                )
+            )
+        }
+        let currentIDs = (0..<button.numberOfItems).compactMap {
+            button.item(at: $0)?.representedObject as? String
+        }
+        if currentIDs != entries.map(\.id) {
+            button.removeAllItems()
+            for entry in entries {
+                button.addItem(withTitle: entry.title)
+                button.lastItem?.representedObject = entry.id
+            }
+        } else {
+            for (index, entry) in entries.enumerated() {
+                button.item(at: index)?.title = entry.title
+            }
+        }
+        let selected = selectedID ?? entries.first?.id
+        if let selected,
+           let index = entries.firstIndex(where: { $0.id == selected }),
+           button.indexOfSelectedItem != index {
+            button.selectItem(at: index)
+        }
+    }
+
+    final class Coordinator: NSObject {
+        var parent: WeeklyRemainingHistoryWindowPicker
+
+        init(parent: WeeklyRemainingHistoryWindowPicker) {
+            self.parent = parent
+        }
+
+        @MainActor @objc func selectionChanged(_ sender: NSPopUpButton) {
+            parent.selectedID = sender.selectedItem?.representedObject as? String
+        }
+    }
 }
 
 private struct WeeklyRemainingHistoryModeTabs: NSViewRepresentable {

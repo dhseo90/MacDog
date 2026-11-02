@@ -1,8 +1,9 @@
 # v1.9.4 Claude 조회와 Grok 주간 잔여
 
-상태: Grok 조회·표시 수정 완료. Claude 조회는 미착수.
+상태: Grok 조회·표시 수정 완료. Claude 게이지 조회는 fixture로 구현했다.
 작성일: 2026-11-02
 Grok 수정일: 2026-11-02
+Claude 조회 구현일: 2026-11-03
 대상 버전: `1.9.4`
 기준 브랜치: `v1.9.4`
 기준 head: `main` `fa2d317`
@@ -38,7 +39,7 @@ billing 원문은 열지 않았다.
   `nil`이다. 게이지, Grok 패널, 메뉴바 `%`, 러너, 알림이 이 값을 본다.
   그래서 57시간 동안 cache에 2%가 있어도 화면의 잔여율은 비었다.
 
-거절 코드 `weekly-window-missing`은 서로 다른 세 결과를 한 문자열로 저장한다.
+수정 전 거절 코드 `weekly-window-missing`은 서로 다른 세 결과를 한 문자열로 저장했다.
 
 | 실제 조건 | 코드 |
 | --- | --- |
@@ -50,9 +51,9 @@ billing 원문은 열지 않았다.
 cache와 로그만으로 확정하지 못한다.
 
 Grok CLI 1.0.70의 billing 구조는 `creditUsagePercent`, `currentPeriod`,
-`monthlyLimit`을 같은 config에 둔다. 현재 sanitizer는 그 config에 월간
-표식이 있으면 percent가 있어도 주간 window를 버린다. 이 경로는 테스트로
-고정되어 있다. 21:33의 성공 응답은 이 거절에 걸리지 않았다.
+`monthlyLimit`을 같은 config에 둔다. 수정 전 sanitizer는 그 config에 월간
+표식이 있으면 percent가 있어도 주간 window를 버렸다. 21:33의 성공 응답은
+이 거절에 걸리지 않았다.
 
 ## Grok 수정
 
@@ -98,8 +99,10 @@ transcript를 읽거나 쓰지 않는다. reset credit 행은 만들지 않는�
 
 - `UsageProviderMask`에 Claude 비트를 두고 visible 집합에 포함한다.
 - 설정 체크는 기본 꺼짐이다. 기존 Codex, Grok 선택은 유지한다.
-- 저장된 `claude` mode는 지금처럼 Codex로 둔다. 사용자가 체크하기 전에
-  Claude를 켜지 않는다.
+- 저장된 `claude` mode에 Claude 비트가 없으면 그 mode를 해제하고 기존
+  Codex, Grok 마스크를 유지한다. 마스크가 없으면 Codex다. 비트가 이미 있으면
+  매 실행 migration이 그 선택을 지우지 않는다. 숨김
+  `claudeUsageProviderReenabled`만으로 Claude를 켜지 않는다.
 - 메인, 러너, 메뉴바 `%`, 알림, 상세 그래프는 지금과 같이 메인 provider만
   따른다. 메뉴바 `%`는 메인 주간 잔여만 쓰고, Claude 메인의 주간은
   `seven_day`다.
@@ -118,10 +121,10 @@ provider 사용률은 합산하지 않고, 실패한 provider를 다른 cache로
 | ---: | --- | --- | --- |
 | 1 | 주간 percent 채택 | 완료 | 유효 `creditUsagePercent`는 월간 이웃 필드와 함께 있어도 저장한다. percent가 없으면 `weekly-window-missing`이다. 범위 밖은 `invalid-usage-percent`다. 합성 reset은 없다 |
 | 2 | 마지막 잔여 표시 | 완료 | 거절 중 게이지와 Grok 패널은 마지막 성공 잔여를 유지한다. 러너, 메뉴바 `%`, 알림은 fresh가 아니면 멈추고 다른 provider로 가지 않는다 |
-| 3 | Claude 선택 | 미착수 | 기본 꺼짐. 기존 Codex, Grok 사용자가 Claude로 바뀌지 않는다 |
-| 4 | Claude 게이지 | 미착수 | 없는 창을 만들지 않는다 |
-| 5 | Claude 주간 그래프 | 미착수 | 5시간 history를 주간 그래프에 섞지 않는다 |
-| 6 | 검증 | Grok 범위만 | 통과한 명령만 완료로 적는다. live와 GUI는 미수행 |
+| 3 | Claude 선택 | 완료 | 기본 꺼짐. 기존 Codex, Grok 선택은 유지된다. 숨김 재활성화만으로 Claude가 켜지지 않는다 |
+| 4 | Claude 게이지 | 완료 | `seven_day`만 주간 행이다. 없는 5시간은 만들지 않고, 메인이 아니면 5시간 행을 숨긴다 |
+| 5 | Claude 주간 그래프 | 완료 | 5시간 history는 주간 그래프에 들어가지 않는다. 상세는 `ClaudeUsagePanel`이다 |
+| 6 | 검증 | 완료 | 아래 명령을 통과했다. live `rate_limits`, billing 원문, GUI, 설치는 미수행 |
 
 ## 검증
 
@@ -156,16 +159,35 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild bui
   -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
 ```
 
-Claude 선택·게이지·주간 그래프를 넣은 뒤에 해당 필터를 다시 실행한다.
+Claude 선택·게이지·주간 그래프와 주간 window popup 수정 확인.
+2026-11-03 08:06 로컬. 전체 `swift test` exit 0.
 
 ```sh
-swift test --filter UsageProviderSelectionTests
-swift test --filter ClaudeUsageCacheTests
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcrun swift test
 ```
 
-테스트 계정이 없다. Claude `rate_limits` live event와 Grok billing 원문
-대조는 이번 수정의 완료 조건이 아니다. fixture로 고친 경로만 완료로 적는다.
-GUI와 설치는 미수행이다.
+MacDogTests 376 executed, 3 skipped, 0 failures.
+MacDogPrivilegedHelperSupportTests 29 executed, 0 failures.
+CodexUsageCoreTests 228 executed, 1 skipped, 0 failures.
+
+지난 window 메뉴는 `NSPopUpButton`이다. 2026-11-02에 실패했던
+`PopoverScreenshotRendererTests` 4개는 이 실행에서 통과했다.
+
+같은 시각 Debug 빌드는 exit 0, `BUILD SUCCEEDED`다. DVTCoreDeviceCore
+symbol 경고와 CoreSimulator 버전 경고는 나왔고 빌드 결과는 성공이다.
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild build \
+  -project MacDog.xcodeproj -scheme MacDog -configuration Debug CODE_SIGNING_ALLOWED=NO
+```
+
+`git diff --check`와 `npx --yes markdownlint-cli2@0.22.1`은 exit 0이다.
+`verify_v193_codex_remaining_credits_contract.sh --self-test --skip-tests`와
+v1.9.0부터 v1.9.2 계약 verifier의 `--skip-tests`도 exit 0이다.
+
+테스트 계정이 없다. Claude `rate_limits` live event와 57시간 Grok billing
+원문은 열지 않았다. fixture로 고친 경로만 완료로 적는다. GUI와 설치는
+미수행이다.
 
 ## 제외
 
@@ -175,7 +197,7 @@ GUI와 설치는 미수행이다.
 - Grok 5시간 합성, Extra Usage Credits, prepaid를 주간 잔여로 표시
 - billing 원문, token, auth 원문을 cache, log, fixture, 문서에 저장
 - 릴리즈 publish, tag, 설치, LaunchAgent 실등록
-- Claude 조회 구현. 테스트 계정이 생기기 전에는 fixture 범위로만 진행한다
+- Claude live `rate_limits` event. 구현은 fixture만 사용하고 계정 조회는 하지 않는다
 
 ## 모델
 
