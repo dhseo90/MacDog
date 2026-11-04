@@ -74,6 +74,30 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         XCTAssertNil(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text)
     }
 
+    func testGrokIssueHidesMenuBarPercentWhileGaugeCanKeepTheStoredWeekly() throws {
+        let weekly = try XCTUnwrap(GrokUsageWeeklyWindow(usedPercent: 2, resetsAt: 1_900_600_000))
+        let state = UsageMonitorState(
+            report: nil,
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            grokUsage: GrokUsagePreviewState(
+                isEnabled: true,
+                cacheSnapshot: GrokUsageCacheSnapshot(
+                    fetchedAt: 1_900_000_060,
+                    lastUsageObservedAt: 1_900_000_000,
+                    staleAfterSeconds: 180,
+                    weekly: weekly,
+                    issue: GrokUsageCacheIssue(code: "weekly-window-missing", recordedAt: 1_900_000_060)
+                ),
+                history: .empty,
+                loadIssue: nil
+            ),
+            usageProviderMode: .grok
+        )
+
+        XCTAssertNil(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text)
+    }
+
     func testStaleGrokWeeklyHidesLabel() throws {
         let grok = try Self.grokPreview(usedPercent: 40, staleAfterSeconds: 60)
         let state = UsageMonitorState(
@@ -93,11 +117,25 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
         )
     }
 
-    func testClaudeDebugHidesLabel() throws {
+    func testClaudeMainShowsSevenDayRemainingAndIgnoresFiveHour() throws {
         let state = UsageMonitorState(
             report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
             cacheSnapshot: nil,
             errorMessage: nil,
+            claudeUsagePreview: try Self.claudePreview(sevenDayUsedPercent: 64, fiveHourUsedPercent: 90),
+            grokUsage: try Self.grokPreview(usedPercent: 40),
+            usageProviderMode: .claude
+        )
+
+        XCTAssertEqual(MenuBarWeeklyRemainingLabel.make(state: state, now: Self.now).text, "36%")
+    }
+
+    func testClaudeMainWithoutSevenDayHidesLabel() throws {
+        let state = UsageMonitorState(
+            report: Self.report(fiveHourUsedPercent: 20, weeklyUsedPercent: 30),
+            cacheSnapshot: nil,
+            errorMessage: nil,
+            claudeUsagePreview: try Self.claudePreview(sevenDayUsedPercent: nil, fiveHourUsedPercent: 12),
             grokUsage: try Self.grokPreview(usedPercent: 40),
             usageProviderMode: .claude
         )
@@ -291,6 +329,37 @@ final class MenuBarWeeklyRemainingLabelTests: XCTestCase {
             cacheSnapshot: nil,
             errorMessage: nil,
             usageProviderMode: .codex
+        )
+    }
+
+    private static func window(_ usedPercent: Double?, resetsAt: Int) throws -> ClaudeUsageWindowSnapshot? {
+        guard let usedPercent else { return nil }
+        return try ClaudeUsageWindowSnapshot(usedPercent: usedPercent, resetsAt: resetsAt)
+    }
+
+    private static func claudePreview(
+        sevenDayUsedPercent: Double?,
+        fiveHourUsedPercent: Double?
+    ) throws -> ClaudeUsagePreviewState {
+        let observedAt = Int(now.timeIntervalSince1970)
+        let fiveHour = try Self.window(fiveHourUsedPercent, resetsAt: observedAt + 3_600)
+        let sevenDay = try Self.window(sevenDayUsedPercent, resetsAt: observedAt + 86_400)
+        let usage = ClaudeStatusLineSnapshot(
+            observedAt: observedAt,
+            fiveHour: fiveHour,
+            sevenDay: sevenDay
+        )
+        return ClaudeUsagePreviewState(
+            isEnabled: true,
+            cacheSnapshot: ClaudeUsageCacheSnapshot(
+                lastEventAt: observedAt,
+                lastUsageObservedAt: observedAt,
+                staleAfterSeconds: 900,
+                usage: usage,
+                issue: nil
+            ),
+            history: .empty,
+            loadIssue: nil
         )
     }
 

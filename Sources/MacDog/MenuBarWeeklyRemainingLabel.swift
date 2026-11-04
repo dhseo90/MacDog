@@ -30,7 +30,7 @@ struct MenuBarWeeklyRemainingLabel: Equatable {
         showsPercentSign: Bool = true,
         now: Date = Date()
     ) -> MenuBarWeeklyRemainingLabel {
-        guard visible, state.usageProviderMode != .claude else {
+        guard visible else {
             return MenuBarWeeklyRemainingLabel(text: nil)
         }
 
@@ -41,7 +41,9 @@ struct MenuBarWeeklyRemainingLabel: Equatable {
         case .grok:
             remainingPercent = state.grokUsage.cacheSnapshot?.freshWeekly(now: now)?.remainingPercent
         case .claude:
-            remainingPercent = nil
+            remainingPercent = state.claudeUsagePreview.currentWindow(.sevenDay, now: now)?
+                .usedPercent
+                .map { 100 - $0 }
         }
 
         guard let remainingPercent else {

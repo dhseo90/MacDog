@@ -208,6 +208,9 @@ echo "==> Verifying v1.9.3 Codex remaining credits contract"
 echo "==> Verifying v1.9.3 release readiness"
 ./script/verify_v193_release_readiness.sh --self-test
 
+echo "==> Verifying v1.9.4 release readiness"
+./script/verify_v194_release_readiness.sh --self-test
+
 echo "==> Verifying WidgetKit manual UI plan"
 ./script/verify_widget_manual_ui_plan.sh --self-test
 

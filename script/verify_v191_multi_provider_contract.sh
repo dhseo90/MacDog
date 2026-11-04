@@ -93,9 +93,12 @@ verify_contract() {
 
   require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
     "$README" "README published 1.9.0 visible modes"
-  require_match '현재 GitHub Release는 \[v1\.9\.3\]' "$README" \
-    "README published v1.9.3"
-  require_match 'MacDog-1\.9\.3\.dmg' "$README" "README current installer"
+  require_match '현재 GitHub Release는 \[v1\.9\.4\]' "$README" \
+    "README published v1.9.4"
+  require_match 'MacDog-1\.9\.4\.dmg' "$README" "README current installer"
+  require_match 'MacDog-1\.9\.3\.dmg' "$README" "README previous v1.9.3 installer"
+  reject_match '현재 GitHub Release는 \[v1\.9\.3\]' "$README" \
+    "stale current-release claim"
   require_match '3756b1abc4306add7ab77aa106b3952e6043f1ab' "$README" \
     "README v1.9.2 code merge head"
   require_match 'releases/tag/v1\.9\.2' "$README" "README previous v1.9.2 link"
@@ -156,7 +159,9 @@ verify_contract() {
   require_match 'usageMenuBarWeeklyRemainingVisible' "$PREFERENCES_SOURCE" "menu bar remaining preference"
   require_match 'isOnlyEnabled' "$SETTINGS_SOURCE" "last provider stays enabled"
   require_match 'setUsageProviderSelection' "$SETTINGS_SOURCE" "settings persist selection"
-  require_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "Claude stays off visible checkboxes"
+  require_match 'ForEach\(UsageProviderMode\.visibleCases\)' "$SETTINGS_SOURCE" \
+    "provider checkboxes follow the visible catalog"
+  reject_match 'Claude debug 사용 중' "$SETTINGS_SOURCE" "retired Claude debug banner"
   reject_match 'Picker\("사용량 mode"' "$SETTINGS_SOURCE" "legacy exclusive mode picker"
 
   reject_match 'Picker\("사용량 provider"' "$POPOVER_SOURCE" "usage provider sub-tab picker"

@@ -55,33 +55,47 @@ final class GrokBillingSanitizerTests: XCTestCase {
         XCTAssertEqual(weekly.resetsAt, 1_787_367_003)
     }
 
-    func testRejectsMonthlyCurrentPeriodType() {
+    func testAcceptsCreditUsagePercentBesideMonthlyPeriodMarker() throws {
+        let weekly = try GrokBillingSanitizer.weeklyWindow(
+            from: Data("""
+            {
+              "config": {
+                "creditUsagePercent": 10,
+                "currentPeriod": {"type": "USAGE_PERIOD_TYPE_MONTHLY"},
+                "monthlyLimit": 100,
+                "prepaidBalance": {"val": 4}
+              }
+            }
+            """.utf8)
+        )
+        XCTAssertEqual(weekly.usedPercent, 10)
+        XCTAssertEqual(weekly.remainingPercent, 90)
+    }
+
+    func testAcceptsCreditUsagePercentWhenBillingCycleSaysMonthly() throws {
+        let weekly = try GrokBillingSanitizer.weeklyWindow(
+            from: Data(#"{"creditUsagePercent":10,"billingCycle":"MONTHLY"}"#.utf8)
+        )
+        XCTAssertEqual(weekly.usedPercent, 10)
+        XCTAssertEqual(weekly.remainingPercent, 90)
+        XCTAssertNil(weekly.resetsAt)
+    }
+
+    func testMissingPercentStaysWeeklyWindowMissing() {
         XCTAssertThrowsError(
-            try GrokBillingSanitizer.weeklyWindow(
-                from: Data("""
-                {
-                  "config": {
-                    "creditUsagePercent": 10,
-                    "currentPeriod": {"type": "USAGE_PERIOD_TYPE_MONTHLY"}
-                  }
-                }
-                """.utf8)
-            )
+            try GrokBillingSanitizer.weeklyWindow(from: Data(#"{"prepaidBalance":5,"billingCycle":"MONTHLY"}"#.utf8))
         ) { error in
             XCTAssertEqual(error as? GrokBillingSanitizationError, .weeklyWindowMissing)
+            XCTAssertEqual((error as? GrokBillingSanitizationError)?.cacheCode, "weekly-window-missing")
         }
     }
 
-    func testRejectsMonthlyCycleAndMissingPercent() {
+    func testOutOfRangePercentHasItsOwnCacheCode() {
         XCTAssertThrowsError(
-            try GrokBillingSanitizer.weeklyWindow(from: Data(#"{"creditUsagePercent":10,"billingCycle":"MONTHLY"}"#.utf8))
+            try GrokBillingSanitizer.weeklyWindow(from: Data(#"{"creditUsagePercent":140}"#.utf8))
         ) { error in
-            XCTAssertEqual(error as? GrokBillingSanitizationError, .weeklyWindowMissing)
-        }
-        XCTAssertThrowsError(
-            try GrokBillingSanitizer.weeklyWindow(from: Data(#"{"prepaidBalance":5}"#.utf8))
-        ) { error in
-            XCTAssertEqual(error as? GrokBillingSanitizationError, .weeklyWindowMissing)
+            XCTAssertEqual(error as? GrokBillingSanitizationError, .invalidUsagePercent)
+            XCTAssertEqual((error as? GrokBillingSanitizationError)?.cacheCode, "invalid-usage-percent")
         }
     }
 

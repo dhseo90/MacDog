@@ -13,7 +13,7 @@ public enum GrokBillingSanitizationError: Error, Equatable, Sendable {
         case .weeklyWindowMissing:
             "weekly-window-missing"
         case .invalidUsagePercent:
-            "weekly-window-missing"
+            "invalid-usage-percent"
         case .payloadTooLarge:
             "billing-too-large"
         }
@@ -28,9 +28,6 @@ public enum GrokBillingSanitizer: Sendable {
             throw GrokBillingSanitizationError.payloadTooLarge
         }
         let object = try billingObject(from: data)
-        if isMonthlyCycle(object) {
-            throw GrokBillingSanitizationError.weeklyWindowMissing
-        }
         guard let usedPercent = doubleValue(object["creditUsagePercent"]) else {
             throw GrokBillingSanitizationError.weeklyWindowMissing
         }
@@ -63,19 +60,6 @@ public enum GrokBillingSanitizer: Sendable {
             return match
         }
         return candidates.first ?? object
-    }
-
-    private static func isMonthlyCycle(_ object: [String: Any]) -> Bool {
-        if let cycle = stringValue(object["billingCycle"])?.lowercased(),
-           cycle.contains("month") {
-            return true
-        }
-        if let period = object["currentPeriod"] as? [String: Any],
-           let type = stringValue(period["type"])?.lowercased(),
-           type.contains("month") {
-            return true
-        }
-        return false
     }
 
     private static func firstResetTimestamp(in object: [String: Any]) -> Int? {
@@ -139,10 +123,6 @@ public enum GrokBillingSanitizer: Sendable {
         default:
             return nil
         }
-    }
-
-    private static func stringValue(_ value: Any?) -> String? {
-        value as? String
     }
 
     private static func firstUnixTimestamp(in object: [String: Any], keys: [String]) -> Int? {

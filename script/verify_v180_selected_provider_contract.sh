@@ -170,7 +170,7 @@ verify_contract() {
   require_match 'shouldRunLiveRefresh\(for mode: UsageProviderMode\)' "$REFRESH_SOURCE" \
     "selected refresh policy"
   require_match 'UsageProviderMode.visibleCases' "$SETTINGS_SOURCE" "visible provider settings"
-  require_match 'state\.usageProviderMode == \.claude' "$POPOVER_SOURCE" "selected usage tab"
+  require_match 'state\.runtimeProviderMode == \.claude' "$POPOVER_SOURCE" "selected usage tab"
 
   require_match 'testUsageProviderMigrationDefaultsExistingUsersToCodexAndRemovesLegacyKeys' \
     "$STATE_TEST" "migration regression test"

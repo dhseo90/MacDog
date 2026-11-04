@@ -3,9 +3,9 @@
 이 문서는 MacDog 저장소에 처음 참여하는 개발자의 시작점입니다. 제품의 현재 상태, 코드 구조,
 로컬 개발 환경, 검증과 릴리즈 경계를 한 번에 파악할 수 있도록 세부 문서를 역할별로 나눴습니다.
 
-> 기준 상태: 현재 릴리즈는 `v1.9.3`. 설정 visible mode는 `Codex` 또는 `Grok`입니다.
-> 하나 또는 둘 다 켜고 메인을 지정합니다. Claude source는 남아 있지만 기본 UI에서는
-> 숨깁니다. 합산·비교·자동 fallback은 없습니다.
+> 기준 상태: 현재 릴리즈는 `v1.9.4`. 설정 visible mode는 `Codex` 또는 `Grok`에
+> Claude 체크를 더합니다. Claude 기본값은 꺼짐입니다. 하나 이상 켜고 메인을
+> 지정합니다. 합산·비교·자동 fallback은 없습니다.
 
 ## 읽는 순서
 
@@ -136,7 +136,8 @@ Grok 조회는 bundled `macdog-grok-usage`가 담당하며, Claude 입력은 bun
 | v1.9.3 Codex 잔여 크레딧 | 코드와 README 화면. Finder 설치는 공개 DMG를 드래그한 뒤에만 기록 |
 | v1.9.0 Claude hide·Grok weekly-only source/test | GitHub Release publish, 설치본 checksum, final-state 확인됨. Finder drag 관찰·popover GUI는 미수행 |
 | Codex ↔ Claude ↔ Codex 선택 전환과 user component 복구 | v1.8.0 설치본에서 확인됨. v1.9.0 Codex ↔ Grok 전환 GUI는 미수행 |
-| Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. 기본 UI에서는 숨김 |
+| Claude sanitizer·cache·privacy·상태 전이 | fixture와 자동 테스트로 확인됨. v1.9.4 설정 체크는 기본 꺼짐 |
+| v1.9.4 Claude 게이지와 Grok 주간 잔여 | 코드와 로컬 DMG 드래그 checksum 확인. 공개 DMG 재설치는 공개 후 |
 | 실제 유료 Claude 계정의 `rate_limits` live event | 현재 환경에서 미확인. 후보 provider 검증으로 분리 |
 | 실제 Grok SuperGrok 주간 billing live event | 미확인. unofficial 경로이며 사용자 승인 전 `~/.grok/auth.json`을 열지 않음 |
 | 기본 DMG의 WidgetKit UI | 대상 아님. WidgetKit은 opt-in source/build 경계 |

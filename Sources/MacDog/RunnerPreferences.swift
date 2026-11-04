@@ -127,14 +127,16 @@ struct RunnerPreferences: Equatable {
     static func migrateUsageProviderMode(defaults: UserDefaults = .standard) {
         let storedMode = defaults.string(forKey: usageProviderModeKey)
             .flatMap(UsageProviderMode.init(rawValue:))
-        let claudeReenabled = isClaudeUsageProviderReenabled(defaults: defaults)
         let resetVisibleSelectionToDefault: Bool
         if storedMode == nil {
             defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
             resetVisibleSelectionToDefault = true
-        } else if storedMode == .claude, !claudeReenabled {
-            defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
-            resetVisibleSelectionToDefault = true
+        } else if storedMode == .claude {
+            let raw = optionalInteger(for: usageEnabledProviderMaskKey, defaults: defaults) ?? 0
+            if !UsageProviderMask(rawValue: raw).contains(.claude) {
+                defaults.set(defaultUsageProviderMode.rawValue, forKey: usageProviderModeKey)
+            }
+            resetVisibleSelectionToDefault = false
         } else {
             resetVisibleSelectionToDefault = false
         }
@@ -490,7 +492,11 @@ struct RunnerPreferences: Equatable {
     static func usageProviderMode(defaults: UserDefaults = .standard) -> UsageProviderMode {
         let storedMode = UsageProviderMode(rawValue: defaults.string(forKey: usageProviderModeKey) ?? "") ??
             defaultUsageProviderMode
-        if storedMode == .claude, !isClaudeUsageProviderReenabled(defaults: defaults) {
+        if storedMode == .claude {
+            let raw = optionalInteger(for: usageEnabledProviderMaskKey, defaults: defaults) ?? 0
+            if UsageProviderMask(rawValue: raw).contains(.claude) {
+                return .claude
+            }
             return defaultUsageProviderMode
         }
         return storedMode
@@ -544,24 +550,16 @@ struct RunnerPreferences: Equatable {
             enabledRaw: resetVisibleSelectionToDefault
                 ? nil
                 : optionalInteger(for: usageEnabledProviderMaskKey, defaults: defaults),
-            main: resetVisibleSelectionToDefault || resolvedMode == .claude ? nil : resolvedMode,
+            main: resetVisibleSelectionToDefault ? nil : resolvedMode,
             detailGraphVisible: optionalBool(for: usageDetailGraphVisibleKey, defaults: defaults)
         )
         defaults.set(selection.enabled.rawValue, forKey: usageEnabledProviderMaskKey)
         defaults.set(selection.detailGraphVisible, forKey: usageDetailGraphVisibleKey)
-        if resolvedMode != .claude {
-            defaults.set(selection.main.rawValue, forKey: usageProviderModeKey)
-        }
+        defaults.set(selection.main.rawValue, forKey: usageProviderModeKey)
     }
 
     private static func storedVisibleUsageProviderMode(defaults: UserDefaults) -> UsageProviderMode? {
-        let mode = usageProviderMode(defaults: defaults)
-        switch mode {
-        case .codex, .grok:
-            return mode
-        case .claude:
-            return nil
-        }
+        usageProviderMode(defaults: defaults)
     }
 
     private static func optionalInteger(for key: String, defaults: UserDefaults) -> Int? {

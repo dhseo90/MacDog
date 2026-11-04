@@ -131,7 +131,7 @@ struct UsagePopoverView: View {
     }
 
     private var pinsCombinedUsageGauges: Bool {
-        selectedModule == .codex && state.usageProviderMode != .claude
+        selectedModule == .codex
     }
 
     private var usesScrollableSelectedContent: Bool {
@@ -228,8 +228,15 @@ struct UsagePopoverView: View {
 
     @ViewBuilder
     private func remainingUsageDetail(minimumColumnHeight: CGFloat? = nil) -> some View {
-        if state.usageProviderMode == .claude {
-            ClaudeUsagePreviewPanel(preview: state.claudeUsagePreview, now: now)
+        if state.runtimeProviderMode == .claude {
+            ClaudeUsagePanel(
+                preview: state.claudeUsagePreview,
+                now: now,
+                showsWeeklyGraph: UsageTabSectionVisibility.make(
+                    mode: state.usageProviderMode,
+                    selection: state.usageProviderSelection
+                ).showsMainWeeklyGraph
+            )
         } else if state.runtimeProviderMode == .grok {
             GrokUsagePanel(
                 preview: state.grokUsage,

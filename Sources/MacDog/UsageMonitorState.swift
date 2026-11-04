@@ -76,7 +76,7 @@ struct UsageMonitorState: Equatable {
     }
 
     var runtimeProviderMode: UsageProviderMode {
-        usageProviderMode == .claude ? .claude : usageProviderSelection.main
+        usageProviderSelection.main
     }
 
     func withRefreshing(_ isRefreshing: Bool) -> UsageMonitorState {
@@ -430,8 +430,8 @@ struct UsageMonitorState: Equatable {
         guard let usage = claudeUsagePreview.usage else {
             return "Claude 사용량: \(claudeUsagePreview.statusTitle())\(motion)"
         }
-        let fiveHour = usage.fiveHour.map { "\(Self.percent($0.usedPercent ?? 0))% 5시간" } ?? "5시간 확인 불가"
-        let sevenDay = usage.sevenDay.map { "\(Self.percent($0.usedPercent ?? 0))% 7일" } ?? "7일 확인 불가"
+        let fiveHour = usage.fiveHour?.usedPercent.map { "\(Self.percent($0))% 5시간" } ?? "5시간 현재 제공되지 않음"
+        let sevenDay = usage.sevenDay?.usedPercent.map { "\(Self.percent($0))% 7일" } ?? "7일 현재 제공되지 않음"
         return "Claude 사용량: \(fiveHour), \(sevenDay)\(motion)"
     }
 

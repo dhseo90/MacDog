@@ -187,42 +187,32 @@ struct SettingsPanel: View {
         }
     }
 
-    private var isClaudeDebug: Bool {
-        (UsageProviderMode(rawValue: usageProviderModeRaw) ?? .codex) == .claude
-    }
-
     @ViewBuilder
     private var usageProviderSettings: some View {
-        if isClaudeDebug {
-            Text("Claude debug 사용 중")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("활성 provider")
-                    .font(.caption2.weight(.medium))
-                HStack(spacing: 14) {
-                    ForEach(UsageProviderMode.visibleCases) { mode in
-                        settingsToggle(mode.label, isOn: enabledBinding(for: mode))
-                            .disabled(usageSelection.isOnlyEnabled(mode))
+        VStack(alignment: .leading, spacing: 4) {
+            Text("활성 provider")
+                .font(.caption2.weight(.medium))
+            HStack(spacing: 14) {
+                ForEach(UsageProviderMode.visibleCases) { mode in
+                    settingsToggle(mode.label, isOn: enabledBinding(for: mode))
+                        .disabled(usageSelection.isOnlyEnabled(mode))
+                }
+            }
+            if usageSelection.showsMainPicker {
+                Picker("메인 provider", selection: mainBinding) {
+                    ForEach(usageSelection.enabledModes) { mode in
+                        Text(mode.label).tag(mode)
                     }
                 }
-                if usageSelection.showsMainPicker {
-                    Picker("메인 provider", selection: mainBinding) {
-                        ForEach(UsageProviderMode.visibleCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .controlSize(.small)
-                    .accessibilityIdentifier("usage-main-provider")
-                }
-                settingsToggle("상세 그래프 표시", isOn: graphVisibleBinding)
-                HStack(spacing: 14) {
-                    settingsToggle("현재 잔여 사용량", isOn: $menuBarWeeklyRemainingVisible)
-                    settingsToggle("% 표기", isOn: $menuBarWeeklyRemainingPercentSignVisible)
-                        .disabled(!menuBarWeeklyRemainingVisible)
-                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .accessibilityIdentifier("usage-main-provider")
+            }
+            settingsToggle("상세 그래프 표시", isOn: graphVisibleBinding)
+            HStack(spacing: 14) {
+                settingsToggle("현재 잔여 사용량", isOn: $menuBarWeeklyRemainingVisible)
+                settingsToggle("% 표기", isOn: $menuBarWeeklyRemainingPercentSignVisible)
+                    .disabled(!menuBarWeeklyRemainingVisible)
             }
         }
     }
@@ -253,7 +243,6 @@ struct SettingsPanel: View {
     }
 
     private func persistUsageSelection(_ selection: UsageProviderSelection) {
-        guard !isClaudeDebug else { return }
         RunnerPreferences.setUsageProviderSelection(selection)
         usageSelection = RunnerPreferences.usageProviderSelection()
         usageProviderModeRaw = usageSelection.main.rawValue

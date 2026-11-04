@@ -185,21 +185,21 @@ final class UsageMonitorStateTests: XCTestCase {
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadClaudePreview(for: dualCodexMain))
         XCTAssertFalse(SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: grokOnly))
         XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: grokOnly))
-        XCTAssertFalse(
+        XCTAssertTrue(
             SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .claude, selection: dualCodexMain)
         )
-        XCTAssertFalse(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .claude, selection: dualCodexMain))
+        XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .claude, selection: dualCodexMain))
         XCTAssertTrue(
             SelectedUsageSourcePolicy.shouldEvaluateCodexCache(for: .grok, selection: dualGrokMain)
         )
         XCTAssertTrue(SelectedUsageSourcePolicy.shouldLoadGrokCache(for: .codex, selection: dualCodexMain))
     }
 
-    func testVisibleSettingsModesHideClaudeAndKeepGrok() {
-        XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok])
-        XCTAssertTrue(UsageProviderMode.allCases.contains(.claude))
-        XCTAssertFalse(UsageProviderMode.claude.isVisibleInSettings)
+    func testVisibleSettingsModesIncludeClaudeCheckboxAndKeepGrok() {
+        XCTAssertEqual(UsageProviderMode.visibleCases, [.codex, .grok, .claude])
+        XCTAssertTrue(UsageProviderMode.claude.isVisibleInSettings)
         XCTAssertEqual(UsageProviderMode.grok.label, "Grok")
+        XCTAssertEqual(UsageProviderMode.claude.label, "Claude")
     }
 
     func testGrokModeDoesNotUseCodexRunnerOrTooltip() {
@@ -762,28 +762,31 @@ final class UsageMonitorStateTests: XCTestCase {
 
         defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
-        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
+        let preserved = RunnerPreferences.usageProviderSelection(defaults: defaults)
+        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .grok)
+        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "grok")
+        XCTAssertEqual(preserved.enabled, .grok)
+        XCTAssertFalse(preserved.enabled.contains(.claude))
 
         defaults.set("invalid", forKey: RunnerPreferences.usageProviderModeKey)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
         XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
     }
 
-    func testUsageProviderMigrationKeepsClaudeOnlyWhenHiddenReenableIsOn() throws {
+    func testHiddenReenableDoesNotEnableClaudeOrReplaceCodexAndGrok() throws {
         let suite = "UsageMonitorStateTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
 
         defaults.set("claude", forKey: RunnerPreferences.usageProviderModeKey)
+        defaults.set(UsageProviderMask.codex.rawValue | UsageProviderMask.grok.rawValue, forKey: RunnerPreferences.usageEnabledProviderMaskKey)
         RunnerPreferences.setClaudeUsageProviderReenabled(true, defaults: defaults)
         RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
-        XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .claude)
-        XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "claude")
 
-        RunnerPreferences.setClaudeUsageProviderReenabled(false, defaults: defaults)
-        RunnerPreferences.migrateUsageProviderMode(defaults: defaults)
+        let selection = RunnerPreferences.usageProviderSelection(defaults: defaults)
         XCTAssertEqual(RunnerPreferences(defaults: defaults).usageProviderMode, .codex)
+        XCTAssertEqual(selection.enabled, [.codex, .grok])
+        XCTAssertFalse(selection.enabled.contains(.claude))
         XCTAssertEqual(defaults.string(forKey: RunnerPreferences.usageProviderModeKey), "codex")
     }
 

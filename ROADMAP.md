@@ -16,10 +16,13 @@ uninstall이 그래프 history를 남겨 재설치 후에도 곡선이 유지되
 경로 교체 이유가 아닙니다.
 v1.9.3은 Codex 1번 탭에 잔여 크레딧을 더합니다. 잔액이 있을 때만 초기화권 아래
 별도 항목으로 보이고, 없는 항목은 사라집니다. 아래쪽 빈 높이는 주간 그래프만 키웁니다.
+v1.9.4는 Claude 잔여량 조회를 공통 게이지의 세 번째 분기로 넣고, Grok 주간 잔여가
+거절 코드 하나로 비는 경로를 고칩니다. 직전 공개 릴리즈는 `v1.9.3`이고, 이번 공개
+대상은 `v1.9.4`입니다.
 기본 캐릭터는 `Codex Pup`이며, 클릭하면 현재 사용률, 남은 비율, reset 시각, 갱신 상태를
 보여줍니다.
 
-버전 번호의 minor 구간은 `0~9`까지만 사용합니다. 현재 기능 버전은 `v1.9.3`입니다.
+버전 번호의 minor 구간은 `0~9`까지만 사용합니다. 현재 개발 버전은 `v1.9.4`입니다.
 
 현재 프로젝트 이름은 `MacDog`이며, Codex 사용량 모니터는 첫 번째 기능 모듈로 유지합니다. Mac 상태, 배터리 충전 제한, 덮개 닫힘 보호, 데스크톱 펫 기능은 같은 앱 안에서 다룹니다.
 메뉴바 러너, 데스크톱 펫, popover 탭 버튼 이미지는 같은 캐릭터 세트에서 파생합니다.
@@ -67,6 +70,7 @@ v1.9.3은 Codex 1번 탭에 잔여 크레딧을 더합니다. 잔액이 있을 �
 | v1.9.1 | Codex/Grok 복수 활성화와 메인 provider UI | GitHub Release publish·Finder 설치·LaunchAgent·live Grok·final-state 완료, 사용량 탭 GUI 확인 | Mac/Sleep/Battery/Settings 탭 직접 조작 미수행 |
 | v1.9.2 | 메뉴바 잔여율 glance polish, uninstall history 보존, Codex CLI 경로 복구 | 메뉴바 glance와 uninstall history는 GitHub Release publish·Finder 재설치·그래프 보존 완료. CLI 경로 복구는 같은 버전 재릴리즈로 진행 중 | Mac/Sleep/Battery 탭 직접 조작 미수행. CLI 재릴리즈의 설치본 교체는 아직 |
 | v1.9.3 | Codex 잔여 크레딧 | GitHub Release 공개. 1번 탭은 초기화권과 잔여 크레딧을 나누고, 없는 항목은 숨기며, 빈 높이는 주간 그래프만 늘림 | Finder 설치본 1.9.3과 final-state 확인 |
+| v1.9.4 | Claude 조회 분기와 Grok 주간 잔여 복구 | Grok 주간 percent 채택과 게이지 유지 완료. Claude는 설정 체크 기본 꺼짐으로 공통 게이지와 주간 그래프에 들어감. 절차는 [Docs/V194ReleaseReadiness.md](Docs/V194ReleaseReadiness.md) | Claude live event는 계정 없음으로 닫음. 57시간 billing 원문은 없음. 공개 DMG 재설치와 final-state는 공개 후 |
 
 ## v1.3.0: 알림 중심 사용량 인지와 탭별 UI 개선
 
@@ -887,6 +891,63 @@ Codex CLI 경로 복구는 별도 버전이 아닙니다. 같은 `v1.9.2`를 다
 추론 수준: 중간 (medium)
 선정 근거: 영향도 1 + 불확실성 1 + 검증 난이도 1 + 변경 범위 1 = 4점.
 표시만 바꾸고 CLI, cache, 인증 계약은 유지합니다.
+
+## v1.9.4: Claude 조회와 Grok 주간 잔여
+
+`v1.9.4`는 Claude 잔여량을 Codex, Grok과 같은 게이지 조회에 추가하고, Grok 주간
+잔여가 며칠 단위로 사라지는 조회 거절을 고칩니다. 상세 범위는
+[Docs/V194ClaudeLookupAndGrokWeekly.md](Docs/V194ClaudeLookupAndGrokWeekly.md)에
+둡니다.
+
+상태: Grok 조회·표시 수정 완료. Claude 게이지 조회는 fixture로 구현했다.
+기준은 `main` `fa2d317`에서 만든 `v1.9.4`입니다.
+
+Grok:
+
+- 2026-11-02 21:33 로컬 cache는 사용 1%, 잔여 99%, reset 11월 7일, `issue` 없음이었습니다.
+- 그 직전 LaunchAgent 로그는 `weekly-window-missing` 3441회, 약 57시간이었고
+  마지막 성공 주간 2%는 cache에 남아 있었습니다.
+- 원인은 두 층입니다. 월간 표식이 있으면 유효한 `creditUsagePercent`도
+  버렸고, `freshWeekly`는 `issue`가 있으면 남은 주간 값을 주지 않았습니다.
+  게이지, Grok 패널, 메뉴바 `%`, 러너, 알림이 그 값을 봤습니다.
+- 유효한 `creditUsagePercent`는 월간 이웃 필드가 있어도 주간 값으로 저장합니다.
+  percent가 없으면 `weekly-window-missing`이고, 범위 밖은
+  `invalid-usage-percent`입니다. 거절 중 게이지와 Grok 패널은 마지막 성공
+  잔여를 유지합니다. 러너, 메뉴바 `%`, 알림은 fresh 값만 사용합니다.
+- 57시간 구간의 billing 원문은 없습니다. 그 응답의 정확한 필드는 확정하지
+  못했습니다.
+
+Claude:
+
+- 원천은 기존 status line `rate_limits.five_hour`와 `seven_day`입니다.
+  `seven_day`는 주간 행, `five_hour`는 메인일 때만 5시간 행입니다.
+- 설정 체크는 기본 꺼짐이고 기존 Codex, Grok 선택은 유지합니다.
+- 수집은 `macdog-claude-statusline`입니다. LaunchAgent와 Claude auth 접근은
+  추가하지 않습니다.
+- 테스트 계정이 없으므로 live `rate_limits` event는 사용자가 패스로 닫았습니다.
+- 2026-11-04에 로컬 DMG를 Finder에서 드래그해 `/Applications/MacDog.app` 1.9.4 checksum이
+  그 DMG와 같은 것을 확인했습니다. 그 설치는 공개 DMG 설치가 아닙니다.
+- 같은 날 설치 전 임시 바이너리에서 Codex·Grok 주간 게이지와 Claude 체크 꺼짐을
+  읽었습니다. 거절 중 게이지 유지, Claude 메인, 메뉴바 `%` 글자, 설치 후 팝오버는
+  다시 열지 않았습니다.
+
+완료 기준:
+
+- 유효한 `creditUsagePercent`는 월간 표식과 함께 있어도 저장됩니다. percent가
+  없으면 `weekly-window-missing`이고, 범위 밖은 `invalid-usage-percent`입니다.
+- 거절 중 마지막 주간 잔여가 게이지와 Grok 패널에 남고 다른 provider로
+  대체되지 않습니다. 러너, 메뉴바 `%`, 알림은 fresh 값만 사용합니다.
+- Claude를 켜면 공통 게이지와 공통 주간 그래프에 들어갑니다. 설정 체크는 기본
+  꺼짐이고, 숨김 재활성화만으로 기존 Codex, Grok 선택이 Claude로 바뀌지 않습니다.
+- focused test, `swift test`, Xcode Debug build를 수행한 뒤 결과를 적습니다.
+- 공개 tag, Draft, publish, 공개 DMG 재다운로드, 공개본 Finder 재설치,
+  cleanup, final-state는 [Docs/V194ReleaseReadiness.md](Docs/V194ReleaseReadiness.md)를
+  따릅니다. 하지 않은 항목은 완료로 적지 않습니다.
+
+추천 모델: `grok-4.6`
+추론 수준: 매우 높음 (xhigh)
+선정 근거: 영향도 2 + 불확실성 2 + 검증 난이도 2 + 변경 범위 2 = 8점.
+Grok 거절 이유가 저장되지 않은 응답에 있고, Claude 선택이 게이지와 migration에 겹칩니다.
 
 ## RunCat UI 참고 방향
 

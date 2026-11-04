@@ -553,6 +553,19 @@ HIGHLIGHTS
 HIGHLIGHTS
 )
     ;;
+  1.9.4)
+    release_highlights=$(cat <<'HIGHLIGHTS'
+## 주요 변경 사항
+
+- 설정에 Claude 체크를 추가합니다. 기본값은 꺼짐이고 기존 Codex, Grok 선택은 유지합니다.
+- Claude 주간 잔여는 status line `seven_day`입니다. `five_hour`는 Claude가 메인일 때만 5시간 행입니다. 없는 값은 만들지 않습니다.
+- Claude 수집은 `macdog-claude-statusline`입니다. LaunchAgent와 Claude auth, Keychain, transcript 접근은 추가하지 않습니다.
+- Grok `creditUsagePercent`가 0~100이면 월간 이웃 필드가 있어도 주간 값으로 저장합니다. percent가 없으면 `weekly-window-missing`이고, 범위 밖은 `invalid-usage-percent`입니다.
+- Grok 조회가 거절되면 게이지와 Grok 패널은 마지막 주간 잔여를 유지합니다. 러너, 메뉴바 `%`, 알림은 fresh 값만 사용합니다.
+- `billingPeriodStart + 7일`로 reset을 만들지 않습니다.
+HIGHLIGHTS
+)
+    ;;
   *)
     release_highlights=$(cat <<'HIGHLIGHTS'
 ## 주요 변경 사항
@@ -572,8 +585,25 @@ case "$VERSION" in
 SUPPORT
 )
     ;;
+  1.9.4)
+    usage_support=$(cat <<'SUPPORT'
+- 앱 popover는 Codex, Grok, Claude를 체크한 범위에서 보여 줍니다. 합산·비교·자동 fallback은 하지 않습니다.
+- `codex-usage` CLI는 Codex 전용이고, `macdog-grok-usage`는 Grok 주간 pool 전용입니다.
+- Claude 사용량은 앱에 포함된 `macdog-claude-statusline` bridge가 sanitize한 별도 cache를 사용합니다.
+SUPPORT
+)
+    ;;
   *)
     usage_support='- Codex 사용량 popover와 CLI를 지원합니다.'
+    ;;
+esac
+
+case "$VERSION" in
+  1.9.4)
+    first_launch_note='- Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `codex-usage` symlink, 켜진 Codex/Grok usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Claude는 기본 꺼짐인 설정 체크이며, 켜도 Codex LaunchAgent를 제거하지 않습니다.'
+    ;;
+  *)
+    first_launch_note='- Finder 복사 자체는 앱을 실행하지 않습니다. `/Applications/MacDog.app` 첫 실행 시 MacDog가 터미널용 `codex-usage` symlink, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Claude mode에서는 Codex LaunchAgent를 제거합니다.'
     ;;
 esac
 
@@ -589,7 +619,7 @@ $release_highlights
 - DMG를 엽니다.
 - \`MacDog.app\`을 \`Applications\`로 드래그합니다.
 - Applications에서 MacDog를 실행합니다.
-- Finder 복사 자체는 앱을 실행하지 않습니다. \`/Applications/MacDog.app\` 첫 실행 시 MacDog가 터미널용 \`codex-usage\` symlink, Codex mode 전용 usage cache LaunchAgent, macOS 로그인 항목을 사용자 설정에 맞게 마무리합니다. Claude mode에서는 Codex LaunchAgent를 제거합니다.
+$first_launch_note
 - 첫 실행 시 MacDog가 설치 디스크를 추출하고 다운로드한 설치 파일을 정리할지 물어볼 수 있습니다.
 - 첫 실행 시 MacDog가 덮개 닫힘 보호용 optional 권한 도우미 설치 여부를 물어봅니다. 동의하면 macOS가 MacDog 주체의 관리자 승인창을 표시합니다.
 - optional 권한 도우미는 나중에 MacDog 설정 탭에서도 설치하거나 제거할 수 있습니다.

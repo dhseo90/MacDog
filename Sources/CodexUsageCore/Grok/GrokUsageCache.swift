@@ -78,6 +78,12 @@ public struct GrokUsageCacheSnapshot: Codable, Equatable, Sendable {
         guard status(now: now) == .available else { return nil }
         return weekly
     }
+
+    /// Gauge and panel keep this after a rejection. Runner, menu-bar percent, and alerts stay on `freshWeekly`.
+    public func displayedWeekly(now: Date = Date()) -> GrokUsageWeeklyWindow? {
+        if issue != nil { return weekly }
+        return freshWeekly(now: now)
+    }
 }
 
 public enum GrokUsageIngestResult: Equatable, Sendable {
@@ -271,6 +277,7 @@ public struct GrokUsageCacheStore {
     private static func sanitizedIssueCode(_ code: String) -> String {
         switch code {
         case "weekly-window-missing",
+             "invalid-usage-percent",
              "billing-decode-failed",
              "billing-too-large",
              "auth-unavailable",
