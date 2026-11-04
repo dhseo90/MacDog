@@ -9,8 +9,8 @@ Claude 조회 구현일: 2026-11-03
 기준 head: `main` `fa2d317`
 개발 검증 버전: `MACDOG_APP_VERSION=1.9.4`
 
-버전 정책: minor 구간은 `0~9`까지만 사용한다. 공개 릴리즈는 `v1.9.3`이다.
-이 브랜치의 개발 버전은 `v1.9.4`다.
+버전 정책: minor 구간은 `0~9`까지만 사용한다. 직전 공개 릴리즈는 `v1.9.3`이다.
+이 버전의 공개 순서는 [V194ReleaseReadiness.md](V194ReleaseReadiness.md)에 둔다.
 
 ## 목표
 
@@ -185,9 +185,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer /usr/bin/xcodebuild bui
 `verify_v193_codex_remaining_credits_contract.sh --self-test --skip-tests`와
 v1.9.0부터 v1.9.2 계약 verifier의 `--skip-tests`도 exit 0이다.
 
-테스트 계정이 없다. Claude `rate_limits` live event와 57시간 Grok billing
-원문은 열지 않았다. fixture로 고친 경로만 완료로 적는다. GUI와 설치는
-미수행이다.
+테스트 계정이 없어 Claude `rate_limits` live event는 2026-11-04 사용자 결정으로
+닫았다. 57시간 Grok billing 원문은 저장되지 않아 분류하지 않았다.
+
+2026-11-04 로컬 DMG `dist/release/MacDog-1.9.4.dmg`를 Finder에서 열고 사용자가
+`MacDog.app`을 `Applications`로 드래그했다. 설치본 실행 파일 4개, 아이콘, 권한
+도우미 checksum이 그 DMG와 같았다. 이것은 공개 GitHub DMG 설치가 아니다.
+
+설치 전 임시 바이너리의 사용량 화면에서 Codex 주간 `100% 사용 0% 남음`, Grok 주간
+`17% 사용 83% 남음`, Claude 체크 꺼짐을 읽었다. 거절 중 마지막 주간 유지, Claude를
+메인으로 둔 화면, 메뉴바 `%` 글자, 설치 직후 팝오버는 확인하지 않았다.
 
 ## 제외
 
@@ -196,7 +203,8 @@ v1.9.0부터 v1.9.2 계약 verifier의 `--skip-tests`도 exit 0이다.
 - Claude 주기 조회 LaunchAgent
 - Grok 5시간 합성, Extra Usage Credits, prepaid를 주간 잔여로 표시
 - billing 원문, token, auth 원문을 cache, log, fixture, 문서에 저장
-- 릴리즈 publish, tag, 설치, LaunchAgent 실등록
+- 개발 중에는 publish, tag, 설치, LaunchAgent 실등록을 하지 않았다. 공개 순서는
+  [V194ReleaseReadiness.md](V194ReleaseReadiness.md)를 따른다
 - Claude live `rate_limits` event. 구현은 fixture만 사용하고 계정 조회는 하지 않는다
 
 ## 모델

@@ -93,9 +93,12 @@ verify_contract() {
 
   require_match '`1\.9\.0` 제품의 설정 visible mode는 `Codex`와 `Grok`' \
     "$README" "README published 1.9.0 visible modes"
-  require_match '현재 GitHub Release는 \[v1\.9\.3\]' "$README" \
-    "README published v1.9.3"
-  require_match 'MacDog-1\.9\.3\.dmg' "$README" "README current installer"
+  require_match '현재 GitHub Release는 \[v1\.9\.4\]' "$README" \
+    "README published v1.9.4"
+  require_match 'MacDog-1\.9\.4\.dmg' "$README" "README current installer"
+  require_match 'MacDog-1\.9\.3\.dmg' "$README" "README previous v1.9.3 installer"
+  reject_match '현재 GitHub Release는 \[v1\.9\.3\]' "$README" \
+    "stale current-release claim"
   require_match '3756b1abc4306add7ab77aa106b3952e6043f1ab' "$README" \
     "README v1.9.2 code merge head"
   require_match 'releases/tag/v1\.9\.2' "$README" "README previous v1.9.2 link"
